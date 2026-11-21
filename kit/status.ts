@@ -81,8 +81,12 @@ export function damageOverTime(
     }));
   }
 
+  // Ticks land at tick, 2*tick, ... up to duration; the group outlives duration by half a tick
+  // so a tick due exactly at duration still fires.
+  const maxTicks = Math.floor(dur / tick);
   let n = 0;
   g.addHandle(w.addUpdater(((acc) => (dt) => {
+    if (n >= maxTicks) return false;
     acc += dt;
     if (acc < tick) return;
     acc -= tick;
