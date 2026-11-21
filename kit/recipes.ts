@@ -65,17 +65,17 @@ export function hitFlash(w: VfxWorld, target: Sprite, ms = 120, color = 0xffffff
   let age = 0;
   w.addUpdater((dt) => {
     age += dt;
+    if (age >= ms || target.destroyed || f.destroyed) {
+      activeHitFlashes.delete(f);
+      if (!f.destroyed) f.destroy();
+      return false;
+    }
     f.position.copyFrom(target.position);
     f.scale.copyFrom(target.scale);
     f.rotation = target.rotation;
     f.zIndex = target.zIndex;
     f.visible = target.visible;
     f.alpha = 1 - age / ms;
-    if (age >= ms || target.destroyed) {
-      activeHitFlashes.delete(f);
-      f.destroy();
-      return false;
-    }
   });
 }
 
