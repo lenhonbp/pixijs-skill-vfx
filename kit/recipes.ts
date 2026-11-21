@@ -234,18 +234,25 @@ export function projectile(
       vz: rand(10, 50), drag: 2, scale: [rand(0.5, 0.8) * size, 0, inQuad], tint: colorRamp(p.core, p.main, p.dark, 0.25),
     }),
   });
-  return w.addUpdater((dt) => {
+  const cleanup = () => {
+    trail.stop();
+    for (const q of parts) q?.kill();
+  };
+  const mover = w.addUpdater((dt) => {
     t = Math.min(1, t + dt / duration);
     pos.x = lerp(o.from.x, o.to.x, t);
     pos.y = lerp(o.from.y, o.to.y, t);
     pos.z = lerp(fz, tz, t) + 4 * arc * t * (1 - t);
     if (t >= 1) {
-      trail.stop();
-      for (const q of parts) q?.kill();
+      cleanup();
       o.onHit?.({ ...pos });
       return false;
     }
   });
+  return {
+    stop: () => { if (mover.alive) { mover.stop(); cleanup(); } },
+    get alive() { return mover.alive; },
+  };
 }
 
 /** Meteor: telegraph on the ground, falls from the sky, then a big explosion. */
@@ -331,9 +338,16 @@ export function healAura(w: VfxWorld, tex: VfxTextures, o: { target: () => Vec3;
       };
     },
   });
+  const columnOpts = column?.o, padOpts = pad?.o;
   const all = w.after(duration, () => {});
   return {
-    stop: () => { rings.stop(); motes.stop(); column?.kill(); pad?.kill(); all.stop(); },
+    stop: () => {
+      rings.stop();
+      motes.stop();
+      if (column && column.o === columnOpts) column.kill();
+      if (pad && pad.o === padOpts) pad.kill();
+      all.stop();
+    },
     get alive() { return all.alive; },
   };
 }

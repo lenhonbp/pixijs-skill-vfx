@@ -124,7 +124,7 @@ export function leap(
     make: () => ({ texture: tex.dot, x: pos.x + rand(-6, 6), y: pos.y, z: pos.z + h * rand(0.3, 0.7), life: rand(220, 380), scale: [rand(0.3, 0.5), 0], tint: [p.core, p.main] }),
   });
   let t = 0;
-  return w.addUpdater((dt) => {
+  const mover = w.addUpdater((dt) => {
     t = Math.min(1, t + dt / dur);
     const e = inOutSine(t);
     pos.x = lerp(o.from.x, o.to.x, e);
@@ -139,6 +139,10 @@ export function leap(
     o.onLand?.({ ...pos });
     return false;
   });
+  return {
+    stop: () => { if (mover.alive) { mover.stop(); trail.stop(); shadow?.kill(); } },
+    get alive() { return mover.alive; },
+  };
 }
 
 /** Heavy ground impact: shockwave, radial cracks, dust ring, rock debris, shake + hit-stop. */
