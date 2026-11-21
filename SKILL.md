@@ -102,12 +102,17 @@ Ready recipes (see `references/recipes.md` for what each is made of):
 - Movement (`motion.ts`): `dash` (afterimages), `blink`, `leap` (arc + `slam`), `afterimage`, `slam`.
 - Channeled / cast (`channel.ts`): `beam`, `coneBreath`, `chargeUp`, `summonCircle`.
 - Element shapes (`elemental.ts`): `spike`, `spikeLine`, `spikeRing` (rock or `ice`), `swordRain`.
+- Wind (`wind.ts`): `tornado` (travels, pulls, lifts; returns `pos`), `windSlash` (crescent gust
+  with ribbons), `vortex` (inward/outward ground spiral), `windWisps` (buff aura), `gustLines`.
+- Advanced (`trail.ts`, `noise.ts`, `postfx.ts`): `ribbonTrail`, `curlDrift` / `curl2`,
+  `Distortion` (`shockwave`, `haze`), `Bloom`, `w.density` quality tiers. Read
+  `references/advanced-fx.md` before using them.
 - Feedback: `damageNumber` (`numbers.ts`, baked glyphs, crits pop).
 - Sustained effects return a `Handle` (`stop()`, `alive`); build your own with `group()`.
 
 Elements: `WUXING` in `elements.ts` gives the five elements (Kim, Mộc, Thủy, Hỏa, Thổ) with
-palette and shape language; read `references/elements.md` before designing an element skill.
-`examples/skills.ts` has 19 complete skills (3 per element + utility) wired through a small
+palette and shape language, `PHONG` the wind variant element (`ELEMENTS` has all six); read `references/elements.md` before designing an element skill.
+`examples/skills.ts` has 23 complete skills (3 per element, 4 wind, utility) wired through a small
 `SkillContext`; copy the closest one.
 
 2.5D helpers: `rigFromBlender`, `anchorAtFeet`, `unitPoints(x, y, heightPx)` (feet / knee /
@@ -152,6 +157,9 @@ chest / head / above), `socketPoint(feet, sockets, dir)`, `vfx.shadowPoint(pos)`
 - Additive overdraw is the real cost: prefer fewer, bigger, shorter-lived glows over many large ones.
 - Effects that loop (auras, buffs) must return a handle and be stopped when the buff ends or
   the unit dies. Call `vfx.clear()` on scene change.
+- Scale with a quality tier, not by deleting layers: `w.density` (1 / 0.65 / 0.4) plus Bloom and
+  Distortion on/off (`references/advanced-fx.md`). Cap renderer resolution at ~1.5 on phones.
+- Post FX cost one extra offscreen render each; attach them once at startup, never per skill.
 - On v8 with >2000 tiny particles, consider `ParticleContainer`; otherwise the kit is enough.
 
 ## 7. Verify before you say it is done
@@ -173,7 +181,10 @@ chest / head / above), `socketPoint(feet, sockets, dir)`, `vfx.shadowPoint(pos)`
   matching for pre-rendered sprites), `ease.ts`, `pixi-compat.ts` (v7/v8 shims).
 - `kit/status.ts`, `kit/motion.ts`, `kit/channel.ts`, `kit/elemental.ts`, `kit/numbers.ts`,
   `kit/elements.ts`, `kit/group.ts` - buff/debuff/CC, movement, channeled, element effects.
-- `examples/skills.ts` - 19 sample skills across the five elements, gameplay-agnostic.
+- `kit/wind.ts`, `kit/trail.ts`, `kit/noise.ts`, `kit/postfx.ts` - wind recipes, ribbon trails,
+  curl noise, distortion and bloom.
+- `examples/skills.ts` - 23 sample skills across the five elements, wind and utility, gameplay-agnostic.
+- `references/advanced-fx.md` - ribbons, curl noise, distortion, bloom, quality tiers.
 - `references/elements.md` - Wu Xing design language and per-element recipes.
 - `tools/blender_vfx_rig.py` - run in Blender to print camera and sun numbers for `rigFromBlender`.
 - `references/blender-2-5d.md` - matching VFX to Blender-rendered sprites.

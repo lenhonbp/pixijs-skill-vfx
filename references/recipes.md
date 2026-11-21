@@ -9,9 +9,9 @@ not a framework to extend with options.
 | `hitSpark` | small core glow, spinning star, 8 streaks in a cone | every hit, crits (size 1.5+) | `angle` (away from attacker), `size` |
 | `hitFlash` | additive copy of the target's texture fading out | target feedback | `ms`, `color` (red for damage, green for heal) |
 | `slash` | dark smear + main crescent + white edge, all ground-aligned at chest height, sparks off the end | melee swings, dash cuts | `angle` facing, `radius`, `sweep`, `duration`, `clockwise` |
-| `projectile` | glow + core following a path with an arc, ember trail stream, ground shadow | fireball, arrow, magic bolt | `speed`, `arcHeight`, `size`, `onHit` |
+| `projectile` | glow + core following a path with an arc, ribbon trail + ember stream, ground shadow | fireball, arrow, magic bolt | `speed`, `arcHeight`, `size`, `onHit` |
 | `explosion` | top flash, additive fire puffs, normal-blend smoke, gravity sparks, shockwave, scorch decal, shake + hit-stop | AoE impact, fireball hit | `radius`, `shake`, `hitStopMs`, `smoke` |
-| `shockwave` | two expanding ground rings | slams, landings, nova | `radius`, `duration` |
+| `shockwave` | two expanding ground rings + screen refraction when `Distortion` is attached | slams, landings, nova | `radius`, `duration` |
 | `telegraph` | pulsing ground ring, faint area, fill that grows over the cast | enemy AoE warnings, cast bars on the ground | `radius`, `duration`, `onDone` |
 | `meteor` | `telegraph` -> `projectile` from the sky -> big `explosion` | ultimates; shows composition | `radius`, `castMs` |
 | `lightningChain` | jagged beams (glow + core) between points, re-rolled every 65 ms, glows and sparks at each hit | chain lightning, beams, tethers | `points`, `flickers`, `width` |
@@ -33,6 +33,12 @@ not a framework to extend with options.
 | `summonCircle` | two counter-rotating rune circles, rising pillars, spiralling motes, light column + shockwave | summons, portals | `radius`, `duration`, `onSummon` |
 | `spike` / `spikeLine` / `spikeRing` | lit spikes that rise, hold and sink, crater, debris, dust; `ice` variant | earth fissure, ice path, frost nova | `count`, `spacing`, `height`, `onSpike` |
 | `swordRain` | falling blades with light streaks that stick in the ground, impact sparks | metal ultimates | `radius`, `count`, `duration`, `onImpact` |
+| `tornado` | funnel of orbiting streaks and puffs (front/back depth fade), carried leaves/rocks, dust ring, ground swirl, heat haze | tornado, cyclone, pull + lift CC | `at`, `to`, `height`, `radius`, `duration`, `onTick(pos)` |
+| `windSlash` | twin crescents flying along a path, two side ribbons + a core ribbon, speed lines, release burst | wind blade, sonic slash | `from`, `to`, `size`, `speed`, `onHit` |
+| `vortex` | counter-rotating ground rings, streaks spiralling in (or out) | pulls, wind fields, spin attacks | `at` (point or fn), `radius`, `inward` |
+| `windWisps` | three ribbon helices orbiting the unit, curl-noise motes | haste, tailwind, wind aura | `target`, `radius`, `height`, `duration` |
+| `gustLines` | burst of horizontal speed lines along a ground angle | knockback, dash, tailwind | `angle`, `count`, `spread` |
+| `ribbonTrail` | rope mesh through the target's recent positions | any fast mover (see advanced-fx.md) | `width`, `segments`, `tint`, `fadeMs` |
 
 ## Making a new skill
 

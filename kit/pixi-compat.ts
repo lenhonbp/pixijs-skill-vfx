@@ -21,3 +21,9 @@ export function blend(name: BlendName): any {
 export function textureFromCanvas(canvas: HTMLCanvasElement): Texture {
   return (Texture as any).from(canvas);
 }
+
+/** Render `container` into `target` (clears it first). */
+export function renderToTexture(renderer: any, container: any, target: any) {
+  if (V8) renderer.render({ container, target, clear: true });
+  else renderer.render(container, { renderTexture: target, clear: true });
+}

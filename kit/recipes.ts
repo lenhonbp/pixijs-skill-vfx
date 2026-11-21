@@ -4,6 +4,8 @@ import { Sprite } from 'pixi.js';
 import { VfxWorld, Handle, Vec3, Particle } from './vfx-world';
 import { VfxTextures, TEX_METRICS as M } from './textures';
 import { blend } from './pixi-compat';
+import { Distortion } from './postfx';
+import { ribbonTrail } from './trail';
 import { colorRamp, envelope, inQuad, outCubic, outExpo, outQuad, rand, lerp, lerpColor } from './ease';
 
 export interface Palette {
@@ -145,6 +147,8 @@ export function shockwave(w: VfxWorld, tex: VfxTextures, o: { x: number; y: numb
   const g = { x: o.x, y: o.y, layer: 'ground', groundAligned: true } as const;
   w.spawn({ ...g, texture: tex.ring, life, scale: [k * 0.15, k, outExpo], alpha: [1, 0, inQuad], tint: o.palette.main });
   w.spawn({ ...g, texture: tex.ring, life: life * 0.7, scale: [k * 0.1, k * 0.8, outExpo], scaleY: 1, alpha: [0.9, 0, inQuad], tint: o.palette.core });
+  // Screen-space refraction at the wave front when a Distortion plugin is attached.
+  w.plugin(Distortion)?.shockwave(w, o.x, o.y, o.radius * 1.15, { duration: life * 1.5 });
 }
 
 /** Big AoE impact: flash, fireballs, sparks, smoke, shockwave, scorch decal, shake + hit-stop. */
@@ -240,6 +244,8 @@ export function projectile(
     w.spawn({ texture: tex.dot, x: 0, y: 0, follow, life: Infinity, scale: 0.75 * size, tint: p.core, zBias: 3 }),
   ];
   parts.push(dropShadow(w, tex, () => pos, size));
+  // Continuous ribbon behind the core; particles add sparkle on top.
+  const ribbon = ribbonTrail(w, { target: follow, width: 16 * size, segments: 12, tint: p.main, zBias: 1 });
   const trail = w.stream({
     rate: 90,
     make: () => ({
@@ -249,6 +255,7 @@ export function projectile(
   });
   const cleanup = () => {
     trail.stop();
+    ribbon.stop();
     for (const q of parts) q?.kill();
   };
   const mover = w.addUpdater((dt) => {

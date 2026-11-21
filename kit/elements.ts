@@ -5,8 +5,12 @@ import type { VfxWorld } from './vfx-world';
 
 export type ElementName = 'kim' | 'moc' | 'thuy' | 'hoa' | 'tho';
 
+/** Wind (Phong) is a variant element (biến dị) outside the Wu Xing cycle, common in xianxia games. */
+export type VariantElementName = 'phong';
+export type AnyElementName = ElementName | VariantElementName;
+
 export interface Element {
-  name: ElementName;
+  name: AnyElementName;
   /** Display names. */
   vi: string;
   en: string;
@@ -44,6 +48,16 @@ export const WUXING: Record<ElementName, Element> = {
     shapes: 'rock spikes, debris with gravity and bounce, dust clouds, cracks; heavy, slow, big shake',
   },
 };
+
+/** Phong (Wind): variant element. Fast, curving, mostly translucent; reads through motion, not mass. */
+export const PHONG: Element = {
+  name: 'phong', vi: 'Phong', en: 'Wind',
+  palette: { core: 0xffffff, main: 0x8ff0d0, dark: 0x2a7f78 }, accent: 0xe4fff6,
+  shapes: 'crescent gusts, spiralling streaks and ribbons, dust and leaves caught in the flow; curl-noise motion, pull/lift; additive and translucent, never solid',
+};
+
+/** All elements, Wu Xing plus variants. */
+export const ELEMENTS: Record<AnyElementName, Element> = { ...WUXING, phong: PHONG };
 
 /** +1 or -1: mirror lit-from-the-left textures (rock, spike, blade) so their lit side faces the sun. */
 export function litFlip(w: VfxWorld): 1 | -1 {

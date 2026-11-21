@@ -3,16 +3,20 @@
 import { Application, Container, Sprite, Texture } from 'pixi.js';
 import {
   VfxWorld, createVfxTextures, isPixiV8, textureFromCanvas, rigFromBlender, anchorAtFeet,
-  hitFlash, hitSpark, damageNumber, activeHitFlashes, WUXING, Palette, Vec3, outCubic, lerp, rand,
+  hitFlash, hitSpark, damageNumber, activeHitFlashes, ELEMENTS, Distortion, Bloom, Palette, Vec3, outCubic, lerp, rand,
 } from '../kit';
 import { SKILLS, SkillDef, Unit, SkillContext } from '../examples/skills';
 
 const W = 1120, H = 630;
-const HOTKEYS = '1234567890QWERTYUIO';
-const ELEMENT_COLORS: Record<string, string> = { kim: '#f3d36b', moc: '#7ee05a', thuy: '#4fc3ff', hoa: '#ff7a2a', tho: '#d9a050', neutral: '#b48cff' };
+const HOTKEYS = '1234567890QWERTYUIOZXCV';
+// Wind skills take Z-V so the earlier 1-0, Q-O shortcuts keep their skills.
+const KEY_ORDER = [...SKILLS.filter((s) => s.element !== 'phong'), ...SKILLS.filter((s) => s.element === 'phong')];
+/** Phones and touch tablets: lighter defaults, no hover-only UI. */
+const MOBILE = matchMedia('(pointer: coarse)').matches || innerWidth < 760;
+const ELEMENT_COLORS: Record<string, string> = { kim: '#f3d36b', moc: '#7ee05a', thuy: '#4fc3ff', hoa: '#ff7a2a', tho: '#d9a050', phong: '#8ff0d0', neutral: '#b48cff' };
 
 async function createApp() {
-  const opts = { width: W, height: H, background: 0x14121b, backgroundColor: 0x14121b, antialias: true, resolution: Math.min(2, devicePixelRatio), autoDensity: true };
+  const opts = { width: W, height: H, background: 0x14121b, backgroundColor: 0x14121b, antialias: !MOBILE, powerPreference: 'high-performance', resolution: Math.min(MOBILE ? 1.5 : 2, devicePixelRatio), autoDensity: true };
   const A: any = Application;
   if (isPixiV8()) {
     const app = new A();
@@ -171,6 +175,9 @@ function whiteTexture() {
   const layers = VfxWorld.createLayers(camera);
   const w = new VfxWorld({ ...layers, camera, groundSquash: rig.groundSquash, shadow: rig.shadow, maxParticles: 2500 });
   const tex = createVfxTextures();
+  // Post FX: screen-space distortion on the arena, bloom composited on top of it.
+  const distortion = w.use(new Distortion({ renderer: app.renderer, target: camera, width: W, height: H, scale: 26 }));
+  const bloom = w.use(new Bloom({ renderer: app.renderer, source: camera, parent: app.stage, width: W, height: H, threshold: 0.66, intensity: 0.75, blur: 8, active: () => w.count > 0 }));
   const shadowTex = shadowTexture();
   const white = whiteTexture();
 
@@ -292,32 +299,34 @@ function whiteTexture() {
   const renderInfo = () => {
     const el = current.element;
     const color = ELEMENT_COLORS[el];
-    const elName = el === 'neutral' ? 'Neutral' : `${WUXING[el].vi} · ${WUXING[el].en}`;
+    const elName = el === 'neutral' ? 'Neutral' : `${ELEMENTS[el].vi} · ${ELEMENTS[el].en}`;
     $('info').innerHTML = `
       <div class="info-head"><span class="el" style="--c:${color}">${elName}</span><span class="cat">${current.category}</span></div>
       <h2>${current.vi}<small>${current.en}</small></h2>
       <p>${current.desc}</p>
       <div class="uses">${current.uses.map((u) => `<code>${u}</code>`).join('')}</div>`;
+    $('now').style.setProperty('--c', color);
+    $('now').innerHTML = `<b>${current.vi}</b><span>${current.en}</span>`;
   };
 
   const renderList = () => {
     const list = $('skills');
     list.innerHTML = '';
-    SKILLS.forEach((s, i) => {
+    SKILLS.forEach((s) => {
       if (filter !== 'all' && s.element !== filter) return;
       const b = document.createElement('button');
       b.className = 'skill' + (s === current ? ' active' : '');
       b.style.setProperty('--c', ELEMENT_COLORS[s.element]);
-      b.innerHTML = `<kbd>${HOTKEYS[i] ?? ''}</kbd><span class="names"><b>${s.vi}</b><i>${s.en}</i></span><span class="cat">${s.category}</span>`;
+      b.innerHTML = `<kbd>${HOTKEYS[KEY_ORDER.indexOf(s)] ?? ''}</kbd><span class="names"><b>${s.vi}</b><i>${s.en}</i></span><span class="cat">${s.category}</span>`;
       b.onclick = () => { stopShowcase(); cast(s); };
       list.appendChild(b);
     });
   };
 
   const tabs = $('tabs');
-  for (const key of ['all', 'kim', 'moc', 'thuy', 'hoa', 'tho', 'neutral']) {
+  for (const key of ['all', 'kim', 'moc', 'thuy', 'hoa', 'tho', 'phong', 'neutral']) {
     const b = document.createElement('button');
-    b.textContent = key === 'all' ? 'All' : key === 'neutral' ? 'Utility' : WUXING[key as keyof typeof WUXING].vi;
+    b.textContent = key === 'all' ? 'All' : key === 'neutral' ? 'Utility' : ELEMENTS[key as keyof typeof ELEMENTS].vi;
     b.style.setProperty('--c', ELEMENT_COLORS[key] ?? '#ddd');
     b.dataset.key = key;
     b.onclick = () => { filter = key; tabs.querySelectorAll('button').forEach((x) => x.classList.toggle('active', x === b)); renderList(); };
@@ -330,6 +339,46 @@ function whiteTexture() {
     document.querySelectorAll<HTMLButtonElement>('[data-speed]').forEach((b) => b.classList.toggle('active', Number(b.dataset.speed) === v));
   };
   document.querySelectorAll<HTMLButtonElement>('[data-speed]').forEach((b) => (b.onclick = () => setSpeed(Number(b.dataset.speed))));
+  // Quality tiers: particle density + post FX. Phones start on Medium; slow devices step down once.
+  type Quality = 'high' | 'medium' | 'low';
+  const TIERS: Record<Quality, { density: number; bloom: boolean; distortion: boolean }> = {
+    high: { density: 1, bloom: true, distortion: true },
+    medium: { density: 0.65, bloom: false, distortion: true },
+    low: { density: 0.4, bloom: false, distortion: false },
+  };
+  let quality: Quality = 'high';
+  const syncToggles = () => {
+    $('bloom').classList.toggle('on', bloom.enabled);
+    $('distortion').classList.toggle('on', distortion.enabled);
+  };
+  const setQuality = (q: Quality) => {
+    quality = q;
+    w.density = TIERS[q].density;
+    bloom.enabled = TIERS[q].bloom;
+    distortion.enabled = TIERS[q].distortion;
+    document.querySelectorAll<HTMLButtonElement>('[data-quality]').forEach((b) => b.classList.toggle('active', b.dataset.quality === q));
+    syncToggles();
+  };
+  document.querySelectorAll<HTMLButtonElement>('[data-quality]').forEach((b) => (b.onclick = () => { autoQuality = false; setQuality(b.dataset.quality as Quality); }));
+  // Post FX apply on world updates, which the ticker skips while paused.
+  const refreshPostFx = () => { if (paused) w.refreshPlugins(); };
+  $('bloom').onclick = () => { bloom.enabled = !bloom.enabled; syncToggles(); refreshPostFx(); };
+  $('distortion').onclick = () => { distortion.enabled = !distortion.enabled; syncToggles(); refreshPostFx(); };
+  let autoQuality = !/[?&]quality=/.test(location.search);
+  const qParam = new URLSearchParams(location.search).get('quality') as Quality | null;
+  setQuality(qParam && qParam in TIERS ? qParam : MOBILE ? 'medium' : 'high');
+  let slowMs = 0;
+  const watchFps = (dt: number) => {
+    if (!autoQuality || paused || document.hidden) return;
+    slowMs = dt > 24 ? slowMs + dt : Math.max(0, slowMs - dt * 0.5);
+    if (slowMs > 2500 && quality !== 'low') {
+      setQuality(quality === 'high' ? 'medium' : 'low');
+      slowMs = 0;
+    }
+  };
+  // Tap the arena to recast the current skill (phones have no hotkeys).
+  view.addEventListener('pointerup', (e) => { if (e.pointerType !== 'mouse') { stopShowcase(); cast(current); } });
+
   const togglePause = () => { paused = !paused; $('pause').classList.toggle('active', paused); $('pause').textContent = paused ? 'Resume' : 'Pause'; };
   const stopShowcase = () => { if (showcase !== null) { showcase = null; $('showcase').classList.remove('active'); } };
   const runShowcase = (i = SKILLS.indexOf(current)) => {
@@ -346,7 +395,7 @@ function whiteTexture() {
     if (e.target instanceof HTMLInputElement) return;
     const k = e.key.toUpperCase();
     const i = HOTKEYS.indexOf(k);
-    if (i >= 0 && SKILLS[i]) { stopShowcase(); cast(SKILLS[i]); }
+    if (i >= 0 && KEY_ORDER[i]) { stopShowcase(); cast(KEY_ORDER[i]); }
     else if (e.key === ' ') { e.preventDefault(); stopShowcase(); cast(current); }
     else if (k === 'P') togglePause();
     else if (e.key === 'Escape') { stopShowcase(); resetScene(); }
@@ -354,6 +403,7 @@ function whiteTexture() {
     else if (k === 'S') setSpeed(w.timeScale === 1 ? 0.5 : w.timeScale === 0.5 ? 0.25 : 1);
   });
   $('version').textContent = isPixiV8() ? 'PixiJS v8' : 'PixiJS v7';
+  $('count').textContent = `${SKILLS.length} sample skills`;
   renderList();
   renderInfo();
 
@@ -370,6 +420,7 @@ function whiteTexture() {
   };
   app.ticker.add(() => {
     if (!paused) frame(app.ticker.deltaMS);
+    watchFps(app.ticker.deltaMS);
     updateStats(app.ticker.FPS);
   });
 
@@ -386,6 +437,8 @@ function whiteTexture() {
     reset: resetScene,
     step,
     vfx: w,
+    setQuality,
+    postfx: { bloom, distortion },
   };
   if (location.hash === '#showcase') runShowcase(0);
 })();
