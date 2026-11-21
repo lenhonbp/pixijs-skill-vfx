@@ -253,8 +253,10 @@ export const SKILLS: SkillDef[] = [
       const base = angleTo(w, caster, target);
       let a = base - 0.25;
       w.addUpdater(((t) => (dt) => { t += dt; a = base - 0.25 + 0.5 * Math.min(1, t / 1600); return t < 1700; })(0));
-      coneBreath(w, tex, { origin: () => hand(caster), angle: () => a, palette: P.hoa, range: 330, spread: 0.6, duration: 1700, style: 'fire' });
-      const inBreath = (u: Unit) => inCone(w, caster, u, a, 420, 0.6 + 0.5);
+      // Reach a bit past the main target so the flames visibly wash over it.
+      const range = Math.min(640, Math.hypot(target.feet.x - caster.feet.x, (target.feet.y - caster.feet.y) / w.groundSquash) + 140);
+      coneBreath(w, tex, { origin: () => hand(caster), angle: () => a, palette: P.hoa, range, spread: 0.6, duration: 1700, style: 'fire' });
+      const inBreath = (u: Unit) => inCone(w, caster, u, a, range, 0.6 + 0.5);
       for (let i = 0; i < 4; i++) w.after(300 + i * 360, () => targets.filter(inBreath).forEach((u) => hurt(u, Math.round(rand(24, 32)), { palette: P.hoa })));
       w.after(1500, () => targets.filter(inBreath).forEach((u) => damageOverTime(w, tex, { target: feetOf(u), height: u.height, kind: 'burn', duration: 1800, tickMs: 600, damage: 9 })));
     },
