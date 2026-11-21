@@ -276,7 +276,8 @@ function whiteTexture() {
   const $ = (id: string) => document.getElementById(id)!;
   let current: SkillDef = SKILLS[0];
   let filter = 'all';
-  let showcase: number | null = null;
+  // Showcase advances on the VFX clock, so it waits while paused and follows the speed setting.
+  let showcase: { i: number; left: number } | null = null;
   let paused = false;
 
   const cast = (s: SkillDef) => {
@@ -328,12 +329,12 @@ function whiteTexture() {
   };
   document.querySelectorAll<HTMLButtonElement>('[data-speed]').forEach((b) => (b.onclick = () => setSpeed(Number(b.dataset.speed))));
   const togglePause = () => { paused = !paused; $('pause').classList.toggle('active', paused); $('pause').textContent = paused ? 'Resume' : 'Pause'; };
-  const stopShowcase = () => { if (showcase !== null) { clearTimeout(showcase); showcase = null; $('showcase').classList.remove('active'); } };
+  const stopShowcase = () => { if (showcase !== null) { showcase = null; $('showcase').classList.remove('active'); } };
   const runShowcase = (i = SKILLS.indexOf(current)) => {
     $('showcase').classList.add('active');
     resetScene();
     cast(SKILLS[i % SKILLS.length]);
-    showcase = window.setTimeout(() => runShowcase(i + 1), SKILLS[i % SKILLS.length].length / w.timeScale + 300);
+    showcase = { i, left: SKILLS[i % SKILLS.length].length + 300 };
   };
   $('replay').onclick = () => { stopShowcase(); cast(current); };
   $('pause').onclick = togglePause;
@@ -357,6 +358,7 @@ function whiteTexture() {
   let clock = 0;
   const frame = (dt: number) => {
     w.update(dt);
+    if (showcase && !w.frozen && (showcase.left -= dt * w.timeScale) <= 0) runShowcase(showcase.i + 1);
     if (!w.frozen) clock += dt * w.timeScale;
     if (w.now - lastHurt > 1500) for (const e of enemies) e.hp = Math.min(1, e.hp + dt / 1500);
     for (const u of units) sync(u, clock);
