@@ -1,4 +1,5 @@
 node_modules/
 demo/demo.js
+_site/
 *.zip
 .DS_Store
