@@ -42,7 +42,7 @@ export function damageOverTime(
   const dur = o.duration ?? 3000;
   const tick = o.tickMs ?? 600;
   const T = o.target;
-  const g = group(w, dur);
+  const g = group(w, dur + tick / 2);
   const s = h / 70;
 
   // sickly / hot / wounded tint over the body
