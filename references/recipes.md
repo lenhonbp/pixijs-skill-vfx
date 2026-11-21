@@ -1,0 +1,70 @@
+# Recipe catalog
+
+All recipes live in `kit/recipes.ts`, take ground coordinates `(x, y)` plus height `z`, and a
+`Palette` (`{ core, main, dark }`). Copy the closest one and change it; recipes are examples,
+not a framework to extend with options.
+
+| Recipe | Layers it builds | Typical use | Key knobs |
+|---|---|---|---|
+| `hitSpark` | small core glow, spinning star, 8 streaks in a cone | every hit, crits (size 1.5+) | `angle` (away from attacker), `size` |
+| `hitFlash` | additive copy of the target's texture fading out | target feedback | `ms`, `color` (red for damage, green for heal) |
+| `slash` | dark smear + main crescent + white edge, all ground-aligned at chest height, sparks off the end | melee swings, dash cuts | `angle` facing, `radius`, `sweep`, `duration`, `clockwise` |
+| `projectile` | glow + core following a path with an arc, ember trail stream, ground shadow | fireball, arrow, magic bolt | `speed`, `arcHeight`, `size`, `onHit` |
+| `explosion` | top flash, additive fire puffs, normal-blend smoke, gravity sparks, shockwave, scorch decal, shake + hit-stop | AoE impact, fireball hit | `radius`, `shake`, `hitStopMs`, `smoke` |
+| `shockwave` | two expanding ground rings | slams, landings, nova | `radius`, `duration` |
+| `telegraph` | pulsing ground ring, faint area, fill that grows over the cast | enemy AoE warnings, cast bars on the ground | `radius`, `duration`, `onDone` |
+| `meteor` | `telegraph` -> `projectile` from the sky -> big `explosion` | ultimates; shows composition | `radius`, `castMs` |
+| `lightningChain` | jagged beams (glow + core) between points, re-rolled every 65 ms, glows and sparks at each hit | chain lightning, beams, tethers | `points`, `flickers`, `width` |
+| `healAura` | ground pad + shrinking rings, vertical column glow, rising swaying motes, some stars | heals, buffs, auras (return handle) | `target` (follow fn), `radius`, `duration` |
+| `damageNumber` | baked outlined digit sprites in `top`, pop + drift | every hit/heal/tick | `value`, `color`, `crit`, `size` |
+| `damageOverTime` | body tint + per-kind ambience (poison bubbles, burn flames/embers, bleed drops with ground splats), tick pulse + number | poison, burn, bleed | `kind`, `duration`, `tickMs`, `damage`, `onTick` |
+| `stun` | stars orbiting over the head, depth-sorted front/back, ring + trail | stun, daze | `duration`, `stars`, `palette` |
+| `freeze` | frost decal, ice crystals growing around the body, cold mist; shatter burst at end | freeze, petrify (rock palette) | `duration`, `onShatter` |
+| `slow` | spinning cold arcs at the feet, sinking chevrons, drips | slow, snare | `duration`, `palette` |
+| `root` | dirt burst, vines growing from the ground and swaying, leaves | root, entangle | `duration`, `palette` |
+| `shield` | rim-lit bubble with pulse, ground ring, crawling glints; `hit(angle)` ripple, `break()` shards | barriers, absorbs, invulnerability | `radius`, `duration`, `onBreak` |
+| `statChange` | light column, chevrons climbing (up) or sinking (down), ground ring | attack/defense/speed buffs and debuffs | `up`, `palette`, `duration` |
+| `dash` | afterimages of the unit sprite, speed lines, dust | dash, charge | `sprite`, `duration`, `onMove`, `onEnd` |
+| `blink` | implode + light column at `from`, faint trail, column + burst at `to` | teleport, shadow step | `gapMs`, `onVanish`, `onAppear` |
+| `leap` / `slam` | dust, airborne shadow, trail; slam: shockwave, cracks, dust ring, rock debris, shake | jump attacks, ground pound | `arc`, `duration`, `radius`, `onLand` |
+| `beam` | 3 stacked beam sprites re-laid every frame between two moving points, flowing motes, end glows, impact sparks | lasers, water jets, drains | `from`, `to` (functions), `width`, `duration` |
+| `coneBreath` | puffs fanned along a moving angle, element bits (embers/shards/leaves), lit ground | dragon breath, frost spray, poison spray | `style`, `range`, `spread`, `angle()` |
+| `chargeUp` | streaks converging on a point, growing glow, shrinking rings, release flash | any windup | `duration`, `onDone` |
+| `summonCircle` | two counter-rotating rune circles, rising pillars, spiralling motes, light column + shockwave | summons, portals | `radius`, `duration`, `onSummon` |
+| `spike` / `spikeLine` / `spikeRing` | lit spikes that rise, hold and sink, crater, debris, dust; `ice` variant | earth fissure, ice path, frost nova | `count`, `spacing`, `height`, `onSpike` |
+| `swordRain` | falling blades with light streaks that stick in the ground, impact sparks | metal ultimates | `radius`, `count`, `duration`, `onImpact` |
+
+## Making a new skill
+
+1. Brief it (fantasy, palette, phases in ms, layers) as described in SKILL.md section 3.
+2. Compose: most skills are `windup` + `travel` + `impact` + `aftermath`, chained with
+   `vfx.after` or the `onHit` / `onDone` callbacks.
+   - Windup ideas: particles converging on the caster (spawn on a circle with velocity toward
+     the center, `life` = distance / speed), a growing `glow` at the hand, a ground `telegraph`.
+   - Travel: `projectile`, a dash trail (`stream` of the unit's own texture tinted, alpha fading
+     = afterimages), a `beam` stretched from caster to target.
+   - Impact: `hitSpark` / `explosion` / `shockwave` + `hitFlash` + hit-stop + shake.
+   - Aftermath: smoke, embers, a decal on the ground that fades over 1-3 s.
+3. Element variants should change shape and motion, not only the palette (see SKILL.md section 5).
+   An ice version of `explosion`: swap puffs for `shard` particles (`faceVelocity`, no `drag`,
+   short life), a white `ring`, no smoke, frost decal in `ice.main` at low alpha.
+
+## Patterns
+
+- **Moving source**: pass `follow: () => ({ x: unit.x, y: unit.y, z: 40 })`; the particle's own
+  velocity becomes an offset from it. For trails, do NOT follow: spawn at the current position
+  so particles stay behind.
+- **Orbit**: `onUpdate: (p, t) => { p.px = Math.cos(a + t * 8) * r; p.py = Math.sin(a + t * 8) * r * vfx.groundSquash; }`
+  with `follow` on the unit; set `p.o.zBias = p.py` in the same `onUpdate` so the back half sorts behind the unit.
+- **Converge (charge-up)**: spawn on a ring of radius r with `vx = -cos(a) * r / (life / 1000)`.
+- **Afterimage**: `vfx.spawn({ texture: unit.texture, blend: 'add', tint: palette.main, alpha: [0.6, 0], life: 250, anchorY: <unit anchor>, x: unit.x, y: unit.y })` every 30 ms during a dash.
+- **Beam**: `texture: tex.beam, anchorX: 0, rotation: atan2(dy, dx), scaleX: len / 64` in screen
+  space (put `y` = ground y of the lower end and `z` = groundY - screenY so it sorts).
+- **Damage sync**: deal damage in the recipe's `onHit` / at the same `vfx.after` as the impact,
+  never on a separate timer, so hit-stop keeps them in sync.
+
+## dropShadow
+
+Blob shadow under anything airborne (projectiles, meteors, jumping units). Lands where the
+baked sun puts shadows (`VfxWorld` `shadow`, from `rigFromBlender`), fades and widens with
+height. `const sh = dropShadow(vfx, tex, () => pos, size)`; `sh?.kill()` when it lands.
