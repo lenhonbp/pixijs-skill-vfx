@@ -9,9 +9,13 @@ in PixiJS v7 and v8**. No art assets: every texture is generated with Canvas 2D 
 
 - **Coverage**: attacks and impacts, AoE telegraphs, projectiles, beams, cone breath, chain
   lightning, meteors, heals, shields that break, buffs/debuffs, poison/burn/bleed with tick
-  numbers, stun/freeze/slow/root, dash/blink/leap, summon circles, floating damage numbers.
-- **Five elements (Ngũ Hành / Wu Xing)**: Kim, Mộc, Thủy, Hỏa, Thổ, each with its own palette,
-  shapes and motion, and 19 complete sample skills in `examples/skills.ts`.
+  numbers, stun/freeze/slow/root, dash/blink/leap, summon circles, floating damage numbers,
+  tornadoes, wind blades and vortices.
+- **Five elements (Ngũ Hành / Wu Xing) + Phong (wind)**: Kim, Mộc, Thủy, Hỏa, Thổ and the wind
+  variant element, each with its own palette, shapes and motion, and 23 complete sample skills in
+  `examples/skills.ts`.
+- **Modern techniques on stock Pixi**: mesh ribbon trails, curl-noise motion, screen-space
+  distortion (shockwave refraction, heat haze) and bloom, with quality tiers for phones.
 - **2.5D-correct**: ground plane + height, depth sorting, ground-aligned decals, and a Blender
   rig (`tools/blender_vfx_rig.py`) so effects match pre-rendered 3D sprites.
 - **Production-minded**: pooled sprites, particle cap, hit-stop, screen shake, handles that clean
@@ -39,8 +43,8 @@ npm run build                 # bundles demo/demo.js
 npx serve demo                # or any static server, then open it in a browser
 ```
 
-Pick a skill from the list (or keys 1-0, Q-O), filter by element, replay with Space, slow down
-to 0.5x/0.25x, or press Showcase to cycle all skills. `#showcase` in the URL starts it directly.
+Pick a skill from the list (or keys 1-0, Q-O, Z-V; tap the arena on phones), filter by element, replay with Space, slow down
+to 0.5x/0.25x, switch quality and toggle bloom/distortion, or press Showcase to cycle all skills. `#showcase` in the URL starts it directly.
 Works with pixi.js 7.4+ too: `npm i pixi.js@7` and rebuild.
 
 ## Layout
@@ -49,8 +53,8 @@ Works with pixi.js 7.4+ too: `npm i pixi.js@7` and rebuild.
 |---|---|
 | `SKILL.md` | Instructions the agent follows |
 | `kit/` | Runtime and recipes (copy into your game) |
-| `examples/skills.ts` | 19 sample skills over a small `SkillContext` |
-| `references/` | Recipe catalog, element design, Blender matching, v7/v8 notes |
+| `examples/skills.ts` | 23 sample skills over a small `SkillContext` |
+| `references/` | Recipe catalog, element design, advanced FX, Blender matching, v7/v8 notes |
 | `tools/blender_vfx_rig.py` | Prints camera/sun numbers from your Blender scene |
 | `demo/` | Showcase app |
 

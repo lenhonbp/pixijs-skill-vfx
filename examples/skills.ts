@@ -1,13 +1,15 @@
-// A complete sample skill set: three skills per Wu Xing element plus neutral utility skills.
+// A complete sample skill set: three skills per Wu Xing element, four Phong (wind) variant skills,
+// and neutral utility skills.
 // Each skill is gameplay-agnostic: it only talks to the game through SkillContext, so you can
 // copy one into your project and replace hurt()/returnHome() with your own systems.
 import type { Sprite } from 'pixi.js';
 import {
-  VfxWorld, VfxTextures, Vec3, Palette, WUXING, ElementName,
+  VfxWorld, VfxTextures, Vec3, Palette, WUXING, PHONG, AnyElementName,
+  tornado, windSlash, vortex, windWisps, gustLines, curlDrift,
   slash, hitSpark, hitFlash, projectile, explosion, meteor, lightningChain, healAura, telegraph, shockwave,
   damageOverTime, stun, freeze, slow, root, shield, statChange, damageNumber,
   dash, blink, leap, beam, coneBreath, chargeUp, summonCircle, spikeLine, spikeRing, swordRain,
-  rand, envelope, outCubic,
+  rand, envelope, outCubic, outQuad, lerp, clamp01,
 } from '../kit';
 
 export interface Unit {
@@ -35,14 +37,14 @@ export interface SkillContext {
   /** Show/hide a unit (blink). */
   setVisible(u: Unit, v: boolean): void;
   /** Spawn a temporary summoned unit at a ground point. */
-  summon?(at: Vec3, element: ElementName | 'neutral'): void;
+  summon?(at: Vec3, element: AnyElementName | 'neutral'): void;
 }
 
 export type SkillCategory = 'attack' | 'aoe' | 'buff' | 'debuff' | 'control' | 'movement' | 'channel' | 'summon';
 
 export interface SkillDef {
   id: string;
-  element: ElementName | 'neutral';
+  element: AnyElementName | 'neutral';
   category: SkillCategory;
   en: string;
   vi: string;
@@ -68,8 +70,22 @@ const inCone = (w: VfxWorld, from: Unit, u: Unit, angle: number, range: number, 
 const screenAngle = (a: Unit, b: Unit) => Math.atan2(b.feet.y - a.feet.y - (b.height - a.height) * 0.5, b.feet.x - a.feet.x);
 const near = (c: Vec3, r: number, us: Unit[]) => us.filter((u) => Math.hypot(u.feet.x - c.x, (u.feet.y - c.y) * 2) < r * 1.2);
 
+/** Move a unit's feet to a point over `ms` on the VFX clock (knockback, pull, return). */
+const moveUnit = (w: VfxWorld, u: Unit, to: Vec3, ms: number, ease = outQuad) => {
+  const from = { ...u.feet };
+  let age = 0;
+  w.addUpdater((dt) => {
+    age += dt;
+    const t = ease(clamp01(age / ms));
+    u.feet.x = lerp(from.x, to.x, t);
+    u.feet.y = lerp(from.y, to.y, t);
+    u.feet.z = lerp(from.z, to.z ?? 0, t);
+    if (age >= ms) return false;
+  });
+};
+
 const P = {
-  kim: WUXING.kim.palette, moc: WUXING.moc.palette, thuy: WUXING.thuy.palette, hoa: WUXING.hoa.palette, tho: WUXING.tho.palette,
+  kim: WUXING.kim.palette, moc: WUXING.moc.palette, thuy: WUXING.thuy.palette, hoa: WUXING.hoa.palette, tho: WUXING.tho.palette, phong: PHONG.palette,
   lightning: { core: 0xffffff, main: 0x9ad8ff, dark: 0x3050ff },
   shadow: { core: 0xf0e0ff, main: 0x9a5cff, dark: 0x240a4a },
   holy: { core: 0xffffff, main: 0xffe29a, dark: 0xb08020 },
@@ -175,7 +191,7 @@ export const SKILLS: SkillDef[] = [
               const a = rand(0, 6.3), d = Math.sqrt(Math.random()) * 115;
               return {
                 texture: tex.puff, blend: 'normal', layer: 'body', x: c.x + Math.cos(a) * d, y: c.y + Math.sin(a) * d * w.groundSquash, z: rand(0, 25), life: rand(1200, 1700),
-                vz: rand(8, 20), vx: rand(-10, 10), rotation: rand(0, 6.3), spin: rand(-0.5, 0.5), scale: [0.6, rand(1.3, 1.8), outCubic], alpha: envelope(0.3, 0.22, 0.5), tint: [0x7ac83a, 0x3a5a1a],
+                vz: rand(8, 20), vx: rand(-10, 10), rotation: rand(0, 6.3), spin: rand(-0.5, 0.5), scale: [0.6, rand(1.3, 1.8), outCubic], alpha: envelope(0.3, 0.22, 0.5), tint: [0x7ac83a, 0x3a5a1a], onUpdate: curlDrift(22, 80),
               };
             },
           });
@@ -316,6 +332,106 @@ export const SKILLS: SkillDef[] = [
         const sh = shield(w, tex, { target: feetOf(caster), height: caster.height, palette: P.tho, duration: 2200 });
         w.after(1200, () => sh.hit(0.3));
       });
+    },
+  },
+
+  // ------------------------------------------------------------------ PHONG / WIND (variant element)
+  {
+    id: 'phong-gale-blade', element: 'phong', category: 'attack', en: 'Gale Blades', vi: 'Phong Nhận Trảm',
+    desc: 'A sweeping slash releases three spinning wind blades that knock enemies back.', uses: ['slash', 'windSlash', 'ribbonTrail', 'gustLines'], length: 2200,
+    cast: ({ w, tex, caster, targets, hurt }) => {
+      const a = caster.facing > 0 ? 0 : Math.PI;
+      slash(w, tex, { ...caster.feet, angle: a, palette: P.phong, radius: 100, sweep: 2.4, duration: 220 });
+      targets.slice(0, 3).forEach((u, i) => w.after(90 + i * 70, () => windSlash(w, tex, {
+        from: hand(caster), to: chest(u, 0.45), palette: P.phong, size: 1.1, speed: 1000,
+        onHit: (at) => {
+          const k = angleTo(w, caster, u);
+          hurt(u, Math.round(rand(48, 62)), { palette: P.phong, angle: k });
+          hitFlash(w, u.sprite, 90, 0xd8fff0);
+          gustLines(w, tex, { ...at, angle: k, palette: P.phong, count: 7, spread: 26 });
+          const home = { ...u.feet };
+          moveUnit(w, u, { x: home.x + Math.cos(k) * 34, y: home.y + Math.sin(k) * 34 * w.groundSquash, z: 0 }, 140);
+          w.after(520, () => moveUnit(w, u, home, 380));
+        },
+      })));
+    },
+  },
+  {
+    id: 'phong-whirlwind', element: 'phong', category: 'aoe', en: 'Whirlwind', vi: 'Toàn Phong Trảm',
+    desc: 'Dash in and spin into a cutting whirlwind that hits everything around three times.', uses: ['dash', 'slash', 'vortex', 'windWisps', 'hitSpark'], length: 3000,
+    cast: ({ w, tex, caster, target, targets, hurt, returnHome }) => {
+      const to = { x: target.feet.x - caster.facing * 60, y: target.feet.y + 6, z: 0 };
+      dash(w, tex, {
+        from: { ...caster.feet }, to, palette: P.phong, sprite: caster.sprite, duration: 170, height: caster.height,
+        onMove: (p) => { caster.feet.x = p.x; caster.feet.y = p.y; },
+        onEnd: () => {
+          vortex(w, tex, { at: () => caster.feet, radius: 130, palette: P.phong, duration: 1300, inward: false });
+          windWisps(w, tex, { target: () => caster.feet, height: caster.height, radius: 56, palette: P.phong, duration: 1200 });
+          for (let i = 0; i < 3; i++) {
+            w.after(i * 300, () => {
+              slash(w, tex, { ...caster.feet, z: 30 + i * 8, angle: i * 2.1, palette: P.phong, radius: 120, sweep: Math.PI * 2, duration: 280 });
+              w.after(120, () => near(caster.feet, 150, targets).forEach((u) => {
+                hurt(u, Math.round(rand(34, 46)) + i * 12, { palette: P.phong, crit: i === 2, angle: angleTo(w, caster, u) });
+                hitSpark(w, tex, { ...chest(u, 0.5), palette: P.phong, size: 0.8 });
+              }));
+              if (i === 2) w.after(130, () => { w.hitStop(60); w.shake(4, 160); });
+            });
+          }
+          w.after(1300, returnHome);
+        },
+      });
+    },
+  },
+  {
+    id: 'phong-tornado', element: 'phong', category: 'control', en: 'Dragon Cyclone', vi: 'Long Quyển Phong',
+    desc: 'A roaring tornado travels through the enemies, pulls them in and lifts them off the ground.', uses: ['tornado', 'vortex', 'Distortion.haze', 'curlDrift'], length: 3600,
+    cast: ({ w, tex, caster, target, targets, hurt }) => {
+      chargeUp(w, tex, { target: () => hand(caster), palette: P.phong, duration: 380 });
+      const start = { x: caster.feet.x + caster.facing * 90, y: caster.feet.y + 10, z: 0 };
+      const end = { x: target.feet.x + caster.facing * 80, y: target.feet.y, z: 0 };
+      const homes = new Map(targets.map((u) => [u, { ...u.feet }]));
+      const caught = new Set<Unit>();
+      let tick = 0;
+      w.after(320, () => {
+        const t = tornado(w, tex, {
+          at: start, to: end, palette: P.phong, height: 210, radius: 58, duration: 2500, leaves: true, tickMs: 60,
+          onTick: (at) => {
+            tick++;
+            for (const u of targets) {
+              const dx = at.x - u.feet.x, dy = (at.y - u.feet.y) / w.groundSquash;
+              const d = Math.hypot(dx, dy);
+              if (d > 170 && !caught.has(u)) continue;
+              caught.add(u);
+              // Pull toward the funnel, then orbit and lift: wind carries the body.
+              const k = Math.min(1, 0.16 * (170 / Math.max(d, 30)));
+              u.feet.x += dx * k * 0.5;
+              u.feet.y += dy * k * 0.5 * w.groundSquash;
+              u.feet.z = lerp(u.feet.z, 28 + 10 * Math.sin(w.now / 120 + u.feet.x), 0.15);
+              if (tick % 6 === 0) hurt(u, Math.round(rand(16, 24)), { palette: P.phong, angle: -Math.PI / 2 });
+            }
+          },
+        });
+        vortex(w, tex, { at: () => t.pos, radius: 120, palette: P.phong, duration: 2500 });
+      });
+      // Release: everyone drops back to the ground and is pushed home.
+      w.after(2850, () => caught.forEach((u) => {
+        moveUnit(w, u, { ...u.feet, z: 0 }, 220, (x) => x * x);
+        w.after(230, () => {
+          shockwave(w, tex, { x: u.feet.x, y: u.feet.y, radius: 46, palette: P.phong, duration: 300 });
+          hurt(u, Math.round(rand(40, 55)), { palette: P.phong });
+          moveUnit(w, u, homes.get(u)!, 420);
+        });
+      }));
+    },
+  },
+  {
+    id: 'phong-tailwind', element: 'phong', category: 'buff', en: 'Tailwind', vi: 'Tật Phong Bộ',
+    desc: 'Wind ribbons spiral around the caster: movement and attack speed up.', uses: ['vortex', 'windWisps', 'ribbonTrail', 'statChange', 'gustLines'], length: 2800,
+    cast: ({ w, tex, caster }) => {
+      vortex(w, tex, { at: { ...caster.feet }, radius: 90, palette: P.phong, duration: 900, inward: false });
+      windWisps(w, tex, { target: () => caster.feet, height: caster.height, radius: 34, palette: P.phong, duration: 2400 });
+      w.after(250, () => statChange(w, tex, { target: feetOf(caster), height: caster.height, up: true, palette: P.phong, duration: 1300 }));
+      for (let i = 0; i < 4; i++) w.after(300 + i * 420, () => gustLines(w, tex, { ...chest(caster, 0.4), x: caster.feet.x - caster.facing * 30, angle: caster.facing > 0 ? 0 : Math.PI, palette: P.phong, count: 5, spread: 30 }));
     },
   },
 

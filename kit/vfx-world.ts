@@ -109,6 +109,8 @@ export class Particle {
   rotation = 0;
   /** Free slot for recipe state. */
   data: any = undefined;
+  /** Extra alpha multiplier an onUpdate can set (e.g. fade the back side of an orbit). */
+  alphaMul = 1;
   /** Current world position (ground x, ground y, height z). */
   x = 0;
   y = 0;
@@ -135,6 +137,13 @@ export interface VfxWorldOptions {
   maxParticles?: number;
 }
 
+/** Something that updates and resets with the world (post effects, custom systems). */
+export interface WorldPlugin {
+  /** Called every frame with scaled VFX dt (also during hit-stop with dt = 0). */
+  update(dtMs: number): void;
+  clear(): void;
+}
+
 export class VfxWorld {
   readonly layers: Record<LayerName, Container>;
   /** VFX clock in ms (scaled by timeScale, paused by hit-stop). */
@@ -147,6 +156,13 @@ export class VfxWorld {
   timeScale = 1;
   /** VFX clock in ms (stops during hit-stop). */
   time = 0;
+  /**
+   * Particle density multiplier for quality tiers (1 = high, ~0.6 medium, ~0.35 low).
+   * Scales burst() counts and stream() rates; recipes stay readable at every tier.
+   */
+  density = 1;
+  private plugins: WorldPlugin[] = [];
+  private disposers = new Set<() => void>();
 
   private particles: Particle[] = [];
   private pool: Sprite[] = [];
@@ -218,6 +234,7 @@ export class VfxWorld {
     p.vz = o.vz ?? 0;
     p.rotation = o.rotation ?? 0;
     p.data = undefined;
+    p.alphaMul = 1;
     this.particles.push(p);
     this.place(p, 0);
     return p;
@@ -226,6 +243,7 @@ export class VfxWorld {
   /** Spawn n particles; `make(i, n)` returns the options for each. */
   burst(n: number, make: (i: number, n: number) => SpawnOptions): Particle[] {
     const out: Particle[] = [];
+    if (this.density !== 1 && n > 1) n = Math.max(1, Math.round(n * this.density));
     for (let i = 0; i < n; i++) {
       const p = this.spawn(make(i, n));
       if (p) out.push(p);
@@ -242,7 +260,7 @@ export class VfxWorld {
     return this.addUpdater((dt) => {
       elapsed += dt;
       if (elapsed > duration) return false;
-      acc += (opts.rate * dt) / 1000;
+      acc += (opts.rate * this.density * dt) / 1000;
       while (acc >= 1) {
         acc -= 1;
         const o = opts.make(i++);
@@ -297,6 +315,7 @@ export class VfxWorld {
     this.updateShake(dtReal);
     if (this.freezeMs > 0) {
       this.freezeMs -= dtReal;
+      for (const pl of this.plugins) pl.update(0);
       return;
     }
     const dt = dtReal * this.timeScale;
@@ -318,16 +337,40 @@ export class VfxWorld {
       else ps[w++] = p;
     }
     ps.length = w;
+    for (const pl of this.plugins) pl.update(dt);
+  }
+
+  /** Attach a plugin (Distortion, Bloom, your own system); returns it for chaining. */
+  use<T extends WorldPlugin>(plugin: T): T {
+    this.plugins.push(plugin);
+    return plugin;
+  }
+
+  /** First attached plugin of a class, e.g. `w.plugin(Distortion)?.shockwave(...)`. */
+  plugin<T extends WorldPlugin>(cls: abstract new (...a: any[]) => T): T | undefined {
+    return this.plugins.find((p) => p instanceof cls) as T | undefined;
   }
 
   /** Remove every particle, updater and shake. */
+  /**
+   * Registers cleanup for a non-particle display object (rope, mesh, sprite) so `clear()` removes
+   * it too. Call the returned function when the object goes away on its own.
+   */
+  own(dispose: () => void): () => void {
+    this.disposers.add(dispose);
+    return () => this.disposers.delete(dispose);
+  }
+
   clear() {
+    for (const d of [...this.disposers]) d();
+    this.disposers.clear();
     for (const p of this.particles) this.release(p);
     this.particles.length = 0;
     this.updaters.length = 0;
     this.freezeMs = 0;
     this.shakeAmp = 0;
     this.updateShake(0);
+    for (const pl of this.plugins) pl.clear();
   }
 
   private step(p: Particle, dtMs: number) {
@@ -379,7 +422,7 @@ export class VfxWorld {
     s.position.set(p.x, p.y - p.z);
     if (o.layer === undefined || o.layer === 'body') s.zIndex = p.y + (o.zBias ?? 0);
 
-    s.alpha = evalCurve(o.alpha, t, 1);
+    s.alpha = evalCurve(o.alpha, t, 1) * p.alphaMul;
     const k = evalCurve(o.scale, t, 1);
     let sx = k * evalCurve(o.scaleX, t, 1);
     const sy = k * evalCurve(o.scaleY, t, 1);

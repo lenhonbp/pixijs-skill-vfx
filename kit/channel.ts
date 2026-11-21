@@ -3,6 +3,7 @@ import type { VfxWorld, Vec3, Handle, Particle } from './vfx-world';
 import { VfxTextures, TEX_METRICS as M } from './textures';
 import { shockwave, type Palette } from './recipes';
 import { group, ms } from './group';
+import { Distortion } from './postfx';
 import { clamp01, envelope, inQuad, lerp, lerpColor, outBack, outCubic, outQuad, rand } from './ease';
 
 const TAU = Math.PI * 2;
@@ -96,6 +97,13 @@ export function coneBreath(
   const sp = (range / life) * 1000 * 1.25;
   const additive = style !== 'poison';
   g.add(w.spawn({ texture: tex.glow, x: 0, y: 0, follow: o.origin, life: Infinity, zBias: 3, scale: 1.1, alpha: 0.85, tint: p.main }));
+  if (style === 'fire') {
+    // Heat haze over the middle of the cone.
+    w.plugin(Distortion)?.haze(() => {
+      const s = o.origin(), a = o.angle();
+      return { x: s.x + Math.cos(a) * range * 0.55, y: s.y - (s.z ?? 0) + Math.sin(a) * range * 0.55 * w.groundSquash };
+    }, { radius: range * 0.3, duration: o.duration ?? 1500, rise: 26, strength: 0.8 });
+  }
   g.addHandle(w.stream({
     rate: 75,
     make: () => {

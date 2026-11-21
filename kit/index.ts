@@ -11,3 +11,7 @@ export * from './status';
 export * from './motion';
 export * from './channel';
 export * from './elemental';
+export * from './noise';
+export * from './trail';
+export * from './postfx';
+export * from './wind';
