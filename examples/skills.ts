@@ -58,7 +58,13 @@ export interface SkillDef {
 const chest = (u: Unit, k = 0.55): Vec3 => ({ x: u.feet.x, y: u.feet.y, z: u.feet.z + u.height * k });
 const hand = (u: Unit): Vec3 => ({ x: u.feet.x + u.facing * u.height * 0.3, y: u.feet.y + 1, z: u.feet.z + u.height * 0.62 });
 const feetOf = (u: Unit) => () => u.feet;
-const angleTo = (a: Unit, b: Unit) => Math.atan2(b.feet.y - a.feet.y, b.feet.x - a.feet.x);
+/** Ground-plane angle from a to b (screen dy un-squashed), as ground recipes expect. */
+const angleTo = (w: VfxWorld, a: Unit, b: Unit) => Math.atan2((b.feet.y - a.feet.y) / w.groundSquash, b.feet.x - a.feet.x);
+const inCone = (w: VfxWorld, from: Unit, u: Unit, angle: number, range: number, spread: number) => {
+  const dx = u.feet.x - from.feet.x, dy = (u.feet.y - from.feet.y) / w.groundSquash;
+  const d = Math.atan2(dy, dx) - angle;
+  return Math.hypot(dx, dy) < range && Math.abs(Math.atan2(Math.sin(d), Math.cos(d))) < spread / 2;
+};
 const screenAngle = (a: Unit, b: Unit) => Math.atan2(b.feet.y - a.feet.y - (b.height - a.height) * 0.5, b.feet.x - a.feet.x);
 const near = (c: Vec3, r: number, us: Unit[]) => us.filter((u) => Math.hypot(u.feet.x - c.x, (u.feet.y - c.y) * 2) < r * 1.2);
 
@@ -216,7 +222,7 @@ export const SKILLS: SkillDef[] = [
     desc: 'A line of ice spears races along the ground toward the enemy.', uses: ['spikeLine(ice)', 'slow'], length: 2600,
     cast: ({ w, tex, caster, target, targets, hurt }) => {
       spikeLine(w, tex, {
-        from: caster.feet, angle: angleTo(caster, target), count: 9, spacing: 44, height: 70, ice: true,
+        from: caster.feet, angle: angleTo(w, caster, target), count: 9, spacing: 44, height: 70, ice: true,
         onSpike: (at) => near(at, 34, targets).forEach((u) => { hurt(u, 47, { palette: P.thuy, angle: -Math.PI / 2 }); slow(w, tex, { target: feetOf(u), height: u.height, duration: 1600 }); }),
       });
     },
@@ -244,12 +250,13 @@ export const SKILLS: SkillDef[] = [
     id: 'hoa-dragon-breath', element: 'hoa', category: 'channel', en: 'Dragon Breath', vi: 'Long Tức Liệt Diễm',
     desc: 'A sweeping cone of flame that sets everything in front ablaze.', uses: ['coneBreath(fire)', 'damageOverTime(burn)'], length: 3600,
     cast: ({ w, tex, caster, target, targets, hurt }) => {
-      const base = angleTo(caster, target);
+      const base = angleTo(w, caster, target);
       let a = base - 0.25;
       w.addUpdater(((t) => (dt) => { t += dt; a = base - 0.25 + 0.5 * Math.min(1, t / 1600); return t < 1700; })(0));
       coneBreath(w, tex, { origin: () => hand(caster), angle: () => a, palette: P.hoa, range: 330, spread: 0.6, duration: 1700, style: 'fire' });
-      for (let i = 0; i < 4; i++) w.after(300 + i * 360, () => targets.forEach((u) => hurt(u, Math.round(rand(24, 32)), { palette: P.hoa })));
-      w.after(1500, () => targets.forEach((u) => damageOverTime(w, tex, { target: feetOf(u), height: u.height, kind: 'burn', duration: 1800, tickMs: 600, damage: 9 })));
+      const inBreath = (u: Unit) => inCone(w, caster, u, a, 420, 0.6 + 0.5);
+      for (let i = 0; i < 4; i++) w.after(300 + i * 360, () => targets.filter(inBreath).forEach((u) => hurt(u, Math.round(rand(24, 32)), { palette: P.hoa })));
+      w.after(1500, () => targets.filter(inBreath).forEach((u) => damageOverTime(w, tex, { target: feetOf(u), height: u.height, kind: 'burn', duration: 1800, tickMs: 600, damage: 9 })));
     },
   },
   {
@@ -268,7 +275,7 @@ export const SKILLS: SkillDef[] = [
     cast: ({ w, tex, caster, target, targets, hurt }) => {
       const hitOnce = new Set<Unit>();
       spikeLine(w, tex, {
-        from: caster.feet, angle: angleTo(caster, target), count: 8, spacing: 48, height: 92,
+        from: caster.feet, angle: angleTo(w, caster, target), count: 8, spacing: 48, height: 92,
         onSpike: (at) => near(at, 38, targets).forEach((u) => {
           hurt(u, 76, { palette: P.tho, angle: -Math.PI / 2 });
           if (!hitOnce.has(u)) { hitOnce.add(u); stun(w, tex, { target: feetOf(u), height: u.height, duration: 1800 }); }
