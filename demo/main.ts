@@ -9,6 +9,8 @@ import { SKILLS, SkillDef, Unit, SkillContext } from '../examples/skills';
 
 const W = 1120, H = 630;
 const HOTKEYS = '1234567890QWERTYUIOZXCV';
+// Wind skills take Z-V so the earlier 1-0, Q-O shortcuts keep their skills.
+const KEY_ORDER = [...SKILLS.filter((s) => s.element !== 'phong'), ...SKILLS.filter((s) => s.element === 'phong')];
 /** Phones and touch tablets: lighter defaults, no hover-only UI. */
 const MOBILE = matchMedia('(pointer: coarse)').matches || innerWidth < 760;
 const ELEMENT_COLORS: Record<string, string> = { kim: '#f3d36b', moc: '#7ee05a', thuy: '#4fc3ff', hoa: '#ff7a2a', tho: '#d9a050', phong: '#8ff0d0', neutral: '#b48cff' };
@@ -310,12 +312,12 @@ function whiteTexture() {
   const renderList = () => {
     const list = $('skills');
     list.innerHTML = '';
-    SKILLS.forEach((s, i) => {
+    SKILLS.forEach((s) => {
       if (filter !== 'all' && s.element !== filter) return;
       const b = document.createElement('button');
       b.className = 'skill' + (s === current ? ' active' : '');
       b.style.setProperty('--c', ELEMENT_COLORS[s.element]);
-      b.innerHTML = `<kbd>${HOTKEYS[i] ?? ''}</kbd><span class="names"><b>${s.vi}</b><i>${s.en}</i></span><span class="cat">${s.category}</span>`;
+      b.innerHTML = `<kbd>${HOTKEYS[KEY_ORDER.indexOf(s)] ?? ''}</kbd><span class="names"><b>${s.vi}</b><i>${s.en}</i></span><span class="cat">${s.category}</span>`;
       b.onclick = () => { stopShowcase(); cast(s); };
       list.appendChild(b);
     });
@@ -358,8 +360,10 @@ function whiteTexture() {
     syncToggles();
   };
   document.querySelectorAll<HTMLButtonElement>('[data-quality]').forEach((b) => (b.onclick = () => { autoQuality = false; setQuality(b.dataset.quality as Quality); }));
-  $('bloom').onclick = () => { bloom.enabled = !bloom.enabled; syncToggles(); };
-  $('distortion').onclick = () => { distortion.enabled = !distortion.enabled; syncToggles(); };
+  // Post FX apply on world updates, which the ticker skips while paused.
+  const refreshPostFx = () => { if (paused) w.update(0); };
+  $('bloom').onclick = () => { bloom.enabled = !bloom.enabled; syncToggles(); refreshPostFx(); };
+  $('distortion').onclick = () => { distortion.enabled = !distortion.enabled; syncToggles(); refreshPostFx(); };
   let autoQuality = !/[?&]quality=/.test(location.search);
   const qParam = new URLSearchParams(location.search).get('quality') as Quality | null;
   setQuality(qParam && qParam in TIERS ? qParam : MOBILE ? 'medium' : 'high');
@@ -391,7 +395,7 @@ function whiteTexture() {
     if (e.target instanceof HTMLInputElement) return;
     const k = e.key.toUpperCase();
     const i = HOTKEYS.indexOf(k);
-    if (i >= 0 && SKILLS[i]) { stopShowcase(); cast(SKILLS[i]); }
+    if (i >= 0 && KEY_ORDER[i]) { stopShowcase(); cast(KEY_ORDER[i]); }
     else if (e.key === ' ') { e.preventDefault(); stopShowcase(); cast(current); }
     else if (k === 'P') togglePause();
     else if (e.key === 'Escape') { stopShowcase(); resetScene(); }
