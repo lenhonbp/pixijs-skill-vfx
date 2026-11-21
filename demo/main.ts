@@ -361,7 +361,7 @@ function whiteTexture() {
   };
   document.querySelectorAll<HTMLButtonElement>('[data-quality]').forEach((b) => (b.onclick = () => { autoQuality = false; setQuality(b.dataset.quality as Quality); }));
   // Post FX apply on world updates, which the ticker skips while paused.
-  const refreshPostFx = () => { if (paused) w.update(0); };
+  const refreshPostFx = () => { if (paused) w.refreshPlugins(); };
   $('bloom').onclick = () => { bloom.enabled = !bloom.enabled; syncToggles(); refreshPostFx(); };
   $('distortion').onclick = () => { distortion.enabled = !distortion.enabled; syncToggles(); refreshPostFx(); };
   let autoQuality = !/[?&]quality=/.test(location.search);

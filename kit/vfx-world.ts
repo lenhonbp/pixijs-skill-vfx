@@ -352,6 +352,11 @@ export class VfxWorld {
   }
 
   /** Remove every particle, updater and shake. */
+  /** Re-applies plugin settings without advancing time (e.g. a toggle while the game is paused). */
+  refreshPlugins() {
+    for (const pl of this.plugins) pl.update(0);
+  }
+
   /**
    * Registers cleanup for a non-particle display object (rope, mesh, sprite) so `clear()` removes
    * it too. Call the returned function when the object goes away on its own.
