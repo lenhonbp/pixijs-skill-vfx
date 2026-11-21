@@ -49,17 +49,30 @@ export function hitSpark(w: VfxWorld, tex: VfxTextures, o: Vec3 & { angle?: numb
 }
 
 /** Make a character sprite flash white (works for Sprite/AnimatedSprite, v7 and v8). */
+/** Live hitFlash overlays; destroy them yourself if you call `clear()` mid-flash. */
+export const activeHitFlashes = new Set<Sprite>();
+
 export function hitFlash(w: VfxWorld, target: Sprite, ms = 120, color = 0xffffff) {
+  // A sibling that copies the target's transform (v8 Sprites cannot hold children).
+  const parent = target.parent;
+  if (!parent) return;
   const f = new Sprite(target.texture);
   f.anchor.copyFrom(target.anchor);
   f.blendMode = blend('add');
   f.tint = color;
-  target.addChild(f);
+  parent.addChildAt(f, parent.getChildIndex(target) + 1);
+  activeHitFlashes.add(f);
   let age = 0;
   w.addUpdater((dt) => {
     age += dt;
+    f.position.copyFrom(target.position);
+    f.scale.copyFrom(target.scale);
+    f.rotation = target.rotation;
+    f.zIndex = target.zIndex;
+    f.visible = target.visible;
     f.alpha = 1 - age / ms;
-    if (age >= ms) {
+    if (age >= ms || target.destroyed) {
+      activeHitFlashes.delete(f);
       f.destroy();
       return false;
     }

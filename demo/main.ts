@@ -3,7 +3,7 @@
 import { Application, Container, Sprite, Texture } from 'pixi.js';
 import {
   VfxWorld, createVfxTextures, isPixiV8, textureFromCanvas, rigFromBlender, anchorAtFeet,
-  hitFlash, hitSpark, damageNumber, WUXING, Palette, Vec3, outCubic, lerp, rand,
+  hitFlash, hitSpark, damageNumber, activeHitFlashes, WUXING, Palette, Vec3, outCubic, lerp, rand,
 } from '../kit';
 import { SKILLS, SkillDef, Unit, SkillContext } from '../examples/skills';
 
@@ -268,7 +268,9 @@ function whiteTexture() {
   const resetScene = () => {
     w.clear();
     while (summons.length) dropSummon(summons[0]);
-    for (const u of units) { u.feet.x = u.home.x; u.feet.y = u.home.y; u.feet.z = 0; u.sprite.visible = true; u.hp = 1; u.sprite.removeChildren(); }
+    for (const f of activeHitFlashes) f.destroy();
+    activeHitFlashes.clear();
+    for (const u of units) { u.feet.x = u.home.x; u.feet.y = u.home.y; u.feet.z = 0; u.sprite.visible = true; u.hp = 1; }
     hero.facing = 1;
   };
 
