@@ -353,15 +353,19 @@ function whiteTexture() {
     if (w.now - lastHurt > 1500) for (const e of enemies) e.hp = Math.min(1, e.hp + dt / 1500);
     for (const u of units) sync(u, clock);
   };
+  const updateStats = (fps: number) => {
+    $('stats').textContent = `${fps.toFixed(0)} fps · ${w.count} particles · ${w.timeScale}x`;
+  };
   app.ticker.add(() => {
     if (!paused) frame(app.ticker.deltaMS);
-    $('stats').textContent = `${app.ticker.FPS.toFixed(0)} fps · ${w.count} particles · ${w.timeScale}x`;
+    updateStats(app.ticker.FPS);
   });
 
   // Deterministic hooks for screenshots and tests.
   const step = (ms: number) => {
     app.ticker.stop();
     for (let left = ms; left > 0; left -= 16) frame(Math.min(16, left));
+    updateStats(60);
     app.renderer.render(app.stage);
   };
   (window as any).demo = {

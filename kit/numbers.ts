@@ -14,13 +14,27 @@ export interface NumberOptions extends Vec3 {
   size?: number;
 }
 
+// Recent numbers per world, so hits that land together stack instead of overlapping.
+const recent = new WeakMap<VfxWorld, { x: number; y: number; at: number }[]>();
+const STACK_MS = 450;
+
+function stackSlot(w: VfxWorld, x: number, y: number) {
+  const list = (recent.get(w) ?? []).filter((r) => w.now - r.at < STACK_MS && w.now >= r.at);
+  const slot = list.filter((r) => Math.abs(r.x - x) < 48 && Math.abs(r.y - y) < 32).length;
+  list.push({ x, y, at: w.now });
+  recent.set(w, list);
+  return slot;
+}
+
 export function damageNumber(w: VfxWorld, tex: VfxTextures, o: NumberOptions) {
   const text = String(o.value) + (o.crit ? '!' : '');
   const h = (o.size ?? 22) * (o.crit ? 1.45 : 1);
   const k = h / M.digitHeight;
   const adv = 30 * k;
   const life = o.crit ? 1100 : 850;
-  const pos = { x: o.x + rand(-10, 10), y: o.y, z: (o.z ?? 70) + 10 };
+  const slot = stackSlot(w, o.x, o.y);
+  const side = slot === 0 ? 0 : slot % 2 ? 1 : -1;
+  const pos = { x: o.x + rand(-4, 4) + side * 18, y: o.y, z: (o.z ?? 70) + 10 + slot * h * 0.95 };
   const drift = rand(-25, 25);
   const pop = o.crit ? 1.6 : 1.25;
   let t = 0;
