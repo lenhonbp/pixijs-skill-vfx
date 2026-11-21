@@ -1,0 +1,17 @@
+{
+  "name": "pixijs-skill-vfx",
+  "version": "3.0.0",
+  "private": true,
+  "description": "Agent skill and TypeScript kit for code-drawn 2.5D skill VFX in PixiJS v7/v8",
+  "license": "MIT",
+  "scripts": {
+    "build": "esbuild demo/main.ts --bundle --minify --outfile=demo/demo.js",
+    "dev": "esbuild demo/main.ts --bundle --outfile=demo/demo.js --servedir=demo --watch",
+    "typecheck": "tsc -p ."
+  },
+  "devDependencies": {
+    "esbuild": "^0.25.0",
+    "pixi.js": "^8.6.0",
+    "typescript": "^5.6.0"
+  }
+}

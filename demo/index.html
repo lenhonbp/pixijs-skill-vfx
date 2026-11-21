@@ -1,0 +1,87 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>PixiJS Skill VFX Kit · 2.5D · Wu Xing</title>
+  <style>
+    :root { --bg: #0b0a10; --panel: #15131d; --line: #2a2638; --text: #e8e6f0; --dim: #8e8aa3; }
+    * { box-sizing: border-box; }
+    body { margin: 0; background: radial-gradient(1200px 600px at 60% -10%, #1e1a2e, var(--bg)); color: var(--text); font: 14px/1.45 Inter, system-ui, -apple-system, Segoe UI, sans-serif; min-height: 100vh; }
+    header { display: flex; align-items: center; gap: 14px; padding: 14px 22px; border-bottom: 1px solid var(--line); }
+    .logo { width: 30px; height: 30px; border-radius: 8px; background: conic-gradient(#f3d36b, #7ee05a, #4fc3ff, #ff7a2a, #d9a050, #f3d36b); box-shadow: 0 0 18px rgba(255,180,80,.35); }
+    header h1 { font-size: 17px; margin: 0; letter-spacing: .2px; }
+    header p { margin: 0; color: var(--dim); font-size: 12.5px; }
+    header .right { margin-left: auto; display: flex; gap: 8px; }
+    .badge { border: 1px solid var(--line); border-radius: 999px; padding: 3px 10px; font-size: 12px; color: var(--dim); }
+    main { display: grid; grid-template-columns: 300px 1fr; gap: 18px; padding: 18px 22px; max-width: 1480px; margin: 0 auto; }
+    aside { background: var(--panel); border: 1px solid var(--line); border-radius: 14px; padding: 12px; display: flex; flex-direction: column; gap: 10px; max-height: 790px; }
+    #tabs { display: flex; flex-wrap: wrap; gap: 6px; }
+    #tabs button { background: transparent; color: var(--dim); border: 1px solid var(--line); border-radius: 999px; padding: 4px 11px; cursor: pointer; font: inherit; font-size: 12.5px; }
+    #tabs button:hover { color: var(--text); }
+    #tabs button.active { color: #111; background: var(--c); border-color: var(--c); font-weight: 600; }
+    #skills { overflow: auto; display: flex; flex-direction: column; gap: 6px; padding-right: 2px; }
+    .skill { display: grid; grid-template-columns: 26px 1fr auto; align-items: center; gap: 10px; text-align: left; background: #1b1926; color: var(--text); border: 1px solid transparent; border-left: 3px solid var(--c); border-radius: 10px; padding: 8px 10px; cursor: pointer; font: inherit; }
+    .skill:hover { background: #221f30; }
+    .skill.active { border-color: var(--c); background: #24203a; box-shadow: 0 0 0 1px var(--c) inset, 0 0 22px -8px var(--c); }
+    .skill kbd { font: 600 11px ui-monospace, monospace; color: var(--dim); border: 1px solid var(--line); border-radius: 5px; padding: 2px 0; text-align: center; }
+    .skill .names { display: flex; flex-direction: column; min-width: 0; }
+    .skill b { font-weight: 600; font-size: 13.5px; }
+    .skill i { font-style: normal; color: var(--dim); font-size: 12px; }
+    .cat { font-size: 10.5px; text-transform: uppercase; letter-spacing: .6px; color: var(--dim); border: 1px solid var(--line); border-radius: 5px; padding: 1px 6px; }
+    section { display: flex; flex-direction: column; gap: 12px; min-width: 0; }
+    #stage { position: relative; border-radius: 14px; overflow: hidden; border: 1px solid var(--line); box-shadow: 0 20px 60px -20px rgba(0,0,0,.8); width: 100%; max-width: 1120px; }
+    #stage canvas { display: block; width: 100% !important; height: auto !important; aspect-ratio: 1120 / 630; }
+    #stats { position: absolute; top: 10px; right: 12px; font: 12px ui-monospace, monospace; color: #cfcbe0; background: rgba(10,9,16,.6); padding: 4px 9px; border-radius: 7px; backdrop-filter: blur(4px); }
+    .bar { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; }
+    .bar button { background: #1d1a29; color: var(--text); border: 1px solid var(--line); border-radius: 8px; padding: 6px 12px; cursor: pointer; font: inherit; font-size: 13px; }
+    .bar button:hover { border-color: #4a4466; }
+    .bar button.active { background: #f3d36b; color: #16130a; border-color: #f3d36b; font-weight: 600; }
+    .bar .sep { width: 1px; height: 22px; background: var(--line); margin: 0 4px; }
+    .bar .hint { margin-left: auto; color: var(--dim); font-size: 12px; }
+    #info { background: var(--panel); border: 1px solid var(--line); border-radius: 14px; padding: 14px 18px; max-width: 1120px; }
+    #info h2 { margin: 6px 0 4px; font-size: 20px; }
+    #info h2 small { color: var(--dim); font-weight: 400; font-size: 14px; margin-left: 10px; }
+    #info p { margin: 0 0 10px; color: #c9c5d8; }
+    .info-head { display: flex; gap: 8px; align-items: center; }
+    .el { color: var(--c); border: 1px solid var(--c); border-radius: 999px; padding: 1px 10px; font-size: 12px; font-weight: 600; }
+    .uses { display: flex; gap: 6px; flex-wrap: wrap; }
+    .uses code { font: 12px ui-monospace, monospace; background: #0f0e16; border: 1px solid var(--line); border-radius: 6px; padding: 2px 7px; color: #bdb6ff; }
+    footer { text-align: center; color: var(--dim); font-size: 12px; padding: 4px 0 18px; }
+  </style>
+</head>
+<body>
+  <header>
+    <div class="logo"></div>
+    <div>
+      <h1>PixiJS Skill VFX Kit</h1>
+      <p>Code-drawn 2.5D skill effects · Ngũ Hành / Wu Xing · zero art assets</p>
+    </div>
+    <div class="right"><span class="badge" id="version"></span><span class="badge">19 sample skills</span><span class="badge">Blender rig</span></div>
+  </header>
+  <main>
+    <aside>
+      <div id="tabs"></div>
+      <div id="skills"></div>
+    </aside>
+    <section>
+      <div id="stage"><div id="stats"></div></div>
+      <div class="bar">
+        <button id="replay">Replay <kbd>Space</kbd></button>
+        <button id="pause">Pause</button>
+        <button id="reset">Reset</button>
+        <span class="sep"></span>
+        <button data-speed="1" class="active">1x</button>
+        <button data-speed="0.5">0.5x</button>
+        <button data-speed="0.25">0.25x</button>
+        <span class="sep"></span>
+        <button id="showcase">Showcase</button>
+        <span class="hint">1-0, Q-O cast · S speed · P pause · A showcase</span>
+      </div>
+      <div id="info"></div>
+    </section>
+  </main>
+  <footer>Built with PixiJS · every texture is generated with Canvas 2D at startup</footer>
+  <script src="demo.js"></script>
+</body>
+</html>
