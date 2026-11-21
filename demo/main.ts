@@ -213,6 +213,12 @@ function whiteTexture() {
   };
 
   let lastHurt = 0;
+  const summons: Sprite[] = [];
+  const dropSummon = (s: Sprite) => {
+    const i = summons.indexOf(s);
+    if (i >= 0) summons.splice(i, 1);
+    s.destroy();
+  };
   const ctxFor = (): SkillContext => ({
     w, tex, caster: hero, target: enemies[0], targets: enemies,
     hurt: (u, amount, o = {}) => {
@@ -246,6 +252,7 @@ function whiteTexture() {
       anchorAtFeet(s, FEET.x, FEET.y);
       s.blendMode = (isPixiV8() ? 'add' : 1) as any;
       layers.body.addChild(s);
+      summons.push(s);
       let age = 0;
       w.addUpdater((dt) => {
         age += dt;
@@ -253,13 +260,14 @@ function whiteTexture() {
         s.zIndex = at.y;
         s.alpha = Math.min(1, age / 200) * (age > 2400 ? Math.max(0, 1 - (age - 2400) / 500) : 1);
         s.scale.set(0.8 + 0.2 * Math.min(1, age / 250));
-        if (age > 2900) { s.destroy(); return false; }
+        if (age > 2900) { dropSummon(s); return false; }
       });
     },
   });
 
   const resetScene = () => {
     w.clear();
+    while (summons.length) dropSummon(summons[0]);
     for (const u of units) { u.feet.x = u.home.x; u.feet.y = u.home.y; u.feet.z = 0; u.sprite.visible = true; u.hp = 1; u.sprite.removeChildren(); }
     hero.facing = 1;
   };
@@ -338,7 +346,7 @@ function whiteTexture() {
     if (i >= 0 && SKILLS[i]) { stopShowcase(); cast(SKILLS[i]); }
     else if (e.key === ' ') { e.preventDefault(); stopShowcase(); cast(current); }
     else if (k === 'P') togglePause();
-    else if (k === 'R') { stopShowcase(); resetScene(); }
+    else if (e.key === 'Escape') { stopShowcase(); resetScene(); }
     else if (k === 'A') $('showcase').click();
     else if (k === 'S') setSpeed(w.timeScale === 1 ? 0.5 : w.timeScale === 0.5 ? 0.25 : 1);
   });
