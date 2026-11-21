@@ -196,7 +196,7 @@ export function summonCircle(w: VfxWorld, tex: VfxTextures, o: { x: number; y: n
       };
     },
   }));
-  w.after(dur, () => {
+  g.addHandle(w.after(dur, () => {
     w.spawn({ texture: tex.glow, x: o.x, y: o.y, z: 90, life: 600, zBias: 8, scaleX: [0.6, 1.4, outCubic], scaleY: [2, 6, outCubic], alpha: [0.9, 0, inQuad], tint: p.main });
     w.spawn({ texture: tex.glow, x: o.x, y: o.y, z: 90, life: 380, zBias: 9, scaleX: [0.3, 0.5], scaleY: [2, 5], alpha: [1, 0], tint: p.core });
     shockwave(w, tex, { x: o.x, y: o.y, radius: r * 1.6, palette: p });
@@ -206,6 +206,6 @@ export function summonCircle(w: VfxWorld, tex: VfxTextures, o: { x: number; y: n
     });
     w.shake(6, 260);
     o.onSummon?.();
-  });
+  }));
   return g;
 }
