@@ -14,6 +14,8 @@ import type { VfxWorld, WorldPlugin } from './vfx-world';
 const V8 = isPixiV8();
 
 
+const filtersSupported = (r: any) => !!(r?.gl || r?.gpu);
+
 function makeRT(width: number, height: number, resolution: number) {
   return (PIXI as any).RenderTexture.create({ width, height, resolution });
 }
@@ -54,6 +56,8 @@ export interface DistortionOptions {
 /** Offscreen displacement buffer + one DisplacementFilter on `target`. */
 export class Distortion implements WorldPlugin {
   enabled = true;
+  /** False on renderers without filter support (Canvas fallback): the pass is skipped. */
+  readonly supported: boolean;
   readonly sources: Container;
   private rt: any;
   private filter: any;
@@ -63,6 +67,7 @@ export class Distortion implements WorldPlugin {
   private attached = false;
 
   constructor(private o: DistortionOptions) {
+    this.supported = filtersSupported(o.renderer);
     this.rt = makeRT(o.width, o.height, o.resolution ?? 0.5);
     this.sources = new (PIXI as any).Container();
     const bg = new (PIXI as any).Sprite((PIXI as any).Texture.WHITE);
@@ -131,7 +136,7 @@ export class Distortion implements WorldPlugin {
     }
     for (const a of this.active) if (a.age >= a.life) a.s.destroy();
     this.active = this.active.filter((a) => a.age < a.life);
-    const on = this.enabled && this.active.length > 0;
+    const on = this.enabled && this.supported && this.active.length > 0;
     if (on) renderToTexture(this.o.renderer, this.sources, this.rt);
     if (on !== this.attached) {
       const t = this.o.target as any;
@@ -175,9 +180,12 @@ export interface BloomOptions {
 /** Bright-pass + blur + additive composite. */
 export class Bloom implements WorldPlugin {
   enabled = true;
+  /** False on renderers without filter support (Canvas fallback): the pass is skipped. */
+  readonly supported: boolean;
   readonly sprite: any;
   private rt: any;
   constructor(private o: BloomOptions) {
+    this.supported = filtersSupported(o.renderer);
     const res = o.resolution ?? 0.35;
     this.rt = makeRT(o.width, o.height, res);
     this.sprite = new (PIXI as any).Sprite(this.rt);
@@ -198,7 +206,7 @@ export class Bloom implements WorldPlugin {
   }
 
   update() {
-    const on = this.enabled && (this.o.active?.() ?? true);
+    const on = this.enabled && this.supported && (this.o.active?.() ?? true);
     this.sprite.visible = on;
     if (!on) return;
     const s = this.o.source as any;
@@ -206,5 +214,7 @@ export class Bloom implements WorldPlugin {
     renderToTexture(this.o.renderer, s, this.rt);
   }
 
-  clear() {}
+  clear() {
+    this.sprite.visible = false;
+  }
 }
