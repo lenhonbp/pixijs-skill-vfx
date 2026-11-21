@@ -1,5 +1,7 @@
 # pixijs-skill-vfx
 
+[Live demo](https://lenhonbp.github.io/pixijs-skill-vfx/)
+
 An agent skill (Claude Code, Codex) plus a tested TypeScript kit for **code-drawn 2.5D skill VFX
 in PixiJS v7 and v8**. No art assets: every texture is generated with Canvas 2D at startup.
 
@@ -28,6 +30,8 @@ Keep the folder name `pixijs-skill-vfx` (it must match `name` in `SKILL.md`).
   line to your repo's `AGENTS.md`: `For any skill/ability VFX work, first read and follow .agents/skills/pixijs-skill-vfx/SKILL.md.`
 
 ## Try the demo
+
+The live demo is built with PixiJS 8.23.0 and deployed to GitHub Pages on every push to `main`.
 
 ```sh
 npm install
