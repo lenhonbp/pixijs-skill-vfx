@@ -18,6 +18,17 @@ high speed.
   dashes, homing missiles, spirit tails.
 - Budget: one mesh = one draw call. Keep it to a handful on screen; use particles for sparkle.
 
+### Parametric ribbons
+
+`flowRibbon(w, { point, alpha, life, width, tint, blend?, layer? })` draws a timed
+curve instead of recording target history. `point(u, ageMs, out)` writes ground x/y
+and height z for u in 0..1; `alpha(ageMs)` controls opacity. The mesh projects each
+sample to `(x, y - z)`. `life` is milliseconds, `width` is pixels, and layer is
+`ground` or `body` (default body, sorted at the curve midpoint's ground y).
+It returns a Handle; stop, natural expiry and world clear dispose the owned mesh.
+Unlike `ribbonTrail.stop()`, stop removes it immediately, so put any fade into alpha.
+Used by specialized water/wind effects. See the [API index](api.md) for both ribbon APIs.
+
 ## Curl noise (`kit/noise.ts`)
 
 `curl2(x, y, t)` returns a divergence-free flow: particles following it swirl and fold like
@@ -61,6 +72,8 @@ w.use(new Bloom({ renderer: app.renderer, source: camera, parent: app.stage, wid
 
 Bloom amplifies additive stacking: if impacts blow out to white with bloom on, lower alpha of
 the overlapping glows first (see SKILL.md section 5), then raise `threshold`.
+Apply this to emitted light, not normal-blended metal, vegetation, ice or rock surfaces;
+those may have baked material colors. See [texture sets](recipes.md#texture-sets).
 
 ## Quality tiers
 

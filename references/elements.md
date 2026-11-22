@@ -1,17 +1,18 @@
 # Wu Xing (Ngũ Hành), Phong and Lôi element design
 
-`WUXING` in `kit/elements.ts` holds the palette and shape language for each element. A good
+`ELEMENTS` in `kit/elements.ts` holds all seven built-in palettes and shape languages;
+`WUXING` contains only the five base elements. A good
 element skill changes **shape, motion and blend**, not only the colour. Use this table when you
 design a new skill, and pick the matching sample in `examples/skills.ts` as a starting point.
 
 | Element | Palette (core / main / dark) | Shapes | Motion | Blend | Signature recipes | Samples |
 |---|---|---|---|---|---|---|
 | Kim / Metal | white / gold / bronze | beveled steel, cutting edges, cast bronze, sparks | fast in, hard stop, precise | normal steel and bronze, additive glints | `swordRain`, `metalSlash`, `goldenBell` | Sword Rain, Golden Edge (+bleed), Golden Bell |
-| Mộc / Wood | pale lime / green / forest | leaves, vines, spores, bubbles | grows, sways, drifts up, withers | normal leaves/vines, additive motes | `root`, `healAura`, `damageOverTime('poison')` | Vine Bind, Spring Bloom, Toxic Spores |
-| Thủy / Water | ice white / sky blue / deep blue | drops, beams, shards, spikes | smooth, flowing; ice snaps and shatters | additive water, normal ice | `beam`, `freeze`, `slow`, `spikeRing({ ice })` | Frost Nova, Tidal Beam, Glacier Path |
-| Hỏa / Fire | cream / orange / ember red | puffs, embers, flashes, scorch | violent burst, rising, long smoky tail | additive fire, normal smoke | `explosion`, `coneBreath`, `meteor`, `damageOverTime('burn')` | Fireball (+burn), Dragon Breath, Heavenfall Meteor |
-| Thổ / Earth | sand / ochre / umber | rock spikes, debris, dust, cracks | heavy, gravity, bounce, big shake | normal (rocks and dust are not light) | `spikeLine`, `leap`/`slam`, `stun`, `shield` | Earth Fissure, Mountain Crash, Stone Skin |
-| Phong / Wind (variant) | white / mint / teal | crescent gusts, spiralling streaks, ribbons, carried leaves and dust | fast, curving, orbiting; pulls and lifts; curl-noise drift | additive and translucent, normal for carried debris | `tornado`, `windSlash`, `vortex`, `windWisps`, `gustLines`, `ribbonTrail` | Gale Blades, Whirlwind, Dragon Cyclone, Tailwind |
+| Mộc / Wood | pale lime / green / forest | leaves, vines, spores, bubbles | grows, sways, drifts up, withers | normal leaves/vines, additive motes | `woodCharge`, `seedFlight`, `springBloom`, `toxicSporeCloud`, `root` | Vine Bind, Spring Bloom, Toxic Spores |
+| Thủy / Water | ice white / sky blue / deep blue | drops, beams, shards, spikes | smooth, flowing; ice snaps and shatters | additive water, normal ice | `frostNova`, `tidalBeam`, `glacierPath`, `slow` | Frost Nova, Tidal Beam, Glacier Path |
+| Hỏa / Fire | cream / orange / ember red | puffs, embers, flashes, scorch | violent burst, rising, long smoky tail | additive fire, normal smoke | `fireCharge`, `fireball`, `fireBreath`, `fireMeteor`, `fireDragonCrossing` | Fireball (+burn), Dragon Breath, Heavenfall Meteor, Fire Dragon Crossing (Hỏa Long Quá Giang) |
+| Thổ / Earth | sand / ochre / umber | rock spikes, debris, dust, cracks | heavy, gravity, bounce, big shake | normal (rocks and dust are not light) | `spikeLine`, `mountainCrash`, `stoneArmor`, `leap`, `stun` | Earth Fissure, Mountain Crash, Stone Skin |
+| Phong / Wind (variant) | white / mint / teal | crescent gusts, spiralling streaks, ribbons, carried leaves and dust | fast, curving, orbiting; pulls and lifts; curl-noise drift | additive and translucent, normal for carried debris | `tornado`, `windSweep`, `windSlash`, `vortex`, `windWisps`, `gustLines`, `ribbonTrail` | Gale Blades, Whirlwind, Dragon Cyclone, Tailwind |
 | Lôi / Lightning (variant) | white / violet-blue (`0xa8b4ff`) / deep violet (`0x3a2a9a`) | jagged forked bolts, crawling body arcs, sparks and scorch | instant strike, fast fade, arcs re-roll; no projectile travel | low-alpha additive violet halos, tiny white impact cores, normal scorch | `lightningStrike`, `staticField`, `lightningChain`, `shock` | Chain Lightning, Heavenly Thunder, Thunder Domain |
 
 Rules of thumb:
@@ -30,3 +31,6 @@ Rules of thumb:
   Thủy's sky blue. A caster can charge before release, but the released sky strike is instant.
 - Register your own element with `defineElement` and look it up with `getElement`. See
   [Extending the kit](extending.md) for custom shape language, signature recipes and recolors.
+
+See the [recipe catalog](recipes.md) for specialized signatures and the
+[API index](api.md) for the full exported surface.

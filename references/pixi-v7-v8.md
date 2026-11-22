@@ -25,3 +25,7 @@ Common breakages when copying VFX snippets from the internet:
   or use sprites.
 - Tinting to white does not brighten a sprite (tint multiplies). For a white hit flash use an
   additive copy (`hitFlash`) or a `ColorMatrixFilter` on the unit (not per particle).
+
+For reactions on the actual character texture, use [hitSkin and rockBack](extending.md#element-hit-skins-and-rock-back).
+They preserve material detail and restore the original tint/pivot; `hitFlash` remains
+a separate additive-overlay option.
