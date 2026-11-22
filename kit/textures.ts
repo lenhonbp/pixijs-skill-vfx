@@ -5,6 +5,8 @@ import { textureFromCanvas } from './pixi-compat';
 import { makeBellSurfaces, makeSteelBlade } from './metal-surfaces';
 
 export interface VfxTextures {
+  /** Shaded storm canopy, baked once with the texture set. 512x192. */
+  stormCloud: Texture;
   /** Soft radial glow, quadratic falloff. Size 128. The workhorse. */
   glow: Texture;
   /** Hard-ish dot with a short soft edge. Size 64. Embers, motes. */
@@ -138,6 +140,31 @@ function poly(ctx: CanvasRenderingContext2D, pts: number[][], fill: string | Can
 }
 
 export function createVfxTextures(): VfxTextures {
+  const stormCloud = (() => {
+    const rnd = seeded(71);
+    const canvas = document.createElement('canvas'); canvas.width = 512; canvas.height = 192;
+    const ctx = canvas.getContext('2d')!;
+    const octaves = [8, 16, 32, 64].map((n) => ({ n, grid: Array.from({ length: (n + 1) ** 2 }, () => rnd()) }));
+    const noise = (x: number, y: number) => octaves.reduce((sum, { n, grid }, octave) => {
+      const u = x / 512 * n, v = y / 192 * n, ix = Math.floor(u), iy = Math.floor(v);
+      const fx = u - ix, fy = v - iy, sx = fx * fx * (3 - 2 * fx), sy = fy * fy * (3 - 2 * fy);
+      const a = grid[iy * (n + 1) + ix], b = grid[iy * (n + 1) + ix + 1];
+      const c = grid[(iy + 1) * (n + 1) + ix], d = grid[(iy + 1) * (n + 1) + ix + 1];
+      return sum + ((a + (b - a) * sx) * (1 - sy) + (c + (d - c) * sx) * sy) / 2 ** (octave + 1);
+    }, 0);
+    const image = ctx.createImageData(512, 192);
+    for (let y = 0; y < 192; y++) for (let x = 0; x < 512; x++) {
+      const n = noise(x, y), edge = 1 - ((x - 256) / 245) ** 2 - ((y - 98) / 72) ** 2;
+      const density = Math.max(0, Math.min(1, (edge + (n - 0.46) * 1.35) * 2.4));
+      const light = 24 + n * 64 + Math.max(0, (110 - y) / 95) * 35 + (1 - x / 512) * 9;
+      const i = (y * 512 + x) * 4;
+      image.data[i] = light * 0.72; image.data[i + 1] = light * 0.84; image.data[i + 2] = light * 1.08;
+      image.data[i + 3] = density * 245;
+    }
+    ctx.putImageData(image, 0, 0);
+    return textureFromCanvas(canvas);
+  })();
+
   const glow = (() => {
     const [c, ctx] = makeCanvas(128, 128);
     radial(ctx, 64, 64, 64, falloff(2.2));
@@ -610,5 +637,5 @@ export function createVfxTextures(): VfxTextures {
     digits[ch] = textureFromCanvas(c);
   }
 
-  return { glow, dot, ring, disc, streak, beam, star, puff, crescent, shard, blade, swordCrack, spike, rock, rockPlate, rockSpike, fissure, guardian, guardianBody, guardianHalberd, mountain, leaf, drop, chevron, rune, bubble, tendril, vineSegment, plus, crackedShield, bell, bellCracks, digits };
+  return { stormCloud, glow, dot, ring, disc, streak, beam, star, puff, crescent, shard, blade, swordCrack, spike, rock, rockPlate, rockSpike, fissure, guardian, guardianBody, guardianHalberd, mountain, leaf, drop, chevron, rune, bubble, tendril, vineSegment, plus, crackedShield, bell, bellCracks, digits };
 }

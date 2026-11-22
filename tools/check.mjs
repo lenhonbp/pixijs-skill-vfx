@@ -79,6 +79,9 @@ try {
   await page.close();
   const rows = [];
   for (const skill of skills) {
+    console.log(`Checking ${skill.id}`);
+    await browser.close();
+    browser = await chromium.launch({ headless: true });
     page = await browser.newPage();
     page.on('pageerror', (error) => failures.push(error.message));
     await page.goto(url, { waitUntil: 'domcontentloaded' });

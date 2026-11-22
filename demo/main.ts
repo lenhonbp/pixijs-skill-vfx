@@ -3,7 +3,7 @@
 import { Application, Container, Sprite, Texture } from 'pixi.js';
 import {
   VfxWorld, createVfxTextures, isPixiV8, textureFromCanvas, rigFromBlender, anchorAtFeet,
-  hitFlash, hitSpark, damageNumber, activeHitFlashes, ELEMENTS, Distortion, Bloom, Palette, Vec3, outCubic, lerp, rand, setRng, mulberry32,
+  hitSkin, rockBack, getElement, hitSpark, damageNumber, activeHitFlashes, ELEMENTS, Distortion, Bloom, Palette, Vec3, outCubic, lerp, rand, setRng, mulberry32,
 } from '../kit';
 import { SKILLS, SkillDef, Unit, SkillContext } from '../examples/skills';
 
@@ -239,7 +239,9 @@ function whiteTexture() {
       }
       if (amount === 0) return;
       const feedback = o.feedback ?? 1;
-      hitFlash(w, u.sprite, 110, feedback < 1 ? o.palette?.main ?? 0xffffff : 0xffffff, feedback);
+      hitSkin(w, u.sprite, o.skin ?? getElement(current.element)?.hitSkin ?? 'red');
+      rockBack(w, u.sprite, { push: o.push ?? (o.crit ? 12 : 6),
+        angle: o.angle ?? Math.atan2(u.feet.y - hero.feet.y, u.feet.x - hero.feet.x) });
       if (o.palette) hitSpark(w, tex, { x: u.feet.x, y: u.feet.y, z: u.height * 0.55, palette: o.palette, angle: o.angle ?? Math.PI, size: Math.sqrt(feedback) });
       damageNumber(w, tex, { x: u.feet.x, y: u.feet.y, z: u.height + 8, value: amount, crit: o.crit, color: o.color ?? (o.crit ? 0xffd04a : 0xffffff) });
       du.hp = Math.max(0.05, du.hp - amount / 1600);

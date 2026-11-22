@@ -2,6 +2,7 @@
 import type { VfxWorld, Vec3, Handle, Particle } from './vfx-world';
 import { VfxTextures, TEX_METRICS as M } from './textures';
 import { shockwave, type Palette } from './recipes';
+import { floorRing } from './floor-ring';
 import { group, ms } from './group';
 import { Distortion } from './postfx';
 import { clamp01, envelope, inQuad, lerp, lerpColor, outBack, outCubic, outQuad, rand } from './ease';
@@ -258,8 +259,12 @@ export function summonCircle(w: VfxWorld, tex: VfxTextures, o: { x: number; y: n
   const g = group(w, total, undefined, 300);
   const open = (t: number) => outBack(clamp01((t * total) / 320));
   g.add(w.spawn({ ...gnd, texture: tex.glow, life: total, scale: r / 34, alpha: ms.env(total, 200, 500, 0.45), tint: p.main }));
-  g.add(w.spawn({ ...gnd, texture: tex.rune, life: total, spin: 0.5, scale: (t) => k * open(t), alpha: ms.env(total, 150, 500, 0.95), tint: p.main }));
-  g.add(w.spawn({ ...gnd, texture: tex.rune, life: total, spin: -0.9, rotation: 0.4, scale: (t) => k * 0.55 * open(t), alpha: ms.env(total, 250, 500, 0.7), tint: p.core }));
+  const outer = floorRing(w, tex, { x: o.x, y: o.y, texture: tex.rune, textureRadius: M.runeRadius,
+    radius: r, palette: p, duration: total, spin: 0.5, scale: (t) => k * open(t), alpha: ms.env(total, 150, 500, 0.95) });
+  const inner = floorRing(w, tex, { x: o.x, y: o.y, texture: tex.rune, textureRadius: M.runeRadius,
+    radius: r * 0.55, palette: p, duration: total, spin: -0.9, rotation: 0.4,
+    scale: (t) => k * 0.55 * open(t), alpha: ms.env(total, 250, 500, 0.7), tint: p.core });
+  for (const ring of [outer, inner]) { g.add(ring.far); g.add(ring.near); }
   for (let i = 0; i < 6; i++) {
     const a = (i / 6) * TAU;
     g.add(w.spawn({
