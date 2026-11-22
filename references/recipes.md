@@ -2,7 +2,7 @@
 
 Recipes are exported from `kit/index.ts` and implemented in the modules below. Most take
 ground coordinates `(x, y)` plus height `z`, and a `Palette` (`{ core, main, dark }`). Copy the closest one and change it; recipes are examples,
-not a framework to extend with options.
+not a framework to extend with options. The [API index](api.md) covers every barrel export.
 
 | Recipe | Layers it builds | Typical use | Key knobs |
 |---|---|---|---|
@@ -15,20 +15,11 @@ not a framework to extend with options.
 | `floorRing` (`floor-ring.ts`) | far arc in ground, near arc in y-sorted body | rings that encircle a unit | `radius`, `palette`, `around`, `duration`, alpha/scale curves, `texture`, `spin` |
 | `telegraph` | pulsing ground ring, faint area, fill that grows over the cast | enemy AoE warnings, cast bars on the ground | `radius`, `duration`, `onDone`, `finishAlpha` (0 disables the finish flash) |
 | `meteor` | `telegraph` -> `projectile` from the sky -> big `explosion` | ultimates; shows composition | `radius`, `castMs` |
-| `lightningChain` | jagged beams (glow + core) between points, re-rolled every 65 ms, glows and sparks at each hit | chain lightning, beams, tethers | `points`, `flickers`, `width`, `impactIntensity` (default 1) |
-| `lightningStrike` (`thunder.ts`) | heavy forked sky bolt with violet halo, three flickers, colored impact flash, scorch, sparks, shockwave, shake and hit-stop | instant lightning impact; caller supplies telegraph | `x`, `y`, `palette`, `radius`, `delay`, `onHit` (once) |
-| `staticField` (`thunder.ts`) | violet ground glow/ring, frequent jagged arcs, rim sparks | sustained lightning AoE; returns handle | `x`, `y`, `radius`, `palette`, `duration`, `onTick` (every 500 ms) |
+| `lightningChain` | forked ribbon bolts, staggered hops, restrained impact sparks and afterglow | chain lightning, tethers | `points`, `flickers`, `width`, `impactIntensity` (default 1), `hopMs` (default 40) |
+| `lightningStrike` (`thunder.ts`) | cloud-to-ground forked bolt, flash, scorch and sparks | instant impact; caller supplies warning | `x`, `y`, `palette`, `radius`, `delay`, `onHit`, `cloud`, `height`, `hitStop`, `shake`; see [Loi helpers](#loi-lightning) |
+| `staticField` (`thunder.ts`) | storm canopy, ground channels, rim sparks and strikes toward targets | sustained lightning AoE; returns handle | `x`, `y`, `radius`, `palette`, `duration`, `onTick` (every 500 ms), `targets`, `cloud`; see [Loi helpers](#loi-lightning) |
 | `healAura` | ground pad + shrinking rings, vertical column glow, rising swaying motes, some stars | heals, buffs, auras (return handle) | `target` (follow fn), `radius`, `duration` |
 | `damageNumber` | baked outlined digit sprites in `top`, pop + drift | every hit/heal/tick | `value`, `color`, `crit`, `size` |
-| `damageOverTime` | body tint + per-kind ambience (poison bubbles, burn flames/embers, bleed drops with ground splats), tick pulse + number | poison, burn, bleed | `kind`, `duration`, `tickMs`, `damage`, `onTick` |
-| `stun` | stars orbiting over the head, depth-sorted front/back, ring + trail | stun, daze | `duration`, `stars`, `palette` |
-| `freeze` | frost decal, ice crystals growing around the body, cold mist; shatter burst at end | freeze, petrify (rock palette) | `duration`, `onShatter`, `glowIntensity` (default 1) |
-| `slow` | spinning cold arcs at the feet, sinking chevrons, drips | slow, snare | `duration`, `palette` |
-| `root` / `vineBind` (`vine-bind.ts`) | four thick outlined, thorned green vines spiral from the ground to 80% of unit height; near/far coils wrap around the body, leaves, brown wither and bark crumble | root, entangle | `target`, `height`, `duration` (default 2500; Infinity until stopped), `palette`; handle: `stop()`, `pulse()` (call alongside each gameplay damage tick to squeeze coils). `root` delegates to `vineBind` |
-| `shield` | rim-lit bubble with pulse, ground ring, crawling glints; `hit(angle)` ripple, `break()` shards | barriers, absorbs, invulnerability | `radius`, `duration`, `onBreak` |
-| `goldenBell` (`bell.ts`) | cast-bronze temple bell with engraved bands and flared mouth; landing dust, struck-metal ripples, cracks and tumbling pieces of the shell | bell-shaped ward, distinct from a spherical shield | `target`, `height`, `palette`, `duration` (sustain after landing, default 3000; Infinity until stopped), `onBreak`; handle: `hit(angle?)`, `break()`, `stop()` |
-| `stoneArmor` (`stone-armor.ts`) | rising pebbles, eight solid beveled plates snapping onto shoulders, torso, hips and shins; lock-in dust, earthy glow, falling rubble on end | attached rock armor rather than a bubble | `target`, `height`, `palette` (earth default), `duration` (sustain after 650 ms assembly, default 2200; Infinity supported), `onBreak`; handle: `hit(angle?)`, `break()`, `stop()` |
-| `statChange` | light column, chevrons climbing (up) or sinking (down), ground ring | attack/defense/speed buffs and debuffs | `up`, `palette`, `duration` |
 | `dash` | afterimages of the unit sprite, speed lines, dust | dash, charge | `sprite`, `duration`, `onMove`, `onEnd` |
 | `blink` | implode + light column at `from`, faint trail, column + burst at `to` | teleport, shadow step | `gapMs`, `onVanish`, `onAppear` |
 | `leap` / `slam` | dust, airborne shadow, trail; slam: shockwave, cracks, dust ring, rock debris, shake | jump attacks, ground pound | `arc`, `duration`, `radius`, `onLand` |
@@ -92,17 +83,14 @@ separate floor ring; its sample's defense-up statChange ring gets the same treat
 The War Cry sample is unchanged: its kit-level aura/haste/empower rings are split, while
 its outgoing area shockwave stays ground-only.
 
-`node tools/test-floor-ring.mjs` checks depth, following, cleanup, actual WebGL occlusion
-pixels and integer/subpixel seam equivalence against an unsplit rotating rune.
+See [verification](extending.md#verification-and-reproducibility) for the floor-ring
+pixel/depth regression command and other focused tests.
 
-## Extended statuses
+## Status effects
 
-`kit/status.ts` also exports `shock`, `silence`, `blind`, `armorBreak`, `mark`, `fear`,
-`aura`, `regen`, `haste` and `empower`. They use `target: () => feet`, optional height,
-palette and duration, and return handles. The nine additions after `shock` support Infinity
-until `stop()`. See the [complete status catalog](extending.md#status-catalog) for silhouettes,
-buff/debuff/CC roles, tick options and cleanup, and the [composition guide](extending.md#compose-a-skill-and-synchronize-gameplay)
-for phase timing and gameplay callbacks.
+The [status catalog](extending.md#status-catalog) is the canonical list of CC, buffs,
+debuffs, DoTs, bell and armor wards, including their options, handles and cleanup.
+Do not infer gameplay restrictions from visuals; your game owns those systems.
 
 ## Making a new skill
 
@@ -153,22 +141,128 @@ Start gameplay immediately at tier 1, or after `activationRelease(tier)` (250/40
 `skillEvolution(w, tex, { at, height, palette, fromTier, toTier })` fractures the old
 seal, lifts its shards into a helix and overhead crown, then stamps the destination
 seal at 950 ms; ascending rune stacks and double shockwaves fade by 1600 ms.
+`skillActivation` and `skillEvolution` are void one-shots, not stoppable handles;
+`w.clear()` cancels their world-owned work.
 `empoweredAura(w, tex, { at, height, palette, tier, duration })` sustains body wisps,
 orbiting shards and a grounded seal during gameplay. `empoweredHit(w, tex,
-{ at: chestPosition, palette, tier })` adds a localized crown, rays, floor rings and
-debris on positive damage. Both skip tier 1; no full-screen white flashes are used.
+{ at: chestPosition, palette, tier, element?, tick? })` adds a localized crown, rays, floor rings and
+debris on positive damage. Both skip tier 1; `empoweredAura` returns undefined at tier 1 or nonpositive duration,
+and a stoppable handle otherwise. Pass `element` (for example `tho`, `thuy`, `loi`)
+to select material feedback independently of palette; `tick: true` selects light DoT feedback.
+No full-screen white flashes are used.
 Use `empoweredWorld(w, { tier, palette })` as the skill context's world for
 cast-local 1.2x/1.45x silhouettes, hotter highlights and stronger impact feedback.
 Burst/stream density is reduced; the total cast must satisfy its ordinary budget.
 The facade retains delayed callbacks without changing other casts. For idle power,
 keep the handle from `empoweredAura(..., { ..., duration: Infinity, idle: true })`
-and stop it on tier changes. Debug captures/checks disable this persistent aura.
+and stop it on tier changes. Debug captures/checks disable this persistent aura. Open the demo with `?debug`
+to access `__vfxDebug.idleAura(true)`; debug mode also stops its ticker.
 All palettes are accepted; floor pieces stay at z=0 even during jumps.
-Capture with `npm run capture -- --skills activation-hoa-3,evolution-thuy`.
-Compare evolved gameplay with `npm run capture -- --skills hoa-fireball,tho-fissure --tier 3`.
+See [verification](extending.md#verification-and-reproducibility) for baseline/tiered
+captures and activation/evolution pseudo-IDs.
 
 ## dropShadow (ground blob)
 
 Blob shadow under anything airborne (projectiles, meteors, jumping units). Lands where the
 baked sun puts shadows (`VfxWorld` `shadow`, from `rigFromBlender`), fades and widens with
 height. `const sh = dropShadow(vfx, tex, () => pos, size)`; `sh?.kill()` when it lands.
+
+
+## Texture sets
+
+Call `createVfxTextures()` once after renderer setup for the shared `VfxTextures` set.
+It includes light masks and material surfaces (steel blades, bronze bell, guardian,
+mountain, rock and vines). `TEX_METRICS` records feature dimensions for pixel-to-scale
+conversion. Not every texture is white: preserve baked shading on material surfaces
+and use normal blending for solid matter.
+
+Fire, dragon, wood and water recipes also use lazy cached texture sets. Their first
+call can allocate textures; prewarm them after renderer setup if needed. Only
+`woodTextures` is exported by the barrel; see the [direct-module list](api.md#direct-module-only-helpers)
+for other cache imports. Do not destroy shared cache textures when one effect ends.
+
+## Hoa (fire)
+
+These functions take `(w, tex, options)`. They are distinct from the generic
+`projectile`, `explosion`, `meteor` and `coneBreath` recipes.
+
+| Function | Options and behavior |
+|---|---|
+| `fireCharge` | `origin: () => Vec3`, `palette`, `duration`, optional `size`, `onDone`; flame gather, returns Handle. |
+| `fireball` | `from`, `to`, `palette`, optional `speed` (720), `size`, `onHit(at)`; arcing flame projectile, returns Handle. Caller owns impact damage and can add `fireImpact`. |
+| `fireImpact` | `x`, `y`, `radius`, `palette`, optional `meteor`; finite flame/scorch/smoke burst with shake/hit-stop, returns void. |
+| `fireMeteor` | `x`, `y`, `radius`, `palette`, `castMs`, optional `onHit()`; warning, falling meteor and impact, returns void. |
+| `fireBreath` | `origin: () => Vec3`, `angle: () => number`, `palette`, `range`, `spread`, `duration`; flame cone, returns Handle. Gameplay ticks stay in the caller. |
+| `fireDragonCrossing` | `from`, `toward`, `palette`, optional `facing`, `onCross(contact)`; crossing segmented dragon, returns Handle. |
+
+`FireDragonContact` has `x`, `y`, `angle`, `halfLength`, `radius`. The callback
+runs repeatedly for visible head/coil swept contacts, not once per target and not for
+the lingering ground trail. Check collision against the oriented ground capsule:
+un-squash target dy by `w.groundSquash`, rotate into `contact.angle`, then measure
+distance to the segment from `-halfLength` to `halfLength` with the supplied radius.
+Track per-target hit/cooldown state in gameplay to avoid damage every callback.
+The current sample is Fire Dragon Crossing / Hỏa Long Quá Giang
+(`hoa-fire-dragon-crossing`).
+
+## Moc (wood)
+
+These functions take `(w, options)`, **not** `(w, tex, options)`, and return Handles.
+They use their own colored vegetation cache and do not accept a palette.
+
+| Function | Options and behavior |
+|---|---|
+| `woodCharge` | `target: () => Vec3`, optional `duration` (300), `onDone()`; seed and leaf gather. |
+| `seedFlight` | `from`, `to`, optional `speed` (620), `onHit(at)`; physical seed flight. |
+| `springBloom` | `target: () => Vec3`, optional `radius` (58), `duration` (2000); grass and opening flowers. Healing stays in the caller. |
+| `toxicSporeCloud` | `at: Vec3`, optional `radius` (120), `duration` (2600), `onBloom()`; mushrooms, spores and a warning before bloom at 450 ms. Apply poison through gameplay/status callbacks. |
+| `woodTextures` | No arguments; cached leaves, petals, mushrooms, clouds, seed, stem, thorn, grass, center, spores, soil, moss, shaft and halo. |
+
+Wood durations must be finite and nonnegative; zero bloom/cloud duration is inert.
+Negative/nonfinite durations and nonpositive/nonfinite seed speed throw RangeError.
+Stop handles on interruption; finite emitted particles
+can have a fading tail. For binding vines, use `vineBind` or its `root` wrapper from
+the [status catalog](extending.md#status-catalog).
+
+## Thuy (water)
+
+These functions take `(w, tex, options)` and return Handles. They use the lazy
+crystal/water/foam cache in addition to shared textures.
+
+| Function | Options and behavior |
+|---|---|
+| `frostNova` | `target: () => Vec3`, `height`, `palette`, optional `duration` (2200, minimum 300), `radius` (75), `onShatter()`; ice enclosure, radial crystals and shatter. |
+| `glacierPath` | `from`, `angle`, `palette`, optional `count` (9, capped at 14), `spacing` (44), `height` (80), `onSpike(at)`; fractured ridge advancing every 85 ms. |
+| `tidalBeam` | `from: () => Vec3`, `to: () => Vec3`, `palette`, optional `duration` (1500); rolling pressure body and breaking foam crown following live endpoints. |
+
+These visuals do not apply damage or CC automatically. Keep damage, slow and freeze
+state aligned with recipe callbacks or the cast's timing data.
+
+## Loi (lightning)
+
+All helpers below take `(w, tex, options)`. The low-level `lightningBolt` is a
+[direct-module import](api.md#direct-module-only-helpers), not a barrel export.
+
+| Function | Options and behavior |
+|---|---|
+| `stormCloud` | `x`, `y`, `palette`, optional `width` (330), `height` (235), `duration` (1800; Infinity supported). Returns `StormCloudHandle` with `flash()` and `source(x): Vec3` as well as `stop()/alive`. Source x is clamped within the canopy. |
+| `lightningCharge` | `target: () => Vec3`, `palette`, optional `duration` (300), `size` (1), `onDone()`; returns Handle. |
+| `lightningWarning` | `x`, `y`, `radius`, `palette`, `duration`, optional `onDone()`; returns Handle. |
+| `lightningStun` | `target: () => Vec3`, `duration`, `palette`, optional `height`; electrical control ambience, returns Handle. |
+| `lightningImpact` | `x`, `y`, `palette`, optional `radius`; finite ground flash/scorch/sparks, returns void. |
+| `lightningStrike` | `x`, `y`, `palette`, optional `radius` (45), `delay`, `onHit()`, `cloud`, `height` (235), `hitStop` (25), `shake` (4); returns void. Zero feedback values disable stop/shake. Creates a finite cloud if none is supplied. |
+| `staticField` | `x`, `y`, `radius`, `palette`, `duration`, optional `onTick()`, `targets: () => Vec3[]`, `cloud: StormCloudHandle \| false`; returns Handle, ticks every 500 ms. Default creates a canopy; false disables it. A supplied cloud joins the field's cleanup ownership. |
+
+`lightningChain(w, tex, { points, palette, flickers?, width?, impactIntensity?, hopMs? })`
+returns a Handle. Hops default to 40 ms; default bolt life is 320 ms with a 240 ms
+hold, followed by a thinner afterglow bolt. Explicit flicker counts adjust life and
+restrikes; it is not the old fixed 65 ms reroll loop.
+
+## Wind
+
+Use `windSweep(w, { target: () => Vec3, angle, radius, palette, height?, duration? })`
+for a short following cut. It returns a Handle and uses parametric ribbons rather than
+a projectile. Default duration is 410 ms and height is 38 px.
+`windSlash` travels, `vortex` spirals around an area, `tornado` moves a funnel,
+`windWisps` follows a unit and `gustLines` emits a directional burst; see the catalog
+above and the [API index](api.md). The underlying `flowRibbon` is described in
+[advanced effects](advanced-fx.md#parametric-ribbons).

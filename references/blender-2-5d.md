@@ -75,3 +75,7 @@ and use `socketPoint(feet, sockets, dir)` as the projectile `from` or slash cent
   render; usually alpha 0.3-0.45 black with normal blending).
 - Pre-rendered characters have baked lighting, so a code `hitFlash` (additive white copy of
   the frame) reads well; tint it toward the skill palette for elemental hits.
+
+For reactions on the actual character texture, use [hitSkin and rockBack](extending.md#element-hit-skins-and-rock-back).
+They preserve material detail and restore the original tint/pivot; `hitFlash` remains
+a separate additive-overlay option.

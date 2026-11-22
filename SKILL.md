@@ -76,33 +76,11 @@ smoke/aftermath 0.8-2.5 s.
 
 ### Activation tiers and evolution
 
-Wrap casts with `skillActivation(w, tex, { at: () => caster.feet, height, palette, tier })`.
-Tier 1 (Cơ bản) releases immediately; tier 2 (Thức tỉnh) at 250 ms; tier 3
-(Tiến hoá) at 400 ms. Schedule gameplay on `w.after(activationRelease(tier), cast)`
-for tiers 2/3, and include that pre-roll in showcase waits. The tiers accumulate
-ground seals, body wisps/pillars, then inward shards, cracks and top-layer feedback.
-Tier 3's low aura lasts `duration` (default 1500 ms) after release.
-Use `skillEvolution(w, tex, { at, height, palette, fromTier, toTier })` for the
-1600 ms one-shot upgrade: broken seal shards spiral upward into an overhead crown,
-which stamps the new seal at 950 ms. Stacked ascending runes show the destination tier.
-For gameplay after release, run `empoweredAura` for the skill's length and call
-`empoweredHit` at each positive-damage target's chest. Both are no-ops at tier 1.
-Pass an `empoweredWorld(world, { tier, palette })` facade to the skill itself:
-particle scales and raw effect sprites grow 1.2x/1.45x, highlights heat up, motion
-trails stretch and impact feedback strengthens. Burst/stream density is reduced
-while endpoint-anchored graphics/ribbons keep their coordinate system unchanged.
-Checks enforce the total skill+overlay budget.
-Each facade retains its own tier across delayed callbacks and overlapping casts;
-the shared world and tier 1 remain unchanged. Damage in the demo scales 1.3x/1.7x,
-with tier-3 crit numbers. `empoweredAura` returns a stoppable handle and accepts
-`duration: Infinity, idle: true` for a persistent four/six-sprite idle look.
-The demo disables idle auras in debug/check mode; toggle with `__vfxDebug.idleAura(true)`.
-Pass skills a `withDamageTickFeedback(world, (feet, height, damage) => ...)` facade
-to observe their positive DoT ticks, including delayed status effects, without
-changing skill recipes. Capture the cast's tier/palette in that callback; use
-`empoweredHit(..., { ..., tick: true })` and throttle per target for light tick feedback.
-Ground layers ignore caster height; body layers follow jumps. Keep flashes localized.
-All timers/particles use the world clock and `clear()` cancels them.
+Use `skillActivation` before a cast and `skillEvolution` for a tier transition.
+The [activation contract](references/recipes.md#activation-and-evolution) covers release
+scheduling, cast-local world facades and aura ownership. Both one-shots return void;
+`empoweredAura` may return undefined. Pass `element` to `empoweredHit` for elemental
+material feedback. The demo's `__vfxDebug` helpers require `?debug` in the URL.
 
 Read `references/recipes.md` for the recipe catalog and `kit/recipes.ts` for the code. Start from
 the closest recipe, copy it into the game as a named skill function, and tune it. Core API:
@@ -122,26 +100,24 @@ Curves (`alpha`, `scale`, ...) accept a number, `[from, to]`, `[from, to, ease]`
 (t = 0..1 over life). `tint` takes the same, with colors; `colorRamp(core, main, dark)` gives the
 classic hot-to-cold fade, `envelope(in, out, peak)` a fade-in/hold/fade-out alpha.
 
-Ready recipes (see `references/recipes.md` for what each is made of):
+Choose the closest specialized family; see the [exported API index](references/api.md)
+for every public name and the [recipe catalog](references/recipes.md) for options:
 
-- Attacks and impacts (`recipes.ts`): `hitSpark`, `hitFlash`, `slash`, `projectile`, `explosion`,
-  `shockwave`, `telegraph`, `meteor`, `lightningChain`, `healAura`, `dropShadow`.
-- On-unit status (`status.ts`): `damageOverTime` (poison / burn / bleed with tick numbers),
-  `stun`, `freeze` (shatters at the end), `slow`, `root`, `shield` (returns `hit()` / `break()`),
-  `statChange`, `shock`, `silence`, `blind`, `armorBreak`, `mark`, `fear`, `aura`, `regen`,
-  `haste`, `empower`. All take `target: () => feet` and `height` in px;
-  see the [status catalog](references/extending.md#status-catalog) for options.
-- Lightning (`thunder.ts`): `lightningStrike` (instant forked sky bolt), `staticField` (ground arcs).
-- Movement (`motion.ts`): `dash` (afterimages), `blink`, `leap` (arc + `slam`), `afterimage`, `slam`.
-- Channeled / cast (`channel.ts`): `beam`, `coneBreath`, `chargeUp`, `summonCircle`.
-- Element shapes (`elemental.ts`): `spike`, `spikeLine`, `spikeRing` (rock or `ice`), `swordRain`.
-- Wind (`wind.ts`): `tornado` (travels, pulls, lifts; returns `pos`), `windSlash` (crescent gust
-  with ribbons), `vortex` (inward/outward ground spiral), `windWisps` (buff aura), `gustLines`.
-- Advanced (`trail.ts`, `noise.ts`, `postfx.ts`): `ribbonTrail`, `curlDrift` / `curl2`,
-  `Distortion` (`shockwave`, `haze`), `Bloom`, `w.density` quality tiers. Read
-  `references/advanced-fx.md` before using them.
-- Feedback: `damageNumber` (`numbers.ts`, baked glyphs, crits pop).
-- Sustained effects return a `Handle` (`stop()`, `alive`); build your own with `group()`.
+- Hỏa: `fireCharge`, `fireball`, `fireBreath`, `fireImpact`, `fireMeteor`,
+  `fireDragonCrossing` and its swept `FireDragonContact` callback.
+- Mộc: `woodCharge`, `seedFlight`, `springBloom`, `toxicSporeCloud`, `vineBind`/`root`.
+- Thủy: `frostNova`, `glacierPath`, `tidalBeam`.
+- Lôi: `stormCloud`, `lightningCharge`, `lightningWarning`, `lightningStrike`,
+  `lightningImpact`, `lightningStun`, `lightningChain`, `staticField`.
+- Phong: `windSweep`, `windSlash`, `tornado`, `vortex`, `windWisps`, `gustLines`.
+- Kim and Thổ: `swordSalute`, `swordRain`, `metalSlash`, `metalSparks`, `goldenBell`,
+  `spikeLine`, `stoneArmor`, `mountainCrash`. Summons can use `spiritGuardian`.
+- Shared: generic impacts/projectiles, movement, channels, `floorRing`, numbers and
+  [statuses](references/extending.md#status-catalog). Use `group` for owned lifetimes.
+- Synchronization: `SkillTiming`, `hitTimes`, `onHits`, `hitSkin`, `rockBack`;
+  see [timing and reactions](references/extending.md#skill-timing).
+- Advanced: ribbons, noise, distortion, bloom and quality tiers;
+  see [advanced effects](references/advanced-fx.md).
 
 Elements: `WUXING` in `elements.ts` gives the five elements (Kim, Mộc, Thủy, Hỏa, Thổ) with
 palette and shape language, plus variants `PHONG` (wind) and `LOI` (lightning); `ELEMENTS` has
@@ -155,9 +131,10 @@ chest / head / above), `socketPoint(feet, sockets, dir)`, `vfx.shadowPoint(pos)`
 
 ## 5. Rules that make code-drawn VFX look good
 
-- **Additive glow on white textures.** All kit textures are white; color comes from `tint`.
-  Use `blend: 'add'` for light (fire, magic, sparks); `'normal'` only for smoke, shadows,
-  scorch marks and dark trails. Add layers stack: a big dim `main` glow + a small bright `core`.
+- **Blend by material.** Use `blend: 'add'` for light (fire, magic, sparks) and
+  `'normal'` for solid matter: metal, rock, ice, leaves, vines, smoke, shadows and scorch.
+  Many light textures are white and tinted; material textures can have baked colors.
+  Additive light reads as a dim `main` glow with a small bright `core`.
 - **Additive light saturates to white when it stacks.** Keep big overlapping additive puffs at
   low alpha (0.3-0.5) and tint them `main` -> `dark`; only small, short cores use `core`.
   If the impact reads as a white blob, lower alpha/size before touching color.
@@ -171,7 +148,9 @@ chest / head / above), `socketPoint(feet, sockets, dir)`, `vfx.shadowPoint(pos)`
 - **Easing**: things burst out fast and settle slow (`outCubic`/`outExpo` on scale, `inQuad` on
   alpha fade). Linear motion looks cheap. Overshoot (`outBack`) for pops and UI-like buffs.
 - **Randomize every particle** (`rand`) in speed, life, size and angle; never spawn identical copies.
-- **Sell the 2.5D depth**: anything on the floor uses `layer: 'ground'` + `groundAligned: true`;
+- **Sell the 2.5D depth**: ordinary floor effects use `layer: 'ground'` + `groundAligned: true`;
+  unit-centered rings use [floorRing](references/recipes.md#floor-rings-around-units)
+  so the near half can sort in the body layer;
   airborne things cast a shadow on the ground (`dropShadow`, offset by the sun via `shadow`); debris uses `gravity` and dies or
   `bounce`s at z = 0; horizontal velocities are multiplied by `groundSquash` on the y axis.
 - **Sort correctly**: effects at a unit's position use `layer: 'body'` (default) so units in
@@ -189,7 +168,9 @@ chest / head / above), `socketPoint(feet, sockets, dir)`, `vfx.shadowPoint(pos)`
 
 ## 6. Performance budget (mobile H5)
 
-- Textures are baked once (`createVfxTextures`), never per frame or per cast.
+- Bake the shared set once with `createVfxTextures`. Specialized fire, dragon, wood and
+  water sets are cached lazily on first use; prewarm those caches if first-cast allocation
+  matters. Reuse textures, never regenerate them per frame. See [texture sets](references/recipes.md#texture-sets).
 - Never create `Graphics`, `Text` or filters per particle or per frame. No `BlurFilter` / glow
   filters on particles; fake glow with the `glow` texture.
 - Sprites are pooled by the kit; keep `maxParticles` (default 1500). One skill should stay under
@@ -205,51 +186,100 @@ chest / head / above), `socketPoint(feet, sockets, dir)`, `vfx.shadowPoint(pos)`
 
 ## 7. Iterate until it reads
 
-Use the draft → contact sheet → look → fix the worst thing → repeat method shared by
-[pixelfx](https://github.com/patch-gg/pixelfx), inspired by Hugo Duprez's VFX workflow.
-Code is only the draft; the rendered effect is the deliverable.
+Draft, capture, inspect, fix the worst problem and repeat. Compare at game zoom against
+Tidal Beam (`thuy-tidal-beam`), Sword Rain (`kim-sword-rain`) or Mountain Crash
+(`tho-mountain-leap`) with the same seed and camera. Do at least three visual rounds;
+counts alone do not establish readability. Report reference skills, round count and
+contact-sheet paths, and state plainly if visual inspection was not possible.
 
-1. Draft the phases and type-check/build the game.
-2. Run `npm run capture -- --skills YOUR-ID,thuy-tidal-beam,kim-sword-rain,tho-mountain-leap --out ~/audit/round-1/`.
-   Register new effects in the demo first. Compare at the **same size**, camera and seed against
-   two or three named references: Tidal Beam (`thuy-tidal-beam`), Sword Rain
-   (`kim-sword-rain`), and Mountain Crash (`tho-mountain-leap`).
-3. **Look at the contact sheet**, not just the counts. Check silhouette, release readability,
-   depth sorting with units in front/behind, timing, aftermath and distracting pops.
-4. Pick the single worst problem, fix it, capture again into the next round directory and
-   compare. Do **at least three rounds**; use more for showpieces. Do not call an unseen
-   render finished or stop just because the code compiles.
-5. Run `npm run check`: it **must pass**. It checks seeded repeat casts, cleanup, pool growth,
-   particle budgets and direct unseeded RNG calls. Type-check and build must also pass.
-   Existing overages in `tools/check-baseline.json` warn (regressions >5% fail); shrink peaks as skills improve and delete entries when they pass budget.
-6. Report what changed visually, the reference skills, round count, contact-sheet paths and
-   check results. State plainly if visual inspection could not be done.
-
-### Frame captures
-
-For the kit demo, run `npm install` and `npx playwright install chromium` once, then
-`npm run capture -- --skills thuy-tidal-beam,kim-sword-rain --out ~/audit/after/`.
-Pass comma-separated IDs (`--skills a,b`) or omit `--skills` for all skills. The harness
-builds and serves the demo, seeds randomness, stops the ticker and steps deterministically.
-It writes labeled contact sheets and `counts.json` at each skill's length + 1500 ms.
-Output defaults to `~/audit/before/`; use the same `--seed` (default 12345) for comparisons.
-Inspect the sheets as well as the counts.
+Run `npm run check:docs`, `npm run typecheck`, `npm run build` and `npm run check`.
+The [verification guide](references/extending.md#verification-and-reproducibility) is
+the canonical source for setup, capture flags, checkpoints, budgets and test commands.
 
 ## Files
 
-- `kit/` - runtime: `vfx-world.ts` (VfxWorld, curves, physics, ground transform), `textures.ts`
-  (procedural textures), `recipes.ts` (effects + palettes), `blender.ts` (camera/sun/feet
-  matching for pre-rendered sprites), `ease.ts`, `pixi-compat.ts` (v7/v8 shims).
-- `kit/status.ts`, `kit/motion.ts`, `kit/channel.ts`, `kit/elemental.ts`, `kit/numbers.ts`,
-  `kit/elements.ts`, `kit/group.ts` - buff/debuff/CC, movement, channeled, element effects.
-- `kit/wind.ts`, `kit/trail.ts`, `kit/noise.ts`, `kit/postfx.ts` - wind recipes, ribbon trails,
-  curl noise, distortion and bloom.
-- `examples/skills.ts` - 29 gameplay-agnostic samples across Wu Xing, wind, lightning and utility.
-- `references/extending.md` - custom elements, recolors, phase template, lifecycle and status catalog.
-- `references/advanced-fx.md` - ribbons, curl noise, distortion, bloom, quality tiers.
-- `references/elements.md` - Wu Xing design language and per-element recipes.
-- `tools/blender_vfx_rig.py` - run in Blender to print camera and sun numbers for `rigFromBlender`.
-- `references/blender-2-5d.md` - matching VFX to Blender-rendered sprites.
-- `references/recipes.md` - what each recipe is made of and how to tune or combine them.
-- `references/pixi-v7-v8.md` - API differences that break VFX code between versions.
-- `demo/` - showcase app that plays every sample skill (`npm run build`, open `demo/index.html`).
+The [API index](references/api.md) lists each barrel export. This map includes internal
+modules too; copy all of `kit/`, not just selected recipe files.
+
+### Runtime
+
+| File | Purpose |
+|---|---|
+| `kit/index.ts` | public export barrel; canonical name index in references/api.md |
+| `kit/vfx-world.ts` | pool, curves, physics, world clock, layers and cleanup ownership |
+| `kit/textures.ts` | shared procedural texture set and feature metrics |
+| `kit/recipes.ts` | generic attacks, impacts, telegraphs, healing and palettes |
+| `kit/ease.ts` | curves, interpolation and seeded random helpers |
+| `kit/pixi-compat.ts` | Pixi v7/v8 shims |
+| `kit/blender.ts` | camera, sun, feet anchors and sockets |
+| `kit/group.ts` | owned lifetimes and fade cleanup |
+| `kit/elements.ts` | built-in elements and custom registry |
+| `kit/palette.ts` | palette construction and shifts |
+| `kit/activation.ts` | activation and evolution one-shots, cast-local tier feedback |
+| `kit/skill-timing.ts` | timing metadata and hit scheduling |
+| `kit/hit-reaction.ts` | sprite hit skins and pivot recoil |
+| `kit/floor-ring.ts` | depth-split unit floor rings |
+| `kit/numbers.ts` | baked-glyph floating numbers |
+| `kit/status.ts` | buff, debuff, CC and DoT visuals |
+| `kit/motion.ts` | dash, blink, leap, slam and afterimages |
+| `kit/channel.ts` | generic beam, breath, charge and summon circles |
+| `kit/elemental.ts` | rock/ice spikes and sword rain |
+| `kit/metal.ts` | metal cuts, sparks and sword salute |
+| `kit/metal-surfaces.ts` | steel/bronze material builders and bell fragments |
+| `kit/bell.ts` | cast-bronze bell ward |
+| `kit/stone-armor.ts` | attached rock plates |
+| `kit/mountain-crash.ts` | falling mountain impact |
+| `kit/spirit-guardian.ts` | flying spectral summon |
+| `kit/vine-bind.ts` | thorned binding vines |
+| `kit/thunder.ts` | clouds, charge, warnings, strikes, fields and electrical control |
+| `kit/lightning-bolt.ts` | direct-module ribbon bolt primitive |
+| `kit/fire.ts` | specialized fire recipes and crossing dragon |
+| `kit/fire-textures.ts` | lazy flame, smoke, scorch and meteor cache |
+| `kit/fire-dragon-textures.ts` | lazy dragon head/coil cache |
+| `kit/wood.ts` | specialized seed, bloom and spore recipes |
+| `kit/wood-textures.ts` | lazy colored vegetation cache |
+| `kit/water.ts` | specialized ice and torrent recipes |
+| `kit/water-textures.ts` | lazy crystal, frost and foam cache |
+| `kit/wind.ts` | wind cuts, funnels, vortices and wisps |
+| `kit/trail.ts` | following and parametric mesh ribbons |
+| `kit/noise.ts` | value noise and curl drift |
+| `kit/postfx.ts` | optional distortion and bloom plugins |
+
+### Examples, demo and references
+
+- `examples/skills.ts` — 29 gameplay-agnostic samples and the sample context/types.
+- `demo/main.ts`, `demo/index.html`, `demo/preview.png` — interactive showcase, controls and preview; `demo/demo.js` is generated by build.
+- `references/api.md` — canonical public export index and direct-module import boundaries.
+- `references/recipes.md` — recipe options, floor rings, texture sets and canonical activation contract.
+- `references/extending.md` — custom elements, recoloring, timing, reactions, canonical status catalog and verification instructions.
+- `references/elements.md` — element shape/material language and matching samples.
+- `references/advanced-fx.md` — ribbons, noise, post effects and quality tiers.
+- `references/blender-2-5d.md` — Blender projection, anchors, sockets and lighting.
+- `references/pixi-v7-v8.md` — compatibility notes.
+- `.claude-plugin/plugin.json`, `.claude-plugin/marketplace.json` — root skill and marketplace registration.
+- `package.json`, `tsconfig.json`, `.github/workflows/ci.yml`, `.github/workflows/pages.yml` — commands, type checking, validation and demo deployment.
+
+### Tools
+
+`npm run check` does not run every regression script. Unless noted otherwise, run a test
+with `node tools/NAME.mjs`; browser tests require Playwright Chromium. See the
+[verification guide](references/extending.md#verification-and-reproducibility).
+
+| File | Purpose | Run by npm run check? |
+|---|---|---|
+| `tools/check.mjs` | Seeded lifecycle, pool, RNG, budget, tier and Sword Rain contracts | Entry point |
+| `tools/check-baseline.json` | Existing particle overages; regressions fail | Read by check |
+| `tools/capture-frames.mjs` | Deterministic contact sheets and counts; npm run capture | No |
+| `tools/check-docs.mjs` | Export coverage, file map and sample-count gate; npm run check:docs | No; separate CI step |
+| `tools/blender_vfx_rig.py` | Run in Blender to print camera/sun values | No |
+| `tools/test-activation.mjs` | tier facade isolation, density and aura cleanup | No |
+| `tools/test-fire-dragon.mjs` | swept dragon contacts, burn ticks and collision misses; exports checkFireDragon(browser) | Yes; imported helper, not a standalone runner |
+| `tools/test-floor-ring.mjs` | depth, following, mask cleanup and WebGL seam/occlusion pixels | No |
+| `tools/test-hit.mjs` | hit-skin restoration, replacement and recoil transforms | No |
+| `tools/test-lightning.mjs` | bolt ribbons, storm canopy, charge, warnings and fields | No |
+| `tools/test-loi.mjs` | element registry, palettes and lightning contracts | No |
+| `tools/test-spirit-guardian.mjs` | flight, weapon grip, contact timing, retargeting and summon AoE | No |
+| `tools/test-status.mjs` | status lifecycles, bell, armor, guardian, spikes, swords and vines | No |
+| `tools/test-timing.mjs` | nominal timing, feedback and sample damage windows | No |
+| `tools/test-wood.mjs` | vegetation cache, seed flight, bloom/spore timing and cleanup | No |
+| `tools/test-docs.mjs` | documentation checker normal, empty, alias, cycle and error cases | No; run with node --test |
