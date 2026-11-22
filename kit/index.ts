@@ -23,3 +23,4 @@ export * from './trail';
 export * from './postfx';
 export * from './wind';
 export { fireball, fireBreath, fireCharge, fireImpact, fireMeteor } from './fire';
+export { frostNova, glacierPath, tidalBeam } from './water';

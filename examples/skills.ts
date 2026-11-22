@@ -3,7 +3,6 @@
 // Each skill is gameplay-agnostic: it only talks to the game through SkillContext, so you can
 // copy one into your project and replace hurt()/returnHome() with your own systems.
 import type { Sprite } from 'pixi.js';
-import { frostNova, tidalBeam, glacierPath } from '../kit/water';
 import {
   VfxWorld, VfxTextures, Vec3, Palette, WUXING, PHONG, LOI, AnyElementName,
   tornado, windSlash, windSweep, vortex, windWisps, gustLines, curlDrift,
@@ -15,6 +14,7 @@ import {
   lightningStrike, staticField,
   dash, blink, leap, beam, chargeUp, summonCircle, spikeLine, spikeRing, swordRain,
   random, rand, envelope, outCubic, outQuad, lerp, clamp01,
+  frostNova, glacierPath, tidalBeam,
 } from '../kit';
 
 export interface Unit {
