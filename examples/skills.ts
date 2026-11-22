@@ -598,14 +598,21 @@ export const SKILLS: SkillDef[] = [
   },
   {
     id: 'summon-spirit', element: 'neutral', category: 'summon', en: 'Summon Guardian', vi: 'Triệu Hồi Hộ Pháp',
-    desc: 'A rune circle calls an armored spectral guardian bearing a halberd.', uses: ['chargeUp', 'summonCircle', 'spiritGuardian'], length: 4000,
-    cast: ({ w, tex, caster, summon }) => {
+    desc: 'A spectral guardian strides into battle, cleaves twice, then leaps into a crushing holy slam.', uses: ['chargeUp', 'summonCircle', 'spiritGuardian', 'afterimage'], length: 5400,
+    cast: ({ w, tex, caster, target, targets, hurt, summon }) => {
       chargeUp(w, tex, { target: () => hand(caster), palette: P.holy, duration: 350 });
       const at = { x: caster.feet.x + caster.facing * 120, y: caster.feet.y + 40, z: 0 };
       summonCircle(w, tex, { ...at, palette: P.holy, radius: 70, duration: 1200, columnAlpha: 0.2,
         onSummon: () => {
           summon?.(at, 'neutral', true);
-          w.after(200, () => spiritGuardian(w, tex, { ...at, palette: P.holy, height: caster.height * 1.4, duration: 1200 }));
+          w.after(200, () => spiritGuardian(w, tex, { ...at, palette: P.holy, height: caster.height * 1.4,
+            target: feetOf(target), strikes: 3,
+            onStrike: (i, impact) => {
+              const angle = Math.atan2((impact.y - at.y) / w.groundSquash, impact.x - at.x);
+              const victims = i === 2 ? near(impact, caster.height * 1.5, targets) : [target];
+              victims.forEach((u) => hurt(u, i === 2 ? 185 : 92, { palette: P.holy, angle, crit: i === 2 }));
+            },
+          }));
         },
       });
     },
