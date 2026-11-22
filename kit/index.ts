@@ -6,6 +6,8 @@ export * from './recipes';
 export * from './blender';
 export * from './group';
 export * from './elements';
+export * from './palette';
+export * from './thunder';
 export * from './numbers';
 export * from './status';
 export * from './motion';

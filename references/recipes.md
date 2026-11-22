@@ -1,7 +1,7 @@
 # Recipe catalog
 
-All recipes live in `kit/recipes.ts`, take ground coordinates `(x, y)` plus height `z`, and a
-`Palette` (`{ core, main, dark }`). Copy the closest one and change it; recipes are examples,
+Recipes are exported from `kit/index.ts` and implemented in the modules below. Most take
+ground coordinates `(x, y)` plus height `z`, and a `Palette` (`{ core, main, dark }`). Copy the closest one and change it; recipes are examples,
 not a framework to extend with options.
 
 | Recipe | Layers it builds | Typical use | Key knobs |
@@ -15,6 +15,8 @@ not a framework to extend with options.
 | `telegraph` | pulsing ground ring, faint area, fill that grows over the cast | enemy AoE warnings, cast bars on the ground | `radius`, `duration`, `onDone`, `finishAlpha` (0 disables the finish flash) |
 | `meteor` | `telegraph` -> `projectile` from the sky -> big `explosion` | ultimates; shows composition | `radius`, `castMs` |
 | `lightningChain` | jagged beams (glow + core) between points, re-rolled every 65 ms, glows and sparks at each hit | chain lightning, beams, tethers | `points`, `flickers`, `width`, `impactIntensity` (default 1) |
+| `lightningStrike` (`thunder.ts`) | heavy forked sky bolt with violet halo, three flickers, colored impact flash, scorch, sparks, shockwave, shake and hit-stop | instant lightning impact; caller supplies telegraph | `x`, `y`, `palette`, `radius`, `delay`, `onHit` (once) |
+| `staticField` (`thunder.ts`) | violet ground glow/ring, frequent jagged arcs, rim sparks | sustained lightning AoE; returns handle | `x`, `y`, `radius`, `palette`, `duration`, `onTick` (every 500 ms) |
 | `healAura` | ground pad + shrinking rings, vertical column glow, rising swaying motes, some stars | heals, buffs, auras (return handle) | `target` (follow fn), `radius`, `duration` |
 | `damageNumber` | baked outlined digit sprites in `top`, pop + drift | every hit/heal/tick | `value`, `color`, `crit`, `size` |
 | `damageOverTime` | body tint + per-kind ambience (poison bubbles, burn flames/embers, bleed drops with ground splats), tick pulse + number | poison, burn, bleed | `kind`, `duration`, `tickMs`, `damage`, `onTick` |
@@ -29,7 +31,7 @@ not a framework to extend with options.
 | `leap` / `slam` | dust, airborne shadow, trail; slam: shockwave, cracks, dust ring, rock debris, shake | jump attacks, ground pound | `arc`, `duration`, `radius`, `onLand` |
 | `beam` | laser: stacked beams, motes and end glows; water: rolling puffs, droplets, splash spray, foam rings and wet ground glow | lasers, water jets, drains | `from`, `to` (functions), `width`, `duration`, `style: 'laser' \| 'water'`, `impactSparks` |
 | `coneBreath` | puffs fanned along a moving angle, element bits (embers/shards/leaves), lit ground | dragon breath, frost spray, poison spray | `style`, `range`, `spread`, `angle()` |
-| `chargeUp` | streaks converging on a point, growing glow, shrinking rings, release flash | any windup | `duration`, `onDone` |
+| `chargeUp` | streaks converging on a point, growing glow, shrinking rings, release flash | any windup | `duration`, `onDone`, `release: { color, size, coreSize, alpha }` (optional; defaults unchanged) |
 | `summonCircle` | two counter-rotating rune circles, rising pillars, spiralling motes, light column + shockwave | summons, portals | `radius`, `duration`, `onSummon` |
 | `spike` / `spikeLine` / `spikeRing` | lit spikes that rise, hold and sink, crater, debris, dust; `ice` variant | earth fissure, ice path, frost nova | `count`, `spacing`, `height`, `onSpike` |
 | `swordRain` | falling blades with light streaks that stick in the ground, impact sparks | metal ultimates | `radius`, `count`, `duration`, `onImpact` |
@@ -39,6 +41,15 @@ not a framework to extend with options.
 | `windWisps` | three ribbon helices orbiting the unit, curl-noise motes | haste, tailwind, wind aura | `target`, `radius`, `height`, `duration` |
 | `gustLines` | burst of horizontal speed lines along a ground angle | knockback, dash, tailwind | `angle`, `count`, `spread` |
 | `ribbonTrail` | rope mesh through the target's recent positions | any fast mover (see advanced-fx.md) | `width`, `segments`, `tint`, `fadeMs` |
+
+## Extended statuses
+
+`kit/status.ts` also exports `shock`, `silence`, `blind`, `armorBreak`, `mark`, `fear`,
+`aura`, `regen`, `haste` and `empower`. They use `target: () => feet`, optional height,
+palette and duration, and return handles. The nine additions after `shock` support Infinity
+until `stop()`. See the [complete status catalog](extending.md#status-catalog) for silhouettes,
+buff/debuff/CC roles, tick options and cleanup, and the [composition guide](extending.md#compose-a-skill-and-synchronize-gameplay)
+for phase timing and gameplay callbacks.
 
 ## Making a new skill
 

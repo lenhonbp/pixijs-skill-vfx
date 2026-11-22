@@ -6,6 +6,7 @@ import { VfxTextures, TEX_METRICS as M } from './textures';
 import { blend } from './pixi-compat';
 import { Distortion } from './postfx';
 import { ribbonTrail } from './trail';
+import { lightningBolt } from './lightning-bolt';
 import { colorRamp, envelope, inQuad, outCubic, outExpo, outQuad, rand, lerp, lerpColor } from './ease';
 
 export interface Palette {
@@ -294,40 +295,15 @@ export function meteor(w: VfxWorld, tex: VfxTextures, o: { x: number; y: number;
   });
 }
 
-function jagged(a: { x: number; y: number }, b: { x: number; y: number }, depth: number, disp: number, out: { x: number; y: number }[]) {
-  if (depth === 0) {
-    out.push(b);
-    return;
-  }
-  const dx = b.x - a.x, dy = b.y - a.y;
-  const len = Math.hypot(dx, dy) || 1;
-  const m = { x: (a.x + b.x) / 2 + (-dy / len) * rand(-disp, disp), y: (a.y + b.y) / 2 + (dx / len) * rand(-disp, disp) };
-  jagged(a, m, depth - 1, disp / 2, out);
-  jagged(m, b, depth - 1, disp / 2, out);
-}
-
 /** Chain lightning through `points` (caster first). Re-rolls the bolt a few times for flicker. */
 export function lightningChain(w: VfxWorld, tex: VfxTextures, o: { points: Vec3[]; palette: Palette; flickers?: number; width?: number; impactIntensity?: number }) {
   const p = o.palette;
   const width = o.width ?? 1;
   const flickers = o.flickers ?? 4;
   const impact = o.impactIntensity ?? 1;
-  const screen = o.points.map((q) => ({ x: q.x, y: q.y - (q.z ?? 40), gy: q.y }));
+  const points = o.points.map((q) => ({ x: q.x, y: q.y, z: q.z }));
   const bolt = () => {
-    for (let i = 0; i < screen.length - 1; i++) {
-      const a = screen[i], b = screen[i + 1];
-      const pts = [a];
-      jagged(a, b, 5, Math.hypot(b.x - a.x, b.y - a.y) * 0.18, pts);
-      const gy = Math.max(a.gy, b.gy) + 5;
-      for (let j = 0; j < pts.length - 1; j++) {
-        const s = pts[j], e = pts[j + 1];
-        const len = Math.hypot(e.x - s.x, e.y - s.y);
-        const rot = Math.atan2(e.y - s.y, e.x - s.x);
-        const seg = { texture: tex.beam, x: s.x, y: gy, z: gy - s.y, anchorX: 0, rotation: rot, scaleX: (len + 1) / M.beamLength, life: 90 } as const;
-        w.spawn({ ...seg, scaleY: 1.6 * width, alpha: [0.55, 0], tint: p.main });
-        w.spawn({ ...seg, scaleY: 0.4 * width, alpha: [1, 0.2], tint: p.core, zBias: 1 });
-      }
-    }
+    for (let i = 0; i < points.length - 1; i++) lightningBolt(w, tex, points[i], points[i + 1], p, { width });
   };
   for (let f = 0; f < flickers; f++) w.after(f * 65, bolt);
   o.points.forEach((q, i) => {

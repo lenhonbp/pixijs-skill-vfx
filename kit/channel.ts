@@ -222,14 +222,15 @@ export function coneBreath(
 }
 
 /** Gather energy at a point (hand, staff tip) for `duration`, then flash and call onDone. */
-export function chargeUp(w: VfxWorld, tex: VfxTextures, o: { target: () => Vec3; palette: Palette; duration?: number; size?: number; onDone?: () => void }): Handle {
+export function chargeUp(w: VfxWorld, tex: VfxTextures, o: { target: () => Vec3; palette: Palette; duration?: number; size?: number; release?: { color?: number; size?: number; coreSize?: number; alpha?: number }; onDone?: () => void }): Handle {
   const p = o.palette;
   const dur = o.duration ?? 800;
   const s = o.size ?? 1;
   const g = group(w, dur, () => {
     const t = o.target();
-    w.spawn({ texture: tex.glow, x: t.x, y: t.y, z: t.z ?? 40, life: 160, zBias: 6, scale: [1.2 * s, 2.4 * s, outQuad], alpha: [0.9, 0], tint: p.core });
-    w.spawn({ texture: tex.star, x: t.x, y: t.y, z: t.z ?? 40, life: 200, zBias: 7, rotation: rand(0, TAU), scale: [1.3 * s, 0], tint: p.core });
+    const releaseSize = s * (o.release?.size ?? 1);
+    w.spawn({ texture: tex.glow, x: t.x, y: t.y, z: t.z ?? 40, life: 160, zBias: 6, scale: [1.2 * releaseSize, 2.4 * releaseSize, outQuad], alpha: [o.release?.alpha ?? 0.9, 0], tint: o.release?.color ?? p.core });
+    w.spawn({ texture: tex.star, x: t.x, y: t.y, z: t.z ?? 40, life: 200, zBias: 7, rotation: rand(0, TAU), scale: [1.3 * s * (o.release?.coreSize ?? 1), 0], tint: p.core });
     o.onDone?.();
   }, 60);
   g.add(w.spawn({ texture: tex.glow, x: 0, y: 0, follow: o.target, life: dur, zBias: 5, scale: [0.3 * s, 1.3 * s, inQuad], alpha: (t) => 0.6 + 0.3 * Math.sin(t * 60), tint: p.main }));

@@ -44,6 +44,8 @@ export interface VfxTextures {
   tendril: Texture;
   /** Plus/cross. Size 48. Heals. */
   plus: Texture;
+  /** Split shield outline with a jagged crack. 64x80. Armor break. */
+  crackedShield: Texture;
   /** Glyphs '0'-'9', '+', '-', '!' : white fill with black outline (tint colors the fill only). Height 64. */
   digits: Record<string, Texture>;
 }
@@ -356,6 +358,21 @@ export function createVfxTextures(): VfxTextures {
     return textureFromCanvas(c);
   })();
 
+  const crackedShield = (() => {
+    const [c, ctx] = makeCanvas(64, 80);
+    ctx.strokeStyle = 'white'; ctx.fillStyle = 'rgba(255,255,255,0.22)';
+    ctx.lineWidth = 5; ctx.lineJoin = 'round';
+    for (const points of [
+      [[8, 10], [29, 10], [23, 29], [32, 37], [22, 49], [28, 69], [10, 47]],
+      [[37, 10], [56, 10], [54, 47], [36, 69], [30, 52], [40, 35], [31, 27]],
+    ]) {
+      ctx.beginPath();
+      points.forEach(([x, y], i) => i ? ctx.lineTo(x, y) : ctx.moveTo(x, y));
+      ctx.closePath(); ctx.fill(); ctx.stroke();
+    }
+    return textureFromCanvas(c);
+  })();
+
   const digits: Record<string, Texture> = {};
   for (const ch of '0123456789+-!') {
     const [c, ctx] = makeCanvas(44, 64);
@@ -368,5 +385,5 @@ export function createVfxTextures(): VfxTextures {
     digits[ch] = textureFromCanvas(c);
   }
 
-  return { glow, dot, ring, disc, streak, beam, star, puff, crescent, shard, blade, spike, rock, leaf, drop, chevron, rune, bubble, tendril, plus, digits };
+  return { glow, dot, ring, disc, streak, beam, star, puff, crescent, shard, blade, spike, rock, leaf, drop, chevron, rune, bubble, tendril, plus, crackedShield, digits };
 }
