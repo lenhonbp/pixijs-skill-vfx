@@ -14,6 +14,7 @@ import {
   lightningStrike, staticField,
   dash, blink, leap, beam, chargeUp, summonCircle, spikeLine, spikeRing, swordRain,
   random, rand, envelope, outCubic, outQuad, lerp, clamp01,
+  frostNova, glacierPath, tidalBeam,
 } from '../kit';
 
 export interface Unit {
@@ -222,28 +223,25 @@ export const SKILLS: SkillDef[] = [
   // ------------------------------------------------------------------ THỦY / WATER
   {
     id: 'thuy-frost-nova', element: 'thuy', category: 'control', en: 'Frost Nova', vi: 'Băng Phong Tỏa',
-    desc: 'Ice spikes erupt around the target and freeze it solid, then it shatters.', uses: ['chargeUp', 'shockwave', 'spikeRing', 'freeze'], length: 3300,
+    desc: 'Ice spikes erupt around the target and freeze it solid, then it shatters.', uses: ['chargeUp', 'frostNova'], length: 3300,
     cast: ({ w, tex, caster, target, hurt }) => {
       chargeUp(w, tex, {
         target: () => hand(caster), palette: P.thuy, duration: 500,
         onDone: () => {
-          const c = target.feet;
-          shockwave(w, tex, { x: c.x, y: c.y, radius: 110, palette: P.thuy });
-          spikeRing(w, tex, { x: c.x, y: c.y, radius: 70, count: 10, height: 60, ice: true });
           hurt(target, 58, { palette: P.thuy, feedback: 0.3 });
-          freeze(w, tex, { target: feetOf(target), height: target.height, duration: 2200, glowIntensity: 0.25, onShatter: () => hurt(target, 120, { palette: P.thuy, crit: true, feedback: 0.3 }) });
+          frostNova(w, tex, { target: feetOf(target), height: target.height, palette: P.thuy, duration: 2200, onShatter: () => hurt(target, 120, { palette: P.thuy, crit: true, feedback: 0.3 }) });
         },
       });
     },
   },
   {
     id: 'thuy-tidal-beam', element: 'thuy', category: 'channel', en: 'Tidal Beam', vi: 'Thủy Long Xạ',
-    desc: 'A channeled torrent that drenches and slows the target.', uses: ['chargeUp', 'beam', 'slow'], length: 3800,
+    desc: 'A channeled water dragon torrent that drenches and slows the target.', uses: ['chargeUp', 'tidalBeam', 'slow'], length: 3800,
     cast: ({ w, tex, caster, target, hurt }) => {
       chargeUp(w, tex, {
         target: () => hand(caster), palette: P.thuy, duration: 380,
         onDone: () => {
-          const b = beam(w, tex, { from: () => hand(caster), to: () => chest(target), palette: P.thuy, width: 1.1, duration: 1500, style: 'water' });
+          const b = tidalBeam(w, tex, { from: () => hand(caster), to: () => chest(target), palette: P.thuy, duration: 1500 });
           for (let i = 0; i < 5; i++) w.after(150 + i * 280, () => b.alive && hurt(target, Math.round(rand(20, 28)), { palette: P.thuy, angle: Math.PI * (caster.facing > 0 ? 1 : 0) }));
           w.after(1500, () => slow(w, tex, { target: feetOf(target), height: target.height, duration: 2000 }));
         },
@@ -252,12 +250,12 @@ export const SKILLS: SkillDef[] = [
   },
   {
     id: 'thuy-glacier-path', element: 'thuy', category: 'aoe', en: 'Glacier Path', vi: 'Băng Hà Lộ',
-    desc: 'A line of ice spears races along the ground toward the enemy.', uses: ['telegraph', 'spikeLine(ice)', 'slow'], length: 2900,
+    desc: 'A jagged glacier ridge fractures the ground toward the enemy.', uses: ['telegraph', 'glacierPath', 'slow'], length: 2900,
     cast: ({ w, tex, caster, target, targets, hurt }) => {
       telegraph(w, tex, {
         ...caster.feet, radius: 42, duration: 300, palette: P.thuy,
-        onDone: () => spikeLine(w, tex, {
-          from: caster.feet, angle: angleTo(w, caster, target), count: 9, spacing: 44, height: 70, ice: true,
+        onDone: () => glacierPath(w, tex, {
+          from: caster.feet, angle: angleTo(w, caster, target), count: 9, spacing: 44, height: 85, palette: P.thuy,
           onSpike: (at) => near(at, 34, targets).forEach((u) => { hurt(u, 47, { palette: P.thuy, angle: -Math.PI / 2, feedback: 0.25 }); slow(w, tex, { target: feetOf(u), height: u.height, duration: 1600 }); }),
         }),
       });
