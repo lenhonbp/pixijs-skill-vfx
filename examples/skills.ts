@@ -10,7 +10,7 @@ import {
   fireball, fireBreath, fireCharge, fireDragonCrossing, fireImpact, fireMeteor,
   woodCharge, seedFlight, springBloom, toxicSporeCloud,
   damageOverTime, stun, shock, freeze, slow, root, statChange, damageNumber,
-  silence, blind, armorBreak, mark, fear, aura, empower, haste,
+  silence, blind, armorBreak, mark, fear, aura, empower, haste, sigilCharge, sunderingMark,
   goldenBell, metalSlash, metalSparks, swordSalute, stoneArmor, spiritGuardian, mountainCrash,
   lightningStrike, staticField, lightningCharge, lightningWarning, lightningStun, stormCloud,
   dash, blink, leap, beam, chargeUp, summonCircle, spikeLine, spikeRing, swordRain,
@@ -625,18 +625,19 @@ export const SKILLS: SkillDef[] = [
   // ------------------------------------------------------------------ NEUTRAL / UTILITY
   {
     id: 'seal-silence', element: 'neutral', category: 'debuff', en: 'Silencing Seal', vi: 'Phong Ấn Thuật',
-    timing: { windup: 280, hits: [], recovery: 3520 },
+    timing: { windup: 300, hits: [], recovery: 3500 },
     desc: 'A sealing rune flies into the target, locking its voice and veiling its eyes.',
-    uses: ['chargeUp', 'projectile', 'hitSpark', 'silence', 'blind'], length: 3800,
+    uses: ['sigilCharge', 'chargeUp', 'projectile', 'hitSpark', 'silence', 'blind'], length: 3800,
     cast: ({ w, tex, caster, target }) => {
-      chargeUp(w, tex, { target: () => hand(caster), palette: P.shadow, duration: 280,
+      sigilCharge(w, tex, { target: () => hand(caster), palette: P.shadow, duration: 300 });
+      chargeUp(w, tex, { target: () => hand(caster), palette: P.shadow, duration: 300,
         release: { color: P.shadow.main, size: 0.5, coreSize: 0.18, alpha: 0.3 },
         onDone: () => projectile(w, tex, { from: hand(caster), to: chest(target, 0.8), palette: P.shadow,
-          speed: 950, size: 0.5, onHit: () => {
+          speed: 950, size: 0.85, seal: true, onHit: () => {
             hitSpark(w, tex, { ...chest(target, 0.8), palette: { ...P.shadow, core: P.shadow.main }, size: 0.5 });
             w.spawn({ texture: tex.rune, ...target.feet, z: 35, life: 340,
               vz: -100, scale: [0.21, 0.12, outQuad], alpha: envelope(0.1, 0.5, 0.7), tint: P.shadow.main });
-            silence(w, tex, { target: feetOf(target), height: target.height, duration: 2400 });
+            silence(w, tex, { target: feetOf(target), height: target.height, duration: 2400, palette: P.shadow });
             blind(w, tex, { target: feetOf(target), height: target.height, duration: 2400 });
           },
         }),
@@ -646,14 +647,15 @@ export const SKILLS: SkillDef[] = [
   {
     id: 'sunder-mark', element: 'neutral', category: 'debuff', en: 'Sundering Mark', vi: 'Phá Giáp Ấn',
     timing: { windup: 300, hits: [], recovery: 3500 },
-    desc: 'Staggered curse marks fracture enemy armor and send fearful wisps fleeing upward.',
-    uses: ['chargeUp', 'mark', 'armorBreak', 'fear'], length: 3800,
+    desc: 'Descending reticles lock onto enemies, shattering their armor into glowing fragments.',
+    uses: ['sigilCharge', 'chargeUp', 'sunderingMark'], length: 3800,
     cast: ({ w, tex, caster, targets }) => {
-      chargeUp(w, tex, { target: () => hand(caster), palette: P.shadow, duration: 300,
-        release: { color: P.shadow.main, size: 0.5, coreSize: 0.18, alpha: 0.3 },
-        onDone: () => targets.forEach((u, i) => w.after(i * 150, () => {
-          const at = { target: feetOf(u), height: u.height, duration: 2400 };
-          mark(w, tex, at); armorBreak(w, tex, at); fear(w, tex, at);
+      const palette = { core: 0xffd59a, main: 0xf36b38, dark: 0x542027 };
+      sigilCharge(w, tex, { target: () => hand(caster), palette, duration: 300, reticle: true });
+      chargeUp(w, tex, { target: () => hand(caster), palette, duration: 300,
+        release: { color: palette.main, size: 0.5, coreSize: 0.18, alpha: 0.3 },
+        onDone: () => targets.forEach((u, i) => w.after(i * 180, () => {
+          sunderingMark(w, tex, { target: feetOf(u), height: u.height, duration: 2200, palette });
         })),
       });
     },
