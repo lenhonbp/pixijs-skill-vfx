@@ -600,16 +600,16 @@
     "files": [
       {
         "name": "loi-heaven-strike.vfxb",
-        "bytes": 599772
+        "bytes": 597775
       },
       {
         "name": "loi-heaven-strike.m.vfxb",
-        "bytes": 266166
+        "bytes": 264299
       }
     ],
-    "bytes": 599772,
-    "desktopBytes": 599772,
-    "mobileBytes": 266166,
+    "bytes": 597775,
+    "desktopBytes": 597775,
+    "mobileBytes": 264299,
     "desktopScales": {
       "base": 1,
       "glow": 0.5
@@ -631,16 +631,16 @@
     "files": [
       {
         "name": "loi-thunder-domain.vfxb",
-        "bytes": 1474422
+        "bytes": 1468414
       },
       {
         "name": "loi-thunder-domain.m.vfxb",
-        "bytes": 686676
+        "bytes": 685374
       }
     ],
-    "bytes": 1474422,
-    "desktopBytes": 1474422,
-    "mobileBytes": 686676,
+    "bytes": 1468414,
+    "desktopBytes": 1468414,
+    "mobileBytes": 685374,
     "desktopScales": {
       "base": 1,
       "glow": 0.5

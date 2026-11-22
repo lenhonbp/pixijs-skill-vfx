@@ -33,16 +33,21 @@ function atmosphere() {
     const ground = ctx.createLinearGradient(0, 270, 0, 580);
     ground.addColorStop(0, '#252c32'); ground.addColorStop(1, '#111722');
     ctx.fillStyle = ground; ctx.fillRect(0, 285, 1000, 295);
-    for (let row = 0; row < 9; row++) {
-      const top = 285 + row * row * 4, bottom = 285 + (row + 1) ** 2 * 4;
-      for (let col = -2; col < 10; col++) {
-        const left = col * 150 + (row % 2) * 75;
-        ctx.fillStyle = `rgba(165,173,175,${0.018 + ((row * 7 + col * 3 + 40) % 5) * 0.007})`;
-        ctx.fillRect(left + 1, top + 1, 148, bottom - top - 2);
-        ctx.strokeStyle = '#05091040'; ctx.lineWidth = 1; ctx.strokeRect(left, top, 150, bottom - top);
-        ctx.strokeStyle = '#b5c1b609'; ctx.beginPath(); ctx.moveTo(left + 5, top + 2); ctx.lineTo(left + 145, top + 2); ctx.stroke();
+    const rows = [285, 300, 321, 350, 390, 445, 521, 626];
+    const project = (column: number, y: number) => 500 + column * 170 * (y - 230) / 350;
+    for (let row = 0; row < rows.length - 1; row++) {
+      const top = rows[row], bottom = rows[row + 1];
+      for (let col = -20; col < 20; col++) {
+        ctx.fillStyle = `rgba(165,173,175,${0.018 + ((row * 7 + col * 3 + 100) % 5) * 0.007})`;
+        ctx.beginPath(); ctx.moveTo(project(col, top), top); ctx.lineTo(project(col + 1, top), top);
+        ctx.lineTo(project(col + 1, bottom), bottom); ctx.lineTo(project(col, bottom), bottom); ctx.closePath(); ctx.fill();
+        ctx.strokeStyle = '#05091060'; ctx.lineWidth = 1; ctx.stroke();
+        ctx.strokeStyle = '#c4b18b10'; ctx.beginPath(); ctx.moveTo(project(col, top + 1), top + 1); ctx.lineTo(project(col + 1, top + 1), top + 1); ctx.stroke();
       }
     }
+    const floorMist = ctx.createLinearGradient(0, 285, 0, 355);
+    floorMist.addColorStop(0, '#252c32'); floorMist.addColorStop(0.35, '#29323bda'); floorMist.addColorStop(1, '#29323b00');
+    ctx.fillStyle = floorMist; ctx.fillRect(0, 285, 1000, 70);
     ctx.save(); ctx.translate(500, 367); ctx.scale(1, 0.38);
     const light = ctx.createRadialGradient(0, 0, 30, 0, 0, 450);
     light.addColorStop(0, '#dcc99b20'); light.addColorStop(0.65, '#b9bdad0c'); light.addColorStop(1, '#c1b68a00');
