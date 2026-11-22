@@ -88,8 +88,11 @@ or top flash at tiers 2/3. Use `empoweredAura` for a sustained post-release remn
 Use `skillEvolution(w, tex, { at, height, palette, element, fromTier, toTier })` for the
 1600 ms one-shot upgrade with element-specific gather → transform → stamp beats:
 converging blades, blooming vine spiral, water spiral/crystal crest, flame vortex,
-rising/slamming rocks, cyclone or lightning cage/strike. Utility gathers palette
-rings. The destination motif stamps at 950 ms; there is no shared rune stack.
+rising/slamming rocks, cyclone or lightning cage/strike. Water gathers three broad
+inward streams and six droplets. Utility gathers four inscribed talismans, folds
+them into a floating emblem above the head, then stamps a grounded halo with
+orbiting talismans in the supplied palette. The destination motif stamps at 950 ms;
+there is no shared rune stack.
 For gameplay after release, run `empoweredAura` for the skill's length and call
 `empoweredHit` at each positive-damage target's chest. Both are no-ops at tier 1.
 Pass an `empoweredWorld(world, { tier, palette, textures })` facade to the skill itself:
@@ -107,11 +110,14 @@ the shared world and tier 1 remain unchanged. Damage in the demo scales 1.3x/1.7
 with tier-3 crit numbers. `empoweredAura` returns a stoppable handle and accepts
 `duration: Infinity, idle: true` for a persistent motif (one to seven sprites, or two/three short lightning ribbons).
 Pass `element` to activation, evolution, aura and hit helpers: `kim` orbiting blades
-and a thin ring; `moc` leaf spiral and ground vines/ring; `thuy` ripples and frost shards;
-`hoa` flame tongues/embers; `tho` low rocks and dust ring (cracks only during activation);
+and a thin ring; `moc` leaf spiral and ground vines/ring; `thuy` two/three orbiting droplets and a slow ripple;
+`hoa` two/three low orbiting flame wisps and an ember mote; `tho` low rocks and dust ring (cracks only during activation);
 `phong` wind spirals; `loi` continuous feet/leg arcs and violet ground ring.
 Tier 2 is a lighter version of tier 3. Unknown/neutral elements use a visible
-ground halo (alpha <=0.5) in the supplied skill palette, never across the torso.
+ground halo (alpha <=0.5) with two/three orbiting inscribed talismans in the supplied
+skill palette. Water/fire/utility objects stay wide at shin/knee height, behind
+the body, including the evolution stamp and idle with no cast. At tier 3 they use
+four/five/four sprites respectively; no repeated idle emission or body-height flame column.
 No evolved caster motif uses the shared rune or a bright body glow; all render
 behind the caster, and floor rings follow x/y with z=0, even during jumps.
 Always keep native `hitSpark`/authored hit feedback at every tier: `empoweredHit`
