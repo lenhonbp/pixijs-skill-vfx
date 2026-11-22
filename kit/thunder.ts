@@ -30,11 +30,11 @@ export function stormCloud(w: VfxWorld, tex: VfxTextures,
   };
   unown = w.own(stop);
   updater = w.addUpdater((dt) => {
-    age += dt; flash = Math.max(0, flash - dt / 150);
+    age += dt; flash = Math.max(0, flash - dt / 200);
     if (age >= duration) { stop(); return false; }
     root.alpha = clamp01(age / 260) * clamp01((duration - age) / 500);
     root.scale.set(0.88 + 0.12 * clamp01(age / 400));
-    body.alpha = 0.94; light.alpha = flash * 0.8;
+    body.alpha = 0.94; light.alpha = flash * 1.15;
     root.y = o.y - height + Math.sin(age * 0.0015) * 2;
   });
   return { get alive() { return alive; }, stop, source, flash() {
@@ -45,30 +45,41 @@ export function stormCloud(w: VfxWorld, tex: VfxTextures,
   } };
 }
 
-/** Restrained violet hand charge; no release starburst. */
+/** Violet gathering orb and inward motes; no white release starburst. */
 export function lightningCharge(w: VfxWorld, tex: VfxTextures,
   o: { target: () => Vec3; palette: Palette; duration?: number; onDone?: () => void }): Handle {
   const duration = o.duration ?? 300;
   if (!Number.isFinite(duration)) throw new RangeError('Invalid charge duration');
+  const p = shiftPalette(o.palette, { hue: 24, sat: 1.5, light: -0.12 });
   const g = group(w, duration > 0 ? Infinity : 0);
   if (duration <= 0) return g;
   g.addHandle(w.after(duration, () => {
     g.stop();
     const at = o.target();
-    w.spawn({ texture: tex.glow, ...at, life: 120, scale: [0.18, 0], alpha: [0.3, 0], tint: o.palette.main });
+    w.spawn({ texture: tex.glow, ...at, life: 120, scale: [0.5, 0], alpha: [0.6, 0], tint: p.main });
+    w.spawn({ texture: tex.dot, ...at, life: 120, blend: 'normal',
+      scale: [0.7, 0.1], alpha: [0.95, 0], tint: p.main });
     o.onDone?.();
   }));
   g.add(w.spawn({ texture: tex.glow, x: 0, y: 0, follow: o.target, life: duration,
-    scale: [0.09, 0.18], alpha: [0.1, 0.3], tint: o.palette.main }));
+    scale: [0.35, 1], alpha: [0.3, 0.55], tint: p.main }));
+  g.add(w.spawn({ texture: tex.dot, x: 0, y: 0, follow: o.target, life: duration,
+    blend: 'normal', scale: [0.22, 0.7], alpha: [0.4, 1], tint: p.main }));
+  for (let i = 0; i < 6; i++) {
+    const a = i * Math.PI / 3, radius = 30 + i * 3;
+    g.add(w.spawn({ texture: tex.dot, x: 0, y: 0, follow: o.target, life: duration,
+      scale: [0.085, 0.025], alpha: envelope(0.12, 0.25, 0.85), tint: p.main,
+      onUpdate: (q, t) => { q.px = Math.cos(a + t) * radius * (1 - t); q.pz = Math.sin(a + t) * radius * (1 - t); } }));
+  }
   let age = 0, next = 0;
   g.addHandle(w.addUpdater((dt) => {
     age += dt;
     if (age >= next && age < duration) {
       next = age + 65;
-      const at = o.target(), a = rand(0, Math.PI * 2), r = 14;
+      const at = o.target(), a = rand(0, Math.PI * 2), r = 22 + clamp01(age / duration) * 8;
       g.addHandle(lightningBolt(w, tex, { x: at.x + Math.cos(a) * r, y: at.y, z: (at.z ?? 0) + Math.sin(a) * r },
-        { x: at.x - Math.cos(a) * 7, y: at.y, z: (at.z ?? 0) - Math.sin(a) * 7 }, o.palette,
-        { width: 0.4, life: 90, coreAlpha: 0.5, halo: 0.08, branches: 1 }));
+        { x: at.x + Math.cos(a + 1.3) * r * 0.85, y: at.y, z: (at.z ?? 0) + Math.sin(a + 1.3) * r * 0.85 }, p,
+        { width: 0.7, life: 100, coreAlpha: 0.65, halo: 0.12, branches: 1, afterglow: 0.3 }));
     }
   }));
   return g;
@@ -114,9 +125,15 @@ export function lightningWarning(w: VfxWorld, tex: VfxTextures,
 export function lightningImpact(w: VfxWorld, tex: VfxTextures, o: { x: number; y: number; radius?: number; palette: Palette }) {
   const r = o.radius ?? 35, p = o.palette;
   w.spawn({ texture: tex.glow, x: o.x, y: o.y, layer: 'ground', groundAligned: true,
-    life: 100, scaleX: r / 45, scaleY: r / 85, alpha: [0.5, 0], tint: p.main });
+    life: 140, scaleX: r / 42, scaleY: r / 42, alpha: [0.8, 0], tint: p.main });
+  w.spawn({ texture: tex.disc, x: o.x, y: o.y, layer: 'ground', groundAligned: true,
+    life: 120, scale: r / 128, alpha: (t) => 0.8 * Math.min(1, (1 - t) / 0.6), tint: 0xd4c5ff });
+  w.spawn({ texture: tex.dot, x: o.x, y: o.y, z: 5, life: 90,
+    scale: [0.13, 0], alpha: [0.95, 0], tint: 0xf7f3ff });
+  w.spawn({ texture: tex.glow, x: o.x, y: o.y, layer: 'ground', groundAligned: true, blend: 'normal',
+    life: 1100, scaleX: r / 48, scaleY: r / 58, alpha: envelope(0.12, 0.75, 0.6), tint: 0x171321 });
   w.spawn({ texture: tex.swordCrack, x: o.x, y: o.y, layer: 'ground', groundAligned: true, blend: 'normal',
-    life: 1000, scale: r / 26, rotation: rand(0, Math.PI * 2), alpha: [0.65, 0], tint: 0x171727 });
+    life: 1100, scale: r / 28, rotation: rand(0, Math.PI * 2), alpha: envelope(0.12, 0.75, 0.7), tint: 0x171321 });
   w.spawn({ texture: tex.puff, x: o.x, y: o.y, z: 4, blend: 'normal', life: 650,
     vz: 22, vx: 8, scaleX: [0.18, 0.45], scaleY: [0.25, 0.75], alpha: envelope(0.08, 0.8, 0.24), tint: 0x62667c });
   for (let i = 0; i < 3; i++) {
@@ -143,7 +160,7 @@ export function lightningStrike(w: VfxWorld, tex: VfxTextures,
     const cloud = o.cloud ?? stormCloud(w, tex, { ...o, height, width: 230, duration: 650 });
     cloud.flash();
     lightningBolt(w, tex, cloud.source(o.x + rand(-28, 28)), { x: o.x, y: o.y, z: 0 }, p,
-      { width: 2, life: 230, halo: 0.1, branches: 3 });
+      { width: 2.5, life: 230, halo: 0.14, branches: 3, afterglow: 0.55 });
     lightningImpact(w, tex, { ...o, radius: r, palette: p });
     if ((o.shake ?? 4) > 0) w.shake(o.shake ?? 4, 180);
     if ((o.hitStop ?? 25) > 0) w.hitStop(o.hitStop ?? 25);
@@ -153,7 +170,7 @@ export function lightningStrike(w: VfxWorld, tex: VfxTextures,
   else strike();
 }
 
-/** Sustained, low-intensity ground arcs; finite sparks dissipate after stop(). */
+/** Charged floor and crawling channels; finite sparks dissipate after stop(). */
 export function staticField(w: VfxWorld, tex: VfxTextures,
   o: { x: number; y: number; radius: number; palette: Palette; duration: number; onTick?: () => void;
     targets?: () => Vec3[]; cloud?: StormCloudHandle | false }): Handle {
@@ -162,10 +179,12 @@ export function staticField(w: VfxWorld, tex: VfxTextures,
   const cloud = o.cloud === false ? undefined : o.cloud ?? stormCloud(w, tex,
     { ...o, width: r * 2.4, duration: o.duration + 450 });
   if (cloud) g.addHandle(cloud);
+  g.add(w.spawn({ texture: tex.disc, layer: 'ground', groundAligned: true,
+    x: o.x, y: o.y, life: o.duration, scale: r / 128, alpha: ms.env(o.duration, 180, 350, 0.14), tint: p.main }));
   g.add(w.spawn({ texture: tex.rune, layer: 'ground', groundAligned: true,
-    x: o.x, y: o.y, life: o.duration, scale: r / 236, alpha: ms.env(o.duration, 200, 350, 0.045), tint: p.main }));
+    x: o.x, y: o.y, life: o.duration, scale: r / 236, alpha: ms.env(o.duration, 200, 350, 0.18), tint: p.main }));
   const rim = floorRing(w, tex, { x: o.x, y: o.y, radius: r, palette: p,
-    duration: o.duration, alpha: ms.env(o.duration, 150, 250, 0.075) });
+    duration: o.duration, alpha: ms.env(o.duration, 150, 250, 0.22) });
   g.add(rim.far); g.add(rim.near);
   const point = (rim = false) => {
     const a = rand(0, Math.PI * 2), d = (rim ? 1 : Math.sqrt(random())) * r;
@@ -174,11 +193,13 @@ export function staticField(w: VfxWorld, tex: VfxTextures,
   let arc = 0, age = 0, ticks = 0;
   g.addHandle(w.addUpdater((dt) => {
     arc += dt; age += dt;
-    if (age < o.duration && arc >= 90) {
-      arc %= 90;
-      const a = point(), angle = rand(0, Math.PI * 2), length = rand(20, 55);
-      lightningBolt(w, tex, a, { x: a.x + Math.cos(angle) * length, y: a.y + Math.sin(angle) * length * w.groundSquash, z: 3 },
-        p, { width: 0.5, alpha: 0.2, coreAlpha: 0.4, halo: 0.06, life: 190, branches: 1, layer: 'ground' });
+    if (age < o.duration && arc >= 65) {
+      arc %= 65;
+      for (let i = 0; i < 3; i++) {
+        const a = point(), angle = rand(0, Math.PI * 2), length = rand(30, 75);
+        lightningBolt(w, tex, a, { x: a.x + Math.cos(angle) * length, y: a.y + Math.sin(angle) * length * w.groundSquash, z: 3 },
+          p, { width: 1.05, alpha: 0.5, coreAlpha: 0.9, halo: 0.1, life: 210, branches: 1, layer: 'ground', afterglow: 0.45 });
+      }
     }
     while (g.alive && (ticks + 1) * tickMs <= Math.min(age, o.duration)) {
       ticks++;
@@ -186,7 +207,7 @@ export function staticField(w: VfxWorld, tex: VfxTextures,
       cloud?.flash();
       for (const at of targets) {
         lightningBolt(w, tex, cloud?.source(at.x + rand(-30, 30)) ?? { x: at.x, y: o.y, z: 225 }, { ...at, z: 0 }, p,
-          { width: 1.3, life: 210, branches: 2, halo: 0.09 });
+          { width: 2.3, life: 230, branches: 3, halo: 0.14, afterglow: 0.75 });
         lightningImpact(w, tex, { ...at, palette: p, radius: 26 });
       }
       o.onTick?.();

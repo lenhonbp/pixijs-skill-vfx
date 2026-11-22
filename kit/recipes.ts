@@ -317,7 +317,7 @@ export function lightningChain(w: VfxWorld, tex: VfxTextures, o: { points: Vec3[
   for (let i = 0; i < points.length - 1; i++) {
     if (flickers <= 0) break;
     g.addHandle(w.after(i * hop, () => g.addHandle(lightningBolt(w, tex, points[i], points[i + 1], p,
-      { width: width * 1.65, life, branches: 3, restrikes: Math.max(0, Math.ceil(flickers) - 1) }))));
+      { width: width * 2.2, life, branches: 3, afterglow: 0.16, restrikes: Math.max(0, Math.ceil(flickers) - 1) }))));
     const q = points[i + 1];
     if (impact > 0) g.addHandle(w.after(i * hop + 40, () => {
       g.add(w.spawn({ texture: tex.glow, ...q, z: q.z ?? 40, life: 90, scale: [0.25 * Math.sqrt(impact), 0],
