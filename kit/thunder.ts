@@ -47,9 +47,10 @@ export function stormCloud(w: VfxWorld, tex: VfxTextures,
 
 /** Violet gathering orb and inward motes; no white release starburst. */
 export function lightningCharge(w: VfxWorld, tex: VfxTextures,
-  o: { target: () => Vec3; palette: Palette; duration?: number; onDone?: () => void }): Handle {
+  o: { target: () => Vec3; palette: Palette; duration?: number; size?: number; onDone?: () => void }): Handle {
   const duration = o.duration ?? 300;
-  if (!Number.isFinite(duration)) throw new RangeError('Invalid charge duration');
+  const size = o.size ?? 1;
+  if (!Number.isFinite(duration) || !Number.isFinite(size) || size < 0) throw new RangeError('Invalid charge duration or size');
   const p = shiftPalette(o.palette, { hue: 24, sat: 1.5, light: -0.12 });
   const g = group(w, duration > 0 ? Infinity : 0);
   if (duration <= 0) return g;
@@ -58,13 +59,13 @@ export function lightningCharge(w: VfxWorld, tex: VfxTextures,
     const at = o.target();
     w.spawn({ texture: tex.glow, ...at, life: 120, scale: [0.5, 0], alpha: [0.6, 0], tint: p.main });
     w.spawn({ texture: tex.dot, ...at, life: 120, blend: 'normal',
-      scale: [0.7, 0.1], alpha: [0.95, 0], tint: p.main });
+      scale: [0.7 * size, 0.1 * size], alpha: [0.95, 0], tint: p.main });
     o.onDone?.();
   }));
   g.add(w.spawn({ texture: tex.glow, x: 0, y: 0, follow: o.target, life: duration,
-    scale: [0.35, 1], alpha: [0.3, 0.55], tint: p.main }));
+    scale: [0.35 * size, size], alpha: [0.3, 0.55], tint: p.main }));
   g.add(w.spawn({ texture: tex.dot, x: 0, y: 0, follow: o.target, life: duration,
-    blend: 'normal', scale: [0.22, 0.7], alpha: [0.4, 1], tint: p.main }));
+    blend: 'normal', scale: [0.22 * size, 0.7 * size], alpha: [0.4, 1], tint: p.main }));
   for (let i = 0; i < 6; i++) {
     const a = i * Math.PI / 3, radius = 30 + i * 3;
     g.add(w.spawn({ texture: tex.dot, x: 0, y: 0, follow: o.target, life: duration,
@@ -76,10 +77,10 @@ export function lightningCharge(w: VfxWorld, tex: VfxTextures,
     age += dt;
     if (age >= next && age < duration) {
       next = age + 65;
-      const at = o.target(), a = rand(0, Math.PI * 2), r = 22 + clamp01(age / duration) * 8;
+      const at = o.target(), a = rand(0, Math.PI * 2), r = (22 + clamp01(age / duration) * 8) * size;
       g.addHandle(lightningBolt(w, tex, { x: at.x + Math.cos(a) * r, y: at.y, z: (at.z ?? 0) + Math.sin(a) * r },
         { x: at.x + Math.cos(a + 1.3) * r * 0.85, y: at.y, z: (at.z ?? 0) + Math.sin(a + 1.3) * r * 0.85 }, p,
-        { width: 0.7, life: 100, coreAlpha: 0.65, halo: 0.12, branches: 1, afterglow: 0.3 }));
+        { width: 0.7 * Math.sqrt(size), life: 100, coreAlpha: 0.65, halo: 0.12, branches: 1, afterglow: 0.3 }));
     }
   }));
   return g;
@@ -155,13 +156,16 @@ export function lightningStrike(w: VfxWorld, tex: VfxTextures,
   o: { x: number; y: number; palette: Palette; radius?: number; delay?: number; onHit?: () => void;
     cloud?: StormCloudHandle; height?: number; hitStop?: number; shake?: number }) {
   const strike = () => {
-    const p = shiftPalette(o.palette, { hue: 12, sat: 1.5, light: -0.08 }), r = o.radius ?? 45;
+    const p = shiftPalette(o.palette, { hue: 24, sat: 1.8, light: -0.17 }), r = o.radius ?? 45;
     const height = o.height ?? 235;
     const cloud = o.cloud ?? stormCloud(w, tex, { ...o, height, width: 230, duration: 650 });
     cloud.flash();
     lightningBolt(w, tex, cloud.source(o.x + rand(-28, 28)), { x: o.x, y: o.y, z: 0 }, p,
-      { width: 2.5, life: 230, halo: 0.14, branches: 3, afterglow: 0.55 });
+      { width: 3, life: 360, halo: 0.32, haloWidth: 52, alpha: 0.75, branches: 3, afterglow: 0.65, hold: 220, layer: 'ground' });
     lightningImpact(w, tex, { ...o, radius: r, palette: p });
+    w.spawn({ texture: tex.disc, x: o.x, y: o.y, layer: 'ground', groundAligned: true,
+      life: 150, scale: r / 112, alpha: (t) => 0.85 * Math.min(1, (1 - t) / 0.4), tint: p.main });
+    w.after(75, () => cloud.flash());
     if ((o.shake ?? 4) > 0) w.shake(o.shake ?? 4, 180);
     if ((o.hitStop ?? 25) > 0) w.hitStop(o.hitStop ?? 25);
     o.onHit?.();
