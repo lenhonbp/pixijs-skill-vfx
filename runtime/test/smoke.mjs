@@ -71,6 +71,7 @@ const server = createServer(async (req, res) => {
     if (path === '/v7.js') { res.setHeader('Content-Type', 'text/javascript'); res.end(v7Bundle.outputFiles[0].contents); return; }
     if (path === '/feedback.vfxb' || path === '/invalid.vfxb') { res.end(path === '/feedback.vfxb' ? fixture(feedback, new Map()) : Buffer.from('invalid')); return; }
     if (path === '/offset.vfxb') { res.end(fixture(offset, decoded.sheets)); return; }
+    if (path === '/offset.json') { res.setHeader('Content-Type', 'application/json'); res.end(JSON.stringify(offset)); return; }
     if (path === '/destroy-cue.vfxb') { res.end(fixture(destroyCue, decoded.sheets)); return; }
     if (path === '/loop-cues.vfxb') { res.end(fixture(loopCues, new Map())); return; }
     if (path === '/slow.vfxb') { await new Promise(resolve => setTimeout(resolve, 40)); res.end(fixture(decoded.manifest, decoded.sheets)); return; }
@@ -93,6 +94,11 @@ try {
   page.on('pageerror', e => errors.push(e.message)); page.on('console', m => { if (m.type() === 'error') errors.push(m.text()); });
   const url = `http://127.0.0.1:${server.address().port}`;
   await page.goto(`${url}/collection/`); await page.waitForFunction(() => window.__showcase);
+  const desktopFirst = await page.evaluate(() => {
+    const resources = [...performance.getEntriesByType('navigation'), ...performance.getEntriesByType('resource')];
+    return { transfer: resources.reduce((n, r) => n + r.transferSize, 0), body: resources.reduce((n, r) => n + r.encodedBodySize, 0) };
+  });
+  console.log(`Desktop first load: ${desktopFirst.transfer} transferred bytes incl. HTTP overhead; ${desktopFirst.body} body bytes (index + selected hi pack only)`);
   const result = await page.evaluate(async () => {
     const { vfx, app, packs, from, to } = window.__showcase; app.stop();
     const check = (condition, message) => { if (!condition) throw Error(message); };
@@ -189,7 +195,7 @@ try {
     const handle = offset.play('hoa-fireball', { from, to: { x: 460, y: 350 }, parent });
     const offsetRoot = parent.children[0];
     if (offsetRoot.x !== 460 || offsetRoot.y !== 350) throw Error('Target anchor failed');
-    const response = await fetch('/format-examples/hoa-fireball.vfx.json'), manifest = await response.json();
+    const response = await fetch('/offset.json'), manifest = await response.json();
     offsetRoot.children.forEach((sprite, i) => {
       const frame = manifest.layers[i].frames.find(f => f !== null);
       if (sprite.x !== frame[5] || sprite.y !== frame[6]) throw Error('Origin-relative offsets shifted twice');
@@ -209,14 +215,14 @@ try {
       transfer: resources.reduce((n, r) => n + r.transferSize, 0), body: resources.reduce((n, r) => n + r.encodedBodySize, 0),
       backingWidth: window.__showcase.app.canvas.width, displayWidth: document.getElementById('stage').clientWidth,
       overflow: document.documentElement.scrollWidth > innerWidth, packs: window.__showcase.vfx.stats().packs,
-      bytes: window.__showcase.packs.map(p => [p.id, p.files.find(f => f.name.endsWith('.vfxb')).bytes]),
+      bytes: window.__showcase.packs.map(p => [p.id, p.mobileBytes, p.desktopBytes]),
     };
   });
-  assert.deepEqual(requests.filter(p => p.includes('/packs/')).sort(), ['/collection/packs/free/hoa-fireball.vfxb', '/collection/packs/free/index.json']);
+  assert.deepEqual(requests.filter(p => p.includes('/packs/')).sort(), ['/collection/packs/free/hoa-fireball.m.vfxb', '/collection/packs/free/index.json']);
   assert.equal(first.packs, 1); assert.equal(first.overflow, false); assert.ok(first.backingWidth <= first.displayWidth * 2 + 1);
   assert.equal(await mobile.locator('.integration pre').evaluate(pre => getComputedStyle(pre).whiteSpace === 'pre-wrap' && pre.scrollWidth <= pre.clientWidth), true);
   console.log('Mobile integration snippet: PASS (wrapped without horizontal clipping)');
-  for (const [id, bytes] of first.bytes) assert.ok(bytes < 600000, `${id} exceeds mobile pack budget`);
+  for (const [id, mobileBytes] of first.bytes) assert.ok(mobileBytes < 600000, `${id} exceeds mobile pack budget`);
   await mobile.locator('.skill').filter({ hasText: 'Dragon Cyclone' }).tap();
   await mobile.waitForFunction(() => window.__showcase.vfx.stats().active === 1);
   assert.equal(await mobile.evaluate(() => window.__showcase.vfx.stats().packs), 1);
@@ -233,7 +239,7 @@ try {
   console.log(`First load: ${first.transfer} transferred bytes incl. HTTP overhead; ${first.body} body bytes (uncompressed local server; index + selected pack only)`);
   console.log(`Mobile emulation RAF: average ${timing.average.toFixed(1)}ms, max ${timing.max.toFixed(1)}ms over 90 frames (not a physical-device benchmark)`);
   console.log('Per-skill download bytes:');
-  for (const [id, bytes] of first.bytes) console.log(`${id}: ${bytes}`);
+  for (const [id, mobileBytes, desktopBytes] of first.bytes) console.log(`${id}: mobile ${mobileBytes}; desktop ${desktopBytes}`);
   console.log('Showcase UI filters/search: PASS; browser console/page errors: 0');
   assert.deepEqual(errors, []);
 } finally { await browser?.close(); await new Promise(ok => server.close(ok)); }
