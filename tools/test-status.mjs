@@ -275,8 +275,8 @@ try {
       w = world(); at = { x: 100, y: 200, z: 0 };
       const vines = kit[name](w, tex, { target: () => at, height: 105, duration: Infinity });
       step(w, 700);
-      const coils = w.particles.filter((p) => p.o.texture === tex.vineSegment);
-      check(coils.length === 72 && coils.every((p) => p.o.blend === 'normal'), `${name}: four solid thorned vines`);
+      const coils = w.particles.filter((p) => p.o.texture === kit.woodTextures().stem && p.o.zBias !== undefined);
+      check(coils.length === 60 && coils.every((p) => p.o.blend === 'normal'), `${name}: three tapered solid vines`);
       check(coils.some((p) => p.o.zBias < 0 && p.sprite.zIndex < at.y) && coils.some((p) => p.o.zBias > 0 && p.sprite.zIndex > at.y), `${name}: behind/in-front body sorting`);
       check(Math.max(...coils.map((p) => p.pz)) > 105 * 0.75, `${name}: coils reach torso`);
       const width = Math.max(...coils.map((p) => Math.abs(p.px)));
@@ -294,7 +294,7 @@ try {
         const finite = kit[name](w, tex, { target: () => at, duration });
         if (duration === 900) {
           step(w, 500);
-          const q = w.particles.find((p) => p.o.texture === tex.vineSegment), green = q.sprite.tint;
+          const q = w.particles.find((p) => p.o.texture === kit.woodTextures().stem), green = q.sprite.tint;
           step(w, 240); check(q.sprite.tint !== green, `${name}: brown wither before expiry`);
           step(w, 176);
           check(w.particles.some((p) => p.o.tint === 0x795333 && p.o.life === 750), `${name}: leaf/bark crumble`);
@@ -326,7 +326,7 @@ try {
       hurt: (_unit, amount, feedback) => { check(amount === 42 && feedback.feedback < 0.2, 'vine sample: damage preserved, subdued feedback'); vineDamage++; },
     });
     step(w, 300); check(vineDamage === 0, 'vine sample: windup preserved');
-    step(w, 1000); check(vineDamage === 1 && w.particles.some((p) => p.o.texture === tex.vineSegment), 'vine sample: seed roots on impact');
+    step(w, 1000); check(vineDamage === 1 && w.particles.some((p) => p.o.texture === kit.woodTextures().stem), 'vine sample: seed roots on impact');
     step(w, 4000); clean(w, 'vine sample');
     results.push('Vine Bind: projectile opacity defaults/options, travel callback, original damage and root-on-impact PASS');
     return results;
