@@ -97,3 +97,43 @@ resolution follows the displayed width with DPR capped at 2, including on phones
 
 See [pack-format.md](../docs/pack-format.md). Scrambling is an anti-scrape
 deterrent, **not DRM or encryption**. MIT code and free packs may be used commercially.
+
+## Actor tracks and playback poses
+
+Optional `actors` is an object with `caster` and/or `target` tracks. Each track
+has `frames: [dx, dy, lift, flags][]`, exactly `frameCount` entries. Offsets are
+finite screen-space ground pixels relative to that actor's home; lift is height
+above ground (render at ground y minus lift). The baker rounds to 0.1 px and
+omits unchanged actors. Flags are integers 0–3: bit 0 visible, bit 1 facing flipped.
+Malformed lengths, tuples, numbers, flags and unknown actor names are rejected.
+This optional field does not change the v1 format; old packs remain valid.
+
+`handle.pose('caster' | 'target')` returns `{ x, y, lift, visible, facing }`
+or null when that actor has no track. Numeric values interpolate by the same
+playback clock as VFX, including speed, looping and hitstop. Visibility/facing
+step at frame boundaries. Coordinates are relative to actor home in the chosen
+parent's local space: mirroring reverses x and facing; `fitDistance` scales x
+only, matching the runtime's horizontal VFX fit (y/lift are unchanged).
+After stop or natural end, each tracked actor returns
+`{ x: 0, y: 0, lift: 0, visible: true, facing: 1 }` once, then null.
+Untracked actors always return null, including after stop. No pose event is emitted.
+
+```ts
+const handle = player.play('kim-golden-edge', { from: home, to: target });
+app.ticker.add(() => {
+  const pose = handle.pose('caster');
+  if (pose) hero.position.set(home.x + pose.x, home.y + pose.y - pose.lift);
+});
+```
+
+## Evolved collection entries
+
+A variant uses id `<id>.evolved`, files `<id>.evolved.vfxb` (desktop) and
+`<id>.evolved.m.vfxb` (mobile), and name "<name> · Evolved". It is baked
+with activation tier 3 and evolved timing/length, falling back to base values.
+It has the same per-skill preset and budget as the base skill.
+The collection index retains 25 base entries. When available, a base entry has
+`evolved: { files, bytes, desktopBytes, mobileBytes, frameCount }`.
+Here `files` lists both variant containers, `bytes` is the desktop size,
+and the tier byte counts are actual container sizes. Load only the selected
+variant/tier; use the evolved id when playing an evolved container.
