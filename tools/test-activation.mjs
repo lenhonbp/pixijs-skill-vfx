@@ -78,6 +78,13 @@ try {
     const smoothRibbon = kit.flowRibbon(one, { ...ribbonOptions, segments: 48 });
     check(w.layers.body.children.at(-1).geometry.points.length === 49, 'curved ribbons support finer sampling without changing the default');
     smoothRibbon.stop();
+    const oddRibbon = kit.flowRibbon(one, { ...ribbonOptions, segments: 5,
+      point: (u, age, out) => { out.x = 100 + u * 200; out.y = 300 + u * 50 + age; out.z = 80; } });
+    const oddRope = w.layers.body.children.at(-1);
+    check(oddRope.zIndex === 320, 'odd-segment body ribbon sorts at its middle ground sample, not projected height');
+    step(16);
+    check(oddRope.zIndex === 336, 'odd-segment ribbon updates its depth as the path moves');
+    oddRibbon.stop();
     const start = { x: 450, y: 400, z: 270 }, end = { x: 700, y: 420, z: 45 };
     kit.setRng(kit.mulberry32(42));
     const plainBolt = kit.lightningBolt(one, tex, start, end, palette, { width: 3, haloWidth: 52 });

@@ -76,7 +76,7 @@ export function flowRibbon(w: VfxWorld, o: {
     for (let i = 0; i <= segments; i++) {
       o.point(i / segments, age, at);
       points[i].set(at.x, at.y - (at.z ?? 0));
-      if (layer === 'body' && i === segments / 2) rope.zIndex = at.y;
+      if (layer === 'body' && i === Math.floor(segments / 2)) rope.zIndex = at.y;
     }
   };
   place();
