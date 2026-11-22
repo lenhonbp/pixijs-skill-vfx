@@ -30,22 +30,6 @@
       "glow-back": 0.36,
       "base": 0.6,
       "glow": 0.36
-    },
-    "evolved": {
-      "files": [
-        {
-          "name": "kim-sword-rain.evolved.vfxb",
-          "bytes": 3963245
-        },
-        {
-          "name": "kim-sword-rain.evolved.m.vfxb",
-          "bytes": 1346545
-        }
-      ],
-      "bytes": 3963245,
-      "desktopBytes": 3963245,
-      "mobileBytes": 1346545,
-      "frameCount": 241
     }
   },
   {
@@ -79,22 +63,6 @@
       "glow-back": 0.5,
       "base": 0.75,
       "glow": 0.5
-    },
-    "evolved": {
-      "files": [
-        {
-          "name": "kim-golden-edge.evolved.vfxb",
-          "bytes": 2789186
-        },
-        {
-          "name": "kim-golden-edge.evolved.m.vfxb",
-          "bytes": 983503
-        }
-      ],
-      "bytes": 2789186,
-      "desktopBytes": 2789186,
-      "mobileBytes": 983503,
-      "frameCount": 373
     }
   },
   {
@@ -128,22 +96,6 @@
       "glow-back": 0.5,
       "base": 0.75,
       "glow": 0.5
-    },
-    "evolved": {
-      "files": [
-        {
-          "name": "kim-golden-bell.evolved.vfxb",
-          "bytes": 3954428
-        },
-        {
-          "name": "kim-golden-bell.evolved.m.vfxb",
-          "bytes": 1389230
-        }
-      ],
-      "bytes": 3954428,
-      "desktopBytes": 3954428,
-      "mobileBytes": 1389230,
-      "frameCount": 253
     }
   },
   {
@@ -177,22 +129,6 @@
       "glow-back": 0.5,
       "base": 0.75,
       "glow": 0.5
-    },
-    "evolved": {
-      "files": [
-        {
-          "name": "moc-vine-bind.evolved.vfxb",
-          "bytes": 1617184
-        },
-        {
-          "name": "moc-vine-bind.evolved.m.vfxb",
-          "bytes": 532617
-        }
-      ],
-      "bytes": 1617184,
-      "desktopBytes": 1617184,
-      "mobileBytes": 532617,
-      "frameCount": 151
     }
   },
   {
@@ -226,22 +162,6 @@
       "glow-back": 0.5,
       "base": 0.75,
       "glow": 0.5
-    },
-    "evolved": {
-      "files": [
-        {
-          "name": "moc-spring-bloom.evolved.vfxb",
-          "bytes": 3074419
-        },
-        {
-          "name": "moc-spring-bloom.evolved.m.vfxb",
-          "bytes": 931845
-        }
-      ],
-      "bytes": 3074419,
-      "desktopBytes": 3074419,
-      "mobileBytes": 931845,
-      "frameCount": 121
     }
   },
   {
@@ -275,22 +195,6 @@
       "glow-back": 0.36,
       "base": 0.6,
       "glow": 0.36
-    },
-    "evolved": {
-      "files": [
-        {
-          "name": "moc-toxic-spores.evolved.vfxb",
-          "bytes": 3873425
-        },
-        {
-          "name": "moc-toxic-spores.evolved.m.vfxb",
-          "bytes": 1408482
-        }
-      ],
-      "bytes": 3873425,
-      "desktopBytes": 3873425,
-      "mobileBytes": 1408482,
-      "frameCount": 169
     }
   },
   {
@@ -322,22 +226,6 @@
     "mobileScales": {
       "glow-back": 0.5,
       "base": 0.7
-    },
-    "evolved": {
-      "files": [
-        {
-          "name": "thuy-frost-nova.evolved.vfxb",
-          "bytes": 3744968
-        },
-        {
-          "name": "thuy-frost-nova.evolved.m.vfxb",
-          "bytes": 1481640
-        }
-      ],
-      "bytes": 3744968,
-      "desktopBytes": 3744968,
-      "mobileBytes": 1481640,
-      "frameCount": 139
     }
   },
   {
@@ -371,22 +259,6 @@
       "glow-back": 0.5,
       "base": 0.7,
       "glow": 0.5
-    },
-    "evolved": {
-      "files": [
-        {
-          "name": "thuy-glacier-path.evolved.vfxb",
-          "bytes": 3812710
-        },
-        {
-          "name": "thuy-glacier-path.evolved.m.vfxb",
-          "bytes": 1412903
-        }
-      ],
-      "bytes": 3812710,
-      "desktopBytes": 3812710,
-      "mobileBytes": 1412903,
-      "frameCount": 127
     }
   },
   {
@@ -420,22 +292,6 @@
       "glow-back": 0.5,
       "base": 0.7,
       "glow": 0.5
-    },
-    "evolved": {
-      "files": [
-        {
-          "name": "hoa-fireball.evolved.vfxb",
-          "bytes": 2419941
-        },
-        {
-          "name": "hoa-fireball.evolved.m.vfxb",
-          "bytes": 1006426
-        }
-      ],
-      "bytes": 2419941,
-      "desktopBytes": 2419941,
-      "mobileBytes": 1006426,
-      "frameCount": 169
     }
   },
   {
@@ -469,22 +325,6 @@
       "glow-back": 0.5,
       "base": 0.75,
       "glow": 0.5
-    },
-    "evolved": {
-      "files": [
-        {
-          "name": "hoa-dragon-breath.evolved.vfxb",
-          "bytes": 3938853
-        },
-        {
-          "name": "hoa-dragon-breath.evolved.m.vfxb",
-          "bytes": 1478390
-        }
-      ],
-      "bytes": 3938853,
-      "desktopBytes": 3938853,
-      "mobileBytes": 1478390,
-      "frameCount": 313
     }
   },
   {
@@ -518,22 +358,6 @@
       "glow-back": 0.36,
       "base": 0.6,
       "glow": 0.36
-    },
-    "evolved": {
-      "files": [
-        {
-          "name": "hoa-heaven-fire.evolved.vfxb",
-          "bytes": 3752531
-        },
-        {
-          "name": "hoa-heaven-fire.evolved.m.vfxb",
-          "bytes": 1290769
-        }
-      ],
-      "bytes": 3752531,
-      "desktopBytes": 3752531,
-      "mobileBytes": 1290769,
-      "frameCount": 178
     }
   },
   {
@@ -567,22 +391,6 @@
       "glow-back": 0.5,
       "base": 0.65,
       "glow": 0.5
-    },
-    "evolved": {
-      "files": [
-        {
-          "name": "hoa-fire-dragon-crossing.evolved.vfxb",
-          "bytes": 2367464
-        },
-        {
-          "name": "hoa-fire-dragon-crossing.evolved.m.vfxb",
-          "bytes": 942152
-        }
-      ],
-      "bytes": 2367464,
-      "desktopBytes": 2367464,
-      "mobileBytes": 942152,
-      "frameCount": 169
     }
   },
   {
@@ -616,22 +424,6 @@
       "glow-back": 0.5,
       "base": 0.75,
       "glow": 0.5
-    },
-    "evolved": {
-      "files": [
-        {
-          "name": "tho-fissure.evolved.vfxb",
-          "bytes": 3714152
-        },
-        {
-          "name": "tho-fissure.evolved.m.vfxb",
-          "bytes": 1331635
-        }
-      ],
-      "bytes": 3714152,
-      "desktopBytes": 3714152,
-      "mobileBytes": 1331635,
-      "frameCount": 295
     }
   },
   {
@@ -669,22 +461,6 @@
       "run-2": 0.75,
       "run-3": 0.5,
       "run-4": 0.75
-    },
-    "evolved": {
-      "files": [
-        {
-          "name": "tho-stone-skin.evolved.vfxb",
-          "bytes": 3046772
-        },
-        {
-          "name": "tho-stone-skin.evolved.m.vfxb",
-          "bytes": 1042161
-        }
-      ],
-      "bytes": 3046772,
-      "desktopBytes": 3046772,
-      "mobileBytes": 1042161,
-      "frameCount": 154
     }
   },
   {
@@ -718,22 +494,6 @@
       "glow-back": 0.5,
       "base": 0.75,
       "glow": 0.5
-    },
-    "evolved": {
-      "files": [
-        {
-          "name": "phong-gale-blade.evolved.vfxb",
-          "bytes": 999320
-        },
-        {
-          "name": "phong-gale-blade.evolved.m.vfxb",
-          "bytes": 376965
-        }
-      ],
-      "bytes": 999320,
-      "desktopBytes": 999320,
-      "mobileBytes": 376965,
-      "frameCount": 205
     }
   },
   {
@@ -767,22 +527,6 @@
       "glow-back": 0.5,
       "base": 0.75,
       "glow": 0.5
-    },
-    "evolved": {
-      "files": [
-        {
-          "name": "phong-whirlwind.evolved.vfxb",
-          "bytes": 3705316
-        },
-        {
-          "name": "phong-whirlwind.evolved.m.vfxb",
-          "bytes": 1368105
-        }
-      ],
-      "bytes": 3705316,
-      "desktopBytes": 3705316,
-      "mobileBytes": 1368105,
-      "frameCount": 247
     }
   },
   {
@@ -816,22 +560,6 @@
       "glow-back": 0.36,
       "base": 0.6,
       "glow": 0.36
-    },
-    "evolved": {
-      "files": [
-        {
-          "name": "phong-tornado.evolved.vfxb",
-          "bytes": 3782203
-        },
-        {
-          "name": "phong-tornado.evolved.m.vfxb",
-          "bytes": 1467022
-        }
-      ],
-      "bytes": 3782203,
-      "desktopBytes": 3782203,
-      "mobileBytes": 1467022,
-      "frameCount": 154
     }
   },
   {
@@ -865,22 +593,6 @@
       "glow-back": 0.5,
       "base": 0.75,
       "glow": 0.5
-    },
-    "evolved": {
-      "files": [
-        {
-          "name": "phong-tailwind.evolved.vfxb",
-          "bytes": 3887015
-        },
-        {
-          "name": "phong-tailwind.evolved.m.vfxb",
-          "bytes": 1329382
-        }
-      ],
-      "bytes": 3887015,
-      "desktopBytes": 3887015,
-      "mobileBytes": 1329382,
-      "frameCount": 253
     }
   },
   {
@@ -914,22 +626,6 @@
       "glow-back": 0.5,
       "base": 0.75,
       "glow": 0.5
-    },
-    "evolved": {
-      "files": [
-        {
-          "name": "lightning-chain.evolved.vfxb",
-          "bytes": 349811
-        },
-        {
-          "name": "lightning-chain.evolved.m.vfxb",
-          "bytes": 134611
-        }
-      ],
-      "bytes": 349811,
-      "desktopBytes": 349811,
-      "mobileBytes": 134611,
-      "frameCount": 106
     }
   },
   {
@@ -963,22 +659,6 @@
       "glow-back": 0.5,
       "base": 0.75,
       "glow": 0.5
-    },
-    "evolved": {
-      "files": [
-        {
-          "name": "loi-heaven-strike.evolved.vfxb",
-          "bytes": 3787884
-        },
-        {
-          "name": "loi-heaven-strike.evolved.m.vfxb",
-          "bytes": 1227372
-        }
-      ],
-      "bytes": 3787884,
-      "desktopBytes": 3787884,
-      "mobileBytes": 1227372,
-      "frameCount": 133
     }
   },
   {
@@ -1012,22 +692,6 @@
       "glow-back": 0.5,
       "base": 0.75,
       "glow": 0.5
-    },
-    "evolved": {
-      "files": [
-        {
-          "name": "loi-thunder-domain.evolved.vfxb",
-          "bytes": 3563986
-        },
-        {
-          "name": "loi-thunder-domain.evolved.m.vfxb",
-          "bytes": 1490973
-        }
-      ],
-      "bytes": 3563986,
-      "desktopBytes": 3563986,
-      "mobileBytes": 1490973,
-      "frameCount": 289
     }
   },
   {
@@ -1061,22 +725,6 @@
       "glow-back": 0.75,
       "base": 0.75,
       "glow": 0.75
-    },
-    "evolved": {
-      "files": [
-        {
-          "name": "seal-silence.evolved.vfxb",
-          "bytes": 3872500
-        },
-        {
-          "name": "seal-silence.evolved.m.vfxb",
-          "bytes": 1370436
-        }
-      ],
-      "bytes": 3872500,
-      "desktopBytes": 3872500,
-      "mobileBytes": 1370436,
-      "frameCount": 142
     }
   },
   {
@@ -1110,22 +758,6 @@
       "glow-back": 0.75,
       "base": 0.75,
       "glow": 0.75
-    },
-    "evolved": {
-      "files": [
-        {
-          "name": "sunder-mark.evolved.vfxb",
-          "bytes": 1983341
-        },
-        {
-          "name": "sunder-mark.evolved.m.vfxb",
-          "bytes": 702549
-        }
-      ],
-      "bytes": 1983341,
-      "desktopBytes": 1983341,
-      "mobileBytes": 702549,
-      "frameCount": 133
     }
   },
   {
@@ -1159,22 +791,6 @@
       "glow-back": 0.75,
       "base": 0.75,
       "glow": 0.75
-    },
-    "evolved": {
-      "files": [
-        {
-          "name": "war-cry.evolved.vfxb",
-          "bytes": 3958893
-        },
-        {
-          "name": "war-cry.evolved.m.vfxb",
-          "bytes": 1489390
-        }
-      ],
-      "bytes": 3958893,
-      "desktopBytes": 3958893,
-      "mobileBytes": 1489390,
-      "frameCount": 142
     }
   },
   {
@@ -1208,22 +824,6 @@
       "glow-back": 0.75,
       "base": 0.75,
       "glow": 0.75
-    },
-    "evolved": {
-      "files": [
-        {
-          "name": "curse-weaken.evolved.vfxb",
-          "bytes": 3353867
-        },
-        {
-          "name": "curse-weaken.evolved.m.vfxb",
-          "bytes": 1234909
-        }
-      ],
-      "bytes": 3353867,
-      "desktopBytes": 3353867,
-      "mobileBytes": 1234909,
-      "frameCount": 142
     }
   }
 ]

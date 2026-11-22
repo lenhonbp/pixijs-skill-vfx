@@ -66,8 +66,7 @@ Draw layers in array order; names do not determine blend mode or ordering. Most
 free casts use up to three ordered layers: `glow-back` (add), `base` (normal),
 then `glow` (add), omitting empty layers. This groups interleaved draws into an
 approximation. Stone Skin (`tho-stone-skin`) instead preserves consecutive
-same-blend runs in exact draw order: five layers for Normal and seven for Evolved,
-within its eight-layer cap. The runtime supports arbitrary ordered layer counts,
+same-blend runs in exact draw order (five layers, within its eight-layer cap). The runtime supports arbitrary ordered layer counts,
 not only this collection's three-role layout.
 
 Normal-blend pixels are stored on transparent; additive light is stored on black
@@ -196,15 +195,3 @@ app.ticker.add(() => {
   if (pose) hero.position.set(home.x + pose.x, home.y + pose.y - pose.lift);
 });
 ```
-
-## Evolved collection entries
-
-A variant uses id `<id>.evolved`, files `<id>.evolved.vfxb` (desktop) and
-`<id>.evolved.m.vfxb` (mobile), and name "<name> · Evolved". It is baked
-with activation tier 3 and evolved timing/length, falling back to base values.
-It has the same per-skill preset and budget as the base skill.
-The collection index retains 25 base entries. When available, a base entry has
-`evolved: { files, bytes, desktopBytes, mobileBytes, frameCount }`.
-Here `files` lists both variant containers, `bytes` is the desktop size,
-`frameCount` is the desktop count, and the tier byte counts are actual container sizes. Load only the selected
-variant/tier; use the evolved id when playing an evolved container.

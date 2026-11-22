@@ -18,7 +18,9 @@ const buffer = b => b.buffer.slice(b.byteOffset, b.byteOffset + b.byteLength);
 const decoded = readContainer(buffer(example));
 const collection = JSON.parse(await readFile(resolve(dist, 'packs/free/index.json'), 'utf8'));
 let verifiedFiles = 0;
-for (const pack of collection.flatMap(p => p.evolved ? [p, p.evolved] : [p])) for (const file of pack.files) {
+assert.equal(collection.length, 25);
+assert.ok(collection.every(p => !('evolved' in p) && p.files.length === 2));
+for (const pack of collection) for (const file of pack.files) {
   const bytes = await readFile(resolve(dist, 'packs/free', file.name));
   const manifest = readContainer(buffer(bytes)).manifest;
   assert.equal(bytes.length, file.bytes);
@@ -26,7 +28,7 @@ for (const pack of collection.flatMap(p => p.evolved ? [p, p.evolved] : [p])) fo
   assert.ok(bytes.length <= (file.name.endsWith('.m.vfxb') ? 1500000 : 4000000), `${file.name} exceeds pack budget`);
   verifiedFiles++;
 }
-console.log(`Pack collection: PASS (${collection.length} base, ${collection.filter(p => p.evolved).length} evolved; ${verifiedFiles} containers validated, sizes match index)`);
+console.log(`Pack collection: PASS (${collection.length} skills; ${verifiedFiles} containers validated, sizes match index)`);
 assert.equal(decoded.manifest.id, 'hoa-fireball');
 assert.throws(() => readContainer(buffer(example), 'wrong-key'));
 assert.throws(() => readContainer(buffer(example.subarray(0, 20))));
@@ -99,11 +101,11 @@ async function actorSmoke(engine) {
     check(loop.pose('caster') !== null, 'loop remains tracked');
     check(loop.elapsedMs === 0, 'loop clock did not wrap');
     loop.stop();
-    await player.load('/packs/free/kim-golden-edge.evolved.vfxb');
-    const evolved = player.play('kim-golden-edge.evolved', { from: { x: 0, y: 0 } });
+    await player.load('/packs/free/kim-golden-edge.vfxb');
+    const dash = player.play('kim-golden-edge', { from: { x: 0, y: 0 } });
     player.update(200);
-    check(evolved.pose('caster')?.x > 0, 'shipped evolved actor track');
-    evolved.stop();
+    check(dash.pose('caster')?.x > 0, 'shipped actor track');
+    dash.stop();
   } finally { player.destroy(); }
 }
 // Independent wire fixture: JSON and WebP payloads framed with little-endian fields.

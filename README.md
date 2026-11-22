@@ -5,7 +5,7 @@
 [![Live demo](https://img.shields.io/badge/Live_demo-Cast_a_spell-d6b477?style=flat-square)](https://lenhonbp.github.io/pixijs-skill-vfx/)
 [![License: MIT](https://img.shields.io/badge/License-MIT-83bfd6?style=flat-square)](LICENSE)
 
-**Free runtime. Instant magic.** 25 skills, 50 Normal and Evolved casts.
+**Free runtime. Instant magic.** 25 ready-to-play skills.
 A lightweight, zero-runtime-dependency atlas player for **PixiJS v7 and v8**,
 with a responsive, interactive showcase. Commercial use welcome.
 
@@ -25,23 +25,22 @@ until the npm release is available. Copy the packs you need from
 
 ## Built for your game
 
-- **25 free skills with Evolved tiers** — fire, ice, lightning, wind, metal,
-  wood, earth and utility. Switch tiers in the showcase or load
-  `<id>.evolved.vfxb` directly.
+- **25 free skills** — fire, ice, lightning, wind, metal, wood, earth and
+  utility, each with a desktop and a mobile pack.
 - **Actor tracks** — `handle.pose('caster')` / `handle.pose('target')` provide
   interpolated movement, lift, visibility and facing. Dashes and flight move
   the showcase's swordsman, with grounded shadows and hit reactions.
 - **Ordered, independently scaled layers** — crisp details and additive glow,
   with per-skill quality presets and selective 60 FPS. Most casts use up to three
-  ordered layers; Stone Skin preserves exact order with five Normal / seven Evolved layers.
+  ordered layers; Stone Skin preserves its exact five-layer draw order.
 - **Desktop and mobile packs** — the showcase lazy-loads only the selected
-  skill and tier, and releases the previous pack.
+  skill, and releases the previous pack.
 - **Gameplay feedback** — pooling, cue events, optional screen shake and
   hit-stop. The showcase adds sound hints, looping and a release-synchronized sword cast.
 - **Spritesheet demo caster** — a feet-anchored swordsman with a 24-frame,
   680 ms source clip, time-warped to align its 270 ms release with each effect.
   The drawn caster is retained only if the character sheet fails to load.
-- **English + Vietnamese** names, searchable collection, shareable tier links,
+- **English + Vietnamese** names, searchable collection, shareable skill links,
   and copyable integration snippets.
 
 Only baked assets are distributed: no procedural authoring factory or baker
@@ -50,7 +49,7 @@ implementation is included. The runtime and showcase remain MIT.
 <details>
 <summary>Mobile showcase</summary>
 
-![Mobile showcase with the Evolved tier selected](docs/images/showcase-mobile.png)
+![Mobile showcase](docs/images/showcase-mobile.png)
 
 </details>
 
