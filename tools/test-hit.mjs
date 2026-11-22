@@ -55,6 +55,13 @@ try {
     check(sprite.filters.length === 2 && sprite.filters[0] === prior && sprite.filters[1] === added, 'skin: cleanup preserves concurrent filters');
     clean(w, 'skin filter ownership'); sprite.filters = null; prior.destroy(); added.destroy();
     results.push('hitSkin: all 11 skins, sustained fade, exact tint, overlapping/repeated/cross-world replacement, filter ownership, zero/custom/stop/clear PASS');
+    const holy = hitSkin(w, sprite, 'holy');
+    const matrix = sprite.filters[0].matrix;
+    check(matrix[0] >= 0.65 && matrix[6] >= 0.65 && matrix[12] >= 0.65 &&
+      matrix[1] === 0 && matrix[2] === 0 && matrix[4] <= 0.45 && matrix[14] < matrix[4],
+      'holy: preserves texture contrast without desaturation, modest warm gold overlay');
+    step(w, 110); check(!holy.alive && !tinted(sprite), 'holy: default ends at 110 ms'); clean(w, 'holy detail');
+    results.push('holy: retained texture contrast, modest gold blend and 110 ms restoration PASS');
 
     sprite.position.set(40, 80); sprite.pivot.set(3, 7); sprite.scale.set(-2, 1.5); sprite.rotation = 0.4;
     const pivot = { x: sprite.pivot.x, y: sprite.pivot.y };

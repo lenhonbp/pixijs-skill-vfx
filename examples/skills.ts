@@ -762,7 +762,8 @@ export const SKILLS: SkillDef[] = [
               const hit = SUMMON_TIMING.hits[i];
               const victims = hit.targets === 'all' ? targets.filter((u) =>
                 Math.hypot(u.feet.x - impact.x, (u.feet.y - impact.y) / w.groundSquash) <= slamRadius) : [target];
-              victims.forEach((u) => hurt(u, i === 2 ? 185 : 92, { palette: P.holy, angle, skin: hit.skin, crit: i === 2 }));
+              victims.forEach((u) => hurt(u, i === 2 ? 185 : 92, { palette: { ...P.holy, core: P.holy.main },
+                angle, skin: hit.skin, crit: i === 2, feedback: i === 2 ? 0.16 : 0.25 }));
             },
           }));
         },
