@@ -3,7 +3,7 @@ import { chromium } from 'playwright';
 import { fileURLToPath } from 'node:url';
 
 const bundle = await build({
-  stdin: { contents: "export * from './kit'; export { Container, Sprite } from 'pixi.js';", resolveDir: fileURLToPath(new URL('../', import.meta.url)) },
+  stdin: { contents: "export * from './kit'; export { lightningBolt } from './kit/lightning-bolt'; export { Container, Sprite } from 'pixi.js';", resolveDir: fileURLToPath(new URL('../', import.meta.url)) },
   bundle: true, write: false, format: 'iife', globalName: 'kit', platform: 'browser',
 });
 const browser = await chromium.launch({ headless: true });
@@ -31,10 +31,23 @@ try {
     step(64);
     check(delayed.length === 4 && streamed && delayed.every(p => Math.abs(p.sprite.scale.x - 0.725) < 1e-6), 'delayed bursts and streams retain styling and thin density');
     const root = new Sprite(tex.glow); root.position.set(350, 200);
+    root.anchor.set(0.2, 0.8); root.rotation = 0.4;
     three.layers.body.addChild(root);
     const unown = three.own(() => root.destroy());
     three.addUpdater(() => { root.scale.set(1); root.position.set(350, 200); return true; });
-    step(64); check(Math.abs(root.scale.x - 1.45) < 1e-6, 'raw sprite keeps style after updater');
+    step(64); check(Math.abs(root.scale.x - 1.45) < 1e-6 && root.x === 350 && root.y === 200 && root.anchor.x === 0.2, 'raw sprite scales about its own anchor without moving');
+    const start = { x: 450, y: 400, z: 270 }, end = { x: 700, y: 420, z: 45 };
+    kit.lightningBolt(three, tex, start, end, palette, { life: 220 });
+    const bolt = w.layers.body.children.at(-1);
+    step(16);
+    for (const point of [start, end]) {
+      const projected = bolt.toGlobal({ x: point.x, y: point.y - point.z });
+      check(projected.x === point.x && projected.y === point.y - point.z, 'empowered bolt retains both screen-space endpoints');
+    }
+    kit.lightningChain(three, tex, { points: [start, end, { x: 800, y: 400, z: 45 }], palette });
+    step(100);
+    check(w.layers.body.children.filter(child => child instanceof Container && !(child instanceof Sprite))
+      .every(child => child.scale.x === 1 && child.scale.y === 1 && child.x === 0 && child.y === 0), 'chain graphics retain endpoint coordinate system');
     let error;
     const bad = three.addUpdater(() => { throw new Error('scope error'); });
     try { step(16); } catch (e) { error = e.message; }

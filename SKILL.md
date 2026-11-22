@@ -90,7 +90,8 @@ For gameplay after release, run `empoweredAura` for the skill's length and call
 Pass an `empoweredWorld(world, { tier, palette })` facade to the skill itself:
 particle scales and raw effect sprites grow 1.2x/1.45x, highlights heat up, motion
 trails stretch and impact feedback strengthens. Burst/stream density is reduced
-to fund the larger silhouettes, so checks enforce the total skill+overlay budget.
+while endpoint-anchored graphics/ribbons keep their coordinate system unchanged.
+Checks enforce the total skill+overlay budget.
 Each facade retains its own tier across delayed callbacks and overlapping casts;
 the shared world and tier 1 remain unchanged. Damage in the demo scales 1.3x/1.7x,
 with tier-3 crit numbers. `empoweredAura` returns a stoppable handle and accepts

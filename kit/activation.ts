@@ -1,4 +1,4 @@
-import type { Container } from 'pixi.js';
+import { Container, Sprite } from 'pixi.js';
 import { VfxWorld, Vec3, Curve, SpawnOptions } from './vfx-world';
 import { VfxTextures } from './textures';
 import { Palette } from './recipes';
@@ -23,23 +23,20 @@ const curveAt = (curve: Curve | undefined, t: number, fallback = 1): number => {
 export function empoweredWorld(w: VfxWorld, o: { tier: ActivationTier; palette: Palette }): VfxWorld {
   if (o.tier === 1) return w;
   const factor = o.tier === 3 ? 1.45 : 1.2, heat = o.tier === 3 ? 0.22 : 0.1;
-  const roots = new Map<Container, { x: number; y: number; sx: number; sy: number; alpha: number }>();
+  const roots = new Map<Container, { sx: number; sy: number; alpha: number }>();
   const restore = () => {
     for (const [root, base] of roots) {
       if (root.destroyed || !root.parent) { roots.delete(root); continue; }
-      root.position.set(base.x, base.y); root.scale.set(base.sx, base.sy); root.alpha = base.alpha;
+      root.scale.set(base.sx, base.sy); root.alpha = base.alpha;
     }
   };
   const styleRoots = () => {
     for (const root of roots.keys()) {
       if (root.destroyed || !root.parent) { roots.delete(root); continue; }
-      const base = { x: root.x, y: root.y, sx: root.scale.x, sy: root.scale.y, alpha: root.alpha };
+      const base = { sx: root.scale.x, sy: root.scale.y, alpha: root.alpha };
       roots.set(root, base);
-      const bounds = root.getLocalBounds(), cx = bounds.x + bounds.width / 2, cy = bounds.y + bounds.height / 2;
-      const dx = (cx - root.pivot.x) * base.sx * (factor - 1), dy = (cy - root.pivot.y) * base.sy * (factor - 1);
-      root.position.set(base.x - dx * Math.cos(root.rotation) + dy * Math.sin(root.rotation),
-        base.y - dx * Math.sin(root.rotation) - dy * Math.cos(root.rotation));
-      root.scale.set(base.sx * factor, base.sy * factor); root.alpha = Math.min(1, base.alpha * factor);
+      if (root instanceof Sprite) root.scale.set(base.sx * factor, base.sy * factor);
+      root.alpha = Math.min(1, base.alpha * factor);
     }
   };
   let depth = 0;
@@ -52,7 +49,7 @@ export function empoweredWorld(w: VfxWorld, o: { tier: ActivationTier; palette: 
     get(target, key) {
       if (key === 'addChild') return (...children: Container[]) => run(() => {
         const result = target.addChild(...children);
-        for (const child of children) roots.set(child, { x: child.x, y: child.y, sx: child.scale.x, sy: child.scale.y, alpha: child.alpha });
+        for (const child of children) roots.set(child, { sx: child.scale.x, sy: child.scale.y, alpha: child.alpha });
         return result;
       });
       const value = Reflect.get(target, key, target);
