@@ -17,11 +17,32 @@ const empty = (w) => { assert.equal(w.count, 0); assert.equal(w.stats.updaters, 
 {
   const w = make(), hits = [], target = { x: -200, y: 80, z: 0 };
   const handle = spiritGuardian(w, tex, { x: 20, y: 40, palette, target: () => target,
-    onStrike: (i, at) => { hits.push({ i, at }); target.x -= 5; } });
-  advance(w, 1100);
+    onStrike: (i, at) => {
+      const body = w.layers.body.children.find((s) => s.anchor?.x === 88 / 192);
+      const weapon = w.layers.body.children.find((s) => s.anchor?.x === 154 / 192);
+      const angle = (weapon.rotation - body.rotation) / Math.sign(body.scale.x);
+      assert(Math.abs(angle - [1.8, 1.6, 2.9][i]) < 1e-6, 'callback sees the exact halberd contact pose');
+      assert(Math.abs(body.scale.y - 100 / 240 * 0.9) < 1e-6, 'impact squash is applied before callback');
+      assert(w.now >= 1312 + i * 650 && w.now < 1328 + i * 650, 'callback fires on first frame crossing contact time');
+      if (i === 2) assert(Math.abs(body.position.y - (body.zIndex - 20)) < 1e-6, 'slam dives to ground at contact');
+      hits.push({ i, at }); target.x -= 5;
+    } });
+  advance(w, 700);
+  const flyer = w.layers.body.children.find((s) => s.anchor?.x === 88 / 192);
+  const shadow = w.layers.ground.children[0];
+  const altitude = flyer.zIndex - 20 - flyer.position.y;
+  assert(altitude >= 30 && altitude <= 50, 'glide hovers 30–50px above ground');
+  assert.equal(shadow.position.y, flyer.zIndex - 20, 'shadow stays on ground');
+  assert(shadow.scale.x < 100 / 180 && shadow.alpha < 0.4, 'shadow shrinks and fades in flight');
+  advance(w, 400);
   const body = w.layers.body.children.find((s) => s.anchor?.x === 88 / 192);
   assert(body.position.x < 20 && body.position.x > target.x, 'guardian advances and stops short');
   assert(body.scale.x < 0, 'guardian faces left toward target');
+  const weapon = w.layers.body.children.find((s) => s.anchor?.x === 154 / 192);
+  assert((weapon.rotation - body.rotation) / -1 < -0.5, 'weapon winds back independently of body');
+  const lx = 66 * body.scale.x, ly = -116 * body.scale.y;
+  assert(Math.abs(weapon.position.x - body.position.x - lx * Math.cos(body.rotation) + ly * Math.sin(body.rotation)) < 1e-6, 'weapon grip stays attached to transformed hand');
+  assert(Math.abs(weapon.position.y - body.position.y - lx * Math.sin(body.rotation) - ly * Math.cos(body.rotation)) < 1e-6, 'hand and grip share screen height');
   advance(w, 4000);
   assert.deepEqual(hits.map(({ i }) => i), [0, 1, 2]);
   assert.deepEqual(hits.map(({ at }) => at.x), [-200, -205, -210], 'target re-read per strike');
@@ -40,7 +61,7 @@ const empty = (w) => { assert.equal(w.count, 0); assert.equal(w.stats.updaters, 
   advance(w, 700); handle.stop(); handle.stop();
   advance(w, 4000); assert.equal(hits, 0); empty(w);
 }
-console.log('Guardian contracts: PASS (advance, facing, three impacts, retarget, idle, zero strikes, cancellation, cleanup)');
+console.log('Guardian contracts: PASS (flight altitude, ground shadow, facing, grip attachment, wind-up, exact contact pose/timing, ground slam, retarget, idle, zero strikes, cancellation, cleanup)');
 {
   const w = make(), hits = [], rings = [];
   w.groundSquash = 0.5;
