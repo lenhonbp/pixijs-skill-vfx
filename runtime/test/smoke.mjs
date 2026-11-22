@@ -28,6 +28,10 @@ feedback.layers.forEach(l => { l.frames = [null, null]; });
 feedback.cues = [{ t: 0, type: 'hitstop', ms: 100 }, { t: 0, type: 'shake', amp: 6, ms: 200 }, { t: 50, type: 'hit' }];
 const destroyCue = structuredClone(decoded.manifest);
 destroyCue.cues = [{ t: 50, type: 'hit' }];
+const loopCues = structuredClone(empty);
+loopCues.durationMs = 100; loopCues.frameCount = 1; loopCues.fps = 10;
+loopCues.layers.forEach(l => { l.frames = [null]; });
+loopCues.cues = [{ t: 0, type: 'hit' }, { t: 50, type: 'hit' }];
 const offset = structuredClone(decoded.manifest);
 offset.origin = { x: 100, y: 50 }; offset.target = { x: 460, y: 50 }; offset.anchor = 'target';
 offset.durationMs = 1000; offset.frameCount = 1; offset.fps = 1; offset.cues = [];
@@ -68,6 +72,7 @@ const server = createServer(async (req, res) => {
     if (path === '/feedback.vfxb' || path === '/invalid.vfxb') { res.end(path === '/feedback.vfxb' ? fixture(feedback, new Map()) : Buffer.from('invalid')); return; }
     if (path === '/offset.vfxb') { res.end(fixture(offset, decoded.sheets)); return; }
     if (path === '/destroy-cue.vfxb') { res.end(fixture(destroyCue, decoded.sheets)); return; }
+    if (path === '/loop-cues.vfxb') { res.end(fixture(loopCues, new Map())); return; }
     if (path === '/slow.vfxb') { await new Promise(resolve => setTimeout(resolve, 40)); res.end(fixture(decoded.manifest, decoded.sheets)); return; }
     if (path === '/custom.vfxb' || path === '/plain.vfxb' || path === '/empty.vfxb') { res.end(path === '/custom.vfxb' ? custom : path === '/empty.vfxb' ? fixture(empty, new Map()) : plainContainer); return; }
     const local = path.replace(/^\/collection/, '') || '/';
@@ -165,6 +170,12 @@ try {
     let cancelled = false; try { await lateLoad; } catch { cancelled = true; }
     if (!cancelled || late.stats().packs) throw Error('Unload did not cancel in-flight load');
     late.destroy();
+    const loopCuesPlayer = await VfxPlayer.create(app, { packs: ['/loop-cues.vfxb'] });
+    let loopCueCount = 0; loopCuesPlayer.on('cue', cue => { if (cue.type === 'hit') loopCueCount++; });
+    const loopCuesHandle = loopCuesPlayer.play('hoa-fireball', { from, loop: true });
+    loopCuesPlayer.update(250);
+    if (loopCueCount !== 6) throw Error(`Loop cues skipped cycles: ${loopCueCount}`);
+    loopCuesHandle.stop(); loopCuesPlayer.destroy();
     let rejected = false;
     try { await VfxPlayer.create(app, { packs: ['/invalid.vfxb'] }); } catch { rejected = true; }
     if (!rejected) throw Error('Invalid pack load accepted');

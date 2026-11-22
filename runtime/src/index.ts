@@ -20,6 +20,7 @@ interface Active {
   pack: Pack; options: PlayOptions; root: Container; sprites: Sprite[]; time: number; cue: number; freeze: number;
   handle: Playback; resolve(): void;
 }
+const MAX_LOOP_CYCLES_PER_UPDATE = 32;
 export class VfxPlayer {
   shakeEnabled: boolean;
   hitstopEnabled: boolean;
@@ -146,13 +147,19 @@ export class VfxPlayer {
       else a.freeze = 0;
       a.time += remaining * (a.options.speed ?? 1);
       const duration = a.pack.manifest.durationMs;
+      let cycles = 0;
+      while (a.time >= duration) {
+        this.emitCues(a);
+        if (this.dead || !this.active.has(a)) break;
+        if (!a.options.loop) { this.finish(a); break; }
+        a.time -= duration; a.cue = 0; cycles++;
+        if (cycles >= MAX_LOOP_CYCLES_PER_UPDATE && a.time >= duration) {
+          a.time %= duration; a.cue = 0; break;
+        }
+      }
+      if (this.dead || !this.active.has(a)) continue;
       this.emitCues(a);
       if (this.dead || !this.active.has(a)) continue;
-      if (a.time >= duration) {
-        if (!a.options.loop) { this.finish(a); continue; }
-        a.time %= duration; a.cue = 0; this.emitCues(a);
-        if (this.dead || !this.active.has(a)) continue;
-      }
       this.draw(a);
     }
   }
