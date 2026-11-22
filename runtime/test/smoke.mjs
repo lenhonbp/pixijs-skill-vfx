@@ -68,6 +68,7 @@ const server = createServer(async (req, res) => {
     if (path === '/feedback.vfxb' || path === '/invalid.vfxb') { res.end(path === '/feedback.vfxb' ? fixture(feedback, new Map()) : Buffer.from('invalid')); return; }
     if (path === '/offset.vfxb') { res.end(fixture(offset, decoded.sheets)); return; }
     if (path === '/destroy-cue.vfxb') { res.end(fixture(destroyCue, decoded.sheets)); return; }
+    if (path === '/slow.vfxb') { await new Promise(resolve => setTimeout(resolve, 40)); res.end(fixture(decoded.manifest, decoded.sheets)); return; }
     if (path === '/custom.vfxb' || path === '/plain.vfxb' || path === '/empty.vfxb') { res.end(path === '/custom.vfxb' ? custom : path === '/empty.vfxb' ? fixture(empty, new Map()) : plainContainer); return; }
     const local = path.replace(/^\/collection/, '') || '/';
     const folder = path.startsWith('/format-examples/') ? resolve(root, 'docs/format-examples') : dist;
@@ -158,6 +159,12 @@ try {
     const destroyedHandle = destroyed.play('hoa-fireball', { from });
     destroyed.draw = () => { throw Error('Playback drawn after cue destroyed player'); };
     destroyed.update(50); await destroyedHandle.finished;
+    const late = new VfxPlayer(app);
+    const lateLoad = late.load('/slow.vfxb');
+    await new Promise(resolve => setTimeout(resolve, 5)); late.unload('hoa-fireball');
+    let cancelled = false; try { await lateLoad; } catch { cancelled = true; }
+    if (!cancelled || late.stats().packs) throw Error('Unload did not cancel in-flight load');
+    late.destroy();
     let rejected = false;
     try { await VfxPlayer.create(app, { packs: ['/invalid.vfxb'] }); } catch { rejected = true; }
     if (!rejected) throw Error('Invalid pack load accepted');

@@ -30,6 +30,8 @@ export class VfxPlayer {
   private listeners = new Set<(event: CueEvent) => void>();
   private dead = false;
   private loading = new Map<string, Promise<void>>();
+  private requestSerial = 0;
+  private cancelledLoads = new Map<string, number>();
   private shake = { age: 0, duration: 0, amp: 0, x: 0, y: 0 };
   private tick = (ticker: any) => this.update(v8 ? ticker.deltaMS : (this.app.ticker as any).deltaMS);
   constructor(private app: Application, private options: PlayerOptions = {}) {
@@ -46,13 +48,13 @@ export class VfxPlayer {
     for (const url of typeof urls === 'string' ? [urls] : urls) {
       let task = this.loading.get(url);
       if (!task) {
-        task = this.loadOne(url); this.loading.set(url, task);
+        task = this.loadOne(url, ++this.requestSerial); this.loading.set(url, task);
         task.finally(() => this.loading.delete(url)).catch(() => {});
       }
       await task;
     }
   }
-  private async loadOne(url: string) {
+  private async loadOne(url: string, request: number) {
     const response = await fetch(url);
     if (!response.ok) throw Error(`VFX load failed (${response.status}): ${url}`);
     const binary = new URL(url, document.baseURI).pathname.endsWith('.vfxb');
@@ -60,6 +62,7 @@ export class VfxPlayer {
     const manifest = decoded?.manifest ?? validate(await response.json());
     manifest.cues = manifest.cues.slice().sort((a, b) => a.t - b.t);
     if (this.dead) throw Error('VfxPlayer is destroyed');
+    if ((this.cancelledLoads.get(manifest.id) ?? 0) >= request) throw Error(`VFX load cancelled: ${manifest.id}`);
     if (this.packs.has(manifest.id)) return;
     const textures = new Map<string, Texture>(), frames: (Texture | null)[][] = [];
     try {
@@ -84,6 +87,7 @@ export class VfxPlayer {
         }
       }
       if (this.dead) throw Error('VfxPlayer is destroyed');
+      if ((this.cancelledLoads.get(manifest.id) ?? 0) >= request) throw Error(`VFX load cancelled: ${manifest.id}`);
       if (this.packs.has(manifest.id)) { frames.flat().forEach(t => t?.destroy()); textures.forEach(t => t.destroy(true)); return; }
       this.packs.set(manifest.id, { manifest, sheets: [...textures.values()], frames });
     } catch (error) { frames.flat().forEach(t => t?.destroy()); textures.forEach(t => t.destroy(true)); throw error; }
@@ -170,6 +174,7 @@ export class VfxPlayer {
     this.roots.push(a.root); a.resolve();
   }
   unload(id: string) {
+    this.cancelledLoads.set(id, this.requestSerial);
     const pack = this.packs.get(id); if (!pack) return;
     for (const a of this.active) if (a.pack === pack) this.finish(a);
     pack.frames.flat().forEach(t => t?.destroy()); pack.sheets.forEach(t => t.destroy(true)); this.packs.delete(id);
