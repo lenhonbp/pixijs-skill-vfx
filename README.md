@@ -92,18 +92,26 @@ same caster options plus `duration` (or `Infinity, idle: true`, keeping its stop
 handle). Activation, cast and idle share an element-specific motif: blades,
 vine/leaves, ripples/shards, flame tongues/embers, low rocks, wind spirals or
 lightning arcs. Tier 2 is lighter; tier 3 is stronger. Utility uses its own supplied
-palette's restrained halo, not a default purple. No evolved shared rune/body glow;
-floor pieces remain at z=0. `skillEvolution` adds `fromTier`/`toTier` and ends its
-helix/crest/stamp sequence with the destination motif.
+palette's visible grounded halo, not a default purple. Earth adds a dust-coloured
+ring; lightning continuously crackles around feet/legs above a violet ring.
+No evolved shared rune/body glow; floor pieces remain at z=0. `skillEvolution`
+adds `fromTier`/`toTier`: gather → transform → stamp uses converging blades,
+blooming vines, a freezing water spiral, flame vortex, rising/slamming rocks,
+cyclone or lightning cage/strike. Utility gathers restrained palette rings.
+The destination motif appears at 950 ms; evolution finishes at 1600 ms.
 
 Pass `empoweredWorld(w, { tier, palette, textures: tex })` to native skill code:
 only recognized additive energy grows/brightens (1.2x/1.45x), including private fire
-flames, water foam and wood light shafts/halos. Additive ribbons widen without
+flames, water foam and wood light shafts/halos. `VfxWorld.energyScale` is read-only
+(1 normally; 1.2/1.45 through the facade); lightning uses it to widen channels and
+halos without changing endpoints, opacity or violet colour. Additive ribbons widen without
 moving their centerline/endpoints. Density, tint, authored materials and particle
 trail proportions remain unchanged. Always retain
 native hit feedback at every tier; layer `empoweredHit(w, tex, { at, palette, tier,
 element, tick? })` behind the target for capped, throttled elemental accents, not
 generic ground ellipses. Tier 1 is unchanged. See [recipes](references/recipes.md).
+Fissure keeps its native glint and eight sparks but opts out of the bleaching body
+glow with `hitSpark`'s `coreAlpha: 0`; a warm palette and smaller sparks preserve wood detail.
 The evolved demo re-triggers rapid native bursts with `hitSpark`'s optional
 `refresh: true`, retaining all sparks on every hit without accumulating overlapping
 bursts. `damageNumber`'s optional `compact: true` bakes all glyphs into one temporary

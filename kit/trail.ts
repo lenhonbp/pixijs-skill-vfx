@@ -54,11 +54,12 @@ export function flowRibbon(w: VfxWorld, o: {
   alpha: (age: number) => number;
   life: number;
   width: number;
+  segments?: number;
   tint: number;
   blend?: BlendName;
   layer?: 'ground' | 'body';
 }): Handle {
-  const segments = 10;
+  const segments = Math.max(2, Math.round(o.segments ?? 10));
   const points = Array.from({ length: segments + 1 }, () => new PIXI.Point());
   const rope = makeRope(makeRibbonTexture(o.width, true), points);
   (rope as any).tint = o.tint;

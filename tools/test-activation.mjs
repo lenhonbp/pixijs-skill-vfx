@@ -25,6 +25,7 @@ try {
     check(a.sprite.scale.x === 0.5 && Math.abs(b.sprite.scale.x - 0.6) < 1e-6 && Math.abs(c.sprite.scale.x - 0.725) < 1e-6, 'overlapping casts keep independent scales');
     check(c.sprite.alpha > b.sprite.alpha && b.sprite.alpha > a.sprite.alpha && c.sprite.tint === a.sprite.tint, 'brighter energy preserves authored tint');
     check(two.density === w.density && three.density === w.density, 'density unchanged');
+    check(w.energyScale === 1 && two.energyScale === 1.2 && three.energyScale === 1.45, 'cast-local anchored energy width factors');
     for (const texture of [tex.rock, tex.puff, tex.bell, tex.guardian, tex.chevron, tex.crackedShield]) {
       for (const blend of ['normal', 'add']) {
         const q = three.spawn({ ...options, texture, blend });
@@ -72,7 +73,19 @@ try {
     check(rope.scale.x === 1 && rope.scale.y === 1 && rope.x === 0 && rope.y === 0 &&
       JSON.stringify(rope.geometry.points) === JSON.stringify(baselineRope.geometry.points), 'ribbon endpoints and centerline stay exact');
     ribbon.stop(); check(ribbonTexture.destroyed && !baselineRope.texture.destroyed, 'cast-local ribbon texture cleans up without touching the baseline'); baselineRibbon.stop();
+    const smoothRibbon = kit.flowRibbon(one, { ...ribbonOptions, segments: 48 });
+    check(w.layers.body.children.at(-1).geometry.points.length === 49, 'curved ribbons support finer sampling without changing the default');
+    smoothRibbon.stop();
     const start = { x: 450, y: 400, z: 270 }, end = { x: 700, y: 420, z: 45 };
+    kit.setRng(kit.mulberry32(42));
+    const plainBolt = kit.lightningBolt(one, tex, start, end, palette, { width: 3, haloWidth: 52 });
+    const plainBounds = { ...w.layers.body.children.at(-1).children[1].getLocalBounds() };
+    kit.setRng(kit.mulberry32(42));
+    const wideBolt = kit.lightningBolt(three, tex, start, end, palette, { width: 3, haloWidth: 52 });
+    const wideBounds = w.layers.body.children.at(-1).children[1].getLocalBounds();
+    check(wideBounds.maxX - wideBounds.minX > plainBounds.maxX - plainBounds.minX ||
+      wideBounds.maxY - wideBounds.minY > plainBounds.maxY - plainBounds.minY, 'anchored lightning channels visibly widen, not only supporting particles');
+    plainBolt.stop(); wideBolt.stop();
     kit.lightningBolt(three, tex, start, end, palette, { life: 220 });
     const bolt = w.layers.body.children.at(-1);
     step(16);
@@ -108,6 +121,10 @@ try {
     step(300); check(!w.count, 'refreshed native sparks clean up');
     kit.hitSpark(w, tex, { ...spark, refresh: false }); kit.hitSpark(w, tex, { ...spark, refresh: false });
     check(w.count === 20, 'default native feedback unchanged'); w.clear();
+    kit.hitSpark(w, tex, { ...spark, coreAlpha: 0 });
+    check(w.count === 9 && !w.particles.some(p => p.o.texture === tex.glow) &&
+      w.particles.filter(p => p.o.texture === tex.streak).length === 8, 'readable impact keeps native glint and eight sparks without core glow');
+    w.clear();
     kit.damageNumber(w, tex, { x: 0, y: 0, value: '', compact: true });
     check(!w.count && !w.stats.updaters, 'empty compact number');
     kit.damageNumber(w, tex, { x: 0, y: 0, value: 100, crit: true, compact: true });
@@ -122,13 +139,14 @@ try {
     empoweredHit(w, tex, { at: { x: 200, y: 300, z: 50 }, palette, tier: 3, element: 'loi' });
     check(w.particles.every(p => p.o.layer === 'ground'), 'lightning empowerment stays behind the struck target');
     w.clear();
-    const variants = { kim: tex.streak, moc: tex.leaf, hoa: tex.streak, phong: tex.crescent, tho: tex.rock, thuy: tex.shard, loi: tex.streak };
+    const variants = { kim: tex.streak, moc: tex.vineSegment, hoa: tex.streak, phong: tex.crescent, tho: tex.rock, thuy: tex.shard, loi: tex.fissure };
     for (const [element, texture] of Object.entries(variants)) {
       const at = { x: 200, y: 300, z: 50 };
       empoweredHit(w, tex, { at, palette, tier: 3, element });
-      const expected = element === 'kim' ? 3 : element === 'tho' ? 1 : 2;
+      const expected = element === 'moc' || element === 'thuy' ? 7 : element === 'kim' ? 3 : element === 'tho' || element === 'loi' ? 1 : 2;
       check(w.count === expected && w.particles.some(p => p.o.texture === texture), 'element-specific hit signature');
-      check(element === 'kim' || w.particles.every(p => p.o.texture !== tex.ring), 'elemental accents are not generic ground ellipses');
+      check(element === 'kim' || element === 'thuy' || w.particles.every(p => p.o.texture !== tex.ring), 'ice ring belongs to a shard burst, not a generic ellipse');
+      if (element === 'loi') check(w.layers.ground.children.filter(c => !(c instanceof Sprite)).length === 2, 'branching arcs accompany violet scorch');
       check(w.particles.every(p => p.o.layer === 'ground' && p.o.texture !== tex.glow && p.o.texture !== tex.puff), 'no target-covering glow or puff');
       check(w.particles.every(p => Array.from({ length: 21 }, (_, i) => {
         const alpha = p.o.alpha, t = i / 20;
@@ -140,7 +158,7 @@ try {
       check(w.count === count, 'overlapping hits at the same target are throttled');
       empoweredHit(w, tex, { at: { x: 400, y: 300 }, palette, tier: 3, element });
       check(w.count === count * 2, 'different targets retain independent accents');
-      step(400); check(!w.count, 'hit signature cleans up');
+      step(640); check(!w.count && !w.stats.updaters, 'hit signature and branching arcs clean up');
       empoweredHit(w, tex, { at, palette, tier: 3, element });
       check(w.count === expected, 'accent resumes after throttle window'); w.clear();
     }
@@ -162,10 +180,10 @@ try {
       step(2000); check(aura.alive && w.count <= 7, 'cheap persistent idle aura');
       const hasMotif = () => element === 'loi' ? w.layers.ground.children.some(child => child instanceof Container && !(child instanceof Sprite)) : w.particles.some(p => p.o.texture === texture);
       check(hasMotif(), 'each element has its own motif');
-      check(element !== 'loi' || w.layers.ground.children.length === tier, 'lightning has only two/three short ribbons, not wind crescents');
+      check(element !== 'loi' || w.layers.ground.children.length === tier + 1, 'lightning has two/three short ribbons and a violet floor ring');
       check(w.particles.every(p => p.o.texture !== tex.rune && p.o.texture !== tex.glow && p.o.layer === 'ground'), 'no shared rune or bright body overlay');
       check(element !== 'tho' || w.particles.every(p => p.o.texture !== tex.fissure), 'no sustained earth cracks');
-      if (element === 'tho') for (const p of w.particles) {
+      if (element === 'tho') for (const p of w.particles.filter(p => p.o.texture === tex.rock)) {
         check(p.pz >= 2 && p.pz <= 8 && Math.abs(p.py) <= 12 &&
           Math.abs(Math.hypot(p.px, p.py / 0.18) - 64) < 1e-6, 'earth rocks orbit wide at shin height, not across torso');
       }
@@ -174,11 +192,11 @@ try {
           w.particles.filter(p => p.o.texture === tex.vineSegment && p.o.groundAligned).length === 2 &&
           w.particles.some(p => p.o.texture === tex.ring && p.o.groundAligned), 'wood has a leaf spiral and two vines framing its ground ring');
       }
-      if (element === 'neutral') check(w.particles.every(p => p.o.groundAligned && p.sprite.alpha <= 0.18), 'utility halo is faint and grounded');
+      if (element === 'neutral') check(w.particles.every(p => p.o.groundAligned && p.sprite.alpha <= 0.5 && p.sprite.alpha >= 0.3), 'utility halo is visible and grounded');
       if (element === 'loi') {
-        const arcs = [...w.layers.ground.children];
+        const arcs = w.layers.ground.children.filter(c => !(c instanceof Sprite));
         step(128);
-        check(arcs.every(arc => arc.destroyed) && w.layers.ground.children.length === tier, 'lightning flashes more frequently without accumulating ribbons');
+        check(arcs.every(arc => arc.destroyed) && w.layers.ground.children.length === tier + 1, 'lightning flashes more frequently without accumulating ribbons');
       }
       check(w.particles.filter(p => p.o.groundAligned).every(p => p.z === 0), 'idle aura floor stays grounded');
       aura.stop(); step(200); check(!w.count && !w.stats.updaters && !w.layers.ground.children.length, 'idle aura stops cleanly');
@@ -195,6 +213,16 @@ try {
       w.clear();
       check(!w.layers.ground.children.length, 'clear disposes motif graphics');
     }
-    return 'Empowerment: tier-1 identity, full density, private elemental energy scale/heat, ribbon widths and anchored endpoints, authored materials, elemental hits/throttle, readable eight activation/cast/idle/evolution motifs, grounded utility/earth/wood and cleanup PASS';
+    const signatures = new Set();
+    for (const element of Object.keys(motifs)) {
+      w.clear(); kit.setRng(kit.mulberry32(12345));
+      kit.skillEvolution(w, tex, { at: () => ({ x: 200, y: 300 }), height: 96, palette, element, fromTier: 1, toTier: 3 });
+      step(450);
+      check(w.particles.every(p => p.o.layer === 'ground' && p.o.texture !== tex.rune && p.o.texture !== tex.glow), 'element evolution has no shared rune or bright body overlay');
+      signatures.add(JSON.stringify([w.particles.map(p => [Object.keys(tex).find(k => tex[k] === p.o.texture), p.px, p.pz]), w.layers.ground.children.length]));
+      step(1900); check(!w.count && !w.stats.updaters && !w.layers.ground.children.length, 'all evolution beats finish cleanly');
+    }
+    check(signatures.size === 8, 'eight distinct evolution gathers/transforms');
+    return 'Empowerment: tier-1 identity, full density, private energy/anchored width scaling, authored art, frost/vine/branching lightning hits and throttle, eight distinct evolutions, grounded motifs and cleanup PASS';
   }));
 } finally { await browser.close(); }

@@ -34,7 +34,7 @@ export function lightningBolt(w: VfxWorld, tex: VfxTextures, a: Vec3, b: Vec3, p
   o: { width?: number; life?: number; alpha?: number; coreAlpha?: number; depth?: number; halo?: number;
     branches?: number; layer?: 'ground' | 'body' | 'top'; leader?: boolean; restrikes?: number; afterglow?: number;
     hold?: number; haloWidth?: number } = {}): Handle {
-  const life = o.life ?? 210, width = o.width ?? 1, restrikes = o.restrikes ?? 2;
+  const life = o.life ?? 210, width = (o.width ?? 1) * w.energyScale, restrikes = o.restrikes ?? 2;
   if (![life, width, a.x, a.y, a.z ?? 40, b.x, b.y, b.z ?? 40, o.depth ?? 4, o.afterglow ?? 0, o.hold ?? 0, o.haloWidth ?? 0].every(Number.isFinite) ||
     (o.hold ?? 0) < 0 || (o.haloWidth ?? 0) < 0 ||
     (o.branches !== undefined && (!Number.isInteger(o.branches) || o.branches < 0 || o.branches > 8)) ||
@@ -76,7 +76,7 @@ export function lightningBolt(w: VfxWorld, tex: VfxTextures, a: Vec3, b: Vec3, p
         for (let j = 0; j < path.length - 1; j++) fine.push(...jagged(path[j], path[j + 1], 1, Math.min(2.4, length * 0.007)).slice(0, -1));
         fine.push(path[path.length - 1]);
         const branch = i === 0 ? 1 : 0.58, wd = width * branch;
-        const haloWidth = o.haloWidth === undefined ? 9 * wd : o.haloWidth * branch;
+        const haloWidth = o.haloWidth === undefined ? 9 * wd : o.haloWidth * branch * w.energyScale;
         ribbon(halo, fine, haloWidth, p.main, (o.halo ?? 0.11) * branch);
         ribbon(halo, fine, haloWidth * 2 / 3, p.main, (o.halo ?? 0.11) * branch);
         ribbon(halo, fine, haloWidth / 3, p.main, (o.halo ?? 0.11) * branch);

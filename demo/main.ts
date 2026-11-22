@@ -340,7 +340,7 @@ function whiteTexture() {
       hitSkin(w, u.sprite, o.skin ?? getElement(current.element)?.hitSkin ?? 'red');
       rockBack(w, u.sprite, { push: o.push ?? (o.crit ? 12 : 6),
         angle: o.angle ?? Math.atan2(u.feet.y - hero.feet.y, u.feet.x - hero.feet.x) });
-      if (o.palette) hitSpark(w, tex, { x: u.feet.x, y: u.feet.y, z: u.height * 0.55, palette: o.palette, angle: o.angle ?? Math.PI, size: Math.sqrt(feedback), refresh: selected > 1 });
+      if (o.palette) hitSpark(w, tex, { x: u.feet.x, y: u.feet.y, z: u.height * 0.55, palette: o.palette, angle: o.angle ?? Math.PI, size: Math.sqrt(feedback), refresh: selected > 1, coreAlpha: o.coreAlpha });
       damageNumber(w, tex, { x: u.feet.x, y: u.feet.y, z: u.height + HP_BAR_LIFT + NUMBER_CLEARANCE,
         value: amount, crit, compact: selected > 1, color: o.color ?? (crit ? 0xffd04a : 0xffffff), duration: o.numberDuration });
       du.hp = Math.max(0.05, du.hp - amount / 1600);
@@ -534,13 +534,13 @@ function whiteTexture() {
     showcase = { i, left: SKILLS[i % SKILLS.length].length + 300 + activationRelease(tier) };
   };
   $('tier').onchange = () => setTier(Number(($('tier') as HTMLSelectElement).value) as ActivationTier);
-  $('evolve').onclick = () => {
+  const evolve = (fromTier: ActivationTier, toTier: ActivationTier) => {
     stopShowcase();
     resetScene();
-    const next = (tier % 3 + 1) as ActivationTier;
-    skillEvolution(w, tex, { ...activationOptions(current.element, next), fromTier: tier, toTier: next });
-    w.after(1600, () => setTier(next));
+    skillEvolution(w, tex, { ...activationOptions(current.element, toTier), fromTier, toTier });
+    w.after(1600, () => setTier(toTier));
   };
+  $('evolve').onclick = () => evolve(tier, (tier % 3 + 1) as ActivationTier);
   $('replay').onclick = () => { stopShowcase(); cast(current); };
   $('pause').onclick = togglePause;
   $('reset').onclick = () => { stopShowcase(); resetScene(); };
@@ -598,6 +598,7 @@ function whiteTexture() {
   if (new URLSearchParams(location.search).has('debug')) {
     app.ticker.stop();
     (window as any).__vfxDebug = {
+      evolve,
       skills: [...SKILLS.map(({ id, length }) => ({ id, length })), ...flourishes],
       setTier,
       getTier: () => tier,

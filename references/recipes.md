@@ -6,7 +6,7 @@ not a framework to extend with options. The [API index](api.md) covers every bar
 
 | Recipe | Layers it builds | Typical use | Key knobs |
 |---|---|---|---|
-| `hitSpark` | small core glow, spinning star, 8 streaks in a cone | every hit, crits (size 1.5+) | `angle` (away from attacker), `size` |
+| `hitSpark` | small core glow, spinning star, 8 streaks in a cone | every hit, crits (size 1.5+) | `angle` (away from attacker), `size`, `coreAlpha` (default 1; 0 omits core glow but retains star/streaks) |
 | `hitFlash` | additive copy of the target's texture fading out | target feedback | `ms`, `color` (red for damage, green for heal), `opacity` (default 1) |
 | `slash` | dark smear + main crescent + white edge, all ground-aligned at chest height, sparks off the end | melee swings, dash cuts | `angle` facing, `radius`, `sweep`, `duration`, `clockwise` |
 | `projectile` | glow + core following an arc, ribbon + ember trail, ground shadow; `seal: true` substitutes a spinning rune head and chain links | fireball, arrow, sealing rune | `ProjectileOptions`: `speed`, `arcHeight`, `size`, `alpha` (default 1), `seal`, `onHit` |
@@ -187,24 +187,35 @@ Start gameplay immediately at tier 1, or after `activationRelease(tier)` (250/40
 `duration` remains accepted for compatibility but has no effect; use `empoweredAura`
 for a sustained remnant rather than stacking extra activation floor overlays.
 
-`skillEvolution(w, tex, { at, height, palette, element?, fromTier, toTier })` fractures the old
-seal, lifts its shards into a helix and overhead crown, then stamps the destination
-element motif at 950 ms; ascending rune stacks and double shockwaves fade by 1600 ms.
+`skillEvolution(w, tex, { at, height, palette, element?, fromTier, toTier })` gathers
+0–330 ms, transforms 330–950 ms and stamps at 950 ms, finishing by 1600 ms.
+Metal blades converge into a crest; vines spiral and bloom; water spirals freeze
+into a crystal crest; fire forms a flame vortex; rocks rise and slam into a crest;
+wind forms a cyclone; lightning cages the caster then strikes down. Curved spirals
+use `flowRibbon` with `segments: 48` (default 10) for smooth paths. Utility uses
+grounded palette rings. No shared shatter/helix/rune-stack or bright body overlay.
 `empoweredAura(w, tex, { at, height, palette, element?, tier, duration, idle? })`
 sustains the same motif during gameplay or idle (one to seven sprites, or two/three
-short unblurred lightning ribbons, replaced every 115/85 ms and disposed on stop/clear): metal
+short filterless lightning ribbons plus a floor ring, replaced every 115/85 ms and disposed on stop/clear): metal
 blades/ring, wood leaf spiral with two ground vines/ring, water ripples/shards,
-fire tongues/embers, wide shin-height earth rocks, wind spirals or lightning arcs.
+fire tongues/embers, wide shin-height earth rocks/dust ring, wind spirals or continuous feet/leg lightning arcs.
 Earth cracks appear only during activation.
 All motifs render behind the caster; floor rings follow x/y with z=0. Unknown
-elements use only a faint ground halo (alpha <=0.18) in the supplied skill palette.
+elements use a clearly visible ground halo (alpha <=0.5) in the supplied skill palette.
 `empoweredHit(w, tex, { at: chestPosition, palette, tier, element, tick? })` adds
-behind-target accents: `kim` crossed glints, `moc` leaves, `hoa` embers, `phong`
-crescents, `tho` rocks, `thuy` shards, `loi` streaks. Utility/unknown elements get
+behind-target accents: `kim` crossed glints, `moc` six sprouting thorned vines,
+`hoa` embers, `phong` crescents, `tho` rocks, `thuy` six shards plus an ice ring,
+`loi` branching arcs plus violet scorch. The three stronger signatures last 520 ms
+at tier 3, 380 ms at tier 2. Utility/unknown elements get
 only their supplied palette's ring. Repeat hits at the same ground position are
 throttled for the accent's lifetime; `tick: true` uses one smaller elemental accent.
-Only metal/utility keep a floor ring. Native `hitSpark` and authored hit feedback
+Native `hitSpark` and authored hit feedback
 must still run at every tier; this helper is an additional accent, never a replacement.
+For native feedback that bleaches a target, `hitSpark.coreAlpha: 0` omits only
+the core glow, keeping the star/eight streaks. Fissure opts in through
+`SkillContext.hurt(..., { coreAlpha: 0, feedback: 0.18, palette })` with a warm core.
+Lightning reads `VfxWorld.energyScale` (1 normally, 1.2/1.45 through textured
+empowerment facades) to widen channels/halos without changing endpoints or alpha.
 For repeated hits use `hitSpark(..., { ..., refresh: true })` to re-trigger all
 native sparks at that target, reusing still-living particles rather than stacking
 bursts. Defaults are unchanged. `damageNumber(..., { ..., compact: true })` bakes

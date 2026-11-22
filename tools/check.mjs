@@ -207,12 +207,14 @@ try {
     await page.waitForFunction(() => !!window.__vfxDebug);
     const result = await page.evaluate(({ id, length, tier = 0 }) => {
       const d = window.__vfxDebug, w = window.demo.vfx;
-      let peak = 0, hits = 0, empoweredPeak = 0, tickSparks = 0, nativeSparks = 0;
+      let peak = 0, hits = 0, empoweredPeak = 0, tickSparks = 0, nativeSparks = 0, impactAccents = 0, largeFissureCores = 0;
       const empowered = new Map();
       const spawn = w.spawn.bind(w);
       w.spawn = (...args) => {
+        if (d.isEmpowering() && args[0].layer === 'ground' && args[0].life === 520) impactAccents++;
+        if (id === 'tho-fissure' && args[0].life === 110 && args[0].zBias === 5 && args[0].scale?.[0] > 0.4) largeFissureCores++;
         if (args[0].layer === 'top' && args[0].blend === 'normal' && [850, 1100].includes(args[0].life)) hits++;
-        if (args[0].life === 110 && args[0].zBias === 5 && !d.isEmpowering()) nativeSparks++;
+        if (((args[0].life === 110 && args[0].zBias === 5) || (args[0].life === 160 && args[0].zBias === 6)) && !d.isEmpowering()) nativeSparks++;
         const p = spawn(...args);
         if (p && d.isEmpowering()) empowered.set(p, p.o);
         if (p && d.isEmpowering() && args[0].life === 160) tickSparks++;
@@ -228,7 +230,7 @@ try {
         for (let left = length + 1900; left > 0; left -= 16) d.advance(Math.min(left, 16));
         runs.push(d.stats());
       }
-      return { peak, runs, hits, empoweredPeak, tickSparks, nativeSparks };
+      return { peak, runs, hits, empoweredPeak, tickSparks, nativeSparks, impactAccents, largeFissureCores };
     }, skill);
     await page.close();
     // SkillDef has no ultimate flag: every sample uses the ordinary 150 cap.
@@ -239,6 +241,8 @@ try {
     if (skill.label && skill.id === 'moc-toxic-spores' && !result.tickSparks) issues.push('no empowered DoT ticks exercised');
     if (!skill.label) nativeFeedback.set(skill.id, result.nativeSparks);
     if (skill.label && nativeFeedback.get(skill.id) > 0 && !result.nativeSparks) issues.push('missing native hitSpark');
+    if (skill.label && ['thuy-frost-nova', 'moc-vine-bind', 'loi-heaven-strike'].includes(skill.id) && !result.impactAccents) issues.push('missing sustained elemental impact accent');
+    if (result.largeFissureCores) issues.push('oversized target-covering Fissure core');
     const budgetStatus = budgetResult(result.peak, budget,
       Object.hasOwn(baseline, skill.id) ? baseline[skill.id] : undefined);
     if (budgetStatus.failure) issues.push(budgetStatus.failure);

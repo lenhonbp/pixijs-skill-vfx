@@ -148,6 +148,7 @@ export interface WorldPlugin {
 }
 
 export class VfxWorld {
+  get energyScale(): number { return 1; }
   readonly layers: Record<LayerName, Container>;
   /** VFX clock in ms (scaled by timeScale, paused by hit-stop). */
   now = 0;

@@ -62,7 +62,7 @@ export function shadowSlash(w: VfxWorld, tex: VfxTextures, o: ShadowSlashOptions
 const recentSparks = new WeakMap<VfxWorld, { x: number; y: number; parts: { p: Particle; options: Particle['o'] }[] }[]>();
 
 /** Small directional impact burst. refresh re-triggers living sparks at the same target instead of stacking bursts. */
-export function hitSpark(w: VfxWorld, tex: VfxTextures, o: Vec3 & { angle?: number; palette: Palette; size?: number; refresh?: boolean }) {
+export function hitSpark(w: VfxWorld, tex: VfxTextures, o: Vec3 & { angle?: number; palette: Palette; size?: number; refresh?: boolean; coreAlpha?: number }) {
   if (o.refresh) {
     const recent = (recentSparks.get(w) ?? []).filter(hit => hit.parts.some(({ p, options }) => !p.dead && p.o === options));
     const hit = recent.find(hit => hit.x === o.x && hit.y === o.y) ?? { x: o.x, y: o.y, parts: [] };
@@ -94,7 +94,8 @@ export function hitSpark(w: VfxWorld, tex: VfxTextures, o: Vec3 & { angle?: numb
   const z = o.z ?? 30;
   const size = o.size ?? 1;
   const angle = o.angle ?? 0;
-  w.spawn({ texture: tex.glow, x, y, z, life: 110, zBias: 5, scale: [0.9 * size, 1.6 * size, outQuad], alpha: [1, 0], tint: o.palette.core });
+  if ((o.coreAlpha ?? 1) > 0) w.spawn({ texture: tex.glow, x, y, z, life: 110, zBias: 5,
+    scale: [0.9 * size, 1.6 * size, outQuad], alpha: [o.coreAlpha ?? 1, 0], tint: o.palette.core });
   w.spawn({ texture: tex.star, x, y, z, life: 160, zBias: 6, rotation: rand(0, TAU), spin: 3, scale: [0.9 * size, 0.2 * size, outQuad], tint: o.palette.main });
   w.burst(8, () => {
     const a = angle + rand(-0.9, 0.9);

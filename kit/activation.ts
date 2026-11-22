@@ -6,9 +6,10 @@ import { envelope, outCubic, rand } from './ease';
 import { group } from './group';
 import { blend, isPixiV8 } from './pixi-compat';
 import { lightningBolt } from './lightning-bolt';
-import { isFireEnergyTexture } from './fire-textures';
-import { isWaterEnergyTexture } from './water-textures';
-import { isWoodEnergyTexture } from './wood-textures';
+import { fireTextures, isFireEnergyTexture } from './fire-textures';
+import { waterTextures, isWaterEnergyTexture } from './water-textures';
+import { woodTextures, isWoodEnergyTexture } from './wood-textures';
+import { flowRibbon } from './trail';
 
 export type ActivationTier = 1 | 2 | 3;
 type Caster = { at: () => Vec3; height: number; palette: Palette; element?: string };
@@ -30,7 +31,7 @@ export function empoweredWorld(w: VfxWorld, o: { tier: ActivationTier; palette: 
   const factor = o.tier === 3 ? 1.45 : 1.2, heat = o.tier === 3 ? 0.22 : 0.1;
   const energyTextures = new Set(o.textures ? [o.textures.glow, o.textures.dot, o.textures.ring,
     o.textures.streak, o.textures.beam, o.textures.star, o.textures.crescent,
-    o.textures.shard, o.textures.drop] : []);
+    o.textures.shard, o.textures.drop, o.textures.disc] : []);
   const energyTexture = (texture: Texture) => !!o.textures && (energyTextures.has(texture) ||
     isFireEnergyTexture(texture) || isWaterEnergyTexture(texture) || isWoodEnergyTexture(texture));
   const energySprite = (root: Container): root is Sprite => root instanceof Sprite &&
@@ -91,6 +92,7 @@ export function empoweredWorld(w: VfxWorld, o: { tier: ActivationTier; palette: 
   const scoped = new Proxy(w, {
     get(target, key) {
       if (key === 'layers') return layers;
+      if (key === 'energyScale') return o.textures ? factor : 1;
       if (key === 'spawn') return (p: SpawnOptions) => {
         const energy = (p.blend ?? 'add') === 'add' && energyTexture(p.texture);
         const particle = target.spawn({ ...p,
@@ -171,51 +173,83 @@ export function skillActivation(w: VfxWorld, tex: VfxTextures, o: Caster & { tie
     life: 220, scale: [0.35, 0.8], alpha: [0.6, 0], tint: p.main, zBias: 3 });
 }
 
-/** Fantasy: the old seal shatters, rising into a crest that stamps the new tier.
- * Palette: any element's main, white-hot core and dark aftermath.
- * Phases: fracture 0-200 ms; helix 200-650; crest/hold 650-850; stamp 950; fade 950-1600.
- * Layers: broken ground seal; body shard helix, stacked runes and overhead crown; local top glow.
- * Sync: evolution stamps at 950 ms; the new tier is ready at 1600 ms.
- */
+/** Elemental gather, transformation and ground stamp; ready at 1600 ms. */
 export function skillEvolution(w: VfxWorld, tex: VfxTextures, o: Caster & { fromTier: ActivationTier; toTier: ActivationTier }) {
-  const p = o.palette;
-  w.spawn({ texture: tex.rune, layer: 'ground', groundAligned: true, x: 0, y: 0,
-    follow: groundAt(o.at), life: 240, scale: [0.3, 0.36], alpha: [0.8, 0], tint: p.main });
-  w.burst(18, (i, n) => {
-    const angle = i / n * TAU;
-    return { texture: tex.shard, x: 0, y: 0, follow: o.at, life: 850,
-      scale: [0.55, 0.18], alpha: envelope(0.07, 0.18, 0.8), tint: [p.main, p.core], zBias: 5,
-      onUpdate: (q, t) => {
-        const a = angle + t * 7, r = (55 + o.fromTier * 8) * (1 - t * t);
-        q.px = Math.cos(a) * r; q.py = Math.sin(a) * r * w.groundSquash;
-        q.pz = 5 + t * o.height * 1.9; q.rotation = a + Math.PI / 2;
-      } };
+  const p = o.palette, element = o.element;
+  const metal = element === 'kim', wood = element === 'moc', water = element === 'thuy';
+  const fire = element === 'hoa', earth = element === 'tho', wind = element === 'phong', storm = element === 'loi';
+  const material = metal || wood || earth;
+  const texture = metal ? tex.blade : wood ? tex.tendril : water ? tex.drop :
+    fire ? fireTextures().flames[0] : earth ? tex.rock : wind ? tex.crescent : tex.ring;
+  const count = metal ? 5 : wood || water ? 4 : fire ? 6 : earth ? 7 : wind || storm ? 0 : 2;
+  const phase = rand(0, TAU);
+  if (wood || water || wind) for (let i = 0; i < (wind ? 3 : 2); i++) flowRibbon(w, {
+    life: 950, width: wood ? 5 : water ? 9 : 7, segments: 48, layer: 'ground', blend: wood ? 'normal' : 'add',
+    tint: p.main, alpha: age => Math.min(1, age / 120, (950 - age) / 200) * (wood ? 0.8 : 0.6),
+    point: (u, age, out) => {
+      const at = o.at(), growth = Math.min(1, age / 600);
+      const a = phase + i * TAU / (wind ? 3 : 2) + u * TAU * (wind ? 2.4 : water ? 1.5 : 1) + age / (wind ? 150 : water ? 220 : 900);
+      const r = wind ? 20 + u * 52 : water ? 62 * (1 - u * 0.65) : 46 - u * 15;
+      out.x = at.x + Math.cos(a) * r; out.y = at.y + Math.sin(a) * r * w.groundSquash;
+      out.z = (at.z ?? 0) + 5 + u * o.height * (wood ? 1.5 : 1.9) * growth;
+    },
   });
-  for (let i = 0; i < o.toTier; i++) {
-    w.spawn({ texture: tex.rune, x: 0, y: 0, follow: o.at, delay: 200 + i * 120,
-      life: 1000 - i * 120, groundAligned: true, zBias: 4, spin: i % 2 ? -0.8 : 0.8,
-      scale: [0.22 + i * 0.035, 0.13], alpha: envelope(0.18, 0.5, 0.45), tint: p.main,
-      onUpdate: (q, t) => { q.pz = o.height * (0.3 + i * 0.4 + t * 0.5); } });
+  for (let i = 0; i < count; i++) {
+    const angle = phase + i / count * TAU;
+    w.spawn({ texture, layer: 'ground', x: 0, y: 0, follow: o.at, life: 950,
+      blend: material ? 'normal' : 'add', tint: metal ? 0xffffff : p.main,
+      alpha: envelope(0.1, 0.12, material ? 0.85 : 0.55),
+      scaleX: fire ? 1.15 : wind ? 0.9 : wood ? 0.55 : 0.4,
+      scaleY: fire ? 0.6 : wind ? 0.28 : wood ? 0.65 : earth ? 0.6 : 0.75,
+      groundAligned: !material && !water && !fire,
+      onUpdate: (q, t) => {
+        const gather = Math.min(1, t / 0.35), transform = Math.max(0, (t - 0.35) / 0.65);
+        const a = angle + (metal || earth ? 0.3 : wind ? 11 : wood ? 4 : 7) * t;
+        const r = metal ? 82 * (1 - gather) + 22 : earth ? 55 * (1 - transform * 0.7) :
+          wind ? 65 - transform * 30 : (fire ? 52 : 60) * (1 - transform * 0.65);
+        q.px = Math.cos(a) * r; q.py = Math.sin(a) * r * w.groundSquash;
+        q.pz = earth ? 8 + Math.sin(t * Math.PI) * o.height * 1.6 :
+          metal ? o.height * (0.3 + gather * 1.2) :
+          (fire || water || wood || wind) ? 6 + ((t * (wind ? 2 : 1.6) + i / count) % 1) * o.height * 1.9 : 0;
+        q.rotation = metal ? -Math.PI / 4 + angle * (1 - gather) : earth ? a :
+          fire ? -Math.PI / 2 + Math.sin(a) * 0.2 : a + Math.PI / 2;
+      } });
   }
-  const crest = () => ({ ...o.at(), z: (o.at().z ?? 0) + o.height * 1.9 });
-  w.spawn({ texture: tex.star, x: 0, y: 0, follow: crest, delay: 600, life: 350,
-    scale: [0.1, 0.7], alpha: envelope(0.25, 0.1, 0.65), tint: p.core, zBias: 7 });
-  w.burst(9, (i, n) => ({ texture: tex.streak, x: 0, y: 0, follow: o.at, delay: 600, life: 350,
-    rotation: Math.PI + i / (n - 1) * Math.PI, anchorX: 0, scaleX: [0.15, 0.65], scaleY: 0.65,
-    alpha: envelope(0.2, 0.2, 0.65), tint: p.main, zBias: 6,
-    onUpdate: (q, t) => { q.pz = o.height * 1.9 * (t < 0.65 ? 1 : 1 - outCubic((t - 0.65) / 0.35)); } }));
+  if (storm) for (const delay of [0, 180, 360, 540, 720]) w.after(delay, () => {
+    const at = o.at();
+    for (let i = 0; i < 4; i++) {
+      const a = phase + i / 4 * TAU;
+      lightningBolt(w, tex, { x: at.x + Math.cos(a) * 66, y: at.y + Math.sin(a) * 24, z: (at.z ?? 0) + 8 },
+        { x: at.x + Math.cos(a + 0.5) * 40, y: at.y + Math.sin(a + 0.5) * 18, z: (at.z ?? 0) + o.height * 1.8 },
+        { ...p, core: p.main }, { layer: 'ground', life: 210, width: 2, branches: 1, halo: 0,
+          alpha: 0.55, coreAlpha: 0.4, leader: false, hold: 180 });
+    }
+  });
+  const crestTextures = metal ? [tex.blade] : wood ? woodTextures().petals : water ? waterTextures().crystals : earth ? [tex.rock] : [];
+  for (let i = 0; i < (crestTextures.length ? 5 : 0); i++) w.spawn({ texture: crestTextures[i % crestTextures.length], layer: 'ground',
+    x: (i - 2) * 12, y: 0, follow: o.at, delay: 600, life: 500, blend: 'normal',
+    tint: metal || wood ? 0xffffff : water ? p.core : p.main, alpha: envelope(0.15, 0.2, 0.85),
+    scaleX: water ? 0.28 : wood ? 0.9 : 0.45, scaleY: water ? 0.5 : wood ? 0.7 : 0.65, rotation: (i - 2) * 0.35,
+    onUpdate: (q, t) => { q.pz = o.height * 1.7 * (t < 0.7 ? 1 : 1 - outCubic((t - 0.7) / 0.3)); } });
   w.after(950, () => {
     empoweredAura(w, tex, { ...o, tier: o.toTier, duration: 650 });
-    w.spawn({ texture: tex.glow, layer: 'top', x: 0, y: 0, z: 12, follow: o.at, life: 200,
-      scaleX: [1, 2.4], scaleY: [0.6, 0.2], alpha: [0.24, 0], tint: p.main });
-    for (let i = 0; i < 2; i++) w.spawn({ texture: tex.ring, layer: 'ground', groundAligned: true,
-      x: 0, y: 0, follow: groundAt(o.at), delay: i * 80, life: 500, scale: [0.2, 1.6 + i * 0.35, outCubic],
-      alpha: [0.55, 0], tint: i ? p.main : p.core });
-    w.burst(14, (i, n) => {
+    w.spawn({ texture: earth || storm ? tex.fissure : wood ? tex.vineSegment : wind ? tex.crescent : tex.ring,
+      layer: 'ground', groundAligned: true, x: 0, y: 0, follow: groundAt(o.at), life: 650,
+      blend: earth || storm || wood ? 'normal' : 'add', scale: [0.25, 1.45, outCubic],
+      alpha: [0.55, 0], tint: p.main, spin: wind ? 4 : 0 });
+    if (fire || wood || water) w.burst(8, (i, n) => {
       const a = i / n * TAU;
-      return { texture: tex.star, x: Math.cos(a) * 75, y: Math.sin(a) * 75 * w.groundSquash,
-        z: 4, follow: o.at, life: 550, vz: rand(70, 150), scale: [0.17, 0], tint: [p.core, p.main] };
+      return { texture: wood ? woodTextures().petals[i % 3] : water ? tex.shard : tex.streak, layer: 'ground',
+        x: Math.cos(a) * 55, y: Math.sin(a) * 22, z: 4, follow: o.at, life: 550,
+        blend: wood ? 'normal' : 'add', vx: Math.cos(a) * 35, vz: fire ? 110 : 45,
+        scale: [wood ? 0.6 : 0.28, 0], rotation: a, alpha: [0.65, 0], tint: wood ? 0xffffff : p.main };
     });
+    if (storm) {
+      const at = o.at();
+      lightningBolt(w, tex, { ...at, z: (at.z ?? 0) + o.height * 2 }, { ...at, z: at.z ?? 0 },
+        { ...p, core: p.main }, { layer: 'ground', life: 350, width: 3, halo: 0, branches: 3,
+          alpha: 0.55, coreAlpha: 0.4, hold: 220 });
+    }
     w.shake(6, 180); w.hitStop(35);
   });
 }
@@ -224,7 +258,7 @@ const hitAccents = new WeakMap<VfxWorld, Map<string, { until: number; particle: 
 
 /** Fantasy: restrained elemental accents surround the damage point.
  * Palette: supplied main colour, without a white core.
- * Phases: release 0; accents fade by 240 ms; ground ring by 280 ms.
+ * Phases: release 0; accents fade by 240-520 ms, depending on element and tier.
  * Layers: behind-target glints/leaves/embers/arcs/debris; grounded ring.
  * Sync: positive hits only; throttled per ground position; ticks use one small accent.
  */
@@ -236,6 +270,33 @@ export function empoweredHit(w: VfxWorld, tex: VfxTextures, o: { at: Vec3; palet
   for (const [key, hit] of hits) if (w.now >= hit.until || hit.particle?.o !== hit.options || hit.particle.dead) hits.delete(key);
   const key = `${Math.round(o.at.x / 16)},${Math.round(o.at.y / 16)}`;
   if (hits.has(key)) return;
+  if (!o.tick && ['moc', 'thuy', 'loi'].includes(o.element ?? '')) {
+    const ice = o.element === 'thuy', wood = o.element === 'moc';
+    const life = big ? 520 : 380;
+    const options: SpawnOptions = { texture: wood ? tex.vineSegment : ice ? tex.ring : tex.fissure,
+      layer: 'ground', groundAligned: true, x: o.at.x, y: o.at.y, z: 0, life,
+      blend: ice ? 'add' : 'normal', tint: p.main, scale: [0.28, big ? 0.95 : 0.6, outCubic],
+      alpha: envelope(0.04, 0.45, 0.55) };
+    const particle = w.spawn(options);
+    if (particle) hits.set(key, { until: w.now + life, particle, options: particle.o });
+    if (!ice && !wood) {
+      for (const side of [-1, 1]) lightningBolt(w, tex,
+        { x: o.at.x + side * 62 * s, y: o.at.y, z: 12 },
+        { x: o.at.x + side * 18, y: o.at.y, z: 85 * s }, { ...p, core: p.main },
+        { layer: 'ground', width: big ? 2.8 : 1.6, life, branches: 2, depth: 3,
+          alpha: 0.55, coreAlpha: 0.5, halo: 0, leader: false, restrikes: 2, afterglow: 0.6 });
+    } else for (let i = 0; i < (big ? 6 : 4); i++) {
+      const a = i / (big ? 6 : 4) * TAU;
+      w.spawn({ texture: wood ? tex.vineSegment : tex.shard, layer: 'ground',
+        x: o.at.x + Math.cos(a) * 44 * s, y: o.at.y + Math.sin(a) * 18 * s,
+        z: 3, life, blend: wood ? 'normal' : 'add', tint: i % 2 ? p.main : p.core,
+        rotation: Math.cos(a) * 0.6, scaleX: [wood ? 0.32 : 0.24, wood ? 0.55 : 0.38],
+        scaleY: [0.05, (wood ? 1.1 : 1.35) * s, outCubic],
+        alpha: envelope(0.04, 0.45, 0.55), vz: wood ? 18 : 55 });
+    }
+    w.shake(big ? 3 : 1.5, 100);
+    return;
+  }
   const ring: SpawnOptions = { texture: tex.ring, layer: 'ground', groundAligned: true,
     x: o.at.x, y: o.at.y, z: 0, life: o.tick ? 160 : 280,
     scale: [0.18, (o.tick ? 0.32 : 0.6) * s, outCubic], alpha: [o.tick ? 0.2 : 0.4, 0], tint: p.main };
@@ -297,11 +358,12 @@ export function empoweredAura(w: VfxWorld, tex: VfxTextures, o: Caster & { tier:
   if (element === 'kim' || element === 'hoa') floor(big ? 0.62 : 0.48, 0.2);
   if (element === 'thuy') { floor(big ? 0.7 : 0.55); floor(big ? 0.46 : 0.33, -0.3); }
   if (!['kim', 'moc', 'thuy', 'hoa', 'tho', 'phong', 'loi'].includes(element ?? '')) {
-    g.add(w.spawn({ ...base, groundAligned: true, follow: groundAt(o.at), scale: big ? 0.55 : 0.45,
-      alpha: life === Infinity ? (big ? 0.18 : 0.12) : envelope(0.15, 0.3, big ? 0.18 : 0.12), spin: 0.15 }));
+    g.add(w.spawn({ ...base, groundAligned: true, follow: groundAt(o.at), scale: big ? 0.9 : 0.65,
+      alpha: life === Infinity ? (big ? 0.5 : 0.3) : envelope(0.15, 0.3, big ? 0.5 : 0.3), spin: 0.15 }));
     return g;
   }
   if (element === 'loi') {
+    floor(big ? 0.85 : 0.65, -0.2);
     const interval = big ? 85 : 115;
     let arcs: Handle[] = [], left = interval;
     const flash = () => {
@@ -311,11 +373,11 @@ export function empoweredAura(w: VfxWorld, tex: VfxTextures, o: Caster & { tier:
       for (let i = 0; i < n; i++) {
         const a = phase + i / n * TAU;
         const from = { x: at.x + Math.cos(a) * 56, y: at.y + Math.sin(a) * 22,
-          z: (at.z ?? 0) + o.height * 0.55 + Math.sin(a * 2) * 20 };
-        const to = { x: from.x + Math.cos(a + 1) * 20, y: from.y, z: from.z + 22 };
+          z: (at.z ?? 0) + 8 + (i % 2) * 15 };
+        const to = { x: at.x + Math.cos(a + 1.4) * 56, y: at.y + Math.sin(a + 1.4) * 22, z: from.z + 22 };
         arcs.push(lightningBolt(w, tex, from, to, { ...o.palette, core: o.palette.main }, {
-          layer: 'ground', width: big ? 1.6 : 1, life: interval + 30, depth: 2, branches: 0,
-          leader: false, restrikes: 1, halo: 0, alpha: big ? 0.85 : 0.5, coreAlpha: 0.55 }));
+          layer: 'ground', width: big ? 2.6 : 1.6, life: interval + 100, depth: 3, branches: 1,
+          leader: false, restrikes: 1, halo: 0, alpha: big ? 0.95 : 0.65, coreAlpha: 0.7, hold: interval + 100 }));
       }
     };
     const loop = w.addUpdater(dt => { left -= dt; if (left <= 0) { left = interval; flash(); } });
@@ -333,9 +395,9 @@ export function empoweredAura(w: VfxWorld, tex: VfxTextures, o: Caster & { tier:
   for (let i = 0; i < n; i++) g.add(w.spawn({ ...base, texture,
     blend: element === 'tho' || element === 'moc' || element === 'kim' ? 'normal' : 'add',
     tint: element === 'kim' ? 0xffffff : element === 'moc' && i === n - 1 ? o.palette.core : o.palette.main,
-    alpha: element === 'kim' || element === 'moc' ? (big ? 0.85 : 0.6) : alpha,
-    scaleX: element === 'phong' ? 0.55 : element === 'hoa' ? 0.38 : element === 'moc' ? 0.7 : 0.26,
-    scaleY: element === 'phong' ? 0.2 : element === 'hoa' ? 1.2 : element === 'moc' ? 0.85 : 0.35,
+    alpha: element === 'kim' || element === 'moc' || element === 'tho' ? (big ? 0.85 : 0.6) : alpha,
+    scaleX: element === 'phong' ? 0.55 : element === 'hoa' ? 0.38 : element === 'moc' ? 0.7 : element === 'tho' ? 0.5 : 0.26,
+    scaleY: element === 'phong' ? 0.2 : element === 'hoa' ? 1.2 : element === 'moc' ? 0.85 : element === 'tho' ? 0.6 : 0.35,
     onUpdate: q => {
       const a = phase + i / n * TAU + q.age / 900;
       const rise = (q.age / 1050 + i / n) % 1;
@@ -345,8 +407,11 @@ export function empoweredAura(w: VfxWorld, tex: VfxTextures, o: Caster & { tier:
         element === 'moc' || element === 'hoa' ? 8 + rise * o.height :
         o.height * 0.55 + Math.sin(a * 2) * 18;
       q.rotation = element === 'kim' ? a + Math.PI / 2 : element === 'hoa' ? -0.15 * Math.sin(a) : a;
-      q.alphaMul = element === 'hoa' ? Math.sin(rise * Math.PI) : element === 'moc' ? 0.35 + 0.65 * Math.sin(rise * Math.PI) : 0.65 + Math.sin(a) * 0.35;
+      q.alphaMul = element === 'hoa' ? Math.sin(rise * Math.PI) : element === 'moc' ? 0.35 + 0.65 * Math.sin(rise * Math.PI) : element === 'tho' ? 1 : 0.65 + Math.sin(a) * 0.35;
     } }));
+  if (element === 'tho') g.add(w.spawn({ ...base, texture: tex.ring, groundAligned: true,
+    follow: groundAt(o.at), blend: 'normal', tint: o.palette.main, scale: big ? 0.85 : 0.65,
+    alpha: life === Infinity ? 0.55 : envelope(0.1, 0.3, 0.55), spin: 0.2 }));
   if (element === 'moc') {
     floor(big ? 0.48 : 0.4);
     for (let i = 0; i < 2; i++) g.add(w.spawn({ ...base, texture: tex.vineSegment,
