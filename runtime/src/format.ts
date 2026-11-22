@@ -6,7 +6,7 @@ export interface Manifest {
   format: 'lenhon-vfx'; version: 1; id: string; name: { en: string; vi: string };
   element: string; category: string; fps: number; frameCount: number; durationMs: number; scale: number;
   origin: { x: number; y: number }; target: { x: number; y: number }; anchor: 'caster' | 'target';
-  layers: { name: string; blend: 'normal' | 'add'; sheets: string[]; frames: Frame[] }[];
+  layers: { name: string; blend: 'normal' | 'add'; scale?: number; sheets: string[]; frames: Frame[] }[];
   cues: Cue[];
 }
 export function validate(value: unknown): Manifest {
@@ -17,6 +17,7 @@ export function validate(value: unknown): Manifest {
     !Number.isFinite(m.durationMs) || m.durationMs <= 0 || !Number.isFinite(m.scale) || m.scale <= 0 ||
     !point(m.origin) || !point(m.target) || !['caster', 'target'].includes(m.anchor) || !Array.isArray(m.layers) || !m.layers.length || !Array.isArray(m.cues)) throw Error('Invalid lenhon-vfx manifest');
   for (const l of m.layers) {
+    if (l.scale !== undefined && (!Number.isFinite(l.scale) || l.scale <= 0)) throw Error('Invalid VFX layer scale');
     if (!['normal', 'add'].includes(l.blend) || !Array.isArray(l.sheets) || !l.sheets.every(s => typeof s === 'string' && s.length) || !Array.isArray(l.frames) || l.frames.length !== m.frameCount) throw Error('Invalid VFX layer');
     for (const f of l.frames) if (f !== null && (!Array.isArray(f) || f.length !== 7 || !f.every(Number.isFinite) || !Number.isInteger(f[0]) || f[0] < 0 || f[0] >= l.sheets.length || f[1] < 0 || f[2] < 0 || f[3] <= 0 || f[4] <= 0)) throw Error('Invalid VFX frame');
   }

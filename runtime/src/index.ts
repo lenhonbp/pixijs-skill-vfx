@@ -123,7 +123,7 @@ export class VfxPlayer {
     a.sprites.forEach((s, li) => {
       const f = m.layers[li].frames[index], t = a.pack.frames[li][index];
       s.visible = !!f;
-      if (f && t) { s.texture = t; s.position.set(f[5], f[6]); s.scale.set(1 / m.scale); }
+      if (f && t) { s.texture = t; s.position.set(f[5], f[6]); s.scale.set(1 / (m.layers[li].scale ?? m.scale)); }
     });
   }
   private emitCues(a: Active) {

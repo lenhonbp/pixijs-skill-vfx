@@ -40,7 +40,14 @@ The illustrative frame arrays above are shortened: a real layer has exactly
 `frameCount` entries. A frame is `null` (no pixels) or
 `[sheetIndex, x, y, width, height, offX, offY]`. Rectangle coordinates are atlas
 pixels, while offsets are **world pixels before bake scaling**. The player draws
-the rectangle at `1 / scale`; thus a half-scale atlas preserves world size.
+the rectangle at `1 / (layer.scale ?? scale)`; thus a half-scale atlas preserves world size.
+Each layer may supply an optional positive finite `scale`, overriding the pack
+scale for its atlas rectangles. Offsets remain world pixels and are never scaled
+again. Missing layer scales retain the original v1 behavior. For example a base
+layer at `scale: 1.0` and glow layer at `scale: 0.5` retain the same world size
+while storing sharp detail and softer light separately. This is a backwards-
+compatible manifest extension for this reader; older readers that ignore it
+must use packs with uniform scales.
 Sheets are at most 2048 × 2048. Filenames resolve relative to the manifest URL.
 
 Origin and target are ground positions in world-pixel frame space. The anchor
@@ -56,7 +63,8 @@ Draw layers in array order, normally base then glow. Base contains normal-blend
 pixels on transparent; glow contains additive light on black and plays with
 additive blending. Frames exclude unit sprites, damage/healing numbers and UI.
 Hit-stop and shake are metadata, not baked frozen frames or camera movement.
-The free bake uses seeded recipe timing at 30 fps and scale 0.28, drains particles
+The free bake uses seeded recipe timing at 30 fps, with separate base/glow scales
+(desktop 1.0/0.5 and mobile 0.6/0.36, with per-pack base reductions to fit budgets), drains particles
 and timers through the fade, and has a 15-second safety cap (`capped` extension).
 
 Cues use animation-clock milliseconds. Types include `hit`, `shake` (`amp`, `ms`),
