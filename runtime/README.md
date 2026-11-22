@@ -140,5 +140,7 @@ It has the same per-skill preset and budget as the base skill.
 The collection index retains 25 base entries. When available, a base entry has
 `evolved: { files, bytes, desktopBytes, mobileBytes, frameCount }`.
 Here `files` lists both variant containers, `bytes` is the desktop size,
-and the tier byte counts are actual container sizes. Load only the selected
+`frameCount` is the desktop count, and the tier byte counts are actual container sizes.
+Mobile FPS/frame counts can differ; use the loaded manifest for playback timing.
+Load only the selected
 variant/tier; use the evolved id when playing an evolved container.
