@@ -223,7 +223,7 @@ function renderSelection() {
   el('selected-vi').textContent = selected.name.vi;
   el('description').textContent = info?.description ?? '';
   const hash = '#' + selected.id;
-  if (location.hash !== hash) history.pushState(null, '', hash);
+  if (location.hash !== hash) history[location.hash.slice(1).split('/')[0] === selected.id ? 'replaceState' : 'pushState'](null, '', hash);
   el('category').textContent = `LIVE PREVIEW / ${labels[selected.element].toUpperCase()} / ${selected.category.toUpperCase()}`;
   el('snippet').textContent = `const vfx = await VfxPlayer.create(app, { packs: ['packs/free/${id}.vfxb'] });\nvfx.play('${id}', { from: caster, to: target });`;
   renderList();

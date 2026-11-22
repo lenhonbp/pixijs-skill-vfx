@@ -103,6 +103,7 @@ export async function showcaseSmoke({ page, browser, url, collection }) {
     await linkPage.waitForFunction(() => window.__showcase);
     assert.deepEqual(requests, ['/collection/packs/free/phong-tailwind.m.vfxb']);
     assert.equal(new URL(linkPage.url()).hash, '#phong-tailwind');
+    assert.equal(await linkPage.evaluate(() => history.length), 2); // about:blank + this page: the legacy hash is replaced, not pushed
     assert.match(await linkPage.locator('#snippet').textContent(), /'phong-tailwind'/);
     assert.equal(await linkPage.locator('#selected-vi').textContent(), collection.find(p => p.id === 'phong-tailwind').name.vi);
     assert.match(await linkPage.locator('#description').textContent(), /.+/);
