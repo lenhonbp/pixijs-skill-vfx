@@ -182,6 +182,8 @@ try {
   });
   assert.deepEqual(requests.filter(p => p.includes('/packs/')).sort(), ['/collection/packs/free/hoa-fireball.vfxb', '/collection/packs/free/index.json']);
   assert.equal(first.packs, 1); assert.equal(first.overflow, false); assert.ok(first.backingWidth <= first.displayWidth * 2 + 1);
+  assert.equal(await mobile.locator('.integration pre').evaluate(pre => getComputedStyle(pre).whiteSpace === 'pre-wrap' && pre.scrollWidth <= pre.clientWidth), true);
+  console.log('Mobile integration snippet: PASS (wrapped without horizontal clipping)');
   for (const [id, bytes] of first.bytes) assert.ok(bytes < 600000, `${id} exceeds mobile pack budget`);
   await mobile.locator('.skill').filter({ hasText: 'Dragon Cyclone' }).tap();
   await mobile.waitForFunction(() => window.__showcase.vfx.stats().active === 1);

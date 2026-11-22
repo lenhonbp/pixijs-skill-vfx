@@ -1,6 +1,7 @@
 # @lenhon/pixijs-vfx-runtime
 
 Free forever, MIT. A small, zero-runtime-dependency atlas player for PixiJS **7 and 8**.
+Commercial use welcome; keep the MIT copyright and license notice in copies of the runtime.
 It plays baked effects; it does not import or require the procedural kit.
 
 ## Install

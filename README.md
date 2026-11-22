@@ -6,7 +6,8 @@
 
 **Runtime is free forever (MIT)** — a zero-runtime-dependency atlas player for
 PixiJS v7 and v8, with 25 free baked effects, English/Vietnamese names, additive
-glow, pooling, cue events, optional shake and hit-stop. Commercial games welcome.
+glow, pooling, cue events, optional shake and hit-stop. Commercial use welcome;
+keep the MIT copyright and license notice in copies of the runtime.
 The [interactive showcase](showcase/) lets you filter, cast, replay and loop the
 collection, try synthesized sound hints, and copy integration code.
 

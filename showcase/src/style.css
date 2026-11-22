@@ -1,4 +1,5 @@
 /* Copyright (c) 2026 lenhonbp <lenhonbp@gmail.com> — MIT */
+.integration pre{white-space:pre-wrap;overflow-wrap:anywhere}
 @media(max-width:720px){.intro{flex-wrap:wrap}.intro .intro-note{display:block;border-left:0;border-top:1px solid var(--line);padding:12px 0 0;min-width:0;width:100%}.intro .intro-note .star,.intro .intro-note p,.intro .intro-note a{display:none}}
 .pack-symbol{visibility:hidden}.pack-symbol:after{content:'✧';visibility:visible;position:absolute;right:0;top:0}
 @media(max-width:720px){#filters button{min-height:36px}.controls label{min-height:36px}.controls button{min-height:40px}.integration button{min-height:36px}.skill{min-height:48px}}
