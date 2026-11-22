@@ -34,6 +34,14 @@ export function goldenBell(w: VfxWorld, tex: VfxTextures,
       q.sprite.scale.set(k * (1 + squash + wobble * 0.045), k * (1 - squash));
     },
   }));
+  g.add(w.spawn({ texture: tex.bell, x: 0, y: 0, follow: o.target,
+    delay: windup, life: Infinity, anchorY: 308 / 320, scale: k, alpha: 0.045, tint: p.main, zBias: 31,
+    onUpdate: (q) => {
+      if (!bell) return;
+      q.sprite.position.copyFrom(bell.sprite.position);
+      q.sprite.scale.copyFrom(bell.sprite.scale);
+    },
+  }));
   g.add(w.spawn({ texture: tex.ring, layer: 'ground', groundAligned: true, x: 0, y: 0,
     follow: o.target, delay: landing, life: Infinity, scale: radius / 120, alpha: 0.4, tint: p.main }));
   g.add(w.spawn({ texture: tex.glow, x: 0, y: 0, z: h * 0.6, follow: o.target,

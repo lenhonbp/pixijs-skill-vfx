@@ -392,34 +392,41 @@ export function createVfxTextures(): VfxTextures {
     ctx.bezierCurveTo(198, 72, 184, 54, 156, 48);
     ctx.closePath();
     const fill = ctx.createLinearGradient(18, 0, 238, 0);
-    fill.addColorStop(0, 'rgba(255,255,255,0.24)');
-    fill.addColorStop(0.3, 'rgba(255,255,255,0.08)');
-    fill.addColorStop(0.65, 'rgba(255,255,255,0.13)');
-    fill.addColorStop(1, 'rgba(255,255,255,0.2)');
+    fill.addColorStop(0, 'rgba(86,70,48,0.72)');
+    fill.addColorStop(0.18, 'rgba(211,195,159,0.58)');
+    fill.addColorStop(0.3, 'rgba(255,249,222,0.62)');
+    fill.addColorStop(0.4, 'rgba(220,206,169,0.56)');
+    fill.addColorStop(0.7, 'rgba(157,137,100,0.58)');
+    fill.addColorStop(1, 'rgba(76,59,38,0.76)');
     ctx.fillStyle = fill; ctx.fill();
-    ctx.strokeStyle = 'rgba(255,255,255,0.95)'; ctx.lineWidth = 5; ctx.stroke();
+    ctx.strokeStyle = 'rgba(134,112,72,0.88)'; ctx.lineWidth = 7; ctx.stroke();
     ctx.beginPath(); ctx.ellipse(128, 27, 14, 20, 0, 0, Math.PI * 2);
-    ctx.lineWidth = 7; ctx.stroke();
-    ctx.fillStyle = 'rgba(255,255,255,0.7)'; ctx.fillRect(113, 43, 30, 9);
+    ctx.strokeStyle = 'rgba(224,208,161,0.95)'; ctx.lineWidth = 12; ctx.stroke();
+    ctx.fillStyle = 'rgba(180,155,102,0.95)'; ctx.fillRect(108, 43, 40, 12);
     for (const [y, x] of [[104, 55], [220, 46], [278, 24]]) {
       ctx.beginPath(); ctx.moveTo(x, y); ctx.quadraticCurveTo(128, y + 14, 256 - x, y);
-      ctx.strokeStyle = 'rgba(255,255,255,0.75)'; ctx.lineWidth = 5; ctx.stroke();
+      ctx.strokeStyle = 'rgba(100,78,44,0.8)'; ctx.lineWidth = 13; ctx.stroke();
       ctx.beginPath(); ctx.moveTo(x, y + 7); ctx.quadraticCurveTo(128, y + 21, 256 - x, y + 7);
-      ctx.strokeStyle = 'rgba(255,255,255,0.3)'; ctx.lineWidth = 2; ctx.stroke();
+      ctx.strokeStyle = 'rgba(242,226,182,0.85)'; ctx.lineWidth = 7; ctx.stroke();
     }
     for (const x of [70, 99, 128, 157, 186]) {
       ctx.beginPath(); ctx.arc(x, 130 + Math.sin((x - 55) / 146 * Math.PI) * 4, 4.5, 0, Math.PI * 2);
       ctx.fillStyle = 'rgba(255,255,255,0.85)'; ctx.fill();
     }
-    ctx.strokeStyle = 'rgba(255,255,255,0.28)'; ctx.lineWidth = 2;
+    ctx.strokeStyle = 'rgba(95,74,40,0.32)'; ctx.lineWidth = 2;
     for (const x of [65, 108, 151]) {
       ctx.strokeRect(x, 151, 36, 53);
       ctx.beginPath(); ctx.moveTo(x + 9, 168); ctx.lineTo(x + 27, 168);
       ctx.lineTo(x + 18, 189); ctx.closePath(); ctx.stroke();
       ctx.strokeRect(x - 3, 238, 39, 24);
     }
-    ctx.strokeStyle = 'rgba(255,255,255,0.8)'; ctx.lineWidth = 4;
-    ctx.beginPath(); ctx.ellipse(128, 295, 109, 12, 0, 0, Math.PI * 2); ctx.stroke();
+    const lip = ctx.createLinearGradient(0, 282, 0, 309);
+    lip.addColorStop(0, 'rgba(240,222,172,0.92)');
+    lip.addColorStop(0.45, 'rgba(165,137,84,0.9)');
+    lip.addColorStop(1, 'rgba(73,53,28,0.94)');
+    ctx.fillStyle = lip;
+    ctx.beginPath(); ctx.ellipse(128, 295, 110, 13, 0, 0, Math.PI * 2); ctx.fill();
+    ctx.strokeStyle = 'rgba(235,216,164,0.85)'; ctx.lineWidth = 4; ctx.stroke();
     return textureFromCanvas(c);
   })();
   const bellCracks = (() => {
