@@ -255,7 +255,8 @@ function whiteTexture() {
       });
     },
     setVisible: (u, v) => { u.sprite.visible = v; },
-    summon: (at) => {
+    summon: (at, _element, visualized) => {
+      if (visualized) return;
       const s = new Sprite(guardianTex);
       anchorAtFeet(s, FEET.x, FEET.y);
       s.blendMode = (isPixiV8() ? 'add' : 1) as any;

@@ -193,8 +193,10 @@ These are visual helpers, not gameplay state machines: CC must be enforced by yo
 | `stun` | CC | Orbiting head stars and ring | `duration`, `palette`, `stars` |
 | `freeze` | CC | Growing ice, frost/mist, shatter at end | `duration`, `palette`, `glowIntensity`, `onShatter` |
 | `slow` | CC/debuff | Cold feet arcs, sinking chevrons and drips | `duration`, `palette` |
-| `root` | CC | Swaying vines, dirt and leaves | `duration`, `palette` |
+| `root` / `vineBind` | CC | Four thorned vines coil around legs and torso with near/far depth, then wither into bark and leaves | `duration` (Infinity supported), `palette`, `height`; `pulse()` alongside gameplay damage ticks, `stop()` |
 | `shield` | Buff | Rim-lit bubble, ground ring, impact ripple and break shards | `duration` (default Infinity), `palette`, `radius`, `onBreak`; handle adds `hit(angle)` / `break()` |
+| `goldenBell` | Buff | Translucent temple bell drops over the unit, rings on hits, cracks and falls into golden shards | `duration` (sustain after the 250 ms gather + 180 ms drop, default 3000; Infinity supported), `palette`, `onBreak`; handle adds `hit(angle?)` / `break()` |
+| `stoneArmor` | Buff | Eight solid rock plates assemble on the body, follow the unit and fall as cracked rubble on end | `duration` (sustain after 650 ms assembly, default 2200; Infinity supported), `palette` (earth default), `height`, `onBreak`; handle adds `hit(angle?)` / `break()`; `stop()` also sheds the plates |
 | `statChange` | Buff/debuff | Column and upward/downward chevrons | `up` (required), `duration`, `palette` |
 | `damageOverTime` | Debuff | Poison bubbles / burn embers / bleeding drops and tick numbers | `kind`, `duration`, `tickMs`, `damage` (number or function), `onTick(amount)`, `numbers` |
 | `shock` | Debuff | Crawling body arcs and feet sparks | `duration`, `palette`, `tickMs`, `onTick()` |

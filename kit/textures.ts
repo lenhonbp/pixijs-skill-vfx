@@ -24,12 +24,20 @@ export interface VfxTextures {
   crescent: Texture;
   /** Elongated diamond pointing +x. 64x24. Shards, ice, debris. */
   shard: Texture;
-  /** Sword blade pointing down (+y), lit from the left. 24x128, anchor (0.5, 1) = tip. Sword rain. */
+  /** Full sword pointing down (+y), beveled blade, fuller, guard and grip. 64x160, anchor (0.5, 1) = tip. */
   blade: Texture;
+  /** Short branching ground fracture. 64x32. */
+  swordCrack: Texture;
   /** Rock/ice spike pointing up, lit from the left. 64x128, anchor (0.5, 1) = base. Earth spikes, ice nova. */
   spike: Texture;
   /** Faceted rock chunk, lit from the upper left. Size 48. Debris (normal blend). */
   rock: Texture;
+  /** Solid beveled armor slab with cracks. 64x80. Normal blend. */
+  rockPlate: Texture;
+  /** Spectral armored halberd guardian, feet at (88, 244). 192x256. */
+  guardian: Texture;
+  /** Craggy mountain with lit ridges and dark ravines. 320x256, base anchor (0.5,1). */
+  mountain: Texture;
   /** Leaf with a mid vein pointing +x. 48x24. Wood/nature. */
   leaf: Texture;
   /** Water droplet, round end at the bottom. 24x36. Water, bleed. */
@@ -42,10 +50,16 @@ export interface VfxTextures {
   bubble: Texture;
   /** Curling vine growing up from the bottom center. 64x128, anchor (0.5, 1). Roots. */
   tendril: Texture;
+  /** Thorned vine stroke with dark border and lit upper edge. 96x48. */
+  vineSegment: Texture;
   /** Plus/cross. Size 48. Heals. */
   plus: Texture;
   /** Split shield outline with a jagged crack. 64x80. Armor break. */
   crackedShield: Texture;
+  /** Temple bell with hanging loop, bands, studs and translucent engraved body. 256x320. */
+  bell: Texture;
+  /** Fractures aligned to bell, with the same size and anchor. */
+  bellCracks: Texture;
   /** Glyphs '0'-'9', '+', '-', '!' : white fill with black outline (tint colors the fill only). Height 64. */
   digits: Record<string, Texture>;
 }
@@ -221,21 +235,31 @@ export function createVfxTextures(): VfxTextures {
   })();
 
   const blade = (() => {
-    const [c, ctx] = makeCanvas(24, 128);
-    const g = ctx.createLinearGradient(4, 0, 20, 0);
-    g.addColorStop(0, 'rgba(255,255,255,1)');
-    g.addColorStop(0.5, 'rgba(235,235,235,1)');
-    g.addColorStop(0.52, 'rgba(150,150,150,1)');
-    g.addColorStop(1, 'rgba(110,110,110,1)');
+    const [c, ctx] = makeCanvas(64, 160);
+    const g = ctx.createLinearGradient(21, 0, 43, 0);
+    g.addColorStop(0, '#fff8db'); g.addColorStop(0.18, '#ffffff');
+    g.addColorStop(0.48, '#dbcda5'); g.addColorStop(0.52, '#8d8060'); g.addColorStop(1, '#c0ad7d');
     ctx.fillStyle = g;
     ctx.beginPath();
-    ctx.moveTo(8, 30); ctx.lineTo(16, 30); ctx.lineTo(15, 112); ctx.lineTo(12, 127); ctx.lineTo(9, 112);
+    ctx.moveTo(21, 45); ctx.lineTo(43, 45); ctx.lineTo(41, 132); ctx.lineTo(32, 159); ctx.lineTo(23, 132);
     ctx.closePath(); ctx.fill();
-    ctx.fillStyle = 'rgba(200,200,200,1)';
-    ctx.fillRect(1, 24, 22, 6); // guard
-    ctx.fillStyle = 'rgba(120,120,120,1)';
-    ctx.fillRect(9, 2, 6, 22); // grip
-    radial(ctx, 12, 4, 5, [[0, 1], [1, 0.8]]);
+    ctx.strokeStyle = '#766346'; ctx.lineWidth = 2; ctx.stroke();
+    ctx.beginPath(); ctx.moveTo(32, 55); ctx.lineTo(32, 132); ctx.stroke();
+    ctx.fillStyle = '#e6d19a'; ctx.strokeStyle = '#75603b';
+    ctx.beginPath(); ctx.moveTo(5, 35); ctx.lineTo(23, 39); ctx.lineTo(32, 35); ctx.lineTo(41, 39);
+    ctx.lineTo(59, 35); ctx.lineTo(56, 48); ctx.lineTo(8, 48); ctx.closePath(); ctx.fill(); ctx.stroke();
+    ctx.fillStyle = '#756044'; ctx.fillRect(26, 12, 12, 24);
+    ctx.strokeStyle = '#d8c492';
+    for (const y of [17, 24, 31]) { ctx.beginPath(); ctx.moveTo(27, y); ctx.lineTo(37, y + 3); ctx.stroke(); }
+    ctx.fillStyle = '#f0ddaa'; ctx.beginPath(); ctx.arc(32, 9, 7, 0, Math.PI * 2); ctx.fill();
+    return textureFromCanvas(c);
+  })();
+  const swordCrack = (() => {
+    const [c, ctx] = makeCanvas(64, 32);
+    ctx.strokeStyle = 'white'; ctx.lineWidth = 3; ctx.lineJoin = 'bevel';
+    ctx.beginPath(); ctx.moveTo(3, 19); ctx.lineTo(18, 14); ctx.lineTo(29, 19);
+    ctx.lineTo(36, 10); ctx.lineTo(60, 13); ctx.moveTo(29, 19); ctx.lineTo(38, 28);
+    ctx.moveTo(36, 10); ctx.lineTo(29, 2); ctx.stroke();
     return textureFromCanvas(c);
   })();
 
@@ -373,6 +397,160 @@ export function createVfxTextures(): VfxTextures {
     return textureFromCanvas(c);
   })();
 
+  const vineSegment = (() => {
+    const [c, ctx] = makeCanvas(96, 48);
+    ctx.lineCap = 'round';
+    ctx.beginPath(); ctx.moveTo(3, 25); ctx.quadraticCurveTo(48, 20, 93, 25);
+    ctx.strokeStyle = '#24301c'; ctx.lineWidth = 16; ctx.stroke();
+    ctx.strokeStyle = '#adc681'; ctx.lineWidth = 10; ctx.stroke();
+    ctx.beginPath(); ctx.moveTo(5, 21); ctx.quadraticCurveTo(48, 17, 91, 21);
+    ctx.strokeStyle = '#ecf5be'; ctx.lineWidth = 3; ctx.stroke();
+    ctx.beginPath(); ctx.moveTo(35, 23); ctx.lineTo(49, 4); ctx.lineTo(53, 23);
+    ctx.fillStyle = '#a5bb79'; ctx.fill(); ctx.strokeStyle = '#24301c'; ctx.lineWidth = 2; ctx.stroke();
+    return textureFromCanvas(c);
+  })();
+  const mountain = (() => {
+    const [c, ctx] = makeCanvas(320, 256);
+    const face = (points: number[][], color: string) => {
+      ctx.beginPath(); points.forEach(([x, y], i) => i ? ctx.lineTo(x, y) : ctx.moveTo(x, y));
+      ctx.closePath(); ctx.fillStyle = color; ctx.fill();
+    };
+    face([[4,248],[31,190],[49,181],[67,115],[87,127],[114,74],[129,80],[159,5],[186,65],
+      [202,58],[221,111],[241,94],[267,158],[286,173],[316,248]], '#79664b');
+    face([[4,248],[67,115],[87,127],[114,74],[129,80],[159,5],[144,108],[104,156],[83,222]], '#dfc79a');
+    face([[159,5],[186,65],[202,58],[221,111],[211,187],[181,245],[143,244],[158,145],[144,108]], '#9d865f');
+    face([[241,94],[267,158],[286,173],[316,248],[220,247],[225,174]], '#b49b71');
+    face([[159,5],[144,108],[125,136],[143,129],[122,185],[160,148],[173,97]], '#544a38');
+    face([[67,115],[83,162],[56,205],[87,188],[71,233],[112,245],[32,248]], '#a68a60');
+    face([[202,58],[210,124],[195,147],[214,137],[198,215],[235,174],[221,111]], '#4c4232');
+    face([[241,94],[225,174],[244,162],[236,205],[267,230],[253,162]], '#e3cb9d');
+    ctx.strokeStyle = '#f5dfb5'; ctx.lineWidth = 3; ctx.lineJoin = 'bevel';
+    for (const line of [[[16,232],[52,190],[67,115]],[[92,140],[114,74],[129,80],[159,5]],[[144,108],[158,145],[145,209]],[[267,158],[286,173],[304,222]]]) {
+      ctx.beginPath(); line.forEach(([x,y], i) => i ? ctx.lineTo(x,y) : ctx.moveTo(x,y)); ctx.stroke();
+    }
+    ctx.strokeStyle = '#5b4b36'; ctx.lineWidth = 3;
+    for (const line of [[[104,156],[100,177],[119,185],[105,217]],[[174,175],[181,189],[169,211],[178,233]],[[269,200],[280,217],[273,239]]]) {
+      ctx.beginPath(); line.forEach(([x,y], i) => i ? ctx.lineTo(x,y) : ctx.moveTo(x,y)); ctx.stroke();
+    }
+    return textureFromCanvas(c);
+  })();
+  const guardian = (() => {
+    const [c, ctx] = makeCanvas(192, 256);
+    ctx.lineJoin = 'round';
+    const metal = ctx.createLinearGradient(40, 0, 130, 0);
+    metal.addColorStop(0, '#f9edc6'); metal.addColorStop(0.3, '#b5a47c');
+    metal.addColorStop(0.65, '#655d49'); metal.addColorStop(1, '#d6c8a1');
+    const shape = (points: number[][], fill: string | CanvasGradient, edge = '#f5e7ba', width = 2.5) => {
+      ctx.beginPath(); points.forEach(([x, y], i) => i ? ctx.lineTo(x, y) : ctx.moveTo(x, y));
+      ctx.closePath(); ctx.fillStyle = fill; ctx.fill(); ctx.strokeStyle = edge; ctx.lineWidth = width; ctx.stroke();
+    };
+    const cape = ctx.createLinearGradient(0, 80, 0, 250);
+    cape.addColorStop(0, 'rgba(158,145,110,0.65)'); cape.addColorStop(0.65, 'rgba(130,119,91,0.45)');
+    cape.addColorStop(1, 'rgba(235,220,173,0)');
+    shape([[47,79],[124,79],[138,185],[128,224],[115,209],[109,247],[92,219],[73,248],[64,216],[43,237],[32,191]], cape, 'rgba(231,214,169,0.35)');
+    ctx.fillStyle = '#b9aa84'; ctx.fillRect(151, 33, 5, 196);
+    shape([[154,8],[178,39],[165,66],[154,52],[157,35]], metal);
+    shape([[152,47],[136,64],[147,71],[153,61]], metal);
+    shape([[61,39],[65,22],[84,15],[105,24],[111,42],[100,56],[70,56]], metal);
+    shape([[80,19],[86,4],[92,20],[89,40],[83,40]], '#e5d9b3');
+    shape([[69,43],[103,43],[99,67],[86,76],[73,65]], '#514d41');
+    ctx.strokeStyle = '#fff2cc'; ctx.lineWidth = 3;
+    ctx.beginPath(); ctx.moveTo(74,50); ctx.lineTo(82,52); ctx.moveTo(91,52); ctx.lineTo(99,50); ctx.stroke();
+    shape([[82,44],[89,44],[92,68],[85,73],[80,65]], metal);
+    shape([[57,77],[85,70],[113,77],[112,117],[86,139],[59,119]], metal);
+    shape([[60,83],[85,96],[111,83],[104,108],[86,122],[66,108]], '#8d8266');
+    shape([[54,71],[34,75],[24,97],[52,105],[67,88]], metal);
+    shape([[116,71],[136,76],[145,98],[118,105],[104,88]], metal);
+    shape([[30,102],[48,108],[48,141],[34,147],[26,132]], metal);
+    shape([[125,105],[138,103],[148,122],[159,120],[162,134],[141,142],[124,126]], metal);
+    shape([[58,124],[111,124],[114,138],[56,138]], '#ded0a6');
+    shape([[57,142],[83,143],[79,181],[49,174]], metal);
+    shape([[89,143],[113,142],[123,174],[94,182]], metal);
+    const mist = ctx.createLinearGradient(0, 171, 0, 244);
+    mist.addColorStop(0, 'rgba(216,202,159,0.8)'); mist.addColorStop(1, 'rgba(216,202,159,0)');
+    shape([[62,176],[81,183],[78,225],[66,244],[57,219]], mist, 'rgba(244,229,185,0.3)');
+    shape([[94,182],[111,177],[118,218],[106,242],[98,225]], mist, 'rgba(244,229,185,0.3)');
+    return textureFromCanvas(c);
+  })();
+  const rockPlate = (() => {
+    const [c, ctx] = makeCanvas(64, 80);
+    ctx.beginPath(); ctx.moveTo(14, 5); ctx.lineTo(48, 9); ctx.lineTo(60, 29);
+    ctx.lineTo(51, 70); ctx.lineTo(25, 76); ctx.lineTo(5, 55); ctx.lineTo(6, 22); ctx.closePath();
+    const fill = ctx.createLinearGradient(10, 8, 55, 74);
+    fill.addColorStop(0, '#fff0ce'); fill.addColorStop(0.35, '#c8b18b'); fill.addColorStop(1, '#64523d');
+    ctx.fillStyle = fill; ctx.fill(); ctx.lineWidth = 5; ctx.strokeStyle = '#49392b'; ctx.stroke();
+    ctx.beginPath(); ctx.moveTo(9, 24); ctx.lineTo(16, 9); ctx.lineTo(47, 13); ctx.lineTo(53, 25);
+    ctx.lineTo(26, 20); ctx.closePath(); ctx.fillStyle = '#ffe6b6'; ctx.fill();
+    ctx.beginPath(); ctx.moveTo(36, 22); ctx.lineTo(28, 36); ctx.lineTo(35, 46); ctx.lineTo(24, 65);
+    ctx.moveTo(28, 36); ctx.lineTo(14, 39); ctx.moveTo(35, 46); ctx.lineTo(49, 43);
+    ctx.strokeStyle = '#56432f'; ctx.lineWidth = 3; ctx.stroke();
+    return textureFromCanvas(c);
+  })();
+  const bell = (() => {
+    const [c, ctx] = makeCanvas(256, 320);
+    ctx.beginPath();
+    ctx.moveTo(100, 48);
+    ctx.bezierCurveTo(72, 54, 58, 72, 55, 106);
+    ctx.lineTo(44, 244);
+    ctx.quadraticCurveTo(42, 262, 22, 279);
+    ctx.lineTo(18, 296);
+    ctx.quadraticCurveTo(128, 320, 238, 296);
+    ctx.lineTo(234, 279);
+    ctx.quadraticCurveTo(214, 262, 212, 244);
+    ctx.lineTo(201, 106);
+    ctx.bezierCurveTo(198, 72, 184, 54, 156, 48);
+    ctx.closePath();
+    const fill = ctx.createLinearGradient(18, 0, 238, 0);
+    fill.addColorStop(0, 'rgba(86,70,48,0.72)');
+    fill.addColorStop(0.18, 'rgba(211,195,159,0.58)');
+    fill.addColorStop(0.3, 'rgba(255,249,222,0.62)');
+    fill.addColorStop(0.4, 'rgba(220,206,169,0.56)');
+    fill.addColorStop(0.7, 'rgba(157,137,100,0.58)');
+    fill.addColorStop(1, 'rgba(76,59,38,0.76)');
+    ctx.fillStyle = fill; ctx.fill();
+    ctx.strokeStyle = 'rgba(134,112,72,0.88)'; ctx.lineWidth = 7; ctx.stroke();
+    ctx.beginPath(); ctx.ellipse(128, 27, 14, 20, 0, 0, Math.PI * 2);
+    ctx.strokeStyle = 'rgba(224,208,161,0.95)'; ctx.lineWidth = 12; ctx.stroke();
+    ctx.fillStyle = 'rgba(180,155,102,0.95)'; ctx.fillRect(108, 43, 40, 12);
+    for (const [y, x] of [[104, 55], [220, 46], [278, 24]]) {
+      ctx.beginPath(); ctx.moveTo(x, y); ctx.quadraticCurveTo(128, y + 14, 256 - x, y);
+      ctx.strokeStyle = 'rgba(100,78,44,0.8)'; ctx.lineWidth = 13; ctx.stroke();
+      ctx.beginPath(); ctx.moveTo(x, y + 7); ctx.quadraticCurveTo(128, y + 21, 256 - x, y + 7);
+      ctx.strokeStyle = 'rgba(242,226,182,0.85)'; ctx.lineWidth = 7; ctx.stroke();
+    }
+    for (const x of [70, 99, 128, 157, 186]) {
+      ctx.beginPath(); ctx.arc(x, 130 + Math.sin((x - 55) / 146 * Math.PI) * 4, 4.5, 0, Math.PI * 2);
+      ctx.fillStyle = 'rgba(255,255,255,0.85)'; ctx.fill();
+    }
+    ctx.strokeStyle = 'rgba(95,74,40,0.32)'; ctx.lineWidth = 2;
+    for (const x of [65, 108, 151]) {
+      ctx.strokeRect(x, 151, 36, 53);
+      ctx.beginPath(); ctx.moveTo(x + 9, 168); ctx.lineTo(x + 27, 168);
+      ctx.lineTo(x + 18, 189); ctx.closePath(); ctx.stroke();
+      ctx.strokeRect(x - 3, 238, 39, 24);
+    }
+    const lip = ctx.createLinearGradient(0, 282, 0, 309);
+    lip.addColorStop(0, 'rgba(240,222,172,0.92)');
+    lip.addColorStop(0.45, 'rgba(165,137,84,0.9)');
+    lip.addColorStop(1, 'rgba(73,53,28,0.94)');
+    ctx.fillStyle = lip;
+    ctx.beginPath(); ctx.ellipse(128, 295, 110, 13, 0, 0, Math.PI * 2); ctx.fill();
+    ctx.strokeStyle = 'rgba(235,216,164,0.85)'; ctx.lineWidth = 4; ctx.stroke();
+    return textureFromCanvas(c);
+  })();
+  const bellCracks = (() => {
+    const [c, ctx] = makeCanvas(256, 320);
+    ctx.strokeStyle = 'white'; ctx.lineWidth = 4; ctx.lineJoin = 'bevel';
+    for (const points of [
+      [[115, 51], [133, 91], [117, 124], [147, 165], [129, 207], [153, 250], [139, 305]],
+      [[117, 124], [87, 149], [97, 177], [50, 200]],
+      [[129, 207], [179, 229], [171, 258], [222, 284]],
+    ]) {
+      ctx.beginPath(); points.forEach(([x, y], i) => i ? ctx.lineTo(x, y) : ctx.moveTo(x, y)); ctx.stroke();
+    }
+    return textureFromCanvas(c);
+  })();
+
   const digits: Record<string, Texture> = {};
   for (const ch of '0123456789+-!') {
     const [c, ctx] = makeCanvas(44, 64);
@@ -385,5 +563,5 @@ export function createVfxTextures(): VfxTextures {
     digits[ch] = textureFromCanvas(c);
   }
 
-  return { glow, dot, ring, disc, streak, beam, star, puff, crescent, shard, blade, spike, rock, leaf, drop, chevron, rune, bubble, tendril, plus, crackedShield, digits };
+  return { glow, dot, ring, disc, streak, beam, star, puff, crescent, shard, blade, swordCrack, spike, rock, rockPlate, guardian, mountain, leaf, drop, chevron, rune, bubble, tendril, vineSegment, plus, crackedShield, bell, bellCracks, digits };
 }

@@ -51,10 +51,10 @@ try {
       const glow = w.particles.find((p) => p.o.texture === tex.glow && p.o.life === 160);
       const core = w.particles.find((p) => p.o.texture === tex.star && p.o.life === 200);
       check(releases === 1 && glow && core, 'charge releases once');
-      check(glow.o.tint === (release?.color ?? LOI.palette.core), 'charge release color');
-      check(glow.o.alpha[0] === (release?.alpha ?? 0.9), 'charge release alpha');
-      check(glow.o.scale[0] === 1.2 * (release?.size ?? 1), 'charge release glow size');
-      check(core.o.scale[0] === 1.3 * (release?.coreSize ?? 1) && core.o.tint === LOI.palette.core, 'independent white core size');
+      check(glow.o.tint === (release?.color ?? LOI.palette.main), 'charge release color');
+      check(glow.o.alpha[0] === (release?.alpha ?? 0.4), 'charge release alpha');
+      check(glow.o.scale[0] === 1.2 * (release?.size ?? 0.65), 'charge release glow size');
+      check(core.o.scale[0] === 1.3 * (release?.coreSize ?? 0.2) && core.o.tint === LOI.palette.core, 'independent white core size');
       clean(w);
     }
     let w = world(), hits = 0;

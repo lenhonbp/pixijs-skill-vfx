@@ -7,8 +7,9 @@ import {
   VfxWorld, VfxTextures, Vec3, Palette, WUXING, PHONG, LOI, AnyElementName,
   tornado, windSlash, vortex, windWisps, gustLines, curlDrift,
   slash, hitSpark, hitFlash, projectile, explosion, meteor, lightningChain, healAura, telegraph, shockwave,
-  damageOverTime, stun, shock, freeze, slow, root, shield, statChange, damageNumber,
+  damageOverTime, stun, shock, freeze, slow, root, statChange, damageNumber,
   silence, blind, armorBreak, mark, fear, aura, empower, haste,
+  goldenBell, stoneArmor, spiritGuardian, mountainCrash,
   lightningStrike, staticField,
   dash, blink, leap, beam, coneBreath, chargeUp, summonCircle, spikeLine, spikeRing, swordRain,
   rand, envelope, outCubic, outQuad, lerp, clamp01,
@@ -38,8 +39,8 @@ export interface SkillContext {
   returnHome(): void;
   /** Show/hide a unit (blink). */
   setVisible(u: Unit, v: boolean): void;
-  /** Spawn a temporary summoned unit at a ground point. */
-  summon?(at: Vec3, element: AnyElementName | 'neutral'): void;
+  /** Spawn a temporary summoned unit; visualized means the skill supplies the figure's VFX. */
+  summon?(at: Vec3, element: AnyElementName | 'neutral', visualized?: boolean): void;
 }
 
 export type SkillCategory = 'attack' | 'aoe' | 'buff' | 'debuff' | 'control' | 'movement' | 'channel' | 'summon';
@@ -102,7 +103,7 @@ export const SKILLS: SkillDef[] = [
       chargeUp(w, tex, { target: () => hand(caster), palette: P.kim, duration: 450 });
       const c = { x: target.feet.x, y: target.feet.y };
       w.after(350, () => swordRain(w, tex, {
-        ...c, radius: 120, count: 16, duration: 900, palette: P.kim,
+        ...c, radius: 120, count: 16, duration: 900, height: caster.height, palette: P.kim,
         onImpact: (at) => near(at, 40, targets).forEach((u) => hurt(u, Math.round(rand(38, 52)), { palette: P.kim, angle: -Math.PI / 2 })),
       }));
     },
@@ -135,10 +136,9 @@ export const SKILLS: SkillDef[] = [
   },
   {
     id: 'kim-golden-bell', element: 'kim', category: 'buff', en: 'Golden Bell', vi: 'Kim Chung Tráo',
-    desc: 'A golden barrier absorbs three hits, then shatters.', uses: ['shield', 'statChange', 'projectile'], length: 3200,
+    desc: 'A golden temple bell descends, rings under two hits, then shatters on the third.', uses: ['goldenBell', 'projectile'], length: 3800,
     cast: ({ w, tex, caster, targets }) => {
-      statChange(w, tex, { target: feetOf(caster), height: caster.height, up: true, palette: P.kim, duration: 900 });
-      const sh = shield(w, tex, { target: feetOf(caster), height: caster.height, palette: P.kim });
+      const sh = goldenBell(w, tex, { target: feetOf(caster), height: caster.height, palette: P.kim, duration: 3000 });
       targets.slice(0, 3).forEach((e, i) => {
         w.after(700 + i * 550, () => projectile(w, tex, {
           from: chest(e, 0.6), to: { ...chest(caster), x: caster.feet.x + caster.height * 0.5 }, palette: P.shadow, speed: 700, size: 0.8,
@@ -151,16 +151,18 @@ export const SKILLS: SkillDef[] = [
   // ------------------------------------------------------------------ MỘC / WOOD
   {
     id: 'moc-vine-bind', element: 'moc', category: 'control', en: 'Vine Bind', vi: 'Triền Đằng Phược',
-    desc: 'A seed bolt bursts into thorned vines that root the target.', uses: ['chargeUp', 'projectile', 'hitSpark', 'root'], length: 3300,
+    desc: 'A seed bolt bursts into thorned vines that root the target.', uses: ['chargeUp', 'projectile', 'root'], length: 3300,
     cast: ({ w, tex, caster, target, hurt }) => {
       chargeUp(w, tex, {
         target: () => hand(caster), palette: P.moc, duration: 300,
         onDone: () => projectile(w, tex, {
-          from: hand(caster), to: chest(target, 0.3), palette: P.moc, speed: 620, arcHeight: 50, size: 0.9,
+          from: hand(caster), to: chest(target, 0.3), palette: { ...P.moc, core: P.moc.main }, speed: 620, arcHeight: 50, size: 0.65, alpha: 0.35,
           onHit: (at) => {
-            hitSpark(w, tex, { ...at, palette: P.moc });
-            hurt(target, 42, { palette: P.moc });
-            root(w, tex, { target: feetOf(target), height: target.height, duration: 2300 });
+            w.spawn({ texture: tex.glow, ...at, life: 160, scale: [0.3, 0.65], alpha: [0.25, 0], tint: P.moc.main });
+            w.spawn({ texture: tex.ring, ...at, life: 220, scale: [0.02, 0.15], alpha: [0.3, 0], tint: P.moc.main });
+            w.spawn({ texture: tex.dot, ...at, life: 100, scale: [0.08, 0], alpha: [0.4, 0], tint: P.moc.core });
+            hurt(target, 42, { palette: P.moc, feedback: 0 });
+            root(w, tex, { target: feetOf(target), height: target.height, duration: 2300, palette: P.moc }).pulse();
           },
         }),
       });
@@ -325,34 +327,33 @@ export const SKILLS: SkillDef[] = [
   },
   {
     id: 'tho-mountain-leap', element: 'tho', category: 'movement', en: 'Mountain Crash', vi: 'Thái Sơn Áp Đỉnh',
-    desc: 'Leap high and crash down, shattering the ground and stunning nearby enemies.', uses: ['leap', 'stun'], length: 3000,
+    desc: 'A giant craggy mountain forms overhead and crushes the ground as the caster lands.', uses: ['leap', 'mountainCrash', 'stun'], length: 3300,
     cast: ({ w, tex, caster, target, targets, hurt, returnHome }) => {
       const to = { x: target.feet.x - caster.facing * 40, y: target.feet.y + 6, z: 0 };
       leap(w, tex, {
-        from: { ...caster.feet }, to, palette: P.tho, arc: 190, duration: 640, radius: 110, height: caster.height,
+        from: { ...caster.feet }, to, palette: P.tho, arc: 190, duration: 640, radius: 110, height: caster.height, impact: false,
         onMove: (p) => { caster.feet.x = p.x; caster.feet.y = p.y; caster.feet.z = p.z ?? 0; },
-        onLand: (at) => {
+        onLand: () => {
           caster.feet.z = 0;
-          near(at, 130, targets).forEach((u) => { hurt(u, 168, { palette: P.tho, crit: u === target, angle: -Math.PI / 2 }); stun(w, tex, { target: feetOf(u), height: u.height, duration: 1500 }); });
           w.after(900, returnHome);
         },
+      });
+      mountainCrash(w, tex, { ...to, radius: 110, height: caster.height * 2.3, palette: P.tho, delay: 320,
+        onHit: () => near(to, 130, targets).forEach((u) => {
+          hurt(u, 168, { palette: P.tho, crit: u === target, angle: -Math.PI / 2 });
+          stun(w, tex, { target: feetOf(u), height: u.height, duration: 1500 });
+        }),
       });
     },
   },
   {
     id: 'tho-stone-skin', element: 'tho', category: 'buff', en: 'Stone Skin', vi: 'Thạch Giáp Hộ Thể',
-    desc: 'Rock plates form a heavy barrier and raise defense.', uses: ['shield', 'statChange'], length: 2800,
+    desc: 'Rock plates rise and lock onto the body, then crumble into rubble.', uses: ['stoneArmor', 'statChange'], length: 4000,
     cast: ({ w, tex, caster }) => {
-      const f = caster.feet;
-      w.burst(14, () => {
-        const a = rand(0, 6.3), r = rand(50, 80);
-        return { texture: tex.rock, blend: 'normal', x: f.x + Math.cos(a) * r, y: f.y + Math.sin(a) * r * w.groundSquash, z: 0, life: 380, vx: -Math.cos(a) * r * 2.6, vy: -Math.sin(a) * r * w.groundSquash * 2.6, vz: 260, gravity: 900, rotation: rand(0, 6.3), spin: rand(-8, 8), scale: rand(0.25, 0.4), tint: 0x9a8060 };
-      });
-      w.after(360, () => {
-        w.shake(4, 160);
+      const armor = stoneArmor(w, tex, { target: feetOf(caster), height: caster.height, palette: P.tho, duration: 2200 });
+      w.after(650, () => {
         statChange(w, tex, { target: feetOf(caster), height: caster.height, up: true, palette: P.tho, duration: 1100 });
-        const sh = shield(w, tex, { target: feetOf(caster), height: caster.height, palette: P.tho, duration: 2200 });
-        w.after(1200, () => sh.hit(0.3));
+        w.after(1200, () => armor.hit(0.3));
       });
     },
   },
@@ -597,11 +598,16 @@ export const SKILLS: SkillDef[] = [
   },
   {
     id: 'summon-spirit', element: 'neutral', category: 'summon', en: 'Summon Guardian', vi: 'Triệu Hồi Hộ Pháp',
-    desc: 'A rune circle opens and calls a guardian spirit to the field.', uses: ['chargeUp', 'summonCircle'], length: 3200,
+    desc: 'A rune circle calls an armored spectral guardian bearing a halberd.', uses: ['chargeUp', 'summonCircle', 'spiritGuardian'], length: 4000,
     cast: ({ w, tex, caster, summon }) => {
       chargeUp(w, tex, { target: () => hand(caster), palette: P.holy, duration: 350 });
       const at = { x: caster.feet.x + caster.facing * 120, y: caster.feet.y + 40, z: 0 };
-      summonCircle(w, tex, { ...at, palette: P.holy, radius: 70, duration: 1200, onSummon: () => summon?.(at, 'neutral') });
+      summonCircle(w, tex, { ...at, palette: P.holy, radius: 70, duration: 1200, columnAlpha: 0.2,
+        onSummon: () => {
+          summon?.(at, 'neutral', true);
+          w.after(200, () => spiritGuardian(w, tex, { ...at, palette: P.holy, height: caster.height * 1.4, duration: 1200 }));
+        },
+      });
     },
   },
 ];
