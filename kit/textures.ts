@@ -69,6 +69,10 @@ export interface VfxTextures {
   crackedShield: Texture;
   /** Hollow-eyed skull sigil with a fractured jaw. 64x72. Curses. */
   skull: Texture;
+  /** Bold inscribed circular seal, 128x128. */
+  sealGlyph: Texture;
+  /** Thick elliptical chain link, 64x40. */
+  chainLink: Texture;
   /** Cast-bronze temple bell with hanging loop, bands and engravings. 256x320. */
   bell: Texture;
   /** Fractures aligned to bell, with the same size and anchor. */
@@ -504,6 +508,29 @@ export function createVfxTextures(): VfxTextures {
     return textureFromCanvas(c);
   })();
 
+  const sealGlyph = (() => {
+    const [c, ctx] = makeCanvas(128, 128);
+    ctx.strokeStyle = 'white'; ctx.lineWidth = 8; ctx.lineCap = 'round'; ctx.lineJoin = 'round';
+    ctx.beginPath(); ctx.arc(64, 64, 54, 0, Math.PI * 2); ctx.stroke();
+    ctx.lineWidth = 7;
+    ctx.beginPath(); ctx.moveTo(42, 40); ctx.lineTo(86, 88);
+    ctx.moveTo(86, 40); ctx.lineTo(42, 88); ctx.stroke();
+    ctx.lineWidth = 5;
+    for (let i = 0; i < 8; i++) {
+      const a = i * Math.PI / 4;
+      ctx.beginPath(); ctx.moveTo(64 + Math.cos(a) * 43, 64 + Math.sin(a) * 43);
+      ctx.lineTo(64 + Math.cos(a) * 48, 64 + Math.sin(a) * 48); ctx.stroke();
+    }
+    return textureFromCanvas(c);
+  })();
+
+  const chainLink = (() => {
+    const [c, ctx] = makeCanvas(64, 40);
+    ctx.strokeStyle = 'white'; ctx.lineWidth = 6;
+    ctx.beginPath(); ctx.ellipse(32, 20, 26, 12, 0, 0, Math.PI * 2); ctx.stroke();
+    return textureFromCanvas(c);
+  })();
+
   const skull = (() => {
     const [c, ctx] = makeCanvas(64, 72);
     ctx.fillStyle = 'white';
@@ -655,5 +682,5 @@ export function createVfxTextures(): VfxTextures {
     digits[ch] = textureFromCanvas(c);
   }
 
-  return { stormCloud, glow, dot, ring, disc, streak, beam, star, puff, crescent, shard, blade, swordCrack, spike, rock, rockPlate, rockSpike, fissure, guardian, guardianBody, guardianHalberd, mountain, leaf, drop, chevron, rune, bubble, tendril, vineSegment, plus, crackedShield, skull, bell, bellCracks, digits };
+  return { stormCloud, glow, dot, ring, disc, streak, beam, star, puff, crescent, shard, blade, swordCrack, spike, rock, rockPlate, rockSpike, fissure, guardian, guardianBody, guardianHalberd, mountain, leaf, drop, chevron, rune, bubble, tendril, vineSegment, plus, crackedShield, skull, sealGlyph, chainLink, bell, bellCracks, digits };
 }

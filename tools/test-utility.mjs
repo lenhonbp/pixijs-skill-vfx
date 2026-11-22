@@ -17,6 +17,19 @@ try {
     const world = () => new VfxWorld({ ...VfxWorld.createLayers(new Container()), seed: 42 });
     const step = (w, ms) => { for (let i = 0; i < ms; i++) w.update(1); };
     const clean = (w) => check(!w.count && !w.stats.updaters, 'particles and updaters cleaned');
+    {
+      const w = world(), target = () => ({ x: 100, y: 200 });
+      const seal = kit.silence(w, tex, { target, height: 96, duration: 2400 });
+      step(w, 1000);
+      const glyphs = w.particles.filter((p) => p.o.texture === tex.sealGlyph && p.o.z > 96);
+      check(glyphs.length === 2 && glyphs.every((p) => Math.abs(p.sprite.scale.x) * 116 >= 96 * 0.57 && p.sprite.alpha > 0.25),
+        'silence: large bright sustained glyph and underglow');
+      check(w.particles.filter((p) => p.o.texture === tex.chainLink).length === 24, 'silence: three eight-link bands');
+      check(w.particles.filter((p) => p.o.texture === tex.sealGlyph && p.o.groundAligned).length === 4,
+        'silence: split core and glow floor seals');
+      seal.stop(); step(w, 3000); clean(w);
+      results.push('silence: bold glyph, underglow, 24 thick links, split ground seal and cleanup PASS');
+    }
     for (const id of ['seal-silence', 'sunder-mark', 'war-cry', 'shadow-blink', 'curse-weaken', 'summon-spirit']) {
       const skill = SKILLS.find((s) => s.id === id);
       for (const offset of [0, -200]) {

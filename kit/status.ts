@@ -213,28 +213,33 @@ export function silence(w: VfxWorld, tex: VfxTextures, o: SustainedStatusOptions
   const opening = floorRing(w, tex, { around: o.target, texture: tex.rune, textureRadius: M.runeRadius,
     radius: 48 * s, palette: p, duration: 600, scale: [0.035 * s, 0.2 * s, outCubic], alpha: [0.85, 0], spin: -1.5 });
   g.add(opening.far); g.add(opening.near);
-  floor(tex, { texture: tex.rune, textureRadius: M.runeRadius, radius: 27 * s, palette: p, alpha: 0.18, spin: -0.3 });
+  floor(tex, { texture: tex.sealGlyph, textureRadius: 58, radius: 37 * s, palette: p, alpha: 0.28, spin: -0.3,
+    tint: p.main, scale: 37 * s / 58 * 1.1 });
+  floor(tex, { texture: tex.sealGlyph, textureRadius: 58, radius: 37 * s, palette: p, alpha: 0.8, spin: -0.3, tint: p.main });
   for (let band = 0; band < 3; band++) {
+    attach({ texture: tex.glow, z: h * (0.25 + band * 0.22), scaleX: 0.7 * s, scaleY: 0.12 * s,
+      alpha: 0.22, tint: p.main, zBias: 7 });
     attach({ texture: tex.ring, z: h * (0.25 + band * 0.22), scaleX: 0.19 * s, scaleY: 0.055 * s,
-      alpha: 0.28, tint: p.main, zBias: 8,
+      alpha: 0.65, tint: p.main, zBias: 8,
       onUpdate: (q) => { q.sprite.scale.x *= 1 + 1.5 * (1 - outCubic(clamp01(q.age / 300))); } });
-    for (let i = 0; i < 8; i++) attach({ texture: tex.ring, scaleX: 0.025 * s, scaleY: 0.014 * s,
-      alpha: 0.55, tint: i % 2 ? p.main : p.core, zBias: 9,
+    for (let i = 0; i < 8; i++) attach({ texture: tex.chainLink, scaleX: 0.24 * s, scaleY: 0.22 * s,
+      alpha: 0.85, tint: i % 2 ? p.main : p.core, zBias: 9,
       onUpdate: (q) => { const a = i * TAU / 8 + band * 0.3 + q.age * 0.0003;
         const r = lerp(52, 22, outCubic(clamp01(q.age / 300))) * s;
         q.px = Math.cos(a) * r; q.pz = h * (0.25 + band * 0.22) + Math.sin(a) * 6 * s;
         q.py = Math.sin(a) * 5 * s; q.rotation = -a; } });
   }
   g.addHandle(w.after(dur - 120, () => statusMotes(w, tex, o.target(), h, p)));
-  attach({ texture: tex.glow, z: h + 22 * s, scale: 0.65 * s, alpha: 0.22, tint: p.main, zBias: 9 });
-  attach({ texture: tex.rune, z: h + 22 * s, scale: 0.085 * s, alpha: 0.8, tint: p.main, spin: 0.7, zBias: 10,
-    onUpdate: (q) => { q.sprite.scale.set(0.085 * s * (1 - 0.8 * clamp01((q.age - dur + 220) / 220))); } });
-  for (const angle of [-Math.PI / 4, Math.PI / 4]) attach({ texture: tex.beam, z: h + 22 * s,
-    rotation: angle, scaleX: 0.55 * s, scaleY: 0.17 * s, alpha: 0.8, tint: p.main, zBias: 11 });
-  for (let i = 0; i < 6; i++) attach({ texture: tex.ring, z: h + 22 * s,
-    scaleX: 0.033 * s, scaleY: 0.021 * s, alpha: 0.7, tint: p.main, zBias: 9,
-    onUpdate: (q) => { const a = i * TAU / 6 + q.age * 0.0015; q.px = Math.cos(a) * 27 * s; q.pz = Math.sin(a) * 16 * s; q.rotation = a; },
-  });
+  attach({ texture: tex.glow, z: h + 30 * s, scale: 0.85 * s, alpha: 0.3, tint: p.main, zBias: 9 });
+  for (const core of [false, true]) attach({ texture: tex.sealGlyph, z: h + 30 * s,
+    scale: h * 0.6 / 116 * (core ? 1 : 1.12), alpha: core ? 0.95 : 0.38,
+    tint: core ? p.core : p.main, spin: 0.25, zBias: core ? 11 : 10,
+    onUpdate: (q) => {
+      const pulse = 1 + 0.045 * Math.sin(q.age * 0.003);
+      q.sprite.scale.set(h * 0.6 / 116 * (core ? 1 : 1.12) * pulse *
+        (1 - 0.8 * clamp01((q.age - dur + 220) / 220)));
+      q.sprite.alpha *= 0.88 + 0.12 * Math.sin(q.age * 0.003);
+    } });
   return g;
 }
 

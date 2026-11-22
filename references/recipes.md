@@ -223,6 +223,11 @@ mountain, rock and vines). `TEX_METRICS` records feature dimensions for pixel-to
 conversion. Not every texture is white: preserve baked shading on material surfaces
 and use normal blending for solid matter.
 
+Utility masks include `skull` (64×72), `sealGlyph` (128×128, bold circular inscription
+and crossed strokes) and `chainLink` (64×40, thick elliptical link). Silence layers the
+seal at 0.6× target height with violet underglow, a bright slowly rotating/pulsing core,
+three linked body bands and split ground-seal halves; it does not use a stage flash.
+
 Fire, dragon, wood and water recipes also use lazy cached texture sets. Their first
 call can allocate textures; prewarm them after renderer setup if needed. Only
 `woodTextures` is exported by the barrel; see the [direct-module list](api.md#direct-module-only-helpers)

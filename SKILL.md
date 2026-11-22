@@ -288,5 +288,6 @@ with `node tools/NAME.mjs`; browser tests require Playwright Chromium. See the
 | `tools/test-spirit-guardian.mjs` | flight, weapon grip, contact timing, retargeting and summon AoE | No |
 | `tools/test-status.mjs` | status lifecycles, bell, armor, guardian, spikes, swords and vines | No |
 | `tools/test-timing.mjs` | nominal timing, feedback and sample damage windows | No |
+| `tools/test-utility.mjs` | utility contacts, bold seal layers, callback ownership and cleanup | No |
 | `tools/test-wood.mjs` | vegetation cache, seed flight, bloom/spore timing and cleanup | No |
 | `tools/test-docs.mjs` | documentation checker normal, empty, alias, cycle and error cases | No; run with node --test |
