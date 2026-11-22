@@ -134,6 +134,9 @@ and return values.
 - "Make a Thổ (earth) ultimate in the style of Mountain Crash but with a 3-hit combo."
 - "Our stun icon is a static sprite; replace it with the kit's stun stars and a freeze variant for ice skills."
 
-## License
+## Author & license
 
-MIT
+Made by [lenhonbp](https://github.com/lenhonbp) ([lenhonbp@gmail.com](mailto:lenhonbp@gmail.com)).
+Licensed under [MIT](LICENSE): free to use, modify, and ship, including commercially.
+Keep the copyright and license notice when redistributing the code.
+Credit or a link back is appreciated, but optional for products.
