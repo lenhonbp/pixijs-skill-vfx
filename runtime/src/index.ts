@@ -128,8 +128,9 @@ export class VfxPlayer {
       if (cue.type === 'hitstop' && this.hitstopEnabled) a.freeze = Math.max(a.freeze, cue.ms ?? 0);
       if (cue.type === 'shake' && this.shakeEnabled) Object.assign(this.shake, { age: 0, duration: cue.ms ?? 0, amp: cue.amp ?? 0 });
       for (const listener of this.listeners) listener({ ...cue, packId: a.pack.manifest.id, handle: a.handle });
-      if (!this.active.has(a)) break;
+      if (this.dead || !this.active.has(a)) return false;
     }
+    return !this.dead && this.active.has(a);
   }
   update(dtMs: number) {
     if (this.dead) return;
@@ -142,10 +143,11 @@ export class VfxPlayer {
       a.time += remaining * (a.options.speed ?? 1);
       const duration = a.pack.manifest.durationMs;
       this.emitCues(a);
-      if (!this.active.has(a)) continue;
+      if (this.dead || !this.active.has(a)) continue;
       if (a.time >= duration) {
         if (!a.options.loop) { this.finish(a); continue; }
         a.time %= duration; a.cue = 0; this.emitCues(a);
+        if (this.dead || !this.active.has(a)) continue;
       }
       this.draw(a);
     }

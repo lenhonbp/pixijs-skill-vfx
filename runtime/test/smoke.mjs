@@ -26,6 +26,8 @@ const feedback = structuredClone(empty);
 feedback.durationMs = 200; feedback.frameCount = 2; feedback.fps = 10;
 feedback.layers.forEach(l => { l.frames = [null, null]; });
 feedback.cues = [{ t: 0, type: 'hitstop', ms: 100 }, { t: 0, type: 'shake', amp: 6, ms: 200 }, { t: 50, type: 'hit' }];
+const destroyCue = structuredClone(decoded.manifest);
+destroyCue.cues = [{ t: 50, type: 'hit' }];
 const offset = structuredClone(decoded.manifest);
 offset.origin = { x: 100, y: 50 }; offset.target = { x: 460, y: 50 }; offset.anchor = 'target';
 offset.durationMs = 1000; offset.frameCount = 1; offset.fps = 1; offset.cues = [];
@@ -65,6 +67,7 @@ const server = createServer(async (req, res) => {
     if (path === '/v7.js') { res.setHeader('Content-Type', 'text/javascript'); res.end(v7Bundle.outputFiles[0].contents); return; }
     if (path === '/feedback.vfxb' || path === '/invalid.vfxb') { res.end(path === '/feedback.vfxb' ? fixture(feedback, new Map()) : Buffer.from('invalid')); return; }
     if (path === '/offset.vfxb') { res.end(fixture(offset, decoded.sheets)); return; }
+    if (path === '/destroy-cue.vfxb') { res.end(fixture(destroyCue, decoded.sheets)); return; }
     if (path === '/custom.vfxb' || path === '/plain.vfxb' || path === '/empty.vfxb') { res.end(path === '/custom.vfxb' ? custom : path === '/empty.vfxb' ? fixture(empty, new Map()) : plainContainer); return; }
     const local = path.replace(/^\/collection/, '') || '/';
     const folder = path.startsWith('/format-examples/') ? resolve(root, 'docs/format-examples') : dist;
@@ -150,6 +153,11 @@ try {
     feedback.shakeEnabled = false; feedback.hitstopEnabled = false; feedback.update(50);
     if (hits !== 1 || camera.x !== 100 || camera.y !== 50) throw Error('Feedback toggles failed');
     feedback.update(150); await f.finished; feedback.destroy();
+    const destroyed = await VfxPlayer.create(app, { packs: ['/destroy-cue.vfxb'] });
+    destroyed.on('cue', () => destroyed.destroy());
+    const destroyedHandle = destroyed.play('hoa-fireball', { from });
+    destroyed.draw = () => { throw Error('Playback drawn after cue destroyed player'); };
+    destroyed.update(50); await destroyedHandle.finished;
     let rejected = false;
     try { await VfxPlayer.create(app, { packs: ['/invalid.vfxb'] }); } catch { rejected = true; }
     if (!rejected) throw Error('Invalid pack load accepted');
