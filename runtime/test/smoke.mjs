@@ -63,6 +63,52 @@ function fixture(manifest, sheets, key) {
 }
 const custom = fixture(decoded.manifest, decoded.sheets, 'test-custom-火');
 const plainContainer = fixture(decoded.manifest, decoded.sheets);
+const orderedColors = [[0, 30, 0, 255], [80, 20, 10, 192], [30, 0, 0, 255], [0, 0, 80, 128], [10, 20, 0, 255], [20, 40, 10, 128]];
+const orderedSheets = new Map();
+const orderedManifest = count => ({ ...empty, id: `ordered-${count}`, durationMs: 200, frameCount: 2, fps: 10, origin: { x: 0, y: 0 }, scale: 1,
+  layers: orderedColors.slice(0, count).map((_, i) => ({ name: `ordered-${i}`, blend: i % 2 ? 'normal' : 'add', scale: [1, 0.5, 2][i % 3], sheets: [`ordered-${i}.png`], frames: [[0, 0, 0, 4, 4, 0, 0], i === 1 ? null : [0, 0, 0, 4, 4, 0, 0]] })),
+});
+async function orderedSmoke({ engine, colors }) {
+  const { app, vfx: existing } = engine === 'v8' ? window.__showcase : window.__v7;
+  const Player = engine === 'v8' ? existing.constructor : window.__v7.VfxPlayer;
+  const visible = app.stage.children.map(c => c.visible), children = [...app.stage.children];
+  const background = app.renderer.background ?? app.renderer;
+  const oldColor = background.color ?? background.backgroundColor, oldAlpha = background.alpha ?? background.backgroundAlpha;
+  const setBackground = (color, alpha) => { if (app.renderer.background) { background.color = color; background.alpha = alpha; } else { app.renderer.backgroundColor = color; app.renderer.backgroundAlpha = alpha; } };
+  const parent = new app.stage.constructor(); app.stage.addChild(parent);
+  children.forEach(c => { c.visible = false; }); setBackground(0x121620, 1);
+  const player = new Player(app);
+  try {
+    for (const count of [3, 6]) {
+      const id = `ordered-${count}`; await player.load(`/ordered-${count}.vfxb`);
+      const checkFrame = second => {
+        const root = parent.children[0];
+        if (root.children.length !== count) throw Error(`${engine}: N-layer sprite count`);
+        let expected = [18, 22, 32];
+        root.children.forEach((sprite, i) => {
+          if (sprite.visible !== !(second && i === 1)) throw Error(`${engine}: N-layer null frame`);
+          if (sprite.scale.x !== 1 / [1, 0.5, 2][i % 3]) throw Error(`${engine}: N-layer scale/order`);
+          if (second && i === 1) return;
+          const color = colors[i], a = color[3] / 255;
+          expected = expected.map((v, c) => Math.min(255, i % 2 ? v * (1 - a) + color[c] * a : v + color[c] * a));
+        });
+        app.render();
+        const canvas = app.canvas ?? app.view, copy = document.createElement('canvas'); copy.width = canvas.width; copy.height = canvas.height;
+        const ctx = copy.getContext('2d'); ctx.drawImage(canvas, 0, 0);
+        const xy = Math.floor(20.75 * app.renderer.resolution), actual = ctx.getImageData(xy, xy, 1, 1).data;
+        if (expected.some((v, c) => Math.abs(v - actual[c]) > 4)) throw Error(`${engine}: ${count}-layer compositing/order ${[...actual]} != ${expected}`);
+      };
+      const handle = player.play(id, { from: { x: 20, y: 20 }, parent }); checkFrame(false);
+      player.update(100.001); checkFrame(true); handle.stop(); await handle.finished;
+      const pooled = player.stats().pooled;
+      const replay = player.play(id, { from: { x: 20, y: 20 }, parent }); checkFrame(false); replay.stop();
+      if (player.stats().pooled !== pooled) throw Error(`${engine}: N-layer replay pool grew`);
+      player.unload(id);
+    }
+  } finally {
+    player.destroy(); parent.destroy({ children: true }); children.forEach((c, i) => { c.visible = visible[i]; }); setBackground(oldColor, oldAlpha);
+  }
+}
 assert.deepEqual(readContainer(buffer(custom), 'test-custom-火').manifest, decoded.manifest);
 assert.deepEqual(readContainer(buffer(plainContainer)).manifest, decoded.manifest);
 console.log('Format contracts: PASS (default/custom keys, unscrambled, empty layers, malformed data)');
@@ -78,6 +124,7 @@ const server = createServer(async (req, res) => {
     if (path === '/feedback.vfxb' || path === '/invalid.vfxb') { res.end(path === '/feedback.vfxb' ? fixture(feedback, new Map()) : Buffer.from('invalid')); return; }
     if (path === '/offset.vfxb') { res.end(fixture(offset, decoded.sheets)); return; }
     if (path === '/offset.json') { res.setHeader('Content-Type', 'application/json'); res.end(JSON.stringify(offset)); return; }
+    if (/^\/ordered-[36]\.vfxb$/.test(path)) { res.end(fixture(orderedManifest(Number(path[9])), orderedSheets)); return; }
     if (path === '/destroy-cue.vfxb') { res.end(fixture(destroyCue, decoded.sheets)); return; }
     if (path === '/loop-cues.vfxb') { res.end(fixture(loopCues, new Map())); return; }
     if (path === '/slow.vfxb') { await new Promise(resolve => setTimeout(resolve, 40)); res.end(fixture(decoded.manifest, decoded.sheets)); return; }
@@ -134,6 +181,13 @@ try {
     return { count: packs.length, cues, pooled: vfx.stats().pooled };
   });
   console.log(`Pixi v8: PASS (${result.count} packs + plain JSON, cleanup, replay pool=${result.pooled}, ${result.cues} cues, loop/stop/errors)`);
+  const pngs = await page.evaluate(colors => colors.map(color => {
+    const c = document.createElement('canvas'); c.width = c.height = 4; const ctx = c.getContext('2d');
+    ctx.fillStyle = `rgba(${color[0]},${color[1]},${color[2]},${color[3] / 255})`; ctx.fillRect(0, 0, 4, 4); return c.toDataURL('image/png').split(',')[1];
+  }), orderedColors);
+  pngs.forEach((png, i) => orderedSheets.set(`ordered-${i}.png`, Buffer.from(png, 'base64')));
+  await page.evaluate(orderedSmoke, { engine: 'v8', colors: orderedColors });
+  console.log('Pixi v8 ordered layers: PASS (3/6 layers, pixel-checked blend order, mixed scales, null frames, replay)');
   await page.evaluate(async () => {
     const { vfx, world, scene } = window.__showcase;
     vfx.unload('hoa-fireball'); await vfx.load('/offset.vfxb');
@@ -231,6 +285,8 @@ try {
   });
   assert.deepEqual(errors, []);
   console.log('Pixi v7: PASS (WebGL render, mirror/fitDistance/parent/zIndex, target anchor/nonzero origin, cleanup/pool, custom key, unscrambled, empty pack, shake/hitstop toggles, invalid load, destroy)');
+  await page.evaluate(orderedSmoke, { engine: 'v7', colors: orderedColors });
+  console.log('Pixi v7 ordered layers: PASS (3/6 layers, pixel-checked blend order, mixed scales, null frames, replay)');
   const mobile = await browser.newPage({ viewport: { width: 390, height: 844 }, deviceScaleFactor: 3, isMobile: true, hasTouch: true });
   mobile.on('pageerror', e => errors.push(e.message)); mobile.on('console', m => { if (m.type() === 'error') errors.push(m.text()); });
   const requests = [];
