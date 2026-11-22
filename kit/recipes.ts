@@ -312,12 +312,13 @@ export function lightningChain(w: VfxWorld, tex: VfxTextures, o: { points: Vec3[
   const flickers = o.flickers ?? 3;
   const impact = o.impactIntensity ?? 1;
   const points = o.points.map((q) => ({ x: q.x, y: q.y, z: q.z }));
-  const life = Math.min(250, 120 + Math.max(0, flickers) * 40), hop = o.hopMs ?? 40;
-  const g = group(w, Math.max(0, points.length - 2) * hop + life + 140);
+  const life = o.flickers === undefined ? 320 : Math.min(250, 120 + Math.max(0, flickers) * 40), hop = o.hopMs ?? 40;
+  const g = group(w, Math.max(0, points.length - 2) * hop + life + 220);
   for (let i = 0; i < points.length - 1; i++) {
     if (flickers <= 0) break;
     g.addHandle(w.after(i * hop, () => g.addHandle(lightningBolt(w, tex, points[i], points[i + 1], p,
-      { width: width * 1.65, life, branches: 3, restrikes: Math.max(0, Math.ceil(flickers) - 1) }))));
+      { width: width * 2.2, life, branches: 3, afterglow: 0.16, hold: o.flickers === undefined ? 240 : 0,
+        restrikes: Math.max(0, Math.ceil(flickers) - 1) }))));
     const q = points[i + 1];
     if (impact > 0) g.addHandle(w.after(i * hop + 40, () => {
       g.add(w.spawn({ texture: tex.glow, ...q, z: q.z ?? 40, life: 90, scale: [0.25 * Math.sqrt(impact), 0],
@@ -326,7 +327,7 @@ export function lightningChain(w: VfxWorld, tex: VfxTextures, o: { points: Vec3[
         vx: rand(-60, 60), vz: rand(-30, 60), faceVelocity: true, scaleX: [0.08, 0], scaleY: 0.08, alpha: [0.5 * impact, 0], tint: p.main }));
     }));
     g.addHandle(w.after(i * hop + life - 30, () => g.addHandle(lightningBolt(w, tex, points[i], q, p,
-      { width: width * 0.3, life: 130, alpha: 0.12, coreAlpha: 0.2, halo: 0.03, branches: 0 }))));
+      { width: width * 0.8, life: 210, alpha: 0.4, coreAlpha: 0.7, halo: 0.12, branches: 1, leader: false, hold: 100 }))));
   }
   if (points.length > 1) w.shake(4, 200);
   return g;

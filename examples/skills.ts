@@ -1,4 +1,4 @@
-// 28 sample skills: three per Wu Xing element, four Phong, three Lôi,
+// 29 sample skills: four Hỏa, three per other Wu Xing element, four Phong, three Lôi,
 // and six neutral utility skills.
 // Each skill is gameplay-agnostic: it only talks to the game through SkillContext, so you can
 // copy one into your project and replace hurt()/returnHome() with your own systems.
@@ -7,7 +7,7 @@ import {
   VfxWorld, VfxTextures, Vec3, Palette, WUXING, PHONG, LOI, AnyElementName, SkillTiming, HitSkinName, onHits,
   tornado, windSlash, windSweep, vortex, windWisps, gustLines,
   slash, hitSpark, hitFlash, hitSkin, projectile, lightningChain, telegraph, shockwave,
-  fireball, fireBreath, fireCharge, fireImpact, fireMeteor,
+  fireball, fireBreath, fireCharge, fireDragonCrossing, fireImpact, fireMeteor,
   woodCharge, seedFlight, springBloom, toxicSporeCloud,
   damageOverTime, stun, shock, freeze, slow, root, statChange, damageNumber,
   silence, blind, armorBreak, mark, fear, aura, empower, haste,
@@ -315,6 +315,40 @@ export const SKILLS: SkillDef[] = [
       fireMeteor(w, tex, { ...c, radius: 125, palette: P.hoa, castMs: 900, onHit: () => near(c, 130, targets).forEach((u) => hurt(u, Math.round(rand(180, 230)), { palette: P.hoa, crit: true, angle: -Math.PI / 2 })) });
     },
   },
+  {
+    id: 'hoa-fire-dragon-crossing', element: 'hoa', category: 'aoe', en: 'Fire Dragon Crossing', vi: 'Hỏa Long Quá Giang',
+    timing: { windup: 280, hits: Array.from({ length: 4 }, (_, i) => ({ t: 870 + i * 600, spread: 420, skin: 'char', targets: 'all', optional: true })), recovery: 700 },
+    desc: 'A serpentine fire dragon sweeps across the field, scorching its path and burning the enemies it crosses.',
+    uses: ['fireCharge', 'fireDragonCrossing', 'damageOverTime(burn)'], length: 3800,
+    cast: ({ w, tex, caster, target, targets, hurt }) => {
+      const crossed = new Set<Unit>();
+      fireCharge(w, tex, {
+        origin: () => hand(caster), palette: P.hoa, duration: 280,
+        onDone: () => fireDragonCrossing(w, tex, {
+          from: hand(caster), toward: target.feet, facing: caster.facing, palette: P.hoa,
+          onCross: ({ x, y, angle, halfLength, radius }) => {
+            const ux = Math.cos(angle), uy = Math.sin(angle);
+            for (const u of targets) {
+              if (crossed.has(u)) continue;
+              const dx = u.feet.x - x, feetY = u.feet.y - u.feet.z;
+              const intersects = [0.38, 0.56, 0.76].some((level) => {
+                const dy = feetY - u.height * level - y;
+                const along = Math.max(-halfLength, Math.min(halfLength, dx * ux + dy * uy));
+                return Math.hypot(dx - along * ux, dy - along * uy) <= radius + u.height * 0.12;
+              });
+              if (!intersects) continue;
+              crossed.add(u);
+              hurt(u, u === target ? 156 : 108, { palette: P.hoa, crit: u === target, angle });
+              damageOverTime(w, tex, {
+                target: feetOf(u), height: u.height, kind: 'burn', duration: 1800, tickMs: 600, damage: 13, numbers: false,
+                onTick: (damage) => hurt(u, damage, { color: 0xffa040, feedback: 0.15 }),
+              });
+            }
+          },
+        }),
+      });
+    },
+  },
 
   // ------------------------------------------------------------------ THỔ / EARTH
   {
@@ -485,10 +519,12 @@ export const SKILLS: SkillDef[] = [
     timing: { windup: 300, hits: Array.from({ length: 3 }, (_, i) => ({ t: 340 + i * 40, skin: 'shock', targets: 'all' })), recovery: 1200 },
     desc: 'A bolt jumps between all enemies and briefly stuns them.', uses: ['lightningCharge', 'lightningChain', 'lightningStun'], length: 2700,
     cast: ({ w, tex, caster, targets, hurt }) => {
+      const tip = () => ({ x: caster.feet.x + caster.facing * caster.height * 0.22,
+        y: caster.feet.y + 1, z: caster.feet.z + caster.height * 1.02 });
       lightningCharge(w, tex, {
-        target: () => hand(caster), palette: P.loi, duration: 300,
+        target: tip, palette: P.loi, duration: 300, size: 2.1,
         onDone: () => {
-          lightningChain(w, tex, { points: [hand(caster), ...targets.map((u) => chest(u))], palette: P.loi, impactIntensity: 0.2 });
+          lightningChain(w, tex, { points: [tip(), ...targets.map((u) => chest(u))], palette: P.loi, impactIntensity: 0.2 });
           targets.forEach((u, i) => w.after(40 + i * 40, () => {
             hurt(u, 88 - i * 10, { skin: 'shock', angle: rand(0, 6.3), feedback: 0 });
             hitSkin(w, u.sprite, 'shock', { strength: 0.32, duration: 220 });
@@ -512,7 +548,7 @@ export const SKILLS: SkillDef[] = [
           lightningWarning(w, tex, { ...at, radius: 36, palette: P.loi, duration: 300 + i * 180,
             onDone: () => lightningStrike(w, tex, { ...at, palette: P.loi, radius: 38, cloud, onHit: () => {
               hurt(u, 115, { skin: 'shock', feedback: 0 });
-              hitSkin(w, u.sprite, 'shock', { strength: 0.32, duration: 220 });
+              hitSkin(w, u.sprite, 'shock', { strength: 0.22, duration: 220 });
               lightningStun(w, tex, { target: feetOf(u), height: u.height, duration: 650, palette: P.loi });
               shock(w, tex, { target: feetOf(u), height: u.height, duration: 1200, palette: P.loi });
             } }),

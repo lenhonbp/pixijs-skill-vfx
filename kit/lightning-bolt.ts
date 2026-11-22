@@ -3,7 +3,7 @@ import type { Handle, Vec3, VfxWorld } from './vfx-world';
 import type { VfxTextures } from './textures';
 import type { Palette } from './recipes';
 import { blend, isPixiV8 } from './pixi-compat';
-import { rand } from './ease';
+import { lerpColor, rand } from './ease';
 
 type Point = { x: number; y: number };
 
@@ -32,9 +32,11 @@ function ribbon(g: Graphics, points: Point[], width: number, color: number, alph
 /** A tapered channel with stable large kinks, finer restrike jitter and terminating forks. */
 export function lightningBolt(w: VfxWorld, tex: VfxTextures, a: Vec3, b: Vec3, p: Palette,
   o: { width?: number; life?: number; alpha?: number; coreAlpha?: number; depth?: number; halo?: number;
-    branches?: number; layer?: 'ground' | 'body' | 'top'; leader?: boolean; restrikes?: number } = {}): Handle {
+    branches?: number; layer?: 'ground' | 'body' | 'top'; leader?: boolean; restrikes?: number; afterglow?: number;
+    hold?: number; haloWidth?: number } = {}): Handle {
   const life = o.life ?? 210, width = o.width ?? 1, restrikes = o.restrikes ?? 2;
-  if (![life, width, a.x, a.y, a.z ?? 40, b.x, b.y, b.z ?? 40, o.depth ?? 4].every(Number.isFinite) ||
+  if (![life, width, a.x, a.y, a.z ?? 40, b.x, b.y, b.z ?? 40, o.depth ?? 4, o.afterglow ?? 0, o.hold ?? 0, o.haloWidth ?? 0].every(Number.isFinite) ||
+    (o.hold ?? 0) < 0 || (o.haloWidth ?? 0) < 0 ||
     (o.branches !== undefined && (!Number.isInteger(o.branches) || o.branches < 0 || o.branches > 8)) ||
     !Number.isSafeInteger(restrikes) || restrikes < 0)
     throw new RangeError('Lightning needs finite endpoints, life, width, depth and 0..8 branches');
@@ -73,18 +75,23 @@ export function lightningBolt(w: VfxWorld, tex: VfxTextures, a: Vec3, b: Vec3, p
         const fine: Point[] = [];
         for (let j = 0; j < path.length - 1; j++) fine.push(...jagged(path[j], path[j + 1], 1, Math.min(2.4, length * 0.007)).slice(0, -1));
         fine.push(path[path.length - 1]);
-        const branch = i === 0 ? 1 : 0.42, wd = width * branch;
-        ribbon(halo, fine, 17 * wd, p.main, (o.halo ?? 0.11) * branch);
-        ribbon(glow, fine, 6 * wd, p.main, (o.alpha ?? 0.38) * branch);
-        ribbon(core, fine, 1.9 * wd, p.core, (o.coreAlpha ?? 0.95) * branch);
+        const branch = i === 0 ? 1 : 0.58, wd = width * branch;
+        const haloWidth = o.haloWidth === undefined ? 9 * wd : o.haloWidth * branch;
+        ribbon(halo, fine, haloWidth, p.main, (o.halo ?? 0.11) * branch);
+        ribbon(halo, fine, haloWidth * 2 / 3, p.main, (o.halo ?? 0.11) * branch);
+        ribbon(halo, fine, haloWidth / 3, p.main, (o.halo ?? 0.11) * branch);
+        ribbon(glow, fine, 3.5 * wd, p.main, (o.alpha ?? 0.5) * branch);
+        ribbon(core, fine, 1.9 * wd, lerpColor(p.core, 0xf7f3ff, 0.85), (o.coreAlpha ?? 0.95) * branch);
       });
     }
     const end = restrikes === 0 ? 0.23 : 0.32 + (restrikes - 1) * spacing + strokeWidth;
     const pulse = t < 0.08 ? (o.leader === false ? 1 : 0.09) : t < 0.23 ? 1 :
       stroke >= 0 && stroke < restrikes && t < 0.32 + stroke * spacing + strokeWidth ? Math.max(0.2, 0.8 - stroke * 0.25) :
       t >= end ? 0.16 * Math.pow((1 - t) / (1 - end), 2) : t < 0.32 ? 0.05 : 0.04;
-    core.alpha = pulse; glow.alpha = pulse * 0.8 + (1 - t) * 0.12;
-    halo.alpha = pulse * 0.6 + (1 - t) * 0.2;
+    const held = o.hold ? 0.82 * Math.pow(Math.min(1, (life - age) / Math.max(1, life - o.hold)), 1.5) : 0;
+    core.alpha = t < 0.08 ? pulse : Math.max(pulse, held, (o.afterglow ?? 0) * Math.pow(1 - t, 0.6));
+    glow.alpha = core.alpha * 0.8 + (1 - t) * 0.12;
+    halo.alpha = (o.hold ? core.alpha : pulse) * 0.6 + (1 - t) * 0.2;
   };
   draw(); unown = w.own(stop);
   updater = w.addUpdater((dt) => { age += dt; if (age >= life) { stop(); return false; } draw(); });

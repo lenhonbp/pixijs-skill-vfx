@@ -388,6 +388,6 @@ The two test scripts use Playwright Chromium, so they are not browser-free Node 
 custom sample to `examples/skills.ts` (and its filter if using a custom element) before passing
 its ID to capture. The harness builds/serves the demo, seeds randomness (`--seed`, default
 12345), steps the paused world, and writes 5×2 labeled sheets plus `counts.json`. Omit `--skills`
-for all 28 samples. Inspect anticipation, arrival/impact, sustained state and dissipation at
+for all 29 samples. Inspect anticipation, arrival/impact, sustained state and dissipation at
 game zoom; counts must reach zero at `length + 1500 ms` for finite skills. Compare captures
 with the same seed. Also test Infinity + explicit stop, death and scene changes in your game.
