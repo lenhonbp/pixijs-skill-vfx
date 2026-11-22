@@ -48,7 +48,7 @@ try {
     check(error === 'hit callback', 'onHits: callback errors propagate'); bad.stop(); w.clear();
     results.push('hitTimes/onHits: travel, defaults/zero/empty, purity, feedback, cancellation and errors PASS');
 
-    check(SKILLS.length === 28, 'all 28 samples present');
+    check(SKILLS.length === 29, 'all 29 samples present');
     const skins = ['char', 'ice', 'shock', 'holy', 'shadow', 'poison', 'earth', 'metal', 'wind', 'nature', 'red'];
     for (const offset of [0, -200]) {
       for (const skill of SKILLS) {
@@ -97,7 +97,7 @@ try {
         w.clear(); caster.sprite.destroy(); targets.forEach((u) => u.sprite.destroy());
       }
     }
-    results.push('All 28 casts: demo + close-range scenes, no undeclared hurts, required hits, windup/order/length PASS');
+    results.push('All 29 casts: demo + close-range scenes, no undeclared hurts, required hits, windup/order/length PASS');
     return results;
   });
   results.forEach((line) => console.log(line));

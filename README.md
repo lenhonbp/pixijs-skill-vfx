@@ -12,7 +12,7 @@ in PixiJS v7 and v8**. No art assets: every texture is generated with Canvas 2D 
   numbers, stun/freeze/slow/root, dash/blink/leap, summon circles, floating damage numbers,
   tornadoes, wind blades and vortices.
 - **Five elements (Ngũ Hành / Wu Xing) + Phong (wind) and Lôi (lightning)**: Kim, Mộc, Thủy, Hỏa,
-  Thổ and two variants, each with its own palette, shapes and motion, and 28 complete sample skills in
+  Thổ and two variants, each with its own palette, shapes and motion, and 29 complete sample skills in
   `examples/skills.ts`.
 - **Extend it for your game**: register custom elements, recolor palettes and compose skills with
   the [extension guide and status catalog](references/extending.md).
@@ -98,7 +98,7 @@ no renderer or effect implementation is ported.
 | `tools/check.mjs` | Seeded lifecycle, pool growth, particle budget and RNG gate |
 | `tools/capture-frames.mjs` | Seeded contact-sheet captures (`npm run capture`) |
 | `kit/` | Runtime and recipes (copy into your game) |
-| `examples/skills.ts` | 28 sample skills over a small `SkillContext` |
+| `examples/skills.ts` | 29 sample skills over a small `SkillContext` |
 | `references/extending.md` | Custom elements, recolors, composition, cleanup and status catalog |
 | `references/` | Recipe catalog, element design, advanced FX, Blender matching, v7/v8 notes |
 | `tools/blender_vfx_rig.py` | Prints camera/sun numbers from your Blender scene |

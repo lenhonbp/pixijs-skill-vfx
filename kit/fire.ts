@@ -4,6 +4,7 @@ import type { Palette } from './recipes';
 import { telegraph } from './recipes';
 import { clamp01, colorRamp, envelope, inQuad, lerp, outCubic, outQuad, pick, rand } from './ease';
 import { fireTextures } from './fire-textures';
+import { fireDragonTextures } from './fire-dragon-textures';
 import { group } from './group';
 import { curlDrift } from './noise';
 import { Distortion } from './postfx';
@@ -276,6 +277,129 @@ export function burnFlames(w: VfxWorld, target: () => Vec3, height: number, dura
       return {
         ...smoke(rand(0.31, 0.48) * size, rand(520, 790), 53, 0.55), ...at,
         z: (at.z ?? 0) + rand(0.35, 0.8) * height, vx: rand(-21, 21), vz: rand(54, 98), zBias: 4,
+      };
+    },
+  }));
+  return g;
+}
+
+/** A screen-space capsule along a visible piece of the dragon. */
+export interface FireDragonContact {
+  x: number;
+  y: number;
+  angle: number;
+  halfLength: number;
+  radius: number;
+}
+
+/** A sweeping fire dragon. onCross checks its visible head and coils, not the ground trail. */
+export function fireDragonCrossing(w: VfxWorld, tex: VfxTextures, o: {
+  from: Vec3; toward: Vec3; palette: Palette; facing?: number; onCross?: (contact: FireDragonContact) => void;
+}): Handle {
+  const { from, toward, palette: p } = o;
+  const dx = toward.x - from.x, dy = (toward.y - from.y) / w.groundSquash;
+  const aimDistance = Math.hypot(dx, dy);
+  const angle = aimDistance > 1 ? Math.atan2(dy, dx) : o.facing === -1 ? Math.PI : 0;
+  const ux = Math.cos(angle), uy = Math.sin(angle);
+  const wave = Math.max(190, aimDistance);
+  const reach = Math.max(wave + 155, 380);
+  const speed = reach / 1.13;
+  const amplitude = Math.min(84, wave * 0.21);
+  const point = (s: number) => {
+    const oscillation = Math.sin(s / wave * TAU);
+    const side = amplitude * oscillation;
+    return {
+      x: from.x + ux * s - uy * side,
+      y: from.y + (uy * s + ux * side) * w.groundSquash,
+      z: lerp(from.z ?? 54, 44, clamp01(s / 180)) - oscillation * 21 * clamp01(s / 82),
+    };
+  };
+  const { head, coil } = fireDragonTextures();
+  const g = group(w, Infinity, undefined, 65);
+  let distance = 0, crossAt = 0, trailAt = 20;
+  const pieces = Array.from({ length: 20 }, (_, i) => {
+    const at = point(0);
+    const size = i === 0 ? 0.66 : 0.68 * (1 - (i / 20) ** 1.42 * 0.81);
+    const part = g.add(w.spawn({
+      x: 0, y: 0, follow: () => at, texture: i === 0 ? head : coil, anchorX: i === 0 ? 0.59 : 0.5,
+      anchorY: i === 0 ? 0.58 : 0.63, life: Infinity, scale: size, alpha: 0, blend: 'normal',
+      zBias: 10 + (20 - i) * 0.5,
+    }));
+    return { at, part, size, delay: i * 14, isHead: i === 0 };
+  });
+  const pose = (s: number, { size, delay }: typeof pieces[number]) => {
+    const at = point(Math.max(0, s)), next = point(Math.max(0, s) + 1);
+    return {
+      at, angle: Math.atan2(next.y - at.y - (next.z - at.z), next.x - at.x),
+      flip: next.x < at.x, scale: size * (0.95 + 0.05 * Math.sin(s / 19 + delay)),
+      alpha: clamp01(s / 57) * (1 - clamp01((s - reach) / 74)),
+    };
+  };
+  const contact = ({ at, angle, scale, alpha }: ReturnType<typeof pose>, head: boolean) => {
+    if (!o.onCross || alpha < 0.3) return;
+    const offset = head ? 16 * scale : 0;
+    o.onCross({
+      x: at.x + Math.cos(angle) * offset,
+      y: at.y - at.z + Math.sin(angle) * offset,
+      angle, halfLength: scale * (head ? 36 : 23), radius: scale * (head ? 24 : 19),
+    });
+  };
+  g.addHandle(w.addUpdater((dt) => {
+    distance += speed * dt / 1000;
+    const front = Math.min(reach, distance);
+    while (o.onCross && crossAt < Math.min(distance, reach + 74)) {
+      contact(pose(crossAt, pieces[0]), true);
+      crossAt += 11;
+    }
+    while (trailAt <= front) {
+      const at = point(trailAt), next = point(trailAt + 1);
+      const rotation = Math.atan2((next.y - at.y) / w.groundSquash, next.x - at.x);
+      const decal = { ...ground, x: at.x, y: at.y, rotation };
+      w.spawn({
+        ...decal, texture: fireTextures().scorch, life: 1760, blend: 'normal',
+        scaleX: 0.82, scaleY: 0.48, alpha: envelope(0.05, 0.52, 0.78),
+      });
+      w.spawn({
+        ...decal, texture: tex.glow, life: 720, tint: p.main,
+        scaleX: 0.94, scaleY: 0.71, alpha: envelope(0.08, 0.73, 0.57),
+      });
+      trailAt += 31;
+    }
+    for (const piece of pieces) {
+      const { at, part, delay, isHead } = piece;
+      if (!part && !o.onCross) continue;
+      const current = pose(distance - delay, piece);
+      if (part) {
+        Object.assign(at, current.at);
+        part.rotation = current.angle;
+        part.o.scaleY = current.flip ? -1 : 1;
+        part.o.scale = current.scale;
+        part.o.alpha = current.alpha;
+      }
+      contact(current, isHead);
+    }
+    if (distance >= reach + pieces[pieces.length - 1].delay + 74) g.stop();
+  }));
+  g.addHandle(w.stream({
+    rate: 39,
+    make: (i) => {
+      const s = distance - rand(24, 192);
+      if (s < 0 || s > reach) return null;
+      const at = point(s), tail = point(s - 1);
+      const a = Math.atan2(tail.y - at.y - (tail.z - at.z), tail.x - at.x) + rand(-0.62, 0.62);
+      if (i % 4 === 0) return {
+        ...smoke(rand(0.54, 0.88), rand(620, 940), 54), ...at, z: at.z + rand(2, 14),
+        vx: rand(-24, 24), vz: rand(58, 107), zBias: 4,
+      };
+      if (i % 3 === 0) return {
+        ...tongue(p, rand(0.31, 0.58), rand(240, 440), a), ...at, z: at.z + rand(-7, 13),
+        vx: Math.cos(a) * 85, vz: rand(40, 112), drag: 2, rotation: a, spin: rand(-2.4, 2.4), zBias: 27,
+        onUpdate: curlDrift(73, 53),
+      };
+      return {
+        ...at, texture: tex.streak, life: rand(460, 740), z: at.z + rand(-12, 18), zBias: 22,
+        vx: Math.cos(a) * rand(42, 125), vz: rand(44, 138), drag: 1.25, faceVelocity: true,
+        scaleX: rand(0.08, 0.21), scaleY: rand(0.19, 0.36), alpha: [0.92, 0, inQuad], tint: colorRamp(WHITE, p.main, p.dark),
       };
     },
   }));
