@@ -84,13 +84,13 @@ try {
     step(w, 200);
     check(!w.particles.some((p) => p.o.texture === tex.bell && p.sprite.visible), 'bell: anticipation before drop');
     step(w, 150);
-    check(w.particles.some((p) => p.o.texture === tex.bell && p.pz > 0), 'bell: drops from above');
+    check(w.particles.some((p) => p.o.texture === tex.bell && p.sprite.visible && p.sprite.y < at.y), 'bell: drops from above');
     step(w, 250);
     const shell = w.particles.find((p) => p.o.texture === tex.bell);
     check(shell && shell.pz === 0 && shell.o.blend === 'normal', 'bell: landed translucent silhouette');
     at = { x: 500, y: 350, z: 20 };
     step(w, 32);
-    check(shell.sprite.x === at.x && shell.sprite.y === at.y - at.z, 'bell: follows feet and airborne height');
+    check(Math.abs(shell.sprite.x - at.x) <= 5 * 105 / 70 && shell.sprite.y === at.y - at.z, 'bell: follows feet and airborne height while ringing');
     bell.hit(); step(w, 32);
     check(Math.abs(shell.sprite.x - at.x) > 0.1, 'bell: rings with horizontal wobble');
     check(w.particles.some((p) => p.o.texture === tex.ring && p.o.zBias === 32), 'bell: concentric sound ripples');
@@ -264,20 +264,22 @@ try {
         palette: gold, onImpact: () => impacts++ });
       step(w, 32);
       const falling = w.particles.filter((p) => p.o.texture === tex.blade);
-      check(falling.length === 2 && falling.every((p) => p.o.blend === 'normal' && p.o.tint === gold.main), 'swords: double visual density, solid palette');
-      check(falling.every((p) => p.o.scale * 160 >= 60 && p.o.scale * 160 <= 70), 'swords: height-scaled full blades');
+      check(falling.length === 2 && falling.every((p) => p.o.blend === 'normal' && p.sprite.tint === 0xffffff) &&
+        w.particles.some((p) => p.o.texture === tex.ring && p.o.tint === gold.main), 'swords: merged dense metal blades, palette ground ring');
+      check(falling.every((p) => p.o.scale * 160 >= 88 && p.o.scale * 160 <= 114), 'swords: merged height-scaled full blades');
       for (let i = 0; i < 7; i++) {
         step(w, 16);
         check(w.particles.filter((p) => p.o.texture === tex.streak && p.o.life === 150)
-          .every((p) => p.o.scaleX * 128 < 30 && p.sprite.y < p.o.y), 'swords: short trails stay above ground');
+          .every((p) => p.sprite.scale.x * 128 < 100 && p.sprite.y < p.o.y), 'swords: blade-length trails stay above ground');
       }
       check(impacts === 0, 'swords: no early damage');
       step(w, 16); check(impacts === 1, 'swords: original 150 ms first impact');
       step(w, 208); check(impacts === 2, 'swords: original staggered second impact');
       step(w, 208); check(impacts === 3, 'swords: original third impact');
-      check(w.particles.some((p) => p.o.texture === tex.blade && p.o.life === 950 && p.sprite.alpha === 1), 'swords: planted hold');
+      check(w.particles.some((p) => p.o.texture === tex.blade && p.o.life >= 760 && p.o.life <= 930 && p.o.z === -5 && p.sprite.alpha === 1), 'swords: merged planted hold');
       check(w.particles.some((p) => p.o.texture === tex.swordCrack), 'swords: ground cracks');
-      step(w, 350); check(w.particles.some((p) => p.o.texture === tex.dot), 'swords: gold dissolve motes');
+      step(w, 350); check(w.particles.some((p) => p.o.texture === tex.star) &&
+        w.particles.some((p) => p.o.texture === tex.blade && p.o.z === -5 && p.sprite.alpha < 1), 'swords: merged metal glints and planted fade');
       clean(w, 'sword rain'); check(impacts === 3, 'swords: cosmetic swords never deal extra damage');
       w = world();
       kit.swordRain(w, tex, { x: 0, y: 0, count: 0, onImpact: () => { throw new Error('empty rain'); } });
