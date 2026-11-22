@@ -1,0 +1,577 @@
+[
+  {
+    "id": "kim-sword-rain",
+    "name": {
+      "en": "Sword Rain",
+      "vi": "Vạn Kiếm Quy Tông"
+    },
+    "element": "kim",
+    "category": "aoe",
+    "frameCount": 91,
+    "files": [
+      {
+        "name": "kim-sword-rain.vfxb",
+        "bytes": 360897
+      },
+      {
+        "name": "kim-sword-rain.m.vfxb",
+        "bytes": 186538
+      }
+    ],
+    "bytes": 360897,
+    "desktopBytes": 360897,
+    "mobileBytes": 186538
+  },
+  {
+    "id": "kim-golden-edge",
+    "name": {
+      "en": "Golden Edge",
+      "vi": "Kim Quang Trảm"
+    },
+    "element": "kim",
+    "category": "attack",
+    "frameCount": 133,
+    "files": [
+      {
+        "name": "kim-golden-edge.vfxb",
+        "bytes": 171127
+      },
+      {
+        "name": "kim-golden-edge.m.vfxb",
+        "bytes": 106211
+      }
+    ],
+    "bytes": 171127,
+    "desktopBytes": 171127,
+    "mobileBytes": 106211
+  },
+  {
+    "id": "kim-golden-bell",
+    "name": {
+      "en": "Golden Bell",
+      "vi": "Kim Chung Tráo"
+    },
+    "element": "kim",
+    "category": "buff",
+    "frameCount": 115,
+    "files": [
+      {
+        "name": "kim-golden-bell.vfxb",
+        "bytes": 172086
+      },
+      {
+        "name": "kim-golden-bell.m.vfxb",
+        "bytes": 98945
+      }
+    ],
+    "bytes": 172086,
+    "desktopBytes": 172086,
+    "mobileBytes": 98945
+  },
+  {
+    "id": "moc-vine-bind",
+    "name": {
+      "en": "Vine Bind",
+      "vi": "Triền Đằng Phược"
+    },
+    "element": "moc",
+    "category": "control",
+    "frameCount": 117,
+    "files": [
+      {
+        "name": "moc-vine-bind.vfxb",
+        "bytes": 81886
+      },
+      {
+        "name": "moc-vine-bind.m.vfxb",
+        "bytes": 49202
+      }
+    ],
+    "bytes": 81886,
+    "desktopBytes": 81886,
+    "mobileBytes": 49202
+  },
+  {
+    "id": "moc-spring-bloom",
+    "name": {
+      "en": "Spring Bloom",
+      "vi": "Xuân Hồi Đại Địa"
+    },
+    "element": "moc",
+    "category": "buff",
+    "frameCount": 90,
+    "files": [
+      {
+        "name": "moc-spring-bloom.vfxb",
+        "bytes": 158160
+      },
+      {
+        "name": "moc-spring-bloom.m.vfxb",
+        "bytes": 90904
+      }
+    ],
+    "bytes": 158160,
+    "desktopBytes": 158160,
+    "mobileBytes": 90904
+  },
+  {
+    "id": "moc-toxic-spores",
+    "name": {
+      "en": "Toxic Spores",
+      "vi": "Độc Chướng Vụ"
+    },
+    "element": "moc",
+    "category": "debuff",
+    "frameCount": 134,
+    "files": [
+      {
+        "name": "moc-toxic-spores.vfxb",
+        "bytes": 915174
+      },
+      {
+        "name": "moc-toxic-spores.m.vfxb",
+        "bytes": 520656
+      }
+    ],
+    "bytes": 915174,
+    "desktopBytes": 915174,
+    "mobileBytes": 520656
+  },
+  {
+    "id": "thuy-frost-nova",
+    "name": {
+      "en": "Frost Nova",
+      "vi": "Băng Phong Tỏa"
+    },
+    "element": "thuy",
+    "category": "control",
+    "frameCount": 116,
+    "files": [
+      {
+        "name": "thuy-frost-nova.vfxb",
+        "bytes": 580448
+      },
+      {
+        "name": "thuy-frost-nova.m.vfxb",
+        "bytes": 311890
+      }
+    ],
+    "bytes": 580448,
+    "desktopBytes": 580448,
+    "mobileBytes": 311890
+  },
+  {
+    "id": "thuy-glacier-path",
+    "name": {
+      "en": "Glacier Path",
+      "vi": "Băng Hà Lộ"
+    },
+    "element": "thuy",
+    "category": "aoe",
+    "frameCount": 97,
+    "files": [
+      {
+        "name": "thuy-glacier-path.vfxb",
+        "bytes": 580378
+      },
+      {
+        "name": "thuy-glacier-path.m.vfxb",
+        "bytes": 329237
+      }
+    ],
+    "bytes": 580378,
+    "desktopBytes": 580378,
+    "mobileBytes": 329237
+  },
+  {
+    "id": "hoa-fireball",
+    "name": {
+      "en": "Fireball",
+      "vi": "Hỏa Cầu Thuật"
+    },
+    "element": "hoa",
+    "category": "attack",
+    "frameCount": 122,
+    "files": [
+      {
+        "name": "hoa-fireball.vfxb",
+        "bytes": 469981
+      },
+      {
+        "name": "hoa-fireball.m.vfxb",
+        "bytes": 270298
+      }
+    ],
+    "bytes": 469981,
+    "desktopBytes": 469981,
+    "mobileBytes": 270298
+  },
+  {
+    "id": "hoa-dragon-breath",
+    "name": {
+      "en": "Dragon Breath",
+      "vi": "Long Tức Liệt Diễm"
+    },
+    "element": "hoa",
+    "category": "channel",
+    "frameCount": 128,
+    "files": [
+      {
+        "name": "hoa-dragon-breath.vfxb",
+        "bytes": 583497
+      },
+      {
+        "name": "hoa-dragon-breath.m.vfxb",
+        "bytes": 351905
+      }
+    ],
+    "bytes": 583497,
+    "desktopBytes": 583497,
+    "mobileBytes": 351905
+  },
+  {
+    "id": "hoa-heaven-fire",
+    "name": {
+      "en": "Heavenfall Meteor",
+      "vi": "Thiên Hỏa Lưu Tinh"
+    },
+    "element": "hoa",
+    "category": "aoe",
+    "frameCount": 100,
+    "files": [
+      {
+        "name": "hoa-heaven-fire.vfxb",
+        "bytes": 799600
+      },
+      {
+        "name": "hoa-heaven-fire.m.vfxb",
+        "bytes": 453498
+      }
+    ],
+    "bytes": 799600,
+    "desktopBytes": 799600,
+    "mobileBytes": 453498
+  },
+  {
+    "id": "hoa-fire-dragon-crossing",
+    "name": {
+      "en": "Fire Dragon Crossing",
+      "vi": "Hỏa Long Quá Giang"
+    },
+    "element": "hoa",
+    "category": "aoe",
+    "frameCount": 115,
+    "files": [
+      {
+        "name": "hoa-fire-dragon-crossing.vfxb",
+        "bytes": 603776
+      },
+      {
+        "name": "hoa-fire-dragon-crossing.m.vfxb",
+        "bytes": 335996
+      }
+    ],
+    "bytes": 603776,
+    "desktopBytes": 603776,
+    "mobileBytes": 335996
+  },
+  {
+    "id": "tho-fissure",
+    "name": {
+      "en": "Earth Fissure",
+      "vi": "Địa Liệt Trảm"
+    },
+    "element": "tho",
+    "category": "control",
+    "frameCount": 100,
+    "files": [
+      {
+        "name": "tho-fissure.vfxb",
+        "bytes": 486761
+      },
+      {
+        "name": "tho-fissure.m.vfxb",
+        "bytes": 274824
+      }
+    ],
+    "bytes": 486761,
+    "desktopBytes": 486761,
+    "mobileBytes": 274824
+  },
+  {
+    "id": "tho-stone-skin",
+    "name": {
+      "en": "Stone Skin",
+      "vi": "Thạch Giáp Hộ Thể"
+    },
+    "element": "tho",
+    "category": "buff",
+    "frameCount": 121,
+    "files": [
+      {
+        "name": "tho-stone-skin.vfxb",
+        "bytes": 199196
+      },
+      {
+        "name": "tho-stone-skin.m.vfxb",
+        "bytes": 115494
+      }
+    ],
+    "bytes": 199196,
+    "desktopBytes": 199196,
+    "mobileBytes": 115494
+  },
+  {
+    "id": "phong-gale-blade",
+    "name": {
+      "en": "Gale Blades",
+      "vi": "Phong Nhận Trảm"
+    },
+    "element": "phong",
+    "category": "attack",
+    "frameCount": 63,
+    "files": [
+      {
+        "name": "phong-gale-blade.vfxb",
+        "bytes": 43949
+      },
+      {
+        "name": "phong-gale-blade.m.vfxb",
+        "bytes": 28169
+      }
+    ],
+    "bytes": 43949,
+    "desktopBytes": 43949,
+    "mobileBytes": 28169
+  },
+  {
+    "id": "phong-whirlwind",
+    "name": {
+      "en": "Whirlwind",
+      "vi": "Toàn Phong Trảm"
+    },
+    "element": "phong",
+    "category": "aoe",
+    "frameCount": 81,
+    "files": [
+      {
+        "name": "phong-whirlwind.vfxb",
+        "bytes": 104452
+      },
+      {
+        "name": "phong-whirlwind.m.vfxb",
+        "bytes": 63648
+      }
+    ],
+    "bytes": 104452,
+    "desktopBytes": 104452,
+    "mobileBytes": 63648
+  },
+  {
+    "id": "phong-tornado",
+    "name": {
+      "en": "Dragon Cyclone",
+      "vi": "Long Quyển Phong"
+    },
+    "element": "phong",
+    "category": "control",
+    "frameCount": 115,
+    "files": [
+      {
+        "name": "phong-tornado.vfxb",
+        "bytes": 1026118
+      },
+      {
+        "name": "phong-tornado.m.vfxb",
+        "bytes": 596126
+      }
+    ],
+    "bytes": 1026118,
+    "desktopBytes": 1026118,
+    "mobileBytes": 596126
+  },
+  {
+    "id": "phong-tailwind",
+    "name": {
+      "en": "Tailwind",
+      "vi": "Tật Phong Bộ"
+    },
+    "element": "phong",
+    "category": "buff",
+    "frameCount": 76,
+    "files": [
+      {
+        "name": "phong-tailwind.vfxb",
+        "bytes": 91333
+      },
+      {
+        "name": "phong-tailwind.m.vfxb",
+        "bytes": 57486
+      }
+    ],
+    "bytes": 91333,
+    "desktopBytes": 91333,
+    "mobileBytes": 57486
+  },
+  {
+    "id": "lightning-chain",
+    "name": {
+      "en": "Chain Lightning",
+      "vi": "Lôi Đình Liên Kích"
+    },
+    "element": "loi",
+    "category": "attack",
+    "frameCount": 82,
+    "files": [
+      {
+        "name": "lightning-chain.vfxb",
+        "bytes": 28505
+      },
+      {
+        "name": "lightning-chain.m.vfxb",
+        "bytes": 20803
+      }
+    ],
+    "bytes": 28505,
+    "desktopBytes": 28505,
+    "mobileBytes": 20803
+  },
+  {
+    "id": "loi-heaven-strike",
+    "name": {
+      "en": "Heavenly Thunder",
+      "vi": "Thiên Lôi Giáng"
+    },
+    "element": "loi",
+    "category": "aoe",
+    "frameCount": 97,
+    "files": [
+      {
+        "name": "loi-heaven-strike.vfxb",
+        "bytes": 193368
+      },
+      {
+        "name": "loi-heaven-strike.m.vfxb",
+        "bytes": 118539
+      }
+    ],
+    "bytes": 193368,
+    "desktopBytes": 193368,
+    "mobileBytes": 118539
+  },
+  {
+    "id": "loi-thunder-domain",
+    "name": {
+      "en": "Thunder Domain",
+      "vi": "Lôi Vực"
+    },
+    "element": "loi",
+    "category": "control",
+    "frameCount": 119,
+    "files": [
+      {
+        "name": "loi-thunder-domain.vfxb",
+        "bytes": 516941
+      },
+      {
+        "name": "loi-thunder-domain.m.vfxb",
+        "bytes": 298060
+      }
+    ],
+    "bytes": 516941,
+    "desktopBytes": 516941,
+    "mobileBytes": 298060
+  },
+  {
+    "id": "seal-silence",
+    "name": {
+      "en": "Silencing Seal",
+      "vi": "Phong Ấn Thuật"
+    },
+    "element": "neutral",
+    "category": "debuff",
+    "frameCount": 119,
+    "files": [
+      {
+        "name": "seal-silence.vfxb",
+        "bytes": 175049
+      },
+      {
+        "name": "seal-silence.m.vfxb",
+        "bytes": 100350
+      }
+    ],
+    "bytes": 175049,
+    "desktopBytes": 175049,
+    "mobileBytes": 100350
+  },
+  {
+    "id": "sunder-mark",
+    "name": {
+      "en": "Sundering Mark",
+      "vi": "Phá Giáp Ấn"
+    },
+    "element": "neutral",
+    "category": "debuff",
+    "frameCount": 115,
+    "files": [
+      {
+        "name": "sunder-mark.vfxb",
+        "bytes": 62780
+      },
+      {
+        "name": "sunder-mark.m.vfxb",
+        "bytes": 38626
+      }
+    ],
+    "bytes": 62780,
+    "desktopBytes": 62780,
+    "mobileBytes": 38626
+  },
+  {
+    "id": "war-cry",
+    "name": {
+      "en": "War Cry",
+      "vi": "Chiến Hống"
+    },
+    "element": "neutral",
+    "category": "buff",
+    "frameCount": 121,
+    "files": [
+      {
+        "name": "war-cry.vfxb",
+        "bytes": 160329
+      },
+      {
+        "name": "war-cry.m.vfxb",
+        "bytes": 94985
+      }
+    ],
+    "bytes": 160329,
+    "desktopBytes": 160329,
+    "mobileBytes": 94985
+  },
+  {
+    "id": "curse-weaken",
+    "name": {
+      "en": "Curse of Frailty",
+      "vi": "Suy Nhược Chú"
+    },
+    "element": "neutral",
+    "category": "debuff",
+    "frameCount": 97,
+    "files": [
+      {
+        "name": "curse-weaken.vfxb",
+        "bytes": 176194
+      },
+      {
+        "name": "curse-weaken.m.vfxb",
+        "bytes": 94443
+      }
+    ],
+    "bytes": 176194,
+    "desktopBytes": 176194,
+    "mobileBytes": 94443
+  }
+]

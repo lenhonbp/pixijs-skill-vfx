@@ -1,4 +1,4 @@
-name: Deploy demo to GitHub Pages
+name: Deploy VFX showcase to GitHub Pages
 
 on:
   push:
@@ -26,15 +26,14 @@ jobs:
         with:
           node-version: 22
       - uses: actions/configure-pages@v5
-      - name: Build demo
+      - name: Build showcase
         run: |
           npm install --no-save --package-lock=false pixi.js@8.23.0
-          npm run build
-          mkdir -p _site
-          cp demo/index.html demo/demo.js _site/
+          npm run build:runtime
+          npm run build:showcase
       - uses: actions/upload-pages-artifact@v3
         with:
-          path: _site
+          path: showcase/dist
       - name: Deploy to GitHub Pages
         id: deployment
         uses: actions/deploy-pages@v4
