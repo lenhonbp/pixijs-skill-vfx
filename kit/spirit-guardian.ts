@@ -4,8 +4,25 @@ import type { Palette } from './recipes';
 import { afterimage } from './motion';
 import { group } from './group';
 import { clamp01, lerp, outCubic, rand } from './ease';
-import { Graphics } from 'pixi.js';
+import { Graphics, type Sprite } from 'pixi.js';
 import { isPixiV8 } from './pixi-compat';
+
+const revealMasks = new WeakMap<Sprite, Graphics>();
+
+function revealMask(sprite: Sprite): Graphics {
+  let mask = revealMasks.get(sprite);
+  if (!mask || mask.destroyed) {
+    mask = new Graphics();
+    revealMasks.set(sprite, mask);
+    const owned = mask;
+    sprite.once('destroyed', () => {
+      if (!owned.destroyed) owned.destroy();
+      revealMasks.delete(sprite);
+    });
+  }
+  mask.visible = true;
+  return mask;
+}
 
 export interface SpiritGuardianOptions extends Vec3 {
   palette: Palette;
@@ -43,9 +60,12 @@ export function spiritGuardian(w: VfxWorld, tex: VfxTextures, o: SpiritGuardianO
     else (mask as any).beginFill(0xffffff).drawRect(pos.x - h * 3, top, h * 6, Math.max(0, bottom - top)).endFill();
   };
   const maskPart = (q: Particle) => {
-    const mask = new Graphics();
+    const mask = revealMask(q.sprite);
     masks.set(q, mask); q.sprite.parent!.addChild(mask); q.sprite.mask = mask;
-    q.o.onDeath = () => { q.sprite.mask = null; masks.delete(q); mask.destroy(); };
+    q.o.onDeath = () => {
+      q.sprite.mask = null; masks.delete(q);
+      mask.removeFromParent(); mask.clear(); mask.visible = false;
+    };
     updateMask(q);
   };
   const pose = () => {

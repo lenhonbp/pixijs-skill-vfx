@@ -18,6 +18,26 @@ try {
     const step = (w, ms) => { for (let i = 0; i < ms; i++) w.update(1); };
     const clean = (w) => check(!w.count && !w.stats.updaters, 'particles and updaters cleaned');
     {
+      const w = world(), seen = new Map();
+      const cast = () => kit.spiritGuardian(w, tex, { x: 100, y: 200, target: () => ({ x: 300, y: 200 }), palette: { core: 0xffffff, main: 0xffcc66, dark: 0x553311 } });
+      let h = cast();
+      for (const p of w.particles) if (p.sprite.mask) seen.set(p.sprite, p.sprite.mask);
+      check(seen.size === 4, 'guardian: four reveal masks');
+      h.stop(); step(w, 2000); clean(w);
+      check([...seen.values()].every(m => !m.destroyed && !m.parent && !m.visible), 'guardian: masks detached for reuse');
+      h = cast();
+      let reused = 0;
+      for (const p of w.particles) if (seen.has(p.sprite) && p.sprite.mask) {
+        check(p.sprite.mask === seen.get(p.sprite), 'guardian: sprite mask reused'); reused++;
+      }
+      check(reused > 0, 'guardian: pooled sprite reacquired');
+      w.clear(); clean(w);
+      check([...seen.values()].every(m => !m.parent), 'guardian: clear detaches masks');
+      for (const sprite of seen.keys()) sprite.destroy();
+      check([...seen.values()].every(m => m.destroyed), 'guardian: sprite destruction disposes masks');
+      results.push('guardian: reveal mask reuse, stop, clear and destruction PASS');
+    }
+    {
       const w = world();
       const h = kit.frailty(w, tex, { target: () => ({ x: 100, y: 200 }), height: 96, duration: Infinity });
       step(w, 1000);
