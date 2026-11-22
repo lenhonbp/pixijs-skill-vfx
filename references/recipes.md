@@ -141,7 +141,33 @@ let finite droplets dissipate naturally.
 - **Damage sync**: deal damage in the recipe's `onHit` / at the same `vfx.after` as the impact,
   never on a separate timer, so hit-stop keeps them in sync.
 
-## dropShadow
+## Activation and evolution
+
+`skillActivation(w, tex, { at, height, palette, tier, duration? })` follows caster
+feet live. Cơ bản (1): sigil, motes, chest light; Thức tỉnh (2): rotating runes,
+body wisps, pillar and shockwave; Tiến hoá (3): counter-rotation, implosion/burst,
+white core, cracks, flash, shake and hit-stop. Each includes the lower tier's layers.
+Start gameplay immediately at tier 1, or after `activationRelease(tier)` (250/400 ms).
+`duration` controls the tier 3 lingering aura (1500 ms default).
+
+`skillEvolution(w, tex, { at, height, palette, fromTier, toTier })` fractures the old
+seal, lifts its shards into a helix and overhead crown, then stamps the destination
+seal at 950 ms; ascending rune stacks and double shockwaves fade by 1600 ms.
+`empoweredAura(w, tex, { at, height, palette, tier, duration })` sustains body wisps,
+orbiting shards and a grounded seal during gameplay. `empoweredHit(w, tex,
+{ at: chestPosition, palette, tier })` adds a localized crown, rays, floor rings and
+debris on positive damage. Both skip tier 1; no full-screen white flashes are used.
+Use `empoweredWorld(w, { tier, palette })` as the skill context's world for
+cast-local 1.2x/1.45x silhouettes, hotter highlights and stronger impact feedback.
+Burst/stream density is reduced; the total cast must satisfy its ordinary budget.
+The facade retains delayed callbacks without changing other casts. For idle power,
+keep the handle from `empoweredAura(..., { ..., duration: Infinity, idle: true })`
+and stop it on tier changes. Debug captures/checks disable this persistent aura.
+All palettes are accepted; floor pieces stay at z=0 even during jumps.
+Capture with `npm run capture -- --skills activation-hoa-3,evolution-thuy`.
+Compare evolved gameplay with `npm run capture -- --skills hoa-fireball,tho-fissure --tier 3`.
+
+## dropShadow (ground blob)
 
 Blob shadow under anything airborne (projectiles, meteors, jumping units). Lands where the
 baked sun puts shadows (`VfxWorld` `shadow`, from `rigFromBlender`), fades and widens with

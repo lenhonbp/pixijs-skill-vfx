@@ -74,6 +74,36 @@ smoke/aftermath 0.8-2.5 s.
 
 ## 4. Build it from primitives
 
+### Activation tiers and evolution
+
+Wrap casts with `skillActivation(w, tex, { at: () => caster.feet, height, palette, tier })`.
+Tier 1 (Cơ bản) releases immediately; tier 2 (Thức tỉnh) at 250 ms; tier 3
+(Tiến hoá) at 400 ms. Schedule gameplay on `w.after(activationRelease(tier), cast)`
+for tiers 2/3, and include that pre-roll in showcase waits. The tiers accumulate
+ground seals, body wisps/pillars, then inward shards, cracks and top-layer feedback.
+Tier 3's low aura lasts `duration` (default 1500 ms) after release.
+Use `skillEvolution(w, tex, { at, height, palette, fromTier, toTier })` for the
+1600 ms one-shot upgrade: broken seal shards spiral upward into an overhead crown,
+which stamps the new seal at 950 ms. Stacked ascending runes show the destination tier.
+For gameplay after release, run `empoweredAura` for the skill's length and call
+`empoweredHit` at each positive-damage target's chest. Both are no-ops at tier 1.
+Pass an `empoweredWorld(world, { tier, palette })` facade to the skill itself:
+particle scales and raw effect sprites grow 1.2x/1.45x, highlights heat up, motion
+trails stretch and impact feedback strengthens. Burst/stream density is reduced
+while endpoint-anchored graphics/ribbons keep their coordinate system unchanged.
+Checks enforce the total skill+overlay budget.
+Each facade retains its own tier across delayed callbacks and overlapping casts;
+the shared world and tier 1 remain unchanged. Damage in the demo scales 1.3x/1.7x,
+with tier-3 crit numbers. `empoweredAura` returns a stoppable handle and accepts
+`duration: Infinity, idle: true` for a persistent four/six-sprite idle look.
+The demo disables idle auras in debug/check mode; toggle with `__vfxDebug.idleAura(true)`.
+Pass skills a `withDamageTickFeedback(world, (feet, height, damage) => ...)` facade
+to observe their positive DoT ticks, including delayed status effects, without
+changing skill recipes. Capture the cast's tier/palette in that callback; use
+`empoweredHit(..., { ..., tick: true })` and throttle per target for light tick feedback.
+Ground layers ignore caster height; body layers follow jumps. Keep flashes localized.
+All timers/particles use the world clock and `clear()` cancels them.
+
 Read `references/recipes.md` for the recipe catalog and `kit/recipes.ts` for the code. Start from
 the closest recipe, copy it into the game as a named skill function, and tune it. Core API:
 

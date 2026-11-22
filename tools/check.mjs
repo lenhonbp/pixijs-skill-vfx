@@ -76,6 +76,36 @@ try {
   await page.goto(url, { waitUntil: 'domcontentloaded' });
   await page.waitForFunction(() => !!window.__vfxDebug);
   const skills = await page.evaluate(() => window.__vfxDebug.skills);
+  assert.equal(skills.filter(s => s.id.startsWith('activation-')).length, 6);
+  assert.equal(skills.filter(s => s.id.startsWith('evolution-')).length, 2);
+  const contracts = await page.evaluate(() => {
+    const d = window.__vfxDebug, w = window.demo.vfx;
+    let rejected = false;
+    try { d.setTier(4); } catch { rejected = true; }
+    const cleared = ['activation-hoa-3', 'evolution-thuy', 'hoa-fireball'].every(id => {
+      d.cast(id, 3);
+      d.advance(100);
+      w.clear();
+      d.advance(2000);
+      return !d.stats().particles && !d.stats().updaters;
+    });
+    const spawned = [], spawn = w.spawn.bind(w);
+    w.spawn = o => { const particle = spawn(o); if (particle) spawned.push(particle); return particle; };
+    d.cast('activation-hoa-3');
+    const feet = spawned.find(q => !q.o.groundAligned && q.o.follow).o.follow();
+    feet.z = 90;
+    d.advance(450);
+    const grounded = spawned.filter(q => q.o.layer === 'ground').every(q => q.z === 0);
+    feet.z = 0;
+    w.spawn = spawn;
+    w.clear();
+    return { rejected, cleared, grounded };
+  });
+  assert.deepEqual(contracts, { rejected: true, cleared: true, grounded: true });
+  console.log('Activation tier validation, airborne ground projection and interrupted-effect cleanup: PASS');
+  skills.push(...skills.filter(s => !/^(activation|evolution)-/.test(s.id)).map(skill => ({
+    ...skill, label: `${skill.id}-tier3`, tier: 3,
+  })));
   await page.close();
   const rows = [];
   for (const skill of skills) {
@@ -86,30 +116,43 @@ try {
     page.on('pageerror', (error) => failures.push(error.message));
     await page.goto(url, { waitUntil: 'domcontentloaded' });
     await page.waitForFunction(() => !!window.__vfxDebug);
-    const result = await page.evaluate(({ id, length }) => {
+    const result = await page.evaluate(({ id, length, tier = 0 }) => {
       const d = window.__vfxDebug, w = window.demo.vfx;
-      let peak = 0;
+      let peak = 0, hits = 0, empoweredPeak = 0, tickSparks = 0;
+      const empowered = new Map();
       const spawn = w.spawn.bind(w);
-      w.spawn = (...args) => { const p = spawn(...args); peak = Math.max(peak, w.count); return p; };
+      w.spawn = (...args) => {
+        if (args[0].layer === 'top' && args[0].blend === 'normal' && [850, 1100].includes(args[0].life)) hits++;
+        const p = spawn(...args);
+        if (p && d.isEmpowering()) empowered.set(p, p.o);
+        if (p && d.isEmpowering() && args[0].life === 140) tickSparks++;
+        for (const [q, o] of empowered) if (q.dead || q.o !== o) empowered.delete(q);
+        empoweredPeak = Math.max(empoweredPeak, empowered.size);
+        peak = Math.max(peak, w.count); return p;
+      };
       const runs = [];
       for (let i = 0; i < 3; i++) {
         d.seed(12345);
-        if (i === 0) d.cast(id); else d.repeat(id);
-        for (let left = length + 1500; left > 0; left -= 16) d.advance(Math.min(left, 16));
+        if (i === 0) d.cast(id, tier); else d.repeat(id, tier);
+        if (tier && id === 'tho-fissure') d.moveCaster({ x: 450 });
+        for (let left = length + 1900; left > 0; left -= 16) d.advance(Math.min(left, 16));
         runs.push(d.stats());
       }
-      return { peak, runs };
+      return { peak, runs, hits, empoweredPeak, tickSparks };
     }, skill);
     await page.close();
     // SkillDef has no ultimate flag: every sample uses the ordinary 150 cap.
     // Future skills explicitly named *-ultimate (or ultimate-*) get 600.
     const budget = /(^|-)ultimate(-|$)/.test(skill.id) ? 600 : 150;
     const issues = [];
-    const budgetStatus = budgetResult(result.peak, budget, Object.hasOwn(baseline, skill.id) ? baseline[skill.id] : undefined);
+    if (skill.label && ['hoa-fireball', 'tho-fissure', 'thuy-frost-nova', 'moc-toxic-spores'].includes(skill.id) && !result.hits) issues.push('no damaging hits exercised');
+    if (skill.label && skill.id === 'moc-toxic-spores' && !result.tickSparks) issues.push('no empowered DoT ticks exercised');
+    const budgetStatus = budgetResult(result.peak, budget,
+      Object.hasOwn(baseline, skill.id) ? baseline[skill.id] : undefined);
     if (budgetStatus.failure) issues.push(budgetStatus.failure);
     if (result.runs.some((r) => r.particles || r.updaters)) issues.push('leftovers');
     if (result.runs.slice(1).some((r, i) => Object.keys(r).some((key) => r[key] > result.runs[i][key]))) issues.push('growth');
-    rows.push({ skill: skill.id, peak: result.peak, budget,
+    rows.push({ skill: skill.label ?? skill.id, peak: result.peak, empowered: skill.label ? result.empoweredPeak : '-', budget,
       particles: result.runs.map((r) => r.particles).join('/'), updaters: result.runs.map((r) => r.updaters).join('/'),
       pool: result.runs.map((r) => `${r.sprites}:${r.records}`).join('/'), result: [...issues, budgetStatus.warning].filter(Boolean).join(', ') || 'PASS' });
     if (issues.length) failures.push(`${skill.id}: ${issues.join(', ')}`);

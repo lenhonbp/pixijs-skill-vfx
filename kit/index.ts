@@ -21,6 +21,7 @@ export * from './hit-reaction';
 export * from './floor-ring';
 export * from './motion';
 export * from './channel';
+export * from './activation';
 export * from './elemental';
 export * from './noise';
 export * from './trail';

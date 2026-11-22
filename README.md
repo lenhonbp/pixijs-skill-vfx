@@ -106,6 +106,10 @@ no renderer or effect implementation is ported.
 
 ## Example prompts
 
+Activation tiers (**Cơ bản → Thức tỉnh → Tiến hoá**) add live-following elemental
+seals, wisps and ascension bursts. Use the demo tier selector and **Evolve** button;
+`skillActivation` and `skillEvolution` work with any palette, including neutral.
+
 - "Use pixijs-skill-vfx to add a frost slash for the warrior's skill 2, hit on frame 3 of the attack animation."
 - "Make the boss's ground slam: 600 ms red telegraph, then a shockwave and debris, damage on impact."
 - "Port our fireball VFX onto the kit and keep it under 120 particles."

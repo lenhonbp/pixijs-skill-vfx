@@ -54,6 +54,29 @@ try {
       check(!defaults.alive && !w.count && !w.updaters.length, `${name}: default duration cleanup`);
       results.push(`${name}: Infinity/stop, finite/default/zero duration, movement and finite transforms PASS`);
     }
+    {
+      const base = world(), ticks = [], other = [];
+      const at = { x: 100, y: 200, z: 30 };
+      const scoped = kit.withDamageTickFeedback(base, (...args) => ticks.push(args));
+      const second = kit.withDamageTickFeedback(base, (...args) => other.push(args));
+      check(scoped.now === base.now && scoped.particles === base.particles, 'DoT facade shares world state');
+      scoped.after(100, () => kit.damageOverTime(scoped, tex, { target: () => at, height: 90,
+        kind: 'bleed', duration: 600, tickMs: 200, damage: 7, numbers: false }));
+      kit.damageOverTime(second, tex, { target: () => at, kind: 'bleed', duration: 200, tickMs: 200, damage: 3 });
+      kit.damageOverTime(scoped, tex, { target: () => at, kind: 'bleed', duration: 200, tickMs: 200, damage: 0 });
+      kit.damageOverTime(scoped, tex, { target: () => at, kind: 'bleed', duration: 0 });
+      kit.damageOverTime(base, tex, { target: () => at, kind: 'bleed', duration: 200, tickMs: 200 });
+      step(base, 1000);
+      check(ticks.length === 3 && ticks.every(([p, h, n]) => p === at && h === 90 && n === 7), 'DoT delayed ticks retain cast-local feedback, skip zero damage/empty duration');
+      check(other.length === 1 && other[0][2] === 3, 'DoT feedback isolated across casts and baseline');
+      const bad = kit.withDamageTickFeedback(base, () => { throw new Error('tick feedback'); });
+      const handle = kit.damageOverTime(bad, tex, { target: () => at, kind: 'bleed', duration: 200, tickMs: 200 });
+      let error;
+      try { step(base, 200); } catch (e) { error = e.message; }
+      check(error === 'tick feedback', 'DoT feedback errors propagate');
+      handle.stop(); clean(base, 'DoT feedback');
+      results.push('DoT feedback: cast isolation, delayed/positive/empty ticks, shared world, errors and cleanup PASS');
+    }
     let w = world(), values = [];
     kit.regen(w, tex, { target: () => ({ x: 0, y: 0 }), duration: 1000, tickMs: 250,
       heal: () => 25, numbers: false, onTick: (n) => values.push(n) });
