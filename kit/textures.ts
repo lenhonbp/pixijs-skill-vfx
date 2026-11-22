@@ -34,6 +34,10 @@ export interface VfxTextures {
   rock: Texture;
   /** Solid beveled armor slab with cracks. 64x80. Normal blend. */
   rockPlate: Texture;
+  /** Jagged faceted rock spire with strata and grain, lit from the left. 64x128, anchor (0.5, 1) = base. */
+  rockSpike: Texture;
+  /** Long open ground fissure along +x: black gap with broken lit lips. 256x48. Ground decal (normal blend). */
+  fissure: Texture;
   /** Spectral armored halberd guardian, feet at (88, 244). 192x256. */
   guardian: Texture;
   /** Craggy mountain with lit ridges and dark ravines. 320x256, base anchor (0.5,1). */
@@ -108,6 +112,24 @@ function falloff(power: number, steps = 10): [number, number][] {
 
 function seeded(seed: number) {
   return () => ((seed = (seed * 16807) % 2147483647) - 1) / 2147483646;
+}
+
+/** Speckle and pit the already drawn pixels (stone grain). */
+function grain(ctx: CanvasRenderingContext2D, w: number, h: number, rnd: () => number, count: number, size = 1.6) {
+  ctx.save();
+  ctx.globalCompositeOperation = 'source-atop';
+  for (let i = 0; i < count; i++) {
+    const v = rnd();
+    ctx.fillStyle = v < 0.55 ? `rgba(0,0,0,${0.08 + rnd() * 0.22})` : `rgba(255,255,255,${0.06 + rnd() * 0.18})`;
+    const r = 0.4 + rnd() * size;
+    ctx.beginPath(); ctx.arc(rnd() * w, rnd() * h, r, 0, Math.PI * 2); ctx.fill();
+  }
+  ctx.restore();
+}
+
+function poly(ctx: CanvasRenderingContext2D, pts: number[][], fill: string | CanvasGradient) {
+  ctx.beginPath(); pts.forEach(([x, y], i) => (i ? ctx.lineTo(x, y) : ctx.moveTo(x, y))); ctx.closePath();
+  ctx.fillStyle = fill; ctx.fill();
 }
 
 export function createVfxTextures(): VfxTextures {
@@ -279,13 +301,78 @@ export function createVfxTextures(): VfxTextures {
 
   const rock = (() => {
     const [c, ctx] = makeCanvas(48, 48);
-    const pts: [number, number][] = [[8, 20], [20, 6], [36, 10], [44, 26], [34, 42], [14, 40]];
-    ctx.fillStyle = 'rgba(120,120,120,1)';
-    ctx.beginPath(); pts.forEach(([x, y], i) => (i ? ctx.lineTo(x, y) : ctx.moveTo(x, y))); ctx.closePath(); ctx.fill();
-    ctx.fillStyle = 'rgba(255,255,255,1)';
-    ctx.beginPath(); ctx.moveTo(8, 20); ctx.lineTo(20, 6); ctx.lineTo(36, 10); ctx.lineTo(26, 24); ctx.closePath(); ctx.fill();
-    ctx.fillStyle = 'rgba(190,190,190,1)';
-    ctx.beginPath(); ctx.moveTo(8, 20); ctx.lineTo(26, 24); ctx.lineTo(14, 40); ctx.closePath(); ctx.fill();
+    const rnd = seeded(23);
+    const out: number[][] = [[7, 22], [14, 9], [27, 5], [39, 11], [45, 25], [40, 38], [27, 44], [12, 39]];
+    const mid = [24, 24];
+    poly(ctx, out, '#8c8c8c');
+    poly(ctx, [out[0], out[1], out[2], out[3], [30, 20], mid], '#f2f2f2');
+    poly(ctx, [out[0], mid, [20, 33], out[7]], '#c4c4c4');
+    poly(ctx, [out[3], out[4], [33, 30], [30, 20]], '#a8a8a8');
+    poly(ctx, [out[4], out[5], out[6], [20, 33], mid, [30, 20], [33, 30]], '#6a6a6a');
+    grain(ctx, 48, 48, rnd, 40, 1.2);
+    ctx.beginPath(); out.forEach(([x, y], i) => (i ? ctx.lineTo(x, y) : ctx.moveTo(x, y))); ctx.closePath();
+    ctx.strokeStyle = 'rgba(40,40,40,0.9)'; ctx.lineWidth = 1.5; ctx.stroke();
+    return textureFromCanvas(c);
+  })();
+
+  const rockSpike = (() => {
+    const [c, ctx] = makeCanvas(64, 128);
+    const rnd = seeded(31);
+    const left = [[3, 127], [7, 104], [5, 92], [12, 70], [11, 58], [19, 36], [22, 24], [27, 12], [31, 2]];
+    const right = [[31, 2], [35, 14], [37, 22], [44, 42], [43, 55], [51, 76], [50, 90], [57, 108], [61, 127]];
+    const ridge = [[31, 2], [30, 24], [33, 46], [29, 70], [33, 96], [30, 127]];
+    poly(ctx, [...left, ...[...ridge].reverse()], '#e9e6e0');
+    poly(ctx, [...ridge, ...right.slice(1).reverse()].reverse(), '#7e7a74');
+    // secondary facets: chipped planes catching light and pits in shadow
+    poly(ctx, [[12, 70], [11, 58], [19, 36], [26, 52], [20, 76]], '#c9c5bd');
+    poly(ctx, [[5, 92], [12, 70], [20, 76], [17, 102]], '#d7d3cb');
+    poly(ctx, [[33, 46], [44, 42], [43, 55], [36, 66]], '#a29d95');
+    poly(ctx, [[33, 96], [50, 90], [57, 108], [40, 114]], '#625e58');
+    poly(ctx, [[31, 2], [35, 14], [30, 24]], '#fbfaf7');
+    // strata and fractures
+    ctx.lineCap = 'round';
+    for (const [y, d] of [[34, 3], [57, 4], [83, 5], [108, 5]]) {
+      ctx.beginPath(); ctx.moveTo(4 + y * 0.12, y); ctx.lineTo(32, y + d); ctx.lineTo(60 - y * 0.12, y + d - 2);
+      ctx.strokeStyle = 'rgba(40,36,32,0.45)'; ctx.lineWidth = 1.5; ctx.stroke();
+      ctx.beginPath(); ctx.moveTo(6 + y * 0.12, y + 2); ctx.lineTo(30, y + d + 2);
+      ctx.strokeStyle = 'rgba(255,255,255,0.35)'; ctx.lineWidth = 1; ctx.stroke();
+    }
+    ctx.beginPath(); ctx.moveTo(25, 40); ctx.lineTo(21, 52); ctx.lineTo(25, 61); ctx.moveTo(41, 70); ctx.lineTo(46, 84); ctx.lineTo(42, 95);
+    ctx.strokeStyle = 'rgba(30,26,22,0.7)'; ctx.lineWidth = 1.5; ctx.stroke();
+    grain(ctx, 64, 128, rnd, 160, 1.4);
+    // buried base: soil darkening
+    ctx.save(); ctx.globalCompositeOperation = 'source-atop';
+    const g = ctx.createLinearGradient(0, 80, 0, 128);
+    g.addColorStop(0, 'rgba(30,22,14,0)'); g.addColorStop(1, 'rgba(30,22,14,0.75)');
+    ctx.fillStyle = g; ctx.fillRect(0, 0, 64, 128); ctx.restore();
+    ctx.beginPath(); [...left, ...right.slice(1)].forEach(([x, y], i) => (i ? ctx.lineTo(x, y) : ctx.moveTo(x, y)));
+    ctx.strokeStyle = 'rgba(36,32,28,0.85)'; ctx.lineWidth = 1.5; ctx.stroke();
+    return textureFromCanvas(c);
+  })();
+
+  const fissure = (() => {
+    const [c, ctx] = makeCanvas(256, 48);
+    const rnd = seeded(41);
+    const top: number[][] = [], bottom: number[][] = [];
+    let y = 24;
+    for (let x = 2; x <= 254; x += 9) {
+      const u = (x - 2) / 252, wid = Math.sin(Math.PI * u) ** 0.7 * 7 + 0.6;
+      y = Math.max(14, Math.min(34, y + (rnd() - 0.5) * 7));
+      top.push([x, y - wid * (0.6 + rnd() * 0.5)]);
+      bottom.push([x, y + wid * (0.6 + rnd() * 0.5)]);
+    }
+    // lit broken lip on the far (upper) edge, shadowed lip on the near edge
+    ctx.beginPath(); top.forEach(([x, yy], i) => (i ? ctx.lineTo(x, yy - 2.5) : ctx.moveTo(x, yy - 2.5)));
+    ctx.strokeStyle = 'rgba(255,255,255,0.55)'; ctx.lineWidth = 3; ctx.lineJoin = 'bevel'; ctx.stroke();
+    ctx.beginPath(); bottom.forEach(([x, yy], i) => (i ? ctx.lineTo(x, yy + 2) : ctx.moveTo(x, yy + 2)));
+    ctx.strokeStyle = 'rgba(0,0,0,0.45)'; ctx.lineWidth = 3; ctx.stroke();
+    poly(ctx, [...top, ...[...bottom].reverse()], 'rgba(0,0,0,0.95)');
+    // hairline branches
+    ctx.strokeStyle = 'rgba(0,0,0,0.7)'; ctx.lineWidth = 1.5;
+    for (let i = 2; i < top.length - 2; i += 3) {
+      const [x, yy] = rnd() < 0.5 ? top[i] : bottom[i], dir = yy < 24 ? -1 : 1;
+      ctx.beginPath(); ctx.moveTo(x, yy); ctx.lineTo(x + 6 + rnd() * 8, yy + dir * (4 + rnd() * 6)); ctx.lineTo(x + 12 + rnd() * 10, yy + dir * (7 + rnd() * 8)); ctx.stroke();
+    }
     return textureFromCanvas(c);
   })();
 
@@ -411,27 +498,39 @@ export function createVfxTextures(): VfxTextures {
   })();
   const mountain = (() => {
     const [c, ctx] = makeCanvas(320, 256);
+    const rnd = seeded(53);
     const face = (points: number[][], color: string) => {
       ctx.beginPath(); points.forEach(([x, y], i) => i ? ctx.lineTo(x, y) : ctx.moveTo(x, y));
       ctx.closePath(); ctx.fillStyle = color; ctx.fill();
     };
     face([[4,248],[31,190],[49,181],[67,115],[87,127],[114,74],[129,80],[159,5],[186,65],
-      [202,58],[221,111],[241,94],[267,158],[286,173],[316,248]], '#79664b');
-    face([[4,248],[67,115],[87,127],[114,74],[129,80],[159,5],[144,108],[104,156],[83,222]], '#dfc79a');
-    face([[159,5],[186,65],[202,58],[221,111],[211,187],[181,245],[143,244],[158,145],[144,108]], '#9d865f');
-    face([[241,94],[267,158],[286,173],[316,248],[220,247],[225,174]], '#b49b71');
-    face([[159,5],[144,108],[125,136],[143,129],[122,185],[160,148],[173,97]], '#544a38');
-    face([[67,115],[83,162],[56,205],[87,188],[71,233],[112,245],[32,248]], '#a68a60');
-    face([[202,58],[210,124],[195,147],[214,137],[198,215],[235,174],[221,111]], '#4c4232');
-    face([[241,94],[225,174],[244,162],[236,205],[267,230],[253,162]], '#e3cb9d');
-    ctx.strokeStyle = '#f5dfb5'; ctx.lineWidth = 3; ctx.lineJoin = 'bevel';
+      [202,58],[221,111],[241,94],[267,158],[286,173],[316,248]], '#77736c');
+    face([[4,248],[67,115],[87,127],[114,74],[129,80],[159,5],[144,108],[104,156],[83,222]], '#e4e0d8');
+    face([[159,5],[186,65],[202,58],[221,111],[211,187],[181,245],[143,244],[158,145],[144,108]], '#9b968d');
+    face([[241,94],[267,158],[286,173],[316,248],[220,247],[225,174]], '#b3aea5');
+    face([[159,5],[144,108],[125,136],[143,129],[122,185],[160,148],[173,97]], '#55514b');
+    face([[67,115],[83,162],[56,205],[87,188],[71,233],[112,245],[32,248]], '#a49f96');
+    face([[202,58],[210,124],[195,147],[214,137],[198,215],[235,174],[221,111]], '#4b4742');
+    face([[241,94],[225,174],[244,162],[236,205],[267,230],[253,162]], '#dcd8d0');
+    ctx.strokeStyle = '#f6f4ef'; ctx.lineWidth = 3; ctx.lineJoin = 'bevel';
     for (const line of [[[16,232],[52,190],[67,115]],[[92,140],[114,74],[129,80],[159,5]],[[144,108],[158,145],[145,209]],[[267,158],[286,173],[304,222]]]) {
       ctx.beginPath(); line.forEach(([x,y], i) => i ? ctx.lineTo(x,y) : ctx.moveTo(x,y)); ctx.stroke();
     }
-    ctx.strokeStyle = '#5b4b36'; ctx.lineWidth = 3;
+    ctx.strokeStyle = '#3e3a35'; ctx.lineWidth = 3;
     for (const line of [[[104,156],[100,177],[119,185],[105,217]],[[174,175],[181,189],[169,211],[178,233]],[[269,200],[280,217],[273,239]]]) {
       ctx.beginPath(); line.forEach(([x,y], i) => i ? ctx.lineTo(x,y) : ctx.moveTo(x,y)); ctx.stroke();
     }
+    for (let i = 0; i < 26; i++) {
+      const x = 30 + rnd() * 260, y = 40 + rnd() * 200;
+      ctx.save(); ctx.globalCompositeOperation = 'source-atop';
+      ctx.beginPath(); ctx.moveTo(x, y); ctx.lineTo(x + 8 + rnd() * 14, y + (rnd() - 0.3) * 6);
+      ctx.strokeStyle = rnd() < 0.6 ? 'rgba(30,28,25,0.35)' : 'rgba(255,255,255,0.25)'; ctx.lineWidth = 1.5; ctx.stroke(); ctx.restore();
+    }
+    grain(ctx, 320, 256, rnd, 900, 2);
+    ctx.save(); ctx.globalCompositeOperation = 'source-atop';
+    const soil = ctx.createLinearGradient(0, 190, 0, 256);
+    soil.addColorStop(0, 'rgba(40,30,20,0)'); soil.addColorStop(1, 'rgba(40,30,20,0.7)');
+    ctx.fillStyle = soil; ctx.fillRect(0, 0, 320, 256); ctx.restore();
     return textureFromCanvas(c);
   })();
   const guardian = (() => {
@@ -474,16 +573,22 @@ export function createVfxTextures(): VfxTextures {
   })();
   const rockPlate = (() => {
     const [c, ctx] = makeCanvas(64, 80);
-    ctx.beginPath(); ctx.moveTo(14, 5); ctx.lineTo(48, 9); ctx.lineTo(60, 29);
-    ctx.lineTo(51, 70); ctx.lineTo(25, 76); ctx.lineTo(5, 55); ctx.lineTo(6, 22); ctx.closePath();
-    const fill = ctx.createLinearGradient(10, 8, 55, 74);
-    fill.addColorStop(0, '#fff0ce'); fill.addColorStop(0.35, '#c8b18b'); fill.addColorStop(1, '#64523d');
-    ctx.fillStyle = fill; ctx.fill(); ctx.lineWidth = 5; ctx.strokeStyle = '#49392b'; ctx.stroke();
-    ctx.beginPath(); ctx.moveTo(9, 24); ctx.lineTo(16, 9); ctx.lineTo(47, 13); ctx.lineTo(53, 25);
-    ctx.lineTo(26, 20); ctx.closePath(); ctx.fillStyle = '#ffe6b6'; ctx.fill();
-    ctx.beginPath(); ctx.moveTo(36, 22); ctx.lineTo(28, 36); ctx.lineTo(35, 46); ctx.lineTo(24, 65);
-    ctx.moveTo(28, 36); ctx.lineTo(14, 39); ctx.moveTo(35, 46); ctx.lineTo(49, 43);
-    ctx.strokeStyle = '#56432f'; ctx.lineWidth = 3; ctx.stroke();
+    const rnd = seeded(61);
+    const out = [[13, 6], [33, 3], [50, 10], [60, 30], [55, 52], [49, 71], [27, 77], [8, 62], [4, 38], [7, 20]];
+    const fill = ctx.createLinearGradient(8, 6, 56, 76);
+    fill.addColorStop(0, '#f0ede6'); fill.addColorStop(0.45, '#aaa59c'); fill.addColorStop(1, '#5d5952');
+    poly(ctx, out, fill);
+    poly(ctx, [[7, 20], [13, 6], [33, 3], [50, 10], [42, 19], [22, 17]], '#fbf9f4');
+    poly(ctx, [[60, 30], [55, 52], [49, 71], [43, 60], [50, 33]], '#6f6a62');
+    poly(ctx, [[8, 62], [27, 77], [49, 71], [40, 66], [22, 68]], '#56524b');
+    ctx.beginPath(); ctx.moveTo(35, 21); ctx.lineTo(29, 34); ctx.lineTo(35, 45); ctx.lineTo(26, 63);
+    ctx.moveTo(29, 34); ctx.lineTo(16, 38); ctx.moveTo(35, 45); ctx.lineTo(47, 42);
+    ctx.strokeStyle = 'rgba(40,36,30,0.85)'; ctx.lineWidth = 2; ctx.lineJoin = 'bevel'; ctx.stroke();
+    ctx.beginPath(); ctx.moveTo(36, 22); ctx.lineTo(30, 34); ctx.moveTo(36, 46); ctx.lineTo(48, 43);
+    ctx.strokeStyle = 'rgba(255,255,255,0.35)'; ctx.lineWidth = 1; ctx.stroke();
+    grain(ctx, 64, 80, rnd, 160, 1.5);
+    ctx.beginPath(); out.forEach(([x, y], i) => (i ? ctx.lineTo(x, y) : ctx.moveTo(x, y))); ctx.closePath();
+    ctx.strokeStyle = '#3b3731'; ctx.lineWidth = 2.5; ctx.stroke();
     return textureFromCanvas(c);
   })();
   const bell = (() => {
@@ -563,5 +668,5 @@ export function createVfxTextures(): VfxTextures {
     digits[ch] = textureFromCanvas(c);
   }
 
-  return { glow, dot, ring, disc, streak, beam, star, puff, crescent, shard, blade, swordCrack, spike, rock, rockPlate, guardian, mountain, leaf, drop, chevron, rune, bubble, tendril, vineSegment, plus, crackedShield, bell, bellCracks, digits };
+  return { glow, dot, ring, disc, streak, beam, star, puff, crescent, shard, blade, swordCrack, spike, rock, rockPlate, rockSpike, fissure, guardian, mountain, leaf, drop, chevron, rune, bubble, tendril, vineSegment, plus, crackedShield, bell, bellCracks, digits };
 }
