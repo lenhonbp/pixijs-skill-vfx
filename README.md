@@ -90,14 +90,19 @@ Use `skillActivation(w, tex, { at, height, palette, element, tier })`, then star
 gameplay after `activationRelease(tier)` (0/250/400 ms). `empoweredAura` takes the
 same caster options plus `duration` (or `Infinity, idle: true`, keeping its stoppable
 handle). Activation, cast and idle share an element-specific motif: blades,
-vine/leaves, ripples/shards, flame tongues/embers, low rocks, wind spirals or
+vine/leaves, orbiting droplets/ripple, low flame wisps/embers, low rocks, wind spirals or
 lightning arcs. Tier 2 is lighter; tier 3 is stronger. Utility uses its own supplied
-palette's visible grounded halo, not a default purple. Earth adds a dust-coloured
+palette's orbiting inscribed talismans and grounded halo, not a default purple. Earth adds a dust-coloured
 ring; lightning continuously crackles around feet/legs above a violet ring.
 No evolved shared rune/body glow; floor pieces remain at z=0. `skillEvolution`
 adds `fromTier`/`toTier`: gather → transform → stamp uses converging blades,
 blooming vines, a freezing water spiral, flame vortex, rising/slamming rocks,
-cyclone or lightning cage/strike. Utility gathers restrained palette rings.
+cyclone or lightning cage/strike. Utility gathers four talismans, folds them into
+an overhead emblem, then stamps the halo and resting talismans. Water gathers
+three broad incoming streams with droplets before freezing into its crest.
+Water, fire and utility keep two/three orbiting objects at tiers 2/3 during
+stamp, idle and casts; water/utility use four sprites at tier 3, fire five.
+Objects orbit low and wide behind the caster, never in a column over the body.
 The destination motif appears at 950 ms; evolution finishes at 1600 ms.
 
 Pass `empoweredWorld(w, { tier, palette, textures: tex })` to native skill code:
