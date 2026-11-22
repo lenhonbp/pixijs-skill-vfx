@@ -1,6 +1,7 @@
 // Copyright (c) 2026 lenhonbp <lenhonbp@gmail.com> — https://github.com/lenhonbp/pixijs-skill-vfx
 // SPDX-License-Identifier: MIT
-import { Application, Container, Texture } from 'pixi.js';
+import { Application, Assets, Container, Texture } from 'pixi.js';
+import type { Spritesheet } from 'pixi.js';
 import { VfxPlayer } from '../../runtime/src/index';
 import type { Playback, CueEvent } from '../../runtime/src/index';
 import './style.css';
@@ -148,7 +149,7 @@ document.querySelector<HTMLDivElement>('#app')!.innerHTML = `
 <div class="workspace"><div class="arena-header"><div><p class="eyebrow" id="category">LIVE PREVIEW / ATTACK</p><h2 id="selected-name">Loading collection…</h2><p id="selected-vi"></p></div><div id="tiers" class="tier-switch" role="group" aria-label="Effect tier"><button data-tier="normal" aria-pressed="true">Normal</button><button data-tier="evolved" aria-pressed="false">Evolved <span>✧</span></button></div><button id="browse" class="browse">Browse skills ↓</button></div><p id="description" class="effect-description"></p><div id="stage" aria-label="Effect preview arena"><div class="arena-label left">CASTER</div><div class="arena-label right">TARGET</div><div class="arena-tip">Click the floor to cast · SPACE to replay</div><span class="axis">2.5D / ISOMETRIC</span></div><div class="controls"><button id="replay" class="primary">↻ Replay effect</button><label><input id="loop" type="checkbox"> Loop</label><label><input id="sound" type="checkbox"> Sound</label><label><input id="shake" type="checkbox" checked> Screen shake</label><span id="status" role="status" aria-live="polite">Loading…</span></div>
 <div class="integration"><div class="section-heading"><h3>From preview to your game</h3><button id="copy">Copy code ↗</button></div><pre><code id="snippet"></code></pre><p>One tiny runtime. One self-contained pack. That’s it. <a href="https://github.com/lenhonbp/pixijs-skill-vfx/blob/main/runtime/README.md">Read the docs ↗</a></p></div></div></section>
 <section id="premium"><div class="premium-heading"><div><p class="eyebrow">THE NEXT CHAPTER</p><h2>More worlds. More wonder.</h2></div><p>Handcrafted collections for your next adventure.<br><span>Premium art. The same free runtime.</span></p></div><div class="premium-grid"><article style="--accent:#d6b477"><span class="pack-symbol">劍</span><p class="eyebrow">01 / MARTIAL LEGENDS</p><h3>Kiếm Hiệp</h3><p>Sword auras, flying blades and the spirit of a wandering hero.</p><div><a href="#gumroad-link-tbd">Gumroad ↗</a><a href="#itch-link-tbd">itch.io ↗</a><span>COMING SOON</span></div></article><article style="--accent:#7dbaa9"><span class="pack-symbol">五</span><p class="eyebrow">02 / FIVE ELEMENTS</p><h3>Ngũ Hành</h3><p>Metal, wood, water, fire and earth. Five forces in perfect motion.</p><div><a href="#gumroad-link-tbd">Gumroad ↗</a><a href="#itch-link-tbd">itch.io ↗</a><span>COMING SOON</span></div></article><article style="--accent:#b69ed4"><span class="pack-symbol">冥</span><p class="eyebrow">03 / FINAL ENCOUNTERS</p><h3>Ultimate Boss</h3><p>Arena-shaking ultimates for battles players will remember.</p><div><a href="#gumroad-link-tbd">Gumroad ↗</a><a href="#itch-link-tbd">itch.io ↗</a><span>COMING SOON</span></div></article></div></section>
-<footer><span>© 2026 lenhonbp &lt;lenhonbp@gmail.com&gt; · <a href="https://opensource.org/license/mit">MIT license</a></span><span>Runtime & free collection · MIT</span></footer></main>`;
+<footer><span>© 2026 lenhonbp &lt;lenhonbp@gmail.com&gt; · <a href="https://opensource.org/license/mit">MIT license</a></span><span>Character artwork (c) 2026 lenhonbp; excluded from the MIT licence.</span></footer></main>`;
 const el = <T extends HTMLElement>(id: string) => document.getElementById(id) as T;
 const app = new Application();
 await app.init({ width: 1000, height: 580, backgroundColor: 0x121620, antialias: true, resolution: Math.min(devicePixelRatio, 2) * el('stage').clientWidth / 1000, autoDensity: true });
@@ -162,6 +163,10 @@ resize.observe(el('stage'));
 const world = new Container(); app.stage.addChild(world);
 const from = { x: 300, y: 365 }, to = { x: 660, y: 365 };
 const scene = createStage(world, from, to, { head: heroTexture('head'), torso: heroTexture('torso'), legs: heroTexture('legs'), staff: heroTexture('staff'), dummy: dummyTexture() });
+try {
+  const sheet = await Assets.load<Spritesheet>(`${base}actors/ngu-hanh-sword/son-ha-kiem-khi-se.json`);
+  scene.setCaster(sheet.animations['son-ha-kiem-khi-se']);
+} catch (error) { console.warn('Character sheet unavailable; using drawn caster.', error); }
 const vfx = await VfxPlayer.create(app, { shake: { target: world }, hitstop: true });
 const response = await fetch(`${base}packs/free/index.json`); if (!response.ok) throw Error('Collection index unavailable');
 const packs: Entry[] = await response.json();
@@ -236,7 +241,10 @@ async function cast() {
     if (!await loadSelected(id) || token !== request) return;
     loading(false);
     const movement = ['kim-golden-edge', 'phong-whirlwind', 'phong-tailwind'].includes(selected.id);
-    scene.prepare(movement ? 'movement' : selected.category === 'attack' || selected.category === 'channel' ? 'projectile' : selected.category);
+    const manifest = vfx.getManifest(id)!;
+    const release = manifest.cues.find(c => c.type === 'sound' && c.id === 'release')?.t
+      ?? manifest.cues.find(c => c.type === 'sound' && ['buff', 'debuff'].includes(c.id ?? ''))?.t ?? 220;
+    scene.prepare(movement ? 'movement' : selected.category === 'attack' || selected.category === 'channel' ? 'projectile' : selected.category, { release, duration: manifest.durationMs });
     current = vfx.play(id, { from, to, parent: world, loop: el<HTMLInputElement>('loop').checked });
     el('status').textContent = 'Playing · ' + sizeLabel();
     await current.finished;
@@ -254,7 +262,7 @@ vfx.on('cue', (cue: CueEvent) => {
   oscillator.frequency.exponentialRampToValueAtTime(55, now + 0.18); gain.gain.setValueAtTime(0.04, now); gain.gain.exponentialRampToValueAtTime(0.001, now + 0.22);
   oscillator.connect(gain).connect(audio.destination); oscillator.start(); oscillator.stop(now + 0.23); oscillator.onended = () => { oscillator.disconnect(); gain.disconnect(); };
 });
-app.ticker.add((ticker: any) => scene.animate(ticker.deltaMS, current?.pose('caster'), current?.pose('target')));
+app.ticker.add((ticker: any) => scene.animate(ticker.deltaMS, current?.pose('caster'), current?.pose('target'), current?.elapsedMs));
 el('tiers').querySelectorAll<HTMLButtonElement>('button').forEach(button => { button.onclick = () => {
   const next = button.dataset.tier === 'evolved';
   if (evolved === next || (next && !selected.evolved)) return;

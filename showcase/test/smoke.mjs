@@ -35,25 +35,64 @@ export async function showcaseSmoke({ page, browser, url, collection }) {
     if (Math.abs(scene.dummy.y - (to.y + 7 - 30)) > 0.01 || scene.dummy.scale.y >= 1 || scene.floorFlash.alpha <= 0) throw Error('Target pose lost hit reaction');
     scene.reset();
     if (scene.caster.alpha !== 1 || scene.dummy.alpha !== 1 || scene.dummy.x !== to.x || scene.caster.x !== from.x) throw Error('Empty pose did not restore home');
-    if (scene.staff.parent !== scene.frontArm.hand || scene.frontArm.forearm.parent !== scene.frontArm.upper || scene.backArm.hand.parent !== scene.backArm.forearm) throw Error('Arm hierarchy broken');
-    const angles = [];
-    for (const category of ['projectile', 'aoe', 'buff', 'debuff', 'movement']) {
-      scene.reset(); scene.prepare(category); scene.cue({ type: 'sound', id: 'windup' }, 0xff9966);
-      for (let i = 0; i < 16; i++) scene.animate(16);
-      const windup = scene.frontArm.upper.rotation;
-      angles.push(windup.toFixed(2) + ':' + scene.backArm.upper.rotation.toFixed(2));
-      scene.cue({ type: 'sound', id: 'release' }, 0xff9966);
-      for (let i = 0; i < 12; i++) scene.animate(16);
-      if (!Number.isFinite(scene.frontArm.upper.rotation) || (category === 'projectile' && Math.abs(scene.frontArm.upper.rotation - windup) < 0.1)) throw Error('Release did not thrust');
+    const sprite = scene.swordsman;
+    if (!sprite || scene.rig.visible || sprite.anchor.x !== sprite.texture.defaultAnchor.x || sprite.anchor.y !== sprite.texture.defaultAnchor.y) throw Error('Sheet caster or feet anchor missing');
+    if (sprite.texture.source.scaleMode !== 'linear' || Math.abs(sprite.height - 120) > 0.01) throw Error('Wrong sheet filtering/scale');
+    for (const timing of [{ release: 433, duration: 4000 }, { release: 100, duration: 300 }, { release: 0, duration: 500 }]) {
+      scene.prepare('projectile', timing);
+      const end = Math.min(timing.duration, timing.release + 410);
+      for (const age of [0, timing.release, timing.release + 30, end, end + 1]) {
+        scene.animate(0, null, null, age);
+        const local = age <= timing.release && timing.release > 0 ? age / timing.release * 270 : 270 + (age - timing.release) / Math.max(1, end - timing.release) * 410;
+        const expected = age > end ? 0 : Math.round(Math.min(1, Math.max(0, local / 680)) * 23);
+        if (scene.state.clipFrame !== expected) throw Error('Clip sampling/segment warp failed');
+        if (scene.caster.x !== from.x || scene.caster.y !== from.y) throw Error('Clip moved feet off anchor');
+      }
     }
-    if (new Set(angles).size !== 5) throw Error('Category windups are identical');
-    scene.reset(); scene.prepare('aoe'); scene.cue({ type: 'sound', id: 'windup' }, 0xff9966);
-    for (let i = 0; i < 40; i++) scene.animate(16);
-    const grip = scene.staff.toLocal(scene.backArm.hand.getGlobalPosition());
-    if (Math.abs(grip.x) > 1 || Math.abs(grip.y - 9) > 1) throw Error('Overhead free hand does not grip staff');
     scene.reset();
+    if (scene.state.clipFrame !== 0) throw Error('Idle is not frame zero');
   });
-  console.log('Showcase actors + rig: PASS (ticker-driven dash/flight, grounded shadows, flags, target hit overlay, home reset, articulated category windups/release)');
+  await page.evaluate(() => {
+    const s = window.__showcase; s.app.stop(); s.select('hoa-fireball'); document.getElementById('loop').checked = true; void s.cast();
+  });
+  await page.waitForFunction(() => document.getElementById('status').textContent.startsWith('Playing'));
+  await page.evaluate(() => {
+    const s = window.__showcase, manifest = s.vfx.getManifest('hoa-fireball'), h = s.current;
+    const release = manifest.cues.find(c => c.type === 'sound' && c.id === 'release').t;
+    if (s.scene.state.clipRelease !== release) throw Error('Release did not use selected pack cue');
+    let releases = 0;
+    const listen = c => { if (c.handle === h && c.type === 'sound' && c.id === 'release') releases++; };
+    s.vfx.on('cue', listen);
+    for (let i = 0; i < 400; i++) {
+      s.app.ticker.update(s.app.ticker.lastTime + 1000 / 60);
+      const age = h.elapsedMs, end = Math.min(manifest.durationMs, release + 410);
+      const local = age <= release ? age / release * 270 : 270 + (age - release) / (end - release) * 410;
+      const expected = age > end ? 0 : Math.round(Math.min(1, Math.max(0, local / 680)) * 23);
+      if (s.scene.state.clipFrame !== expected) throw Error('Playback clock, hitstop or loop desynchronized clip');
+    }
+    if (releases < 2 || releases > 4) throw Error('Loop release did not fire once per cast');
+    s.vfx.off('cue', listen); h.stop(); document.getElementById('loop').checked = false;
+  });
+  await page.evaluate(async () => { await window.__showcase.current.finished; });
+  await page.evaluate(() => {
+    const s = window.__showcase;
+    if (s.scene.state.clipFrame !== 0) throw Error('Stop did not restore idle clip');
+    const original = s.vfx.getManifest.bind(s.vfx);
+    s.vfx.getManifest = id => {
+      const manifest = original(id);
+      manifest.cues = manifest.cues.filter(c => c.type !== 'sound' || !['release', 'buff', 'debuff'].includes(c.id));
+      return manifest;
+    };
+    s.restoreManifest = () => { s.vfx.getManifest = original; };
+    void s.cast();
+  });
+  await page.waitForFunction(() => document.getElementById('status').textContent.startsWith('Playing'));
+  await page.evaluate(async () => {
+    const s = window.__showcase;
+    if (s.scene.state.clipRelease !== 220 || s.scene.state.clipFrame !== 0) throw Error('Missing release fallback or replay reset failed');
+    s.current.stop(); await s.current.finished; s.restoreManifest(); delete s.restoreManifest; s.app.start();
+  });
+  console.log('Showcase swordsman: PASS (sheet, feet anchor, filtering/scale, idle, segment warp, release cue, playback clock/hitstop/loop/stop, dash/flight/shadows/flags/hit overlay)');
 
   const tierPage = await browser.newPage({ viewport: { width: 390, height: 844 }, deviceScaleFactor: 2 });
   const requests = [], errors = [];
@@ -92,6 +131,7 @@ export async function showcaseSmoke({ page, browser, url, collection }) {
 
   const fallback = await browser.newPage();
   try {
+    await fallback.route('**/actors/ngu-hanh-sword/*.json', route => route.fulfill({ status: 503, body: 'Unavailable' }));
     const withoutEvolved = structuredClone(collection);
     delete withoutEvolved.find(p => p.id === 'hoa-fireball').evolved;
     await fallback.route('**/packs/free/index.json', route => route.fulfill({ json: withoutEvolved }));
@@ -102,6 +142,7 @@ export async function showcaseSmoke({ page, browser, url, collection }) {
     await fallback.waitForFunction(() => document.getElementById('status')?.classList.contains('is-loading'));
     assert.match(await fallback.locator('#status').textContent(), /Loading · [\d.]+ (KB|MB)/);
     release(); await navigation; await fallback.waitForFunction(() => window.__showcase);
+    assert.equal(await fallback.evaluate(() => !window.__showcase.scene.swordsman && window.__showcase.scene.rig.visible), true);
     assert.equal(await fallback.locator('#tiers').isVisible(), false);
     assert.equal(new URL(fallback.url()).hash, '#hoa-fireball');
     assert.match(await fallback.locator('#status').textContent(), /failed/);
@@ -111,5 +152,5 @@ export async function showcaseSmoke({ page, browser, url, collection }) {
     await fallback.waitForFunction(() => document.getElementById('status').textContent.startsWith('Playing'));
     assert.equal(await fallback.evaluate(() => window.__showcase.vfx.stats().packs), 1);
   } finally { await fallback.close(); }
-  console.log('Showcase tiers: PASS (selected-only mobile load, metadata/snippet/hash/history, rapid switches, one resident tier, absent evolved, size indicator, load failure/retry)');
+  console.log('Showcase tiers: PASS (selected-only mobile load, metadata/snippet/hash/history, rapid switches, one resident tier, absent evolved, size indicator, load failure/retry, character sheet failure fallback)');
 }

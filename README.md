@@ -1,4 +1,4 @@
-[![Fire Dragon Crossing on the interactive VFX stage](docs/images/showcase-desktop.png)](https://lenhonbp.github.io/pixijs-skill-vfx/)
+[![Swordsman casting on the interactive VFX stage](docs/images/showcase-desktop.png)](https://lenhonbp.github.io/pixijs-skill-vfx/)
 
 # PixiJS Skill VFX
 
@@ -30,13 +30,13 @@ until the npm release is available. Copy the packs you need from
   `<id>.evolved.vfxb` directly.
 - **Actor tracks** — `handle.pose('caster')` / `handle.pose('target')` provide
   interpolated movement, lift, visibility and facing. Dashes and flight move
-  the showcase's articulated caster, with grounded shadows and hit reactions.
+  the showcase's swordsman, with grounded shadows and hit reactions.
 - **Ordered, independently scaled layers** — crisp details and additive glow,
   with per-skill quality presets and selective 60 FPS.
 - **Desktop and mobile packs** — the showcase lazy-loads only the selected
   skill and tier, and releases the previous pack.
 - **Gameplay feedback** — pooling, cue events, optional screen shake and
-  hit-stop. The showcase adds sound hints, looping and category-specific poses.
+  hit-stop. The showcase adds sound hints, looping and a release-synchronized sword cast.
 - **English + Vietnamese** names, searchable collection, shareable tier links,
   and copyable integration snippets.
 
@@ -76,3 +76,4 @@ GitHub Pages deploys the Vite showcase.
 
 © 2026 lenhonbp <lenhonbp@gmail.com> · [MIT license](LICENSE).
 The runtime and showcase are MIT licensed. Keep the copyright and license notice when redistributing runtime code.
+Character artwork (c) 2026 lenhonbp; excluded from the MIT licence.

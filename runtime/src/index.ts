@@ -14,7 +14,7 @@ export interface PlayerOptions {
   packs?: string[]; loadKey?: string; shake?: { target: Container }; hitstop?: boolean;
 }
 export interface ActorPose { x: number; y: number; lift: number; visible: boolean; facing: number }
-export interface Playback { stop(): void; finished: Promise<void>; pose(name: ActorName): ActorPose | null }
+export interface Playback { stop(): void; finished: Promise<void>; readonly elapsedMs: number; pose(name: ActorName): ActorPose | null }
 export type CueEvent = Cue & { packId: string; handle: Playback };
 interface Pack { manifest: Manifest; sheets: Texture[]; frames: (Texture | null)[][] }
 interface Active {
@@ -108,6 +108,7 @@ export class VfxPlayer {
     let resolve!: () => void;
     const finished = new Promise<void>(done => { resolve = done; });
     const resets = new Set<ActorName>();
+    const player = this;
     const pose = (name: ActorName): ActorPose | null => {
       const track = pack.manifest.actors?.[name];
       if (!track) return null;
@@ -124,13 +125,17 @@ export class VfxPlayer {
       const lerp = (k: number) => f[k] + (next[k] - f[k]) * t;
       return { x: lerp(0) * direction * fit, y: lerp(1), lift: lerp(2), visible: !!(f[3] & 1), facing: (f[3] & 2 ? -1 : 1) * direction };
     };
-    const a: Active = { pack, options, root, sprites, time: 0, cue: 0, freeze: 0, resolve, handle: { finished, pose, stop: () => this.finish(a) } };
+    const a: Active = { pack, options, root, sprites, time: 0, cue: 0, freeze: 0, resolve, handle: { finished, pose, get elapsedMs() { return player.active.has(a) ? a.time : 0; }, stop: () => this.finish(a) } };
     this.active.add(a); this.draw(a); this.emitCues(a);
     return a.handle;
   }
   on(type: 'cue', listener: (event: CueEvent) => void): this { if (type === 'cue') this.listeners.add(listener); return this; }
   off(type: 'cue', listener: (event: CueEvent) => void): this { if (type === 'cue') this.listeners.delete(listener); return this; }
   stats() { return { active: this.active.size, pooled: this.sprites.length, packs: this.packs.size }; }
+  getManifest(id: string): Manifest | undefined {
+    const manifest = this.packs.get(id)?.manifest;
+    return manifest ? structuredClone(manifest) : undefined;
+  }
   private draw(a: Active) {
     const m = a.pack.manifest, o = a.options, to = o.to ?? o.from, anchor = m.anchor === 'target' ? to : o.from;
     const direction = to.x < o.from.x ? -1 : 1;
