@@ -10,7 +10,7 @@ import {
   fireball, fireBreath, fireCharge, fireImpact, fireMeteor,
   damageOverTime, stun, shock, freeze, slow, root, statChange, damageNumber,
   silence, blind, armorBreak, mark, fear, aura, empower, haste,
-  goldenBell, stoneArmor, spiritGuardian, mountainCrash,
+  goldenBell, metalSlash, metalSparks, swordSalute, stoneArmor, spiritGuardian, mountainCrash,
   lightningStrike, staticField,
   dash, blink, leap, beam, chargeUp, summonCircle, spikeLine, spikeRing, swordRain,
   random, rand, envelope, outCubic, outQuad, lerp, clamp01,
@@ -99,19 +99,19 @@ export const SKILLS: SkillDef[] = [
   // ------------------------------------------------------------------ KIM / METAL
   {
     id: 'kim-sword-rain', element: 'kim', category: 'aoe', en: 'Sword Rain', vi: 'Vạn Kiếm Quy Tông',
-    desc: 'A storm of golden blades falls on the area and pins every enemy inside.', uses: ['chargeUp', 'swordRain'], length: 2200,
+    desc: 'A storm of gold-hilted blades falls on the area and pins every enemy inside.', uses: ['swordSalute', 'swordRain'], length: 2200,
     cast: ({ w, tex, caster, target, targets, hurt }) => {
-      chargeUp(w, tex, { target: () => hand(caster), palette: P.kim, duration: 450 });
+      swordSalute(w, tex, () => chest(caster), caster.height, P.kim, 390);
       const c = { x: target.feet.x, y: target.feet.y };
       w.after(350, () => swordRain(w, tex, {
         ...c, radius: 120, count: 16, duration: 900, height: caster.height, palette: P.kim,
-        onImpact: (at) => near(at, 40, targets).forEach((u) => hurt(u, Math.round(rand(38, 52)), { palette: P.kim, angle: -Math.PI / 2 })),
+        onImpact: (at) => near(at, 40, targets).forEach((u) => hurt(u, Math.round(rand(38, 52)), { feedback: 0 })),
       }));
     },
   },
   {
     id: 'kim-golden-edge', element: 'kim', category: 'attack', en: 'Golden Edge', vi: 'Kim Quang Trảm',
-    desc: 'Dash in, two crossing metal slashes, the target bleeds.', uses: ['dash', 'slash', 'damageOverTime(bleed)', 'hitFlash'], length: 3600,
+    desc: 'Dash in, two crossing metal slashes, the target bleeds.', uses: ['dash', 'metalSlash', 'metalSparks', 'damageOverTime(bleed)', 'hitFlash'], length: 3600,
     cast: ({ w, tex, caster, target, hurt, returnHome }) => {
       const to = { x: target.feet.x - caster.facing * 70, y: target.feet.y, z: 0 };
       dash(w, tex, {
@@ -119,12 +119,19 @@ export const SKILLS: SkillDef[] = [
         onMove: (p) => { caster.feet.x = p.x; caster.feet.y = p.y; },
         onEnd: () => {
           const a = caster.facing > 0 ? 0 : Math.PI;
-          slash(w, tex, { ...caster.feet, angle: a - 0.3, palette: P.kim, radius: 95, duration: 170 });
-          w.after(80, () => hurt(target, 64, { palette: P.kim, angle: a }));
+          const cut = () => chest(target, 0.55);
+          metalSlash(w, tex, cut(), { angle: a - 0.53, span: caster.height * 2.1, palette: P.kim });
+          w.after(80, () => {
+            hurt(target, 64, { feedback: 0 });
+            hitFlash(w, target.sprite, 90, P.kim.core, 0.45);
+            metalSparks(w, tex, cut(), P.kim, 10, a - 0.6, 0.84);
+          });
           w.after(190, () => {
-            slash(w, tex, { ...caster.feet, angle: a + 0.35, palette: P.kim, radius: 105, duration: 170, clockwise: false });
+            metalSlash(w, tex, cut(), { angle: a + 0.57, span: caster.height * 2.3, palette: P.kim, reverse: true });
             w.after(80, () => {
-              hurt(target, 131, { palette: P.kim, angle: a, crit: true });
+              hurt(target, 131, { crit: true, feedback: 0 });
+              hitFlash(w, target.sprite, 105, P.kim.core, 0.7);
+              metalSparks(w, tex, cut(), P.kim, 17, a + 0.28);
               w.hitStop(70);
               w.shake(5, 160);
               damageOverTime(w, tex, { target: feetOf(target), height: target.height, kind: 'bleed', duration: 2600, tickMs: 650, damage: () => Math.round(rand(9, 14)), onTick: () => hitFlash(w, target.sprite, 90, 0xff6070) });
