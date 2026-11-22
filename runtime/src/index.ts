@@ -4,8 +4,8 @@ import { Container, Sprite, Texture } from 'pixi.js';
 import type { Application } from 'pixi.js';
 import { frameTexture, setBlend, v8 } from './compat.js';
 import { readContainer, validate } from './format.js';
-import type { Cue, Manifest } from './format.js';
-export type { Cue, Manifest, Frame } from './format.js';
+import type { ActorName, Cue, Manifest } from './format.js';
+export type { ActorName, ActorFrame, ActorTrack, Cue, Manifest, Frame } from './format.js';
 export interface Point { x: number; y: number }
 export interface PlayOptions {
   from: Point; to?: Point; parent?: Container; zIndex?: number; speed?: number; fitDistance?: boolean; loop?: boolean;
@@ -13,7 +13,8 @@ export interface PlayOptions {
 export interface PlayerOptions {
   packs?: string[]; loadKey?: string; shake?: { target: Container }; hitstop?: boolean;
 }
-export interface Playback { stop(): void; finished: Promise<void> }
+export interface ActorPose { x: number; y: number; lift: number; visible: boolean; facing: number }
+export interface Playback { stop(): void; finished: Promise<void>; pose(name: ActorName): ActorPose | null }
 export type CueEvent = Cue & { packId: string; handle: Playback };
 interface Pack { manifest: Manifest; sheets: Texture[]; frames: (Texture | null)[][] }
 interface Active {
@@ -106,7 +107,24 @@ export class VfxPlayer {
     (options.parent ?? this.app.stage).addChild(root);
     let resolve!: () => void;
     const finished = new Promise<void>(done => { resolve = done; });
-    const a: Active = { pack, options, root, sprites, time: 0, cue: 0, freeze: 0, resolve, handle: { finished, stop: () => this.finish(a) } };
+    const resets = new Set<ActorName>();
+    const pose = (name: ActorName): ActorPose | null => {
+      const track = pack.manifest.actors?.[name];
+      if (!track) return null;
+      if (!this.active.has(a)) {
+        if (resets.has(name)) return null;
+        resets.add(name);
+        return { x: 0, y: 0, lift: 0, visible: true, facing: 1 };
+      }
+      const frame = Math.min(pack.manifest.frameCount - 1, a.time * pack.manifest.fps / 1000);
+      const i = Math.floor(frame), t = frame - i, f = track.frames[i], next = track.frames[Math.min(i + 1, track.frames.length - 1)];
+      const to = options.to ?? options.from, direction = to.x < options.from.x ? -1 : 1;
+      const span = Math.abs(pack.manifest.target.x - pack.manifest.origin.x);
+      const fit = options.fitDistance && span > 0 ? Math.abs(to.x - options.from.x) / span : 1;
+      const lerp = (k: number) => f[k] + (next[k] - f[k]) * t;
+      return { x: lerp(0) * direction * fit, y: lerp(1), lift: lerp(2), visible: !!(f[3] & 1), facing: (f[3] & 2 ? -1 : 1) * direction };
+    };
+    const a: Active = { pack, options, root, sprites, time: 0, cue: 0, freeze: 0, resolve, handle: { finished, pose, stop: () => this.finish(a) } };
     this.active.add(a); this.draw(a); this.emitCues(a);
     return a.handle;
   }
