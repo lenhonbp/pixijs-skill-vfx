@@ -42,10 +42,13 @@ not a framework to extend with options.
 | `swordRain` | gold-hilted steel blades accelerate down, dig into cracked ground and settle amid sparks and glints | metal ultimates | `radius`, `count` (gameplay impacts; quality-scaled cosmetic swords add density without extra callbacks), `height` (unit height, default 70; blades about as tall as the unit), `duration`, `palette`, `onImpact` |
 | `swordSalute` | steel swords rise in staggered order, hover above soft shadows, gather and launch | metal windups | `at` (follow fn), `height`, palette, motion duration, optional `aimAt` (target follow fn) and extra `hoverHold` (ms) |
 | `metalSlash` / `metalSparks` (`metal.ts`) | solid sword and narrow gold-edged cut; ballistic contact sparks | crossing metal cuts, struck metal | `angle`, `span`, `palette`, `reverse` for cuts; palette, count, angle and size for sparks |
-| `tornado` | funnel of orbiting streaks and puffs (front/back depth fade), carried leaves/rocks, dust ring, ground swirl, heat haze | tornado, cyclone, pull + lift CC | `at`, `to`, `height`, `radius`, `duration`, `onTick(pos)` |
-| `windSlash` | twin crescents flying along a path, two side ribbons + a core ribbon, speed lines, release burst | wind blade, sonic slash | `from`, `to`, `size`, `speed`, `onHit` |
-| `vortex` | counter-rotating ground rings, streaks spiralling in (or out) | pulls, wind fields, spin attacks | `at` (point or fn), `radius`, `inward` |
-| `windWisps` | three ribbon helices orbiting the unit, curl-noise motes | haste, tailwind, wind aura | `target`, `radius`, `height`, `duration` |
+| `tornado` | sheared funnel with layered mist, carried leaves/rocks and a travelling dust skirt | tornado, cyclone, pull + lift CC | `at`, `to`, `height`, `radius`, `duration`, `onTick(pos)`, `tickMs` |
+| `windPressure` | curved air sheets and ground dust gather inward or fan out in a sector | windup, impact, landing | `at`, `angle` (ground radians), `radius`, `spread` (radians), `duration`, `inward` |
+| `windRush` | ground step with ankle and shoulder trails, displaced dust and optional motion ghosts | dash-in, haste showcase | `from`, `to`, `height`, `duration`, `sprite`, `onMove(pos)`, `onEnd`; move your unit in `onMove` |
+| `windSlash` | banking crescent with twin wakes; its tip reaches the target at impact | wind blade, sonic slash | `from`, `to`, `size`, `speed`, `onHit` |
+| `windSweep` | staggered cuts that open outward without forming a full ring | spin attacks, blade release | `target` (follow fn), `angle`, `radius`, `height`, `duration` |
+| `vortex` | curved ground eddies and detached dust that spiral in or out | pulls, wind fields, spin attacks | `at` (point or fn), `radius`, `inward` |
+| `windWisps` | suspended wisps orbit a unit and stream behind its facing direction | haste, tailwind, wind aura | `target`, `radius`, `height`, `facing`, `duration` |
 | `gustLines` | burst of horizontal speed lines along a ground angle | knockback, dash, tailwind | `angle`, `count`, `spread` |
 | `ribbonTrail` | rope mesh through the target's recent positions | any fast mover (see advanced-fx.md) | `width`, `segments`, `tint`, `fadeMs` |
 

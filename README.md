@@ -10,7 +10,7 @@ in PixiJS v7 and v8**. No art assets: every texture is generated with Canvas 2D 
 - **Coverage**: attacks and impacts, AoE telegraphs, projectiles, beams, cone breath, chain
   lightning, meteors, heals, shields that break, buffs/debuffs, poison/burn/bleed with tick
   numbers, stun/freeze/slow/root, dash/blink/leap, summon circles, floating damage numbers,
-  tornadoes, wind blades and vortices.
+  tornadoes, wind blades, pressure fronts and ribbon-trailing wind steps.
 - **Five elements (Ngũ Hành / Wu Xing) + Phong (wind) and Lôi (lightning)**: Kim, Mộc, Thủy, Hỏa,
   Thổ and two variants, each with its own palette, shapes and motion, and 29 complete sample skills in
   `examples/skills.ts`.

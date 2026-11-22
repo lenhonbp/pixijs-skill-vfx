@@ -135,8 +135,10 @@ Ready recipes (see `references/recipes.md` for what each is made of):
 - Movement (`motion.ts`): `dash` (afterimages), `blink`, `leap` (arc + `slam`), `afterimage`, `slam`.
 - Channeled / cast (`channel.ts`): `beam`, `coneBreath`, `chargeUp`, `summonCircle`.
 - Element shapes (`elemental.ts`): `spike`, `spikeLine`, `spikeRing` (rock or `ice`), `swordRain`.
-- Wind (`wind.ts`): `tornado` (travels, pulls, lifts; returns `pos`), `windSlash` (crescent gust
-  with ribbons), `vortex` (inward/outward ground spiral), `windWisps` (buff aura), `gustLines`.
+- Wind (`wind.ts`): `windPressure` (directional intake or impact), `windRush` (short ground
+  step with a slipstream; calls `onMove`), `windSweep` (open rotating cut), `windSlash` (banking
+  projectile), `tornado` (moving funnel; use `onTick` for pulls and lift), `vortex` (ground eddies),
+  `windWisps` (buff aura) and `gustLines`.
 - Advanced (`trail.ts`, `noise.ts`, `postfx.ts`): `ribbonTrail`, `curlDrift` / `curl2`,
   `Distortion` (`shockwave`, `haze`), `Bloom`, `w.density` quality tiers. Read
   `references/advanced-fx.md` before using them.
