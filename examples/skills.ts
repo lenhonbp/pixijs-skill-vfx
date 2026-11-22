@@ -519,10 +519,12 @@ export const SKILLS: SkillDef[] = [
     timing: { windup: 300, hits: Array.from({ length: 3 }, (_, i) => ({ t: 340 + i * 40, skin: 'shock', targets: 'all' })), recovery: 1200 },
     desc: 'A bolt jumps between all enemies and briefly stuns them.', uses: ['lightningCharge', 'lightningChain', 'lightningStun'], length: 2700,
     cast: ({ w, tex, caster, targets, hurt }) => {
+      const tip = () => ({ x: caster.feet.x + caster.facing * caster.height * 0.22,
+        y: caster.feet.y + 1, z: caster.feet.z + caster.height * 1.02 });
       lightningCharge(w, tex, {
-        target: () => hand(caster), palette: P.loi, duration: 300,
+        target: tip, palette: P.loi, duration: 300, size: 2.1,
         onDone: () => {
-          lightningChain(w, tex, { points: [hand(caster), ...targets.map((u) => chest(u))], palette: P.loi, impactIntensity: 0.2 });
+          lightningChain(w, tex, { points: [tip(), ...targets.map((u) => chest(u))], palette: P.loi, impactIntensity: 0.2 });
           targets.forEach((u, i) => w.after(40 + i * 40, () => {
             hurt(u, 88 - i * 10, { skin: 'shock', angle: rand(0, 6.3), feedback: 0 });
             hitSkin(w, u.sprite, 'shock', { strength: 0.32, duration: 220 });
@@ -546,7 +548,7 @@ export const SKILLS: SkillDef[] = [
           lightningWarning(w, tex, { ...at, radius: 36, palette: P.loi, duration: 300 + i * 180,
             onDone: () => lightningStrike(w, tex, { ...at, palette: P.loi, radius: 38, cloud, onHit: () => {
               hurt(u, 115, { skin: 'shock', feedback: 0 });
-              hitSkin(w, u.sprite, 'shock', { strength: 0.32, duration: 220 });
+              hitSkin(w, u.sprite, 'shock', { strength: 0.22, duration: 220 });
               lightningStun(w, tex, { target: feetOf(u), height: u.height, duration: 650, palette: P.loi });
               shock(w, tex, { target: feetOf(u), height: u.height, duration: 1200, palette: P.loi });
             } }),
