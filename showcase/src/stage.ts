@@ -87,7 +87,8 @@ export function createStage(world: Container, from: { x: number; y: number }, to
   figure(art.legs, legs); figure(art.torso, body); figure(art.head, head);
   head.pivot.set(0, -87); head.position.set(0, -87);
   body.pivot.set(0, -55); body.position.set(0, -55);
-  caster.addChild(legs, body); body.addChild(head);
+  const rig = new Container(); caster.addChild(rig);
+  rig.addChild(legs, body); body.addChild(head);
   function arm(x: number, back: boolean) {
     const upper = new Container(), forearm = new Container(), hand = new Container();
     upper.position.set(x, -72); forearm.position.y = 21; hand.position.y = 20;
@@ -127,6 +128,25 @@ export function createStage(world: Container, from: { x: number; y: number }, to
   (Object.keys(velocity) as (keyof typeof idle)[]).forEach(k => { velocity[k] = 0; });
   let clock = 0, castAge = Infinity, releaseAge = Infinity, hitAge = Infinity, color = 0x91c9da, category = 'projectile';
   let casterLift = 0, targetLift = 0;
+  let swordsman: Sprite | undefined, textures: Texture[] = [], clipFrame = 0;
+  let clipRelease = 270, clipEnd = 680;
+  function setCaster(frames: Texture[]) {
+    const anchor = frames[0]?.defaultAnchor;
+    if (frames.length !== 24 || !anchor) throw Error('Invalid swordsman clip');
+    textures = frames;
+    textures[0].source.scaleMode = 'linear';
+    swordsman = new Sprite(textures[0]);
+    swordsman.anchor.copyFrom(anchor);
+    swordsman.scale.set(120 / textures[0].orig.height);
+    caster.addChild(swordsman); rig.visible = false;
+  }
+  function sampleCast(elapsed: number) {
+    const local = elapsed <= clipRelease && clipRelease > 0
+      ? elapsed / clipRelease * 270
+      : 270 + (elapsed - clipRelease) / Math.max(1, clipEnd - clipRelease) * 410;
+    clipFrame = !Number.isFinite(elapsed) || elapsed > clipEnd ? 0 : Math.round(Math.min(1, Math.max(0, local / 680)) * 23);
+    if (swordsman) swordsman.texture = textures[clipFrame];
+  }
   function pointArm(a: ReturnType<typeof arm>, x: number, y: number) {
     const dx = x - a.upper.x, dy = y - a.upper.y, d = Math.max(1, Math.min(40.9, Math.hypot(dx, dy)));
     const shoulder = Math.atan2(dy, dx) - Math.acos(Math.max(-1, Math.min(1, (21 * 21 + d * d - 20 * 20) / (42 * d))));
@@ -143,7 +163,7 @@ export function createStage(world: Container, from: { x: number; y: number }, to
     shadow.alpha = node.alpha * 0.85 / (1 + lift / 100);
     return lift;
   }
-  function animate(ms: number, casterPose?: ActorPose | null, targetPose?: ActorPose | null) {
+  function animate(ms: number, casterPose?: ActorPose | null, targetPose?: ActorPose | null, elapsedMs?: number) {
     const dt = Math.min(ms, 50); clock += dt; castAge += dt; releaseAge += dt; hitAge += dt;
     const t = clock / 1000, windup = releaseAge === Infinity && Number.isFinite(castAge) ? 1 - Math.pow(1 - Math.min(1, castAge / 220), 3) : 0;
     const recoil = Math.exp(-releaseAge / 330), hit = Math.exp(-hitAge / 210), spring = Number.isFinite(hitAge) ? Math.sin(hitAge / 67) * hit : 0;
@@ -158,7 +178,8 @@ export function createStage(world: Container, from: { x: number; y: number }, to
     }
     casterLift = actor(caster, casterShadow, from, casterPose, dt);
     targetLift = actor(dummy, dummyShadow, to, targetPose, dt);
-    caster.y -= Math.sin(t * 2.1) * 1.1;
+    if (!swordsman) caster.y -= Math.sin(t * 2.1) * 1.1;
+    sampleCast(elapsedMs ?? castAge);
     legs.scale.y = 1 - pose.crouch / 140; body.y = -55 + pose.crouch; body.rotation = pose.lean;
     head.rotation = -pose.lean * 0.35 + Math.sin(t * 1.4) * 0.008;
     robe.rotation = Math.sin(t * 1.8) * 0.023; hair.rotation = Math.sin(t * 1.5 + 1) * 0.035;
@@ -187,6 +208,11 @@ export function createStage(world: Container, from: { x: number; y: number }, to
     caster.alpha = dummy.alpha = 1; animate(0);
   }
   animate(0);
-  return { animate, cue, reset, prepare(value: string) { category = value; }, caster, dummy, casterShadow, dummyShadow, body, head, legs, frontArm, backArm, staff, orb, floorFlash,
-    get state() { return { clock, castAge, releaseAge, hitAge, category, casterLift, targetLift }; } };
+  return { animate, cue, reset, setCaster, prepare(value: string, timing?: { release: number; duration: number }) {
+    category = value;
+    clipRelease = timing?.release ?? 270;
+    clipEnd = Math.min(timing?.duration ?? 680, clipRelease + 410);
+  }, caster, dummy, casterShadow, dummyShadow, body, head, legs, frontArm, backArm, staff, orb, floorFlash, rig,
+    get swordsman() { return swordsman; },
+    get state() { return { clock, castAge, releaseAge, hitAge, category, casterLift, targetLift, clipFrame, clipRelease, clipEnd }; } };
 }

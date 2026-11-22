@@ -69,16 +69,22 @@ async function actorSmoke(engine) {
   const check = (ok, message) => { if (!ok) throw Error(engine + ': ' + message); };
   try {
     await player.load('/actors.vfxb');
+    check(player.getManifest('missing') === undefined, 'missing manifest');
+    const metadata = player.getManifest('actors'); metadata.cues.length = 0;
+    check(player.getManifest('actors').cues.length > 0, 'manifest snapshot mutated player');
     const h = player.play('actors', { from: { x: 720, y: 0 }, to: { x: 0, y: 0 }, fitDistance: true });
     player.update(50);
+    check(h.elapsedMs === 0, 'elapsed clock ignored hitstop');
     check(h.pose('caster').x === 0, 'actor hitstop');
     player.update(100);
+    check(h.elapsedMs === 50, 'elapsed clock did not advance');
     const c = h.pose('caster'), t = h.pose('target');
     check(c.x === -20 && c.y === 5 && c.lift === 15 && c.visible && c.facing === -1, 'interpolated mirrored/fit pose');
     check(t.x === 10 && t.y === 2 && t.lift === 6, 'target pose');
     player.update(50);
     check(!h.pose('caster').visible && h.pose('caster').facing === 1, 'stepped flags');
     h.stop();
+    check(h.elapsedMs === 0, 'stopped clock did not reset');
     check(JSON.stringify(h.pose('caster')) === JSON.stringify({ x: 0, y: 0, lift: 0, visible: true, facing: 1 }), 'stopped home pose');
     check(h.pose('caster') === null && h.pose('target')?.x === 0 && h.pose('target') === null, 'one reset per tracked actor');
     const end = player.play('actors', { from: { x: 0, y: 0 } });
@@ -91,6 +97,7 @@ async function actorSmoke(engine) {
     const loop = player.play('actors', { from: { x: 0, y: 0 }, loop: true });
     player.update(100); player.update(200);
     check(loop.pose('caster') !== null, 'loop remains tracked');
+    check(loop.elapsedMs === 0, 'loop clock did not wrap');
     loop.stop();
     await player.load('/packs/free/kim-golden-edge.evolved.vfxb');
     const evolved = player.play('kim-golden-edge.evolved', { from: { x: 0, y: 0 } });
