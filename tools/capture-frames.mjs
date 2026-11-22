@@ -51,14 +51,7 @@ try {
   await new Promise((ok, fail) => { server.once('error', fail); server.listen(0, '127.0.0.1', ok); });
   browser = await chromium.launch({ headless: true });
   const context = await browser.newContext({ viewport: { width: 1600, height: 1100 }, deviceScaleFactor: 1 });
-  await context.addInitScript((seed) => {
-    let state = seed >>> 0;
-    Math.random = () => {
-      state = (Math.imul(1664525, state) + 1013904223) >>> 0;
-      return state / 4294967296;
-    };
-  }, options.seed);
-  const url = `http://127.0.0.1:${server.address().port}/?debug&quality=high`;
+  const url = `http://127.0.0.1:${server.address().port}/?debug&quality=high&seed=${options.seed}`;
   const page = await context.newPage();
   let pageError;
   page.on('pageerror', (error) => { pageError = error; });

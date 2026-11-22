@@ -1,0 +1,11 @@
+{
+  "name": "pixijs-skill-vfx",
+  "version": "3.0.0",
+  "description": "Code-drawn 2.5D skill VFX in PixiJS v7 and v8.",
+  "author": { "name": "lenhonbp", "url": "https://github.com/lenhonbp" },
+  "homepage": "https://github.com/lenhonbp/pixijs-skill-vfx",
+  "repository": "https://github.com/lenhonbp/pixijs-skill-vfx",
+  "license": "MIT",
+  "keywords": ["pixijs", "vfx", "effects", "gamedev"],
+  "skills": ["./"]
+}

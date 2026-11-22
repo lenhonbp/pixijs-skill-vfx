@@ -8,7 +8,7 @@
 import * as PIXI from 'pixi.js';
 import type { Container, Texture } from 'pixi.js';
 import { isPixiV8, renderToTexture, textureFromCanvas } from './pixi-compat';
-import { clamp01, outCubic } from './ease';
+import { random, clamp01, outCubic } from './ease';
 import type { VfxWorld, WorldPlugin } from './vfx-world';
 
 const V8 = isPixiV8();
@@ -112,7 +112,7 @@ export class Distortion implements WorldPlugin {
     for (let i = 0; i < 3; i++) {
       const s = new (PIXI as any).Sprite(this.hazeTex);
       s.anchor.set(0.5);
-      const ph = Math.random() * 6.28;
+      const ph = random() * 6.28;
       this.add(s, o.duration ?? 900, (sp, t, age) => {
         const p = at();
         sp.position.set(p.x + Math.sin(age / 180 + ph) * radius * 0.2, p.y - rise * ((t * 3 + i / 3) % 1));

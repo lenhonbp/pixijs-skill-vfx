@@ -1,7 +1,7 @@
 // Wind (Phong) recipes: tornado funnel, wind blade, ground vortex, gust lines and wisps.
 // Wind has no mass, so it reads through motion: orbiting streaks sorted in front of and behind
 // the target, ribbons, curl-noise drift, and whatever it carries (dust, leaves, debris).
-import { clamp01, envelope, inQuad, lerp, outCubic, outQuad, rand } from './ease';
+import { random, clamp01, envelope, inQuad, lerp, outCubic, outQuad, rand } from './ease';
 import { curlDrift } from './noise';
 import { Distortion } from './postfx';
 import type { Palette } from './recipes';
@@ -47,7 +47,7 @@ export function tornado(w: VfxWorld, tex: VfxTextures, o: TornadoOptions): Torna
   const follow = () => pos;
 
   const orbit = (h0: number, spinBase: number) => (p: any, t: number, dt: number) => {
-    const d = (p.data ??= { a: rand(0, Math.PI * 2), u: Math.pow(Math.random(), 0.8) * 0.9, rise: rand(0.25, 0.6), rk: rand(0.8, 1.15) });
+    const d = (p.data ??= { a: rand(0, Math.PI * 2), u: Math.pow(random(), 0.8) * 0.9, rise: rand(0.25, 0.6), rk: rand(0.8, 1.15) });
     d.a += (spinBase / (0.4 + d.u)) * dt;
     d.u = Math.min(1, d.u + d.rise * dt);
     const r = radiusAt(d.u) * (0.6 + 0.4 * env()) * d.rk;
@@ -64,7 +64,7 @@ export function tornado(w: VfxWorld, tex: VfxTextures, o: TornadoOptions): Torna
   streams.push(w.stream({
     rate: 120, duration: dur - 300, make: () => ({
       texture: tex.streak, x: 0, y: 0, follow, life: rand(500, 900), blend: 'add',
-      scaleX: rand(0.5, 0.9), scaleY: rand(0.35, 0.6), tint: Math.random() < 0.3 ? pal.core : pal.main,
+      scaleX: rand(0.5, 0.9), scaleY: rand(0.35, 0.6), tint: random() < 0.3 ? pal.core : pal.main,
       alpha: envelope(0.15, 0.4), onUpdate: orbit(0, 6.5),
     }),
   }));
@@ -223,7 +223,7 @@ export function vortex(
       const a0 = rand(0, Math.PI * 2);
       return {
         texture: tex.streak, layer: 'ground', groundAligned: true, x: 0, y: 0, follow: at, life: rand(450, 650),
-        scaleX: [0.5, 0.2], scaleY: 0.35, tint: Math.random() < 0.3 ? pal.core : pal.main, alpha: envelope(0.2, 0.4, 0.9),
+        scaleX: [0.5, 0.2], scaleY: 0.35, tint: random() < 0.3 ? pal.core : pal.main, alpha: envelope(0.2, 0.4, 0.9),
         onUpdate: (p, t) => {
           const u = sign > 0 ? t : 1 - t;
           const r = R * (1 - outQuad(u)) + 6;
@@ -292,7 +292,7 @@ export function gustLines(w: VfxWorld, tex: VfxTextures, o: Vec3 & { angle: numb
     return {
       texture: tex.streak, x: o.x + rand(-sp, sp), y: o.y + rand(-sp, sp) * w.groundSquash, z: (o.z ?? 30) + rand(-sp, sp) * 0.8,
       vx: Math.cos(o.angle) * speed, vy: Math.sin(o.angle) * speed * w.groundSquash, drag: 3, life: rand(220, 360), rotation: rot,
-      scaleX: [0.9, 0.2], scaleY: rand(0.25, 0.4), alpha: [0.85, 0], tint: Math.random() < 0.4 ? o.palette.core : o.palette.main,
+      scaleX: [0.9, 0.2], scaleY: rand(0.25, 0.4), alpha: [0.85, 0], tint: random() < 0.4 ? o.palette.core : o.palette.main,
     };
   });
 }

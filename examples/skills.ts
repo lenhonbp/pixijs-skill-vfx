@@ -12,7 +12,7 @@ import {
   goldenBell, stoneArmor, spiritGuardian, mountainCrash,
   lightningStrike, staticField,
   dash, blink, leap, beam, coneBreath, chargeUp, summonCircle, spikeLine, spikeRing, swordRain,
-  rand, envelope, outCubic, outQuad, lerp, clamp01,
+  random, rand, envelope, outCubic, outQuad, lerp, clamp01,
 } from '../kit';
 
 export interface Unit {
@@ -178,7 +178,7 @@ export const SKILLS: SkillDef[] = [
         rate: 16, duration: 1800,
         make: () => ({
           texture: tex.leaf, blend: 'normal', x: caster.feet.x + rand(-60, 60), y: caster.feet.y + rand(-20, 20), z: rand(110, 150), life: 1300,
-          vx: rand(-20, 20), vz: -70, rotation: rand(0, 6.3), spin: rand(-3, 3), scale: rand(0.3, 0.45), alpha: envelope(0.15, 0.8, 0.8), tint: Math.random() < 0.3 ? WUXING.moc.accent : P.moc.main,
+          vx: rand(-20, 20), vz: -70, rotation: rand(0, 6.3), spin: rand(-3, 3), scale: rand(0.3, 0.45), alpha: envelope(0.15, 0.8, 0.8), tint: random() < 0.3 ? WUXING.moc.accent : P.moc.main,
         }),
       });
       for (let i = 0; i < 4; i++) w.after(300 + i * 420, () => { if (aura.alive) hurt(caster, -Math.round(rand(55, 75))); });
@@ -197,7 +197,7 @@ export const SKILLS: SkillDef[] = [
           w.stream({
             rate: 22, duration: 2600,
             make: () => {
-              const a = rand(0, 6.3), d = Math.sqrt(Math.random()) * 115;
+              const a = rand(0, 6.3), d = Math.sqrt(random()) * 115;
               return {
                 texture: tex.puff, blend: 'normal', layer: 'body', x: c.x + Math.cos(a) * d, y: c.y + Math.sin(a) * d * w.groundSquash, z: rand(0, 25), life: rand(1200, 1700),
                 vz: rand(8, 20), vx: rand(-10, 10), rotation: rand(0, 6.3), spin: rand(-0.5, 0.5), scale: [0.6, rand(1.3, 1.8), outCubic], alpha: envelope(0.3, 0.22, 0.5), tint: [0x7ac83a, 0x3a5a1a], onUpdate: curlDrift(22, 80),

@@ -3,7 +3,7 @@
 import { Application, Container, Sprite, Texture } from 'pixi.js';
 import {
   VfxWorld, createVfxTextures, isPixiV8, textureFromCanvas, rigFromBlender, anchorAtFeet,
-  hitFlash, hitSpark, damageNumber, activeHitFlashes, ELEMENTS, Distortion, Bloom, Palette, Vec3, outCubic, lerp, rand,
+  hitFlash, hitSpark, damageNumber, activeHitFlashes, ELEMENTS, Distortion, Bloom, Palette, Vec3, outCubic, lerp, rand, setRng, mulberry32,
 } from '../kit';
 import { SKILLS, SkillDef, Unit, SkillContext } from '../examples/skills';
 
@@ -173,7 +173,9 @@ function whiteTexture() {
   const rig = rigFromBlender({ rotationXDeg: 60, orthoScale: 20, renderSizePx: 960 }, { shadowScreenAngleDeg: 25, elevationDeg: 50 });
   camera.addChild(new Sprite(arenaTexture(rig.groundSquash)));
   const layers = VfxWorld.createLayers(camera);
-  const w = new VfxWorld({ ...layers, camera, groundSquash: rig.groundSquash, shadow: rig.shadow, maxParticles: 2500 });
+  const seedParam = new URLSearchParams(location.search).get('seed');
+  const w = new VfxWorld({ ...layers, camera, groundSquash: rig.groundSquash, shadow: rig.shadow, maxParticles: 2500,
+    seed: seedParam === null ? undefined : Number(seedParam) });
   const tex = createVfxTextures();
   // Post FX: screen-space distortion on the arena, bloom composited on top of it.
   const distortion = w.use(new Distortion({ renderer: app.renderer, target: camera, width: W, height: H, scale: 26 }));
@@ -459,6 +461,17 @@ function whiteTexture() {
       step,
       render: () => app.renderer.render(app.stage),
       count: () => w.count,
+      stats: () => w.stats,
+      seed: (seed: number) => setRng(mulberry32(seed)),
+      advance: frame,
+      // Repeat without clear(): lifecycle checks must not hide leaks between casts.
+      repeat: (id: string) => {
+        const skill = SKILLS.find((s) => s.id === id);
+        if (!skill) throw new Error(`Unknown skill: ${id}`);
+        for (const u of units) { u.feet.x = u.home.x; u.feet.y = u.home.y; u.feet.z = 0; u.sprite.visible = true; u.hp = 1; }
+        hero.facing = 1;
+        skill.cast(ctxFor());
+      },
     };
   }
   if (location.hash === '#showcase') runShowcase(0);

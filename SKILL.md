@@ -150,6 +150,12 @@ chest / head / above), `socketPoint(feet, sockets, dir)`, `vfx.shadowPoint(pos)`
 - **Impact = 3 things at once**: flash + particles + feedback (hit-stop, shake, `hitFlash` on the
   target). Scale them with the skill's power; small hits get no shake.
 - **Telegraph enemy AoE on the ground** before it lands (`telegraph`), filling over the cast time.
+- **Choreograph the release**: a 1–2 frame white hero frame gives the eye a clean peak;
+  follow it with many small events varied in size, speed, timing and lifetime, not a uniform burst.
+- **Landings have consequences**: kick up dust; landed fire keeps burning briefly (a blaze).
+  Debris tumbles, bounces, settles and fades rather than vanishing in flight.
+- **Leave readable aftermath**: hits last roughly 0.3–0.8 s; big effects linger 2–4 s.
+  Keep the peak short and let secondary motion decay, rather than holding everything at full strength.
 
 ## 6. Performance budget (mobile H5)
 
@@ -167,17 +173,26 @@ chest / head / above), `socketPoint(feet, sockets, dir)`, `vfx.shadowPoint(pos)`
 - Post FX cost one extra offscreen render each; attach them once at startup, never per skill.
 - On v8 with >2000 tiny particles, consider `ParticleContainer`; otherwise the kit is enough.
 
-## 7. Verify before you say it is done
+## 7. Iterate until it reads
 
-1. Type-check / build the game.
-2. Trigger the skill in the running game (or the kit demo) and capture frames at the key
-   moments (windup, impact, ~300 ms after, aftermath). If you can drive a browser, use a
-   deterministic step: stop the ticker, call `vfx.update(16)` N times, `app.renderer.render(app.stage)`,
-   screenshot. Look at the frames: is the impact readable, does it sort right with units in front
-   and behind, does anything linger, pop, or stay on screen?
-3. Check the live particle count (`vfx.count`) returns to ~0 after the effect and that repeated
-   casts do not grow it (leaked streams/updaters).
-4. Report what the effect looks like with the frames, not just "implemented".
+Use the draft → contact sheet → look → fix the worst thing → repeat method shared by
+[pixelfx](https://github.com/patch-gg/pixelfx), inspired by Hugo Duprez's VFX workflow.
+Code is only the draft; the rendered effect is the deliverable.
+
+1. Draft the phases and type-check/build the game.
+2. Run `npm run capture -- --skills YOUR-ID,thuy-tidal-beam,kim-sword-rain,tho-mountain-leap --out ~/audit/round-1/`.
+   Register new effects in the demo first. Compare at the **same size**, camera and seed against
+   two or three named references: Tidal Beam (`thuy-tidal-beam`), Sword Rain
+   (`kim-sword-rain`), and Mountain Crash (`tho-mountain-leap`).
+3. **Look at the contact sheet**, not just the counts. Check silhouette, release readability,
+   depth sorting with units in front/behind, timing, aftermath and distracting pops.
+4. Pick the single worst problem, fix it, capture again into the next round directory and
+   compare. Do **at least three rounds**; use more for showpieces. Do not call an unseen
+   render finished or stop just because the code compiles.
+5. Run `npm run check`: it **must pass**. It checks seeded repeat casts, cleanup, pool growth,
+   particle budgets and direct unseeded RNG calls. Type-check and build must also pass.
+6. Report what changed visually, the reference skills, round count, contact-sheet paths and
+   check results. State plainly if visual inspection could not be done.
 
 ### Frame captures
 

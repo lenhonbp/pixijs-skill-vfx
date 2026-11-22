@@ -3,7 +3,7 @@ import type { VfxWorld, Vec3 } from './vfx-world';
 import { VfxTextures, TEX_METRICS as M } from './textures';
 import type { Palette } from './recipes';
 import { WUXING, litFlip } from './elements';
-import { envelope, lerpColor, outBack, outCubic, outQuad, rand } from './ease';
+import { random, envelope, lerpColor, outBack, outCubic, outQuad, rand } from './ease';
 
 const TAU = Math.PI * 2;
 
@@ -91,7 +91,7 @@ export function swordRain(
   const visualCount = Math.ceil(n * 2);
   for (let i = 0; i < visualCount; i++) {
     const t0 = ((i % n) / n) * dur + rand(-30, 30);
-    const a = rand(0, TAU), d = Math.sqrt(Math.random()) * r * 0.9;
+    const a = rand(0, TAU), d = Math.sqrt(random()) * r * 0.9;
     const x = o.x + Math.cos(a) * d, y = o.y + Math.sin(a) * d * w.groundSquash;
     const tilt = rand(-0.18, 0.18);
     const length = (o.height ?? 70) * rand(0.6, 0.7), k = length / 160;
