@@ -337,8 +337,9 @@ function whiteTexture() {
       hitSkin(w, u.sprite, o.skin ?? getElement(current.element)?.hitSkin ?? 'red');
       rockBack(w, u.sprite, { push: o.push ?? (o.crit ? 12 : 6),
         angle: o.angle ?? Math.atan2(u.feet.y - hero.feet.y, u.feet.x - hero.feet.x) });
-      if (selected <= 1 && o.palette) hitSpark(w, tex, { x: u.feet.x, y: u.feet.y, z: u.height * 0.55, palette: o.palette, angle: o.angle ?? Math.PI, size: Math.sqrt(feedback) });
-      damageNumber(w, tex, { x: u.feet.x, y: u.feet.y, z: u.height + 8, value: amount, crit, color: o.color ?? (crit ? 0xffd04a : 0xffffff) });
+      if (o.palette) hitSpark(w, tex, { x: u.feet.x, y: u.feet.y, z: u.height * 0.55, palette: o.palette, angle: o.angle ?? Math.PI, size: Math.sqrt(feedback), refresh: selected > 1 });
+      damageNumber(w, tex, { x: u.feet.x, y: u.feet.y, z: u.height + 8, value: amount, crit,
+        compact: selected > 1, color: o.color ?? (crit ? 0xffd04a : 0xffffff) });
       du.hp = Math.max(0.05, du.hp - amount / 1600);
       lastHurt = w.now;
     },
@@ -395,8 +396,10 @@ function whiteTexture() {
     ($('tier') as HTMLSelectElement).value = String(value);
     refreshIdle();
   };
-  const activationOptions = (element: string) => ({ at: () => hero.feet, height: hero.height,
-    palette: ELEMENTS[element as keyof typeof ELEMENTS]?.palette ?? PALETTES.arcane });
+  const activationOptions = (element: string, selected: ActivationTier | 0 = tier) => ({ at: () => hero.feet, height: hero.height, element,
+    palette: ELEMENTS[element as keyof typeof ELEMENTS]?.palette ?? (selected <= 1 ? PALETTES.arcane :
+      (current.category === 'summon' ? { core: 0xffffff, main: 0xffe29a, dark: 0xb08020 } :
+        current.category === 'buff' ? PALETTES.fire : { core: 0xf0e0ff, main: 0x9a5cff, dark: 0x240a4a })) });
   const refreshIdle = () => {
     idleAura?.stop(); idleAura = undefined;
     if (idleEnabled && tier > 1) idleAura = empoweredAura(w, tex, { ...activationOptions(current.element), tier, duration: Infinity, idle: true });
@@ -408,7 +411,7 @@ function whiteTexture() {
   const flourish = (id: string) => {
     const effect = flourishes.find(f => f.id === id);
     if (!effect) return false;
-    const options = activationOptions(effect.element);
+    const options = activationOptions(effect.element, effect.tier);
     if (id.startsWith('evolution')) skillEvolution(w, tex, { ...options, fromTier: 2, toTier: 3 });
     else skillActivation(w, tex, { ...options, tier: effect.tier });
     return true;
@@ -423,13 +426,13 @@ function whiteTexture() {
     if (idleEnabled) refreshIdle();
     renderInfo();
     renderList();
-    if (selected) skillActivation(w, tex, { ...activationOptions(s.element), tier: selected });
+    if (selected) skillActivation(w, tex, { ...activationOptions(s.element, selected), tier: selected });
     const delay = selected ? activationRelease(selected) : 0;
     if (delay) w.after(delay, () => startSkill(s, selected));
     else startSkill(s, selected);
   };
   const startSkill = (s: SkillDef, selected: ActivationTier | 0) => {
-    const options = activationOptions(s.element);
+    const options = activationOptions(s.element, selected);
     if (selected > 1 && !idleEnabled) enhance(() => empoweredAura(w, tex, { ...options, tier: selected as ActivationTier, duration: s.length }));
     s.cast(ctxFor(selected || 1, options.palette, s.element));
   };
@@ -530,7 +533,7 @@ function whiteTexture() {
     stopShowcase();
     resetScene();
     const next = (tier % 3 + 1) as ActivationTier;
-    skillEvolution(w, tex, { ...activationOptions(current.element), fromTier: tier, toTier: next });
+    skillEvolution(w, tex, { ...activationOptions(current.element, next), fromTier: tier, toTier: next });
     w.after(1600, () => setTier(next));
   };
   $('replay').onclick = () => { stopShowcase(); cast(current); };
@@ -622,7 +625,7 @@ function whiteTexture() {
         if (!skill) throw new Error(`Unknown skill: ${id}`);
         for (const u of units) { u.feet.x = u.home.x; u.feet.y = u.home.y; u.feet.z = 0; u.sprite.visible = true; u.hp = 1; }
         hero.facing = 1;
-        if (selected) skillActivation(w, tex, { ...activationOptions(skill.element), tier: selected });
+        if (selected) skillActivation(w, tex, { ...activationOptions(skill.element, selected), tier: selected });
         const delay = selected ? activationRelease(selected) : 0;
         if (delay) w.after(delay, () => startSkill(skill, selected));
         else startSkill(skill, selected);

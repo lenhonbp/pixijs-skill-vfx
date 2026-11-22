@@ -143,26 +143,38 @@ let finite droplets dissipate naturally.
 
 ## Activation and evolution
 
-`skillActivation(w, tex, { at, height, palette, tier, duration? })` follows caster
-feet live. Cơ bản (1): sigil, motes, chest light; Thức tỉnh (2): rotating runes,
-behind-caster wisps, pillar and shockwave; Tiến hoá (3): counter-rotation,
-implosion/burst, shake and hit-stop. Tiers 2/3 replace the chest light with
+`skillActivation(w, tex, { at, height, palette, element?, tier, duration? })` follows caster
+feet live. Cơ bản (1): unchanged sigil, motes, chest light. Thức tỉnh (2) uses a
+lighter version of Tiến hoá (3)'s element motif, with stronger tier-3 shake/hit-stop.
+Tiers 2/3 replace the shared rune/wisps and chest light with
 behind-caster layers; the main-coloured release pillar has alpha <=0.16.
 Start gameplay immediately at tier 1, or after `activationRelease(tier)` (250/400 ms).
 `duration` remains accepted for compatibility but has no effect; use `empoweredAura`
 for a sustained remnant rather than stacking extra activation floor overlays.
 
-`skillEvolution(w, tex, { at, height, palette, fromTier, toTier })` fractures the old
+`skillEvolution(w, tex, { at, height, palette, element?, fromTier, toTier })` fractures the old
 seal, lifts its shards into a helix and overhead crown, then stamps the destination
-seal at 950 ms; ascending rune stacks and double shockwaves fade by 1600 ms.
-`empoweredAura(w, tex, { at, height, palette, tier, duration })` sustains a
-behind-caster wisp and grounded glow/seal in three sprites during gameplay;
-idle auras use two wisps and tier-3 orbiting shards. `empoweredHit(w, tex,
-{ at: chestPosition, palette, tier, element })` adds a capped ground ring and
+element motif at 950 ms; ascending rune stacks and double shockwaves fade by 1600 ms.
+`empoweredAura(w, tex, { at, height, palette, element?, tier, duration, idle? })`
+sustains the same motif during gameplay or idle (one to five sprites, or two/three
+short unblurred lightning ribbons, replaced every 140 ms and disposed on stop/clear): metal
+blades/ring, wood vine/leaves, water ripples/shards, fire tongues/embers, earth
+rocks, wind spirals or lightning arcs. Earth cracks appear only during activation.
+All motifs render behind the caster; floor rings follow x/y with z=0. Unknown
+elements use only a restrained halo in the supplied skill palette.
+`empoweredHit(w, tex, { at: chestPosition, palette, tier, element, tick? })` adds
 behind-target accents: `kim` crossed glints, `moc` leaves, `hoa` embers, `phong`
 crescents, `tho` rocks, `thuy` shards, `loi` streaks. Utility/unknown elements get
 only their supplied palette's ring. Repeat hits at the same ground position are
-throttled for the accent's lifetime; `tick: true` uses only a small, faint ring.
+throttled for the accent's lifetime; `tick: true` uses one smaller elemental accent.
+Only metal/utility keep a floor ring. Native `hitSpark` and authored hit feedback
+must still run at every tier; this helper is an additional accent, never a replacement.
+For repeated hits use `hitSpark(..., { ..., refresh: true })` to re-trigger all
+native sparks at that target, reusing still-living particles rather than stacking
+bursts. Defaults are unchanged. `damageNumber(..., { ..., compact: true })` bakes
+the full number into one temporary sprite, keeping crit styling and lifetime;
+the texture is disposed on completion/clear. The evolved demo uses both
+options to retain full skill density within the total budget.
 Both helpers skip tier 1; no full-screen white flashes are used.
 Use `empoweredWorld(w, { tier, palette, textures: tex })` as the skill context's world
 for cast-local 1.2x/1.45x additive energy and stronger impact feedback. Authored

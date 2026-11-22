@@ -164,11 +164,12 @@ try {
     await page.waitForFunction(() => !!window.__vfxDebug);
     const result = await page.evaluate(({ id, length, tier = 0 }) => {
       const d = window.__vfxDebug, w = window.demo.vfx;
-      let peak = 0, hits = 0, empoweredPeak = 0, tickSparks = 0;
+      let peak = 0, hits = 0, empoweredPeak = 0, tickSparks = 0, nativeSparks = 0;
       const empowered = new Map();
       const spawn = w.spawn.bind(w);
       w.spawn = (...args) => {
         if (args[0].layer === 'top' && args[0].blend === 'normal' && [850, 1100].includes(args[0].life)) hits++;
+        if (args[0].life === 110 && args[0].zBias === 5 && !d.isEmpowering()) nativeSparks++;
         const p = spawn(...args);
         if (p && d.isEmpowering()) empowered.set(p, p.o);
         if (p && d.isEmpowering() && args[0].life === 160) tickSparks++;
@@ -184,7 +185,7 @@ try {
         for (let left = length + 1900; left > 0; left -= 16) d.advance(Math.min(left, 16));
         runs.push(d.stats());
       }
-      return { peak, runs, hits, empoweredPeak, tickSparks };
+      return { peak, runs, hits, empoweredPeak, tickSparks, nativeSparks };
     }, skill);
     await page.close();
     // SkillDef has no ultimate flag: every sample uses the ordinary 150 cap.
@@ -193,6 +194,7 @@ try {
     const issues = [];
     if (skill.label && ['hoa-fireball', 'tho-fissure', 'thuy-frost-nova', 'moc-toxic-spores'].includes(skill.id) && !result.hits) issues.push('no damaging hits exercised');
     if (skill.label && skill.id === 'moc-toxic-spores' && !result.tickSparks) issues.push('no empowered DoT ticks exercised');
+    if (skill.label && ['hoa-dragon-breath', 'phong-whirlwind', 'tho-fissure'].includes(skill.id) && !result.nativeSparks) issues.push('missing native hitSpark');
     const budgetStatus = budgetResult(result.peak, budget,
       Object.hasOwn(baseline, skill.id) ? baseline[skill.id] : undefined);
     if (budgetStatus.failure) issues.push(budgetStatus.failure);

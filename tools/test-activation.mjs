@@ -72,16 +72,39 @@ try {
     check(error === 'scope error', 'scoped callback errors propagate'); bad.stop();
     w.clear(); unown(); check(root.destroyed && !w.count && !w.stats.updaters, 'clear disposes raw sprites, particles and scope callbacks');
     check(one.spawn(options).sprite.scale.x === 0.5, 'scope does not leak into later baseline casts'); w.clear();
+    const spark = { x: 200, y: 300, palette, refresh: true };
+    kit.hitSpark(w, tex, spark); step(64);
+    const sparks = [...w.particles];
+    kit.hitSpark(w, tex, spark);
+    check(w.count === 10 && sparks.every(p => p.age === 0), 'rapid hits re-trigger every native spark, without stacking');
+    step(16);
+    check(w.particles.filter(p => p.o.texture === tex.streak).length === 8 && w.particles.some(p => p.o.texture === tex.star), 'full native hit signature retained');
+    w.clear(); kit.hitSpark(w, tex, spark);
+    check(w.count === 10, 'native spark refresh survives clear and pooled records');
+    step(300); check(!w.count, 'refreshed native sparks clean up');
+    kit.hitSpark(w, tex, { ...spark, refresh: false }); kit.hitSpark(w, tex, { ...spark, refresh: false });
+    check(w.count === 20, 'default native feedback unchanged'); w.clear();
+    kit.damageNumber(w, tex, { x: 0, y: 0, value: '', compact: true });
+    check(!w.count && !w.stats.updaters, 'empty compact number');
+    kit.damageNumber(w, tex, { x: 0, y: 0, value: 100, crit: true, compact: true });
+    const numberTexture = w.particles[0].o.texture;
+    check(w.count === 1 && w.particles[0].o.life === 1100, 'compact crit keeps all glyphs and critical lifetime in one particle');
+    step(1168); check(!w.count && !w.stats.updaters && numberTexture.destroyed, 'compact number and texture cleanup');
+    kit.damageNumber(w, tex, { x: 0, y: 0, value: 100, compact: true });
+    const clearedTexture = w.particles[0].o.texture;
+    w.clear(); check(clearedTexture.destroyed, 'interrupted number texture cleanup');
     check(!empoweredAura(w, tex, { at: () => ({ x: 0, y: 0 }), height: 96, palette, tier: 3, duration: 0 }), 'empty aura');
     empoweredHit(w, tex, { at: { x: 0, y: 0 }, palette, tier: 1 }); check(!w.count, 'tier 1 hit unchanged');
     empoweredHit(w, tex, { at: { x: 200, y: 300, z: 50 }, palette, tier: 3, element: 'loi' });
     check(w.particles.every(p => p.o.layer === 'ground'), 'lightning empowerment stays behind the struck target');
     w.clear();
-    const variants = { kim: tex.streak, moc: tex.leaf, hoa: tex.dot, phong: tex.crescent, tho: tex.rock, thuy: tex.shard, loi: tex.streak };
+    const variants = { kim: tex.streak, moc: tex.leaf, hoa: tex.streak, phong: tex.crescent, tho: tex.rock, thuy: tex.shard, loi: tex.streak };
     for (const [element, texture] of Object.entries(variants)) {
       const at = { x: 200, y: 300, z: 50 };
       empoweredHit(w, tex, { at, palette, tier: 3, element });
-      check(w.count === 3 && w.particles.some(p => p.o.texture === texture), 'element-specific hit signature');
+      const expected = element === 'kim' ? 3 : element === 'tho' ? 1 : 2;
+      check(w.count === expected && w.particles.some(p => p.o.texture === texture), 'element-specific hit signature');
+      check(element === 'kim' || w.particles.every(p => p.o.texture !== tex.ring), 'elemental accents are not generic ground ellipses');
       check(w.particles.every(p => p.o.layer === 'ground' && p.o.texture !== tex.glow && p.o.texture !== tex.puff), 'no target-covering glow or puff');
       check(w.particles.every(p => Array.from({ length: 21 }, (_, i) => {
         const alpha = p.o.alpha, t = i / 20;
@@ -95,7 +118,7 @@ try {
       check(w.count === count * 2, 'different targets retain independent accents');
       step(400); check(!w.count, 'hit signature cleans up');
       empoweredHit(w, tex, { at, palette, tier: 3, element });
-      check(w.count === 3, 'accent resumes after throttle window'); w.clear();
+      check(w.count === expected, 'accent resumes after throttle window'); w.clear();
     }
     for (const element of ['neutral', undefined, 'custom']) {
       empoweredHit(w, tex, { at: { x: 200, y: 300 }, palette, tier: 3, element });
@@ -107,15 +130,32 @@ try {
     step(480);
     check(w.particles.filter(p => p.o.texture === tex.glow && p.age >= 0).every(p => p.o.layer === 'ground'), 'activation release glow stays behind caster');
     check(w.particles.filter(p => p.o.texture === tex.glow && p.o.scaleY).every(p => p.sprite.alpha <= 0.16 && p.o.tint === palette.main), 'pillar mid-colour and alpha cap'); w.clear();
-    for (const tier of [2, 3]) {
+    const motifs = { kim: tex.blade, moc: tex.vineSegment, thuy: tex.shard, hoa: tex.puff, tho: tex.rock, phong: tex.crescent, loi: undefined, neutral: tex.ring };
+    for (const tier of [2, 3]) for (const [element, texture] of Object.entries(motifs)) {
       const at = { x: 100, y: 200, z: 50 };
-      const aura = empoweredAura(w, tex, { at: () => at, height: 96, palette, tier, duration: Infinity, idle: true });
+      const caster = { at: () => at, height: 96, palette, tier, element };
+      const aura = empoweredAura(w, tex, { ...caster, duration: Infinity, idle: true });
       step(2000); check(aura.alive && w.count <= 6, 'cheap persistent idle aura');
+      const hasMotif = () => element === 'loi' ? w.layers.ground.children.some(child => child instanceof Container && !(child instanceof Sprite)) : w.particles.some(p => p.o.texture === texture);
+      check(hasMotif(), 'each element has its own motif');
+      check(element !== 'loi' || w.layers.ground.children.length === tier, 'lightning has only two/three short ribbons, not wind crescents');
+      check(w.particles.every(p => p.o.texture !== tex.rune && p.o.texture !== tex.glow && p.o.layer === 'ground'), 'no shared rune or bright body overlay');
+      check(element !== 'tho' || w.particles.every(p => p.o.texture !== tex.fissure), 'no sustained earth cracks');
       check(w.particles.filter(p => p.o.groundAligned).every(p => p.z === 0), 'idle aura floor stays grounded');
-      aura.stop(); step(200); check(!w.count && !w.stats.updaters, 'idle aura stops cleanly');
-      empoweredAura(w, tex, { at: () => at, height: 96, palette, tier, duration: 400 });
+      aura.stop(); step(200); check(!w.count && !w.stats.updaters && !w.layers.ground.children.length, 'idle aura stops cleanly');
+      empoweredAura(w, tex, { ...caster, duration: 400 });
       step(700); check(!w.count && !w.stats.updaters, 'finite cast aura cleanup');
+      kit.skillActivation(w, tex, caster);
+      step(100);
+      check(hasMotif(), 'activation uses the same element motif');
+      check(element !== 'tho' || w.particles.some(p => p.o.texture === tex.fissure), 'earth activation has cracks');
+      w.clear();
+      kit.skillEvolution(w, tex, { ...caster, fromTier: 1, toTier: tier });
+      step(1100);
+      check(hasMotif(), 'evolution stamp uses destination motif');
+      w.clear();
+      check(!w.layers.ground.children.length, 'clear disposes motif graphics');
     }
-    return 'Empowerment: tier-1 identity, full density, energy-only scale/alpha, authored art/tints/trails, anchored endpoints, elemental hits/throttle, behind-caster release, errors/clear and aura cleanup PASS';
+    return 'Empowerment: tier-1 identity, full density, energy-only styling, anchored endpoints, elemental hits/throttle, eight activation/cast/idle/evolution motifs, no shared rune/body glow, grounded floor and cleanup PASS';
   }));
 } finally { await browser.close(); }

@@ -65,15 +65,40 @@ After `npm install`, install Chromium once with `npx playwright install chromium
 Run `npm run capture -- --skills thuy-tidal-beam,kim-sword-rain --out ~/audit/after/`
 to build and serve the demo, then capture seeded, deterministically stepped frames.
 Use comma-separated skill IDs (`--skills a,b`); omit `--skills` to capture all skills.
-Each output directory contains labeled PNG contact sheets and `counts.json` with live
-particle counts at each skill's length + 1500 ms. The default output is `~/audit/before/`;
+Each output directory contains labeled PNG contact sheets and `counts-tierN.json`
+with `--tier N` (otherwise `counts.json`), with live particle counts at each skill's
+length + tier pre-roll + 1900 ms. The default output is `~/audit/before/`;
 `--seed INTEGER` overrides the default seed of 12345.
 
 ## Validation and reproducibility
 
+### Evolved casts
+
+Use `skillActivation(w, tex, { at, height, palette, element, tier })`, then start
+gameplay after `activationRelease(tier)` (0/250/400 ms). `empoweredAura` takes the
+same caster options plus `duration` (or `Infinity, idle: true`, keeping its stoppable
+handle). Activation, cast and idle share an element-specific motif: blades,
+vine/leaves, ripples/shards, flame tongues/embers, low rocks, wind spirals or
+lightning arcs. Tier 2 is lighter; tier 3 is stronger. Utility uses its own supplied
+palette's restrained halo, not a default purple. No evolved shared rune/body glow;
+floor pieces remain at z=0. `skillEvolution` adds `fromTier`/`toTier` and ends its
+helix/crest/stamp sequence with the destination motif.
+
+Pass `empoweredWorld(w, { tier, palette, textures: tex })` to native skill code:
+only recognized additive energy grows/brightens (1.2x/1.45x). Density, tint, authored
+materials, trail proportions and endpoint anchors remain unchanged. Always retain
+native hit feedback at every tier; layer `empoweredHit(w, tex, { at, palette, tier,
+element, tick? })` behind the target for capped, throttled elemental accents, not
+generic ground ellipses. Tier 1 is unchanged. See [recipes](references/recipes.md).
+The evolved demo re-triggers rapid native bursts with `hitSpark`'s optional
+`refresh: true`, retaining all sparks on every hit without accumulating overlapping
+bursts. `damageNumber`'s optional `compact: true` bakes all glyphs into one temporary
+sprite (disposed on completion/clear), preserving crit styling and lifetime;
+neither option changes defaults or tier 1.
+
 Run `npx tsc -p .`, `npm run build`, then `npm run check` (Chromium required).
 The check casts each skill three times at high quality without clearing between casts;
-at length + 1500 ms it requires zero particles/updaters and no pool-capacity growth.
+at length + 1900 ms it requires zero particles/updaters and no pool-capacity growth.
 Peak counts include delayed particles. The ordinary cap is 150; IDs containing the
 hyphen-delimited word `ultimate` get 600. No current SkillDef has an ultimate flag,
 so all existing samples use 150. Unbaselined overages and peaks more than 5% above baseline fail.

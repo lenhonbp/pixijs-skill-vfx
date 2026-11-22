@@ -1,13 +1,14 @@
 import { Container, Sprite } from 'pixi.js';
-import { VfxWorld, Vec3, Curve, SpawnOptions } from './vfx-world';
+import { VfxWorld, Vec3, Curve, SpawnOptions, Handle } from './vfx-world';
 import { VfxTextures } from './textures';
 import { Palette } from './recipes';
 import { envelope, outCubic, rand } from './ease';
 import { group } from './group';
 import { blend } from './pixi-compat';
+import { lightningBolt } from './lightning-bolt';
 
 export type ActivationTier = 1 | 2 | 3;
-type Caster = { at: () => Vec3; height: number; palette: Palette };
+type Caster = { at: () => Vec3; height: number; palette: Palette; element?: string };
 const TAU = Math.PI * 2;
 const groundAt = (at: () => Vec3) => () => { const p = at(); return { x: p.x, y: p.y, z: 0 }; };
 export const activationRelease = (tier: ActivationTier) => tier === 1 ? 0 : tier === 2 ? 250 : 400;
@@ -115,53 +116,36 @@ function gather(w: VfxWorld, tex: VfxTextures, o: Caster, count: number, life: n
 
 function release(w: VfxWorld, tex: VfxTextures, o: Caster, size: number, major: boolean) {
   const p = o.palette;
-  w.spawn({ texture: tex.ring, layer: 'ground', groundAligned: true, x: 0, y: 0, follow: groundAt(o.at),
-    life: 450, scale: [0.15, size * 0.95, outCubic], alpha: [0.65, 0], tint: p.main });
   w.spawn({ texture: tex.glow, layer: 'ground', x: 0, y: 0, z: o.height, follow: o.at, life: 520,
     scaleX: [0.3 * size, 0.7 * size], scaleY: [o.height / 40, o.height / 22], alpha: [0.16, 0], tint: p.main });
   if (!major) return;
-  w.burst(4, (i, n) => {
-    const a = i / n * TAU, speed = rand(120, 240) * size;
-    return { texture: tex.shard, layer: 'ground', x: 0, y: 0, z: o.height * 0.6, follow: o.at, life: 250,
-      vx: Math.cos(a) * speed, vy: Math.sin(a) * speed * w.groundSquash, vz: rand(50, 140), drag: 2,
-      rotation: a, spin: 2, scale: [0.25, 0], alpha: [0.4, 0], tint: p.main };
-  });
   w.shake(7, 220); w.hitStop(45);
 }
 
 /** Fantasy: the caster's elemental seal wakes, then vents stored power.
  * Palette: any element's core / main / dark, including neutral.
  * Phases: windup 0-250/400; release 0/250/400; peak +80; fade to 400/770/1200 ms.
- * Layers: ground seals; motes and behind-caster wisps/pillar.
+ * Layers: tier-1 seal/motes; evolved elemental motif and behind-caster pillar.
  * Sync: tier 1 casts immediately; tiers 2/3 release at activationRelease(tier).
  */
 export function skillActivation(w: VfxWorld, tex: VfxTextures, o: Caster & { tier: ActivationTier; duration?: number }) {
   const tier = o.tier, p = o.palette, time = activationRelease(tier);
-  const life = tier === 1 ? 400 : tier === 2 ? 700 : 1000;
+  if (tier > 1) {
+    empoweredAura(w, tex, { ...o, duration: time });
+    if (o.element === 'tho') w.spawn({ texture: tex.fissure, layer: 'ground', groundAligned: true,
+      x: 0, y: 0, follow: groundAt(o.at), life: time + 140, scale: [0.2, 0.6], blend: 'normal',
+      alpha: envelope(0.1, 0.3, 0.5), tint: p.dark });
+    w.after(time, () => release(w, tex, o, tier === 3 ? 1.5 : 0.8, tier === 3));
+    return;
+  }
+  const life = 400;
   sigil(w, tex, o, 38 + tier * 10, life, 0.4);
   w.spawn({ texture: tex.glow, layer: 'ground', groundAligned: true, x: 0, y: 0, follow: groundAt(o.at),
     life, scale: [0.6, 1.5], alpha: envelope(0.1, 0.6, 0.4), tint: p.main });
   w.burst(5, () => ({ texture: tex.dot, x: rand(-25, 25), y: rand(-8, 8), follow: o.at,
     life: 400, vz: rand(50, 110), scale: [0.09, 0], tint: p.core, alpha: envelope(0.1, 0.6) }));
-  w.spawn({ texture: tex.glow, layer: tier === 1 ? 'body' : 'ground', x: 0, y: 0, z: o.height * 0.65, follow: o.at, delay: time,
+  w.spawn({ texture: tex.glow, layer: 'body', x: 0, y: 0, z: o.height * 0.65, follow: o.at, delay: time,
     life: 220, scale: [0.35, 0.8], alpha: [0.6, 0], tint: p.main, zBias: 3 });
-  if (tier < 2) return;
-  sigil(w, tex, o, 78, life, -0.9);
-  w.burst(3, (i, n) => {
-    const a = i / n * TAU;
-    return { texture: tex.puff, layer: 'ground', x: 0, y: 0, follow: o.at, life: life - 80, delay: i * 9,
-      scaleX: [0.13, 0.32], scaleY: [0.25, 0.85], alpha: envelope(0.18, 0.55, 0.48),
-      tint: [p.main, p.dark], blend: 'add',
-      onUpdate: (q, t) => {
-        const angle = a + t * 1.8, r = 30 + Math.sin(t * Math.PI) * 12;
-        q.px = Math.cos(angle) * r; q.py = Math.sin(angle) * r * w.groundSquash;
-        q.pz = t * o.height * 1.4; q.rotation = Math.sin(a + t * 5) * 0.35;
-      } };
-  });
-  w.after(time, () => release(w, tex, o, tier === 3 ? 1.5 : 0.8, tier === 3));
-  if (tier < 3) return;
-  sigil(w, tex, o, 106, 1200, 0.7);
-  gather(w, tex, o, 6, time, 115);
 }
 
 /** Fantasy: the old seal shatters, rising into a crest that stamps the new tier.
@@ -198,7 +182,7 @@ export function skillEvolution(w: VfxWorld, tex: VfxTextures, o: Caster & { from
     alpha: envelope(0.2, 0.2, 0.65), tint: p.main, zBias: 6,
     onUpdate: (q, t) => { q.pz = o.height * 1.9 * (t < 0.65 ? 1 : 1 - outCubic((t - 0.65) / 0.35)); } }));
   w.after(950, () => {
-    sigil(w, tex, o, 85 + o.toTier * 18, 650, 0.2);
+    empoweredAura(w, tex, { ...o, tier: o.toTier, duration: 650 });
     w.spawn({ texture: tex.glow, layer: 'top', x: 0, y: 0, z: 12, follow: o.at, life: 200,
       scaleX: [1, 2.4], scaleY: [0.6, 0.2], alpha: [0.24, 0], tint: p.main });
     for (let i = 0; i < 2; i++) w.spawn({ texture: tex.ring, layer: 'ground', groundAligned: true,
@@ -219,45 +203,48 @@ const hitAccents = new WeakMap<VfxWorld, Map<string, { until: number; particle: 
  * Palette: supplied main colour, without a white core.
  * Phases: release 0; accents fade by 240 ms; ground ring by 280 ms.
  * Layers: behind-target glints/leaves/embers/arcs/debris; grounded ring.
- * Sync: positive hits only, throttled per ground position; ticks use a faint ring.
+ * Sync: positive hits only; throttled per ground position; ticks use one small accent.
  */
 export function empoweredHit(w: VfxWorld, tex: VfxTextures, o: { at: Vec3; palette: Palette; tier: ActivationTier; tick?: boolean; element?: string }) {
   if (o.tier === 1) return;
-  const p = o.palette, big = o.tier === 3, s = big ? 1.4 : 0.8;
+  const p = o.palette, big = o.tier === 3, s = (big ? 1.4 : 0.8) * (o.tick ? 0.5 : 1);
   let hits = hitAccents.get(w);
   if (!hits) { hits = new Map(); hitAccents.set(w, hits); }
-  for (const [key, hit] of hits) {
-    if (w.now >= hit.until || hit.particle?.o !== hit.options || hit.particle.dead) hits.delete(key);
-  }
+  for (const [key, hit] of hits) if (w.now >= hit.until || hit.particle?.o !== hit.options || hit.particle.dead) hits.delete(key);
   const key = `${Math.round(o.at.x / 16)},${Math.round(o.at.y / 16)}`;
   if (hits.has(key)) return;
   const ring: SpawnOptions = { texture: tex.ring, layer: 'ground', groundAligned: true,
     x: o.at.x, y: o.at.y, z: 0, life: o.tick ? 160 : 280,
     scale: [0.18, (o.tick ? 0.32 : 0.6) * s, outCubic], alpha: [o.tick ? 0.2 : 0.4, 0], tint: p.main };
-  const particle = w.spawn(ring);
-  if (particle) hits.set(key, { until: w.now + ring.life, particle, options: ring });
-  if (o.tick) return;
+  const elemental = ['kim', 'moc', 'hoa', 'phong', 'tho', 'thuy', 'loi'].includes(o.element ?? '');
+  const spawn = (options: SpawnOptions) => {
+    const particle = w.spawn(options);
+    if (particle && !hits.has(key)) hits.set(key, { until: w.now + (o.tick ? 160 : 280), particle, options });
+  };
+  if (!elemental || o.element === 'kim') spawn(ring);
+  if (!elemental) return;
   const at = { x: o.at.x, y: o.at.y, layer: 'ground' as const };
-  for (let i = 0; i < 2; i++) {
+  for (let i = 0; i < (o.tick || o.element === 'tho' ? 1 : 2); i++) {
     const side = i ? 1 : -1;
-    const base: SpawnOptions = { ...at, texture: tex.dot, z: 4, life: 240, tint: p.main,
-      alpha: [0.45, 0], x: at.x + side * 28 * s, scale: [0.12 * s, 0], vz: 65 };
+    const base: SpawnOptions = { ...at, texture: tex.dot, z: 4, life: o.tick ? 160 : 240, tint: p.main,
+      alpha: [o.tick ? 0.25 : 0.45, 0], x: at.x + side * 28 * s, scale: [0.18 * s, 0], vz: 65 };
     switch (o.element) {
       case 'kim':
-        w.spawn({ ...base, texture: tex.streak, x: at.x, z: 18, rotation: side * 0.6,
+        spawn({ ...base, texture: tex.streak, x: at.x, z: 18, rotation: side * 0.6,
           scaleX: [0.45 * s, 0.1], scaleY: 0.12, vz: 0 }); break;
       case 'moc':
-        w.spawn({ ...base, texture: tex.leaf, blend: 'normal', rotation: side * 0.7,
+        spawn({ ...base, texture: tex.leaf, blend: 'normal', rotation: side * 0.7,
           scale: [0.1, 0.65 * s], alpha: envelope(0.15, 0.5, 0.55), vz: 40 }); break;
-      case 'hoa': w.spawn({ ...base, vx: side * 20, vz: 100, scale: [0.1 * s, 0] }); break;
+      case 'hoa': spawn({ ...base, texture: tex.streak, vx: side * 20, vz: 100,
+        scaleX: [0.13 * s, 0], scaleY: [0.6 * s, 0], rotation: side * 0.2 }); break;
       case 'phong':
-        w.spawn({ ...base, texture: tex.crescent, x: at.x, z: 0, groundAligned: true,
+        spawn({ ...base, texture: tex.crescent, x: at.x, z: 0, groundAligned: true,
           rotation: i * Math.PI, spin: 7, scale: [0.28 * s, 0.5 * s], vz: 0, alpha: [0.3, 0] }); break;
       case 'tho':
       case 'thuy':
       case 'loi': {
         const earth = o.element === 'tho', ice = o.element === 'thuy';
-        w.spawn({ ...base, texture: earth ? tex.rock : ice ? tex.shard : tex.streak,
+        spawn({ ...base, texture: earth ? tex.rock : ice ? tex.shard : tex.streak,
           blend: earth ? 'normal' : 'add', rotation: side * 0.7,
           vx: side * 90 * s, vz: 90 * s, gravity: earth ? 500 : 80,
           scaleX: [0.4 * s, 0.1], scaleY: [0.65 * s, 0.1], alpha: [0.5, 0] }); break;
@@ -268,35 +255,79 @@ export function empoweredHit(w: VfxWorld, tex: VfxTextures, o: { at: Vec3; palet
 }
 
 /** Fantasy: an evolved caster leaks restrained power throughout the skill.
- * Palette: elemental wisps and shards over a dark floor remnant.
+ * Palette: element-specific silhouettes, using the supplied skill colours.
  * Phases: ease in 120 ms; sustained orbit; final 300 ms fade.
- * Layers: grounded glow/sigil; behind-caster wisp; idle-only orbiting shards.
+ * Layers: grounded rings; orbiting pieces behind the caster, never a body glow.
  * Sync: duration is the skill length, beginning at gameplay release.
  */
 export function empoweredAura(w: VfxWorld, tex: VfxTextures, o: Caster & { tier: ActivationTier; duration: number; idle?: boolean }) {
   if (o.tier === 1 || o.duration <= 0) return;
   const big = o.tier === 3, life = o.duration;
   const g = group(w, life, undefined, 140);
-  const alpha = life === Infinity ? (big ? 0.65 : 0.4) :
-    envelope(Math.min(0.2, 120 / life), Math.min(0.5, 300 / life), big ? 0.8 : 0.6);
-  g.add(w.spawn({ texture: tex.glow, layer: 'ground', groundAligned: true,
-    x: 0, y: 0, follow: groundAt(o.at), life, scale: big ? 2.1 : 1.4, alpha: big ? 0.28 : 0.18, tint: o.palette.main }));
-  g.add(w.spawn({ texture: tex.rune, layer: 'ground', groundAligned: true,
-    x: 0, y: 0, follow: groundAt(o.at), life, scale: big ? 0.34 : 0.24, alpha, tint: o.palette.main, spin: 0.2 }));
-  for (let i = 0, n = o.idle ? 2 : 1; i < n; i++) g.add(w.spawn({ texture: tex.puff, layer: 'ground', x: 0, y: 0, follow: o.at, life,
-    scaleX: big ? 0.45 : 0.3, scaleY: big ? 1.4 : 0.95, alpha, tint: o.palette.main,
-    onUpdate: (q) => {
-      const cycle = (q.age / 650 + i / n) % 1, a = i / n * TAU + q.age / 850;
-      q.px = Math.cos(a) * 30; q.py = Math.sin(a) * 30 * w.groundSquash;
-      q.pz = 12 + cycle * o.height * 0.85; q.alphaMul = 0.25 + Math.sin(cycle * Math.PI) * 0.75;
-      q.rotation = Math.sin(a) * 0.4;
+  const peak = big ? 0.42 : 0.25;
+  const alpha = life === Infinity ? peak : envelope(Math.min(0.2, 120 / life), Math.min(0.5, 300 / life), peak);
+  const base: SpawnOptions = { texture: tex.ring, layer: 'ground', x: 0, y: 0, follow: o.at,
+    life, alpha, tint: o.palette.main };
+  const floor = (scale: number, spin = 0) => g.add(w.spawn({ ...base, groundAligned: true,
+    follow: groundAt(o.at), scale, spin }));
+  const element = o.element;
+  if (element === 'kim' || element === 'hoa') floor(big ? 0.62 : 0.48, 0.2);
+  if (element === 'thuy') { floor(big ? 0.7 : 0.55); floor(big ? 0.46 : 0.33, -0.3); }
+  if (!['kim', 'moc', 'thuy', 'hoa', 'tho', 'phong', 'loi'].includes(element ?? '')) {
+    g.add(w.spawn({ ...base, z: o.height * 0.48, scaleX: big ? 0.55 : 0.45,
+      scaleY: big ? 0.7 : 0.58, spin: 0.15 }));
+    return g;
+  }
+  if (element === 'loi') {
+    let arcs: Handle[] = [], left = 140;
+    const flash = () => {
+      for (const arc of arcs) arc.stop();
+      arcs = [];
+      const at = o.at(), phase = rand(0, TAU), n = big ? 3 : 2;
+      for (let i = 0; i < n; i++) {
+        const a = phase + i / n * TAU;
+        const from = { x: at.x + Math.cos(a) * 38, y: at.y + Math.sin(a) * 16,
+          z: (at.z ?? 0) + o.height * 0.55 + Math.sin(a * 2) * 20 };
+        const to = { x: from.x + Math.cos(a + 1) * 20, y: from.y, z: from.z + 22 };
+        arcs.push(lightningBolt(w, tex, from, to, { ...o.palette, core: o.palette.main }, {
+          layer: 'ground', width: big ? 0.8 : 0.6, life: 155, depth: 2, branches: 0,
+          leader: false, restrikes: 1, halo: 0, alpha: big ? 0.55 : 0.3, coreAlpha: 0.25 }));
+      }
+    };
+    const loop = w.addUpdater(dt => { left -= dt; if (left <= 0) { left = 140; flash(); } });
+    const stop = () => { loop.stop(); for (const arc of arcs) arc.stop(); arcs = []; };
+    const unown = w.own(stop);
+    g.addHandle({ stop: () => { stop(); unown(); }, get alive() { return loop.alive; } });
+    flash();
+    return g;
+  }
+  const n = element === 'kim' ? (big ? 4 : 3) : element === 'thuy' || element === 'tho' ? 2 : big ? 3 : 2;
+  const texture = element === 'kim' ? tex.blade : element === 'moc' ? tex.leaf :
+    element === 'thuy' ? tex.shard : element === 'hoa' ? tex.puff :
+    element === 'tho' ? tex.rock : tex.crescent;
+  const phase = rand(0, TAU);
+  for (let i = 0; i < n; i++) g.add(w.spawn({ ...base, texture,
+    blend: element === 'tho' || element === 'moc' || element === 'kim' ? 'normal' : 'add',
+    tint: element === 'kim' ? 0xffffff : element === 'moc' && i === n - 1 ? o.palette.core : o.palette.main,
+    alpha: element === 'kim' || element === 'moc' ? (big ? 0.75 : 0.5) : alpha,
+    scaleX: element === 'phong' ? 0.55 : element === 'hoa' ? 0.38 : element === 'moc' ? 0.5 : 0.26,
+    scaleY: element === 'phong' ? 0.2 : element === 'hoa' ? 1.2 : element === 'moc' ? 0.6 : 0.35,
+    onUpdate: q => {
+      const a = phase + i / n * TAU + q.age / 900;
+      const rise = (q.age / 1050 + i / n) % 1;
+      const r = element === 'kim' ? 42 : element === 'tho' || element === 'moc' ? 40 : element === 'phong' ? 36 : 32;
+      q.px = Math.cos(a) * r; q.py = Math.sin(a) * r * w.groundSquash;
+      q.pz = element === 'tho' ? 8 + Math.sin(a * 2) * 5 :
+        element === 'moc' || element === 'hoa' ? 8 + rise * o.height :
+        o.height * 0.55 + Math.sin(a * 2) * 18;
+      q.rotation = element === 'kim' ? a + Math.PI / 2 : element === 'hoa' ? -0.15 * Math.sin(a) : a;
+      q.alphaMul = element === 'hoa' || element === 'moc' ? Math.sin(rise * Math.PI) : 0.65 + Math.sin(a) * 0.35;
     } }));
-  if (big && o.idle) for (let i = 0, n = 2; i < n; i++) g.add(w.spawn({ texture: tex.shard, layer: 'ground', x: 0, y: 0, follow: o.at, life,
-    scale: 0.45, alpha, tint: o.palette.core,
-    onUpdate: (q) => {
-      const a = i / n * TAU + q.age / 500;
-      q.px = Math.cos(a) * 42; q.py = Math.sin(a) * 42 * w.groundSquash;
-      q.pz = o.height * 0.45 + Math.sin(a * 2) * 12; q.rotation = a;
-    } }));
+  if (element === 'moc') g.add(w.spawn({ ...base, texture: tex.vineSegment, scaleX: 0.8, scaleY: 0.35,
+    blend: 'normal', alpha: big ? 0.7 : 0.45, z: o.height * 0.45,
+    onUpdate: q => { q.px = Math.sin(q.age / 850) * 30; q.rotation = -1.2 + Math.cos(q.age / 850) * 0.35; } }));
+  if (element === 'hoa') g.add(w.spawn({ ...base, texture: tex.dot, scale: 0.1,
+    onUpdate: q => { const t = q.age / 900 % 1; q.px = Math.sin(q.age / 400) * 28;
+      q.pz = t * o.height * 1.2; q.alphaMul = Math.sin(t * Math.PI); } }));
   return g;
 }

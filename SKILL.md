@@ -76,17 +76,17 @@ smoke/aftermath 0.8-2.5 s.
 
 ### Activation tiers and evolution
 
-Wrap casts with `skillActivation(w, tex, { at: () => caster.feet, height, palette, tier })`.
+Wrap casts with `skillActivation(w, tex, { at: () => caster.feet, height, palette, element, tier })`.
 Tier 1 (Cơ bản) releases immediately; tier 2 (Thức tỉnh) at 250 ms; tier 3
 (Tiến hoá) at 400 ms. Schedule gameplay on `w.after(activationRelease(tier), cast)`
-for tiers 2/3, and include that pre-roll in showcase waits. The tiers accumulate
-ground seals, behind-caster wisps/pillars and inward shards. The release pillar
+for tiers 2/3, and include that pre-roll in showcase waits. Evolved tiers use
+element motifs instead of a shared rune/wisp stack. The release pillar
 uses the palette's main colour at alpha <=0.16; there is no bright chest overlay
 or top flash at tiers 2/3. Use `empoweredAura` for a sustained post-release remnant
 (`skillActivation.duration` remains accepted for compatibility but has no effect).
-Use `skillEvolution(w, tex, { at, height, palette, fromTier, toTier })` for the
+Use `skillEvolution(w, tex, { at, height, palette, element, fromTier, toTier })` for the
 1600 ms one-shot upgrade: broken seal shards spiral upward into an overhead crown,
-which stamps the new seal at 950 ms. Stacked ascending runes show the destination tier.
+which stamps the destination tier's element motif at 950 ms. Stacked ascending runes show the destination tier.
 For gameplay after release, run `empoweredAura` for the skill's length and call
 `empoweredHit` at each positive-damage target's chest. Both are no-ops at tier 1.
 Pass an `empoweredWorld(world, { tier, palette, textures })` facade to the skill itself:
@@ -98,7 +98,24 @@ Checks enforce the total skill+overlay budget.
 Each facade retains its own tier across delayed callbacks and overlapping casts;
 the shared world and tier 1 remain unchanged. Damage in the demo scales 1.3x/1.7x,
 with tier-3 crit numbers. `empoweredAura` returns a stoppable handle and accepts
-`duration: Infinity, idle: true` for a persistent four/six-sprite idle look.
+`duration: Infinity, idle: true` for a persistent motif (one to five sprites, or two/three short lightning ribbons).
+Pass `element` to activation, evolution, aura and hit helpers: `kim` orbiting blades
+and a thin ring; `moc` climbing vine/leaves; `thuy` ripples and frost shards;
+`hoa` flame tongues/embers; `tho` low rocks (cracks only during activation);
+`phong` wind spirals; `loi` flickering arcs. Tier 2 is a lighter version of tier 3.
+Unknown/neutral elements use a restrained halo in the supplied skill palette.
+No evolved caster motif uses the shared rune or a bright body glow; all render
+behind the caster, and floor rings follow x/y with z=0, even during jumps.
+Always keep native `hitSpark`/authored hit feedback at every tier: `empoweredHit`
+adds alpha-capped behind-target signatures, not a replacement. Only metal and
+utility hits retain a ring; elemental ticks use one smaller accent. Repeated
+accents at the same ground position are throttled for their lifetime.
+For rapid evolved hits the demo uses `hitSpark(..., { ..., refresh: true })`:
+every hit re-triggers the full native burst at that target instead of stacking
+still-living bursts. The default is unchanged. `damageNumber` accepts `compact`;
+evolved demo numbers bake all glyphs into one temporary sprite, retaining
+crit colour/`!`/pop and lifetime. The texture is disposed on completion or clear.
+These keep total budgets without thinning the skill's own art or removing hits.
 The demo disables idle auras in debug/check mode; toggle with `__vfxDebug.idleAura(true)`.
 Pass skills a `withDamageTickFeedback(world, (feet, height, damage) => ...)` facade
 to observe their positive DoT ticks, including delayed status effects, without
@@ -109,7 +126,8 @@ water shards or lightning streaks; unknown/utility elements get only the supplie
 palette's ring. All accents render behind targets; repeat hits at the same ground
 position are suppressed until the previous accent expires or is cleared.
 Floor-aligned pieces ignore caster height; behind-caster body wisps follow jumps.
-Finite auras use three sprites; idle auras use four/six. Keep flashes localized.
+Finite and idle motifs use one to five sprites; lightning uses two/three short,
+unblurred ribbons, replaced every 140 ms and disposed on stop/clear. Keep flashes localized.
 All timers/particles use the world clock and `clear()` cancels them.
 
 Read `references/recipes.md` for the recipe catalog and `kit/recipes.ts` for the code. Start from
@@ -239,7 +257,8 @@ For the kit demo, run `npm install` and `npx playwright install chromium` once, 
 `npm run capture -- --skills thuy-tidal-beam,kim-sword-rain --out ~/audit/after/`.
 Pass comma-separated IDs (`--skills a,b`) or omit `--skills` for all skills. The harness
 builds and serves the demo, seeds randomness, stops the ticker and steps deterministically.
-It writes labeled contact sheets and `counts.json` at each skill's length + 1500 ms.
+It writes labeled contact sheets and `counts-tierN.json` with `--tier N` (otherwise
+`counts.json`) at each skill's length + tier pre-roll + 1900 ms.
 Output defaults to `~/audit/before/`; use the same `--seed` (default 12345) for comparisons.
 Inspect the sheets as well as the counts.
 
