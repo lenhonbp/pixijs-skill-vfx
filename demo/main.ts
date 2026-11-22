@@ -310,18 +310,18 @@ function whiteTexture() {
     empowering = true;
     try { draw(); } finally { empowering = false; }
   };
-  const castWorld = (selected: ActivationTier, palette: Palette) => {
+  const castWorld = (selected: ActivationTier, palette: Palette, element: string) => {
     if (selected === 1) return w;
     const nextTick = new WeakMap<Vec3, number>();
-    return withDamageTickFeedback(empoweredWorld(w, { tier: selected, palette }), (at, height) => {
+    return withDamageTickFeedback(empoweredWorld(w, { tier: selected, palette, textures: tex }), (at, height) => {
       if (w.now < (nextTick.get(at) ?? -Infinity)) return;
       nextTick.set(at, w.now + 120);
-      enhance(() => empoweredHit(w, tex, { at: { ...at, z: (at.z ?? 0) + height * 0.55 }, palette, tier: selected, tick: true }));
+      enhance(() => empoweredHit(w, tex, { at: { ...at, z: (at.z ?? 0) + height * 0.55 }, palette, tier: selected, tick: true, element }));
     });
   };
   const ctxFor = (selected: ActivationTier = 1, palette: Palette = PALETTES.arcane, element = 'neutral'): SkillContext & { tier?: ActivationTier } => ({
     tier: selected,
-    w: castWorld(selected, palette), tex, caster: hero, target: enemies[0], targets: enemies,
+    w: castWorld(selected, palette, element), tex, caster: hero, target: enemies[0], targets: enemies,
     hurt: (u, amount, o = {}) => {
       const du = u as DemoUnit;
       const heal = amount < 0;
@@ -332,12 +332,12 @@ function whiteTexture() {
       if (amount === 0) return;
       if (selected > 1) amount = Math.round(amount * (selected === 3 ? 1.7 : 1.3));
       const crit = o.crit || selected === 3;
-      if (selected > 1) enhance(() => empoweredHit(w, tex, { at: { ...u.feet, z: (u.feet.z ?? 0) + u.height * 0.55 }, palette, tier: selected, element }));
+      if (selected > 1) enhance(() => empoweredHit(w, tex, { at: { ...u.feet, z: (u.feet.z ?? 0) + u.height * 0.55 }, palette: o.palette ?? palette, tier: selected, element }));
       const feedback = o.feedback ?? 1;
       hitSkin(w, u.sprite, o.skin ?? getElement(current.element)?.hitSkin ?? 'red');
       rockBack(w, u.sprite, { push: o.push ?? (o.crit ? 12 : 6),
         angle: o.angle ?? Math.atan2(u.feet.y - hero.feet.y, u.feet.x - hero.feet.x) });
-      if (o.palette) hitSpark(w, tex, { x: u.feet.x, y: u.feet.y, z: u.height * 0.55, palette: o.palette, angle: o.angle ?? Math.PI, size: Math.sqrt(feedback) });
+      if (selected <= 1 && o.palette) hitSpark(w, tex, { x: u.feet.x, y: u.feet.y, z: u.height * 0.55, palette: o.palette, angle: o.angle ?? Math.PI, size: Math.sqrt(feedback) });
       damageNumber(w, tex, { x: u.feet.x, y: u.feet.y, z: u.height + 8, value: amount, crit, color: o.color ?? (crit ? 0xffd04a : 0xffffff) });
       du.hp = Math.max(0.05, du.hp - amount / 1600);
       lastHurt = w.now;

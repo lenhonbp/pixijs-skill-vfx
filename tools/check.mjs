@@ -95,13 +95,19 @@ try {
     const feet = spawned.find(q => !q.o.groundAligned && q.o.follow).o.follow();
     feet.z = 90;
     d.advance(450);
-    const grounded = spawned.filter(q => q.o.layer === 'ground').every(q => q.z === 0);
+    const grounded = spawned.filter(q => q.o.groundAligned).every(q => q.z === 0);
     feet.z = 0;
     w.spawn = spawn;
     w.clear();
-    return { rejected, cleared, grounded };
+    d.cast('kim-sword-rain', 3);
+    d.step(480);
+    const pillars = w.particles.filter(p => p.age >= 0 && p.o.life === 520);
+    const releaseBehindCaster = pillars.length > 0 && pillars.every(p => p.o.layer === 'ground' && p.sprite.alpha <= 0.16);
+    const fullDensity = w.density === 1;
+    w.clear();
+    return { rejected, cleared, grounded, releaseBehindCaster, fullDensity };
   });
-  assert.deepEqual(contracts, { rejected: true, cleared: true, grounded: true });
+  assert.deepEqual(contracts, { rejected: true, cleared: true, grounded: true, releaseBehindCaster: true, fullDensity: true });
   console.log('Activation tier validation, airborne ground projection and interrupted-effect cleanup: PASS');
   const salute = await page.evaluate(() => {
     const d = window.__vfxDebug, w = window.demo.vfx;
@@ -165,7 +171,7 @@ try {
         if (args[0].layer === 'top' && args[0].blend === 'normal' && [850, 1100].includes(args[0].life)) hits++;
         const p = spawn(...args);
         if (p && d.isEmpowering()) empowered.set(p, p.o);
-        if (p && d.isEmpowering() && args[0].life === 140) tickSparks++;
+        if (p && d.isEmpowering() && args[0].life === 160) tickSparks++;
         for (const [q, o] of empowered) if (q.dead || q.o !== o) empowered.delete(q);
         empoweredPeak = Math.max(empoweredPeak, empowered.size);
         peak = Math.max(peak, w.count); return p;

@@ -80,17 +80,20 @@ Wrap casts with `skillActivation(w, tex, { at: () => caster.feet, height, palett
 Tier 1 (Cơ bản) releases immediately; tier 2 (Thức tỉnh) at 250 ms; tier 3
 (Tiến hoá) at 400 ms. Schedule gameplay on `w.after(activationRelease(tier), cast)`
 for tiers 2/3, and include that pre-roll in showcase waits. The tiers accumulate
-ground seals, body wisps/pillars, then inward shards, cracks and top-layer feedback.
-Tier 3's low aura lasts `duration` (default 1500 ms) after release.
+ground seals, behind-caster wisps/pillars and inward shards. The release pillar
+uses the palette's main colour at alpha <=0.16; there is no bright chest overlay
+or top flash at tiers 2/3. Use `empoweredAura` for a sustained post-release remnant
+(`skillActivation.duration` remains accepted for compatibility but has no effect).
 Use `skillEvolution(w, tex, { at, height, palette, fromTier, toTier })` for the
 1600 ms one-shot upgrade: broken seal shards spiral upward into an overhead crown,
 which stamps the new seal at 950 ms. Stacked ascending runes show the destination tier.
 For gameplay after release, run `empoweredAura` for the skill's length and call
 `empoweredHit` at each positive-damage target's chest. Both are no-ops at tier 1.
-Pass an `empoweredWorld(world, { tier, palette })` facade to the skill itself:
-particle scales and raw effect sprites grow 1.2x/1.45x, highlights heat up, motion
-trails stretch and impact feedback strengthens. Burst/stream density is reduced
-while endpoint-anchored graphics/ribbons keep their coordinate system unchanged.
+Pass an `empoweredWorld(world, { tier, palette, textures })` facade to the skill itself:
+recognized additive energy textures grow 1.2x/1.45x and brighten without retinting.
+Normal-blended art, smoke, rocks, icons and other authored materials stay unchanged;
+omitting `textures` conservatively disables visual transforms. Density and trail
+proportions are preserved, as are endpoint-anchored graphics and sprite anchors.
 Checks enforce the total skill+overlay budget.
 Each facade retains its own tier across delayed callbacks and overlapping casts;
 the shared world and tier 1 remain unchanged. Damage in the demo scales 1.3x/1.7x,
@@ -100,8 +103,13 @@ The demo disables idle auras in debug/check mode; toggle with `__vfxDebug.idleAu
 Pass skills a `withDamageTickFeedback(world, (feet, height, damage) => ...)` facade
 to observe their positive DoT ticks, including delayed status effects, without
 changing skill recipes. Capture the cast's tier/palette in that callback; use
-`empoweredHit(..., { ..., tick: true })` and throttle per target for light tick feedback.
-Ground layers ignore caster height; body layers follow jumps. Keep flashes localized.
+`empoweredHit(..., { ..., tick: true, element })` for light ground-ring tick feedback.
+Pass `element` for metal glints, wood leaves, fire embers, wind crescents, earth rocks,
+water shards or lightning streaks; unknown/utility elements get only the supplied
+palette's ring. All accents render behind targets; repeat hits at the same ground
+position are suppressed until the previous accent expires or is cleared.
+Floor-aligned pieces ignore caster height; behind-caster body wisps follow jumps.
+Finite auras use three sprites; idle auras use four/six. Keep flashes localized.
 All timers/particles use the world clock and `clear()` cancels them.
 
 Read `references/recipes.md` for the recipe catalog and `kit/recipes.ts` for the code. Start from

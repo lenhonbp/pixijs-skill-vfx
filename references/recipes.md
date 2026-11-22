@@ -145,21 +145,29 @@ let finite droplets dissipate naturally.
 
 `skillActivation(w, tex, { at, height, palette, tier, duration? })` follows caster
 feet live. Cơ bản (1): sigil, motes, chest light; Thức tỉnh (2): rotating runes,
-body wisps, pillar and shockwave; Tiến hoá (3): counter-rotation, implosion/burst,
-white core, cracks, flash, shake and hit-stop. Each includes the lower tier's layers.
+behind-caster wisps, pillar and shockwave; Tiến hoá (3): counter-rotation,
+implosion/burst, shake and hit-stop. Tiers 2/3 replace the chest light with
+behind-caster layers; the main-coloured release pillar has alpha <=0.16.
 Start gameplay immediately at tier 1, or after `activationRelease(tier)` (250/400 ms).
-`duration` controls the tier 3 lingering aura (1500 ms default).
+`duration` remains accepted for compatibility but has no effect; use `empoweredAura`
+for a sustained remnant rather than stacking extra activation floor overlays.
 
 `skillEvolution(w, tex, { at, height, palette, fromTier, toTier })` fractures the old
 seal, lifts its shards into a helix and overhead crown, then stamps the destination
 seal at 950 ms; ascending rune stacks and double shockwaves fade by 1600 ms.
-`empoweredAura(w, tex, { at, height, palette, tier, duration })` sustains body wisps,
-orbiting shards and a grounded seal during gameplay. `empoweredHit(w, tex,
-{ at: chestPosition, palette, tier })` adds a localized crown, rays, floor rings and
-debris on positive damage. Both skip tier 1; no full-screen white flashes are used.
-Use `empoweredWorld(w, { tier, palette })` as the skill context's world for
-cast-local 1.2x/1.45x silhouettes, hotter highlights and stronger impact feedback.
-Burst/stream density is reduced; the total cast must satisfy its ordinary budget.
+`empoweredAura(w, tex, { at, height, palette, tier, duration })` sustains a
+behind-caster wisp and grounded glow/seal in three sprites during gameplay;
+idle auras use two wisps and tier-3 orbiting shards. `empoweredHit(w, tex,
+{ at: chestPosition, palette, tier, element })` adds a capped ground ring and
+behind-target accents: `kim` crossed glints, `moc` leaves, `hoa` embers, `phong`
+crescents, `tho` rocks, `thuy` shards, `loi` streaks. Utility/unknown elements get
+only their supplied palette's ring. Repeat hits at the same ground position are
+throttled for the accent's lifetime; `tick: true` uses only a small, faint ring.
+Both helpers skip tier 1; no full-screen white flashes are used.
+Use `empoweredWorld(w, { tier, palette, textures: tex })` as the skill context's world
+for cast-local 1.2x/1.45x additive energy and stronger impact feedback. Authored
+materials, tint, density and trail proportions are unchanged; without `textures`,
+visual transforms are disabled. The total cast must satisfy its ordinary budget.
 The facade retains delayed callbacks without changing other casts. For idle power,
 keep the handle from `empoweredAura(..., { ..., duration: Infinity, idle: true })`
 and stop it on tier changes. Debug captures/checks disable this persistent aura.
