@@ -3,7 +3,8 @@
 [Live demo](https://lenhonbp.github.io/pixijs-skill-vfx/)
 
 An agent skill (Claude Code, Codex) plus a tested TypeScript kit for **code-drawn 2.5D skill VFX
-in PixiJS v7 and v8**. No art assets: every texture is generated with Canvas 2D at startup.
+in PixiJS v7 and v8**. No art assets: textures are generated with Canvas 2D. The shared set is baked at startup;
+specialized material sets are cached on first use.
 
 ![Preview](demo/preview.png)
 
@@ -59,31 +60,20 @@ Pick a skill from the list (or its displayed keyboard shortcut; tap the arena on
 to 0.5x/0.25x, switch quality and toggle bloom/distortion, or press Showcase to cycle all skills. `#showcase` in the URL starts it directly.
 Works with pixi.js 7.4+ too: `npm i pixi.js@7` and rebuild.
 
-### Frame captures
+## Development and verification
 
-After `npm install`, install Chromium once with `npx playwright install chromium`.
-Run `npm run capture -- --skills thuy-tidal-beam,kim-sword-rain --out ~/audit/after/`
-to build and serve the demo, then capture seeded, deterministically stepped frames.
-Use comma-separated skill IDs (`--skills a,b`); omit `--skills` to capture all skills.
-Each output directory contains labeled PNG contact sheets and `counts.json` with live
-particle counts at each skill's length + 1500 ms. The default output is `~/audit/before/`;
-`--seed INTEGER` overrides the default seed of 12345.
+| Command | Purpose |
+|---|---|
+| `npm run dev` | Watch, rebuild and serve the demo |
+| `npm run typecheck` | TypeScript validation; equivalent to `npx tsc -p .` |
+| `npm run build` | Bundle `demo/demo.js` |
+| `npm run capture` | Build/serve and capture deterministic contact sheets |
+| `npm run check` | Browser lifecycle, pool, particle-budget and runtime contracts; build first |
+| `npm run check:docs` | Node-only export-index, file-map and sample-count gate |
 
-## Validation and reproducibility
-
-Run `npx tsc -p .`, `npm run build`, then `npm run check` (Chromium required).
-The check casts each skill three times at high quality without clearing between casts;
-at length + 1500 ms it requires zero particles/updaters and no pool-capacity growth.
-Peak counts include delayed particles. The ordinary cap is 150; IDs containing the
-hyphen-delimited word `ultimate` get 600. No current SkillDef has an ultimate flag,
-so all existing samples use 150. Unbaselined overages and peaks more than 5% above baseline fail.
-`tools/check-baseline.json` keeps existing overages visible as WARN; shrink peaks as skills improve and delete entries when they pass budget.
-
-Use `new VfxWorld({ ...layers, seed: 12345 })` or supply `rng: () => number` (takes
-precedence). `random`, `rand`, `randSign` and `pick` share the active RNG; `mulberry32`
-and `setRng` are exported for custom harnesses. This is **process-global, last world
-constructed wins**, not isolated per world; use one active world or explicitly set the
-RNG when switching worlds. Omit both options for normal `Math.random` behavior.
+See [verification and reproducibility](references/extending.md#verification-and-reproducibility)
+for setup, capture flags, tier-less versus tiered captures, exact checkpoints, RNG,
+particle baselines and focused regression tests. Inspect captures as well as counts.
 
 The iteration/choreography approach is inspired by
 [pixelfx](https://github.com/patch-gg/pixelfx) and Hugo Duprez's VFX method;
@@ -95,20 +85,28 @@ no renderer or effect implementation is ported.
 |---|---|
 | `SKILL.md` | Instructions the agent follows |
 | `.claude-plugin/` | Marketplace and plugin manifests; root skill registration |
-| `tools/check.mjs` | Seeded lifecycle, pool growth, particle budget and RNG gate |
-| `tools/capture-frames.mjs` | Seeded contact-sheet captures (`npm run capture`) |
-| `kit/` | Runtime and recipes (copy into your game) |
+| `kit/index.ts` | Public entry point; every export is listed in [references/api.md](references/api.md) |
+| `kit/` | Runtime, specialized recipes and texture/material modules; [complete file map](SKILL.md#runtime) |
 | `examples/skills.ts` | 29 sample skills over a small `SkillContext` |
-| `references/extending.md` | Custom elements, recolors, composition, cleanup and status catalog |
-| `references/` | Recipe catalog, element design, advanced FX, Blender matching, v7/v8 notes |
-| `tools/blender_vfx_rig.py` | Prints camera/sun numbers from your Blender scene |
-| `demo/` | Showcase app |
+| `references/api.md` | Canonical public-API index and direct-module import boundaries |
+| `references/recipes.md` | Recipe options, textures, floor rings and activation contract |
+| `references/extending.md` | Custom elements, recoloring, timing, reactions, status catalog and verification |
+| `references/elements.md` | Seven built-in element design languages and sample families |
+| `references/advanced-fx.md` | Ribbons, noise, distortion, bloom and quality tiers |
+| `references/blender-2-5d.md`, `references/pixi-v7-v8.md` | Blender projection and compatibility |
+| `tools/` | Check/capture scripts, baseline, focused regressions and Blender rig; [complete tool map](SKILL.md#tools) |
+| `demo/main.ts`, `demo/index.html`, `demo/preview.png` | Showcase source, controls and preview; generated bundle is `demo/demo.js` |
+| `package.json`, `tsconfig.json` | Commands/dependencies and TypeScript configuration |
+| `.github/workflows/` | CI validation and Pages deployment |
+| `LICENSE` | MIT license |
 
 ## Example prompts
 
 Activation tiers (**Cơ bản → Thức tỉnh → Tiến hoá**) add live-following elemental
 seals, wisps and ascension bursts. Use the demo tier selector and **Evolve** button;
 `skillActivation` and `skillEvolution` work with any palette, including neutral.
+See the [activation contract](references/recipes.md#activation-and-evolution) for scheduling
+and return values.
 
 - "Use pixijs-skill-vfx to add a frost slash for the warrior's skill 2, hit on frame 3 of the attack animation."
 - "Make the boss's ground slam: 600 ms red telegraph, then a shockwave and debris, damage on impact."
