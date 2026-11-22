@@ -1,5 +1,6 @@
 import type { Texture } from 'pixi.js';
 import { mulberry32 } from './ease';
+import { noise3 } from './noise';
 import { textureFromCanvas } from './pixi-compat';
 
 function canvas(w: number, h: number, draw: (c: CanvasRenderingContext2D) => void): Texture {
@@ -59,38 +60,50 @@ function frost(): Texture {
   });
 }
 
-function dragon(): Texture {
-  return canvas(192,128,c => {
-    const g=c.createLinearGradient(0,90,0,20);
-    g.addColorStop(0,'rgba(90,130,155,.2)'); g.addColorStop(.55,'rgba(190,230,245,.7)'); g.addColorStop(1,'rgba(255,255,255,.92)');
-    c.fillStyle=g; c.strokeStyle='rgba(250,255,255,.85)'; c.lineWidth=2;
-    c.beginPath(); c.moveTo(9,96); c.bezierCurveTo(34,71,55,66,69,46);
-    c.lineTo(48,10); c.lineTo(92,38); c.lineTo(110,20); c.lineTo(116,49);
-    c.bezierCurveTo(142,43,144,68,179,68); c.lineTo(187,81); c.lineTo(147,90);
-    c.lineTo(171,97); c.bezierCurveTo(130,116,105,80,82,96); c.lineTo(9,114); c.closePath(); c.fill(); c.stroke();
-    c.beginPath(); c.moveTo(128,68); c.lineTo(140,71); c.stroke();
-    c.beginPath(); c.moveTo(145,87); c.bezierCurveTo(153,114,183,112,186,97); c.stroke();
-    c.lineWidth=.8;
-    for(let i=0;i<7;i++) { c.beginPath(); c.ellipse(50+i*11,85-i*3,14,7,-.4,0,Math.PI); c.stroke(); }
+function water(): Texture {
+  return canvas(192,96,c => {
+    const pixels=c.createImageData(192,96);
+    for(let y=0;y<96;y++) for(let x=0;x<192;x++) {
+      const u=x/192, v=y/96;
+      const bend=Math.sin(u*7)*.05;
+      const d=(v-.5-bend)/.4;
+      const turbulence=noise3(u*8,v*5,7)*.15+noise3(u*24,v*12,9)*.035;
+      const edge=Math.max(0,Math.min(1,(1-Math.abs(d)+turbulence)*6))*Math.pow(Math.sin(u*Math.PI),1.5);
+      const round=Math.sqrt(Math.max(0,1-d*d));
+      const caustic=Math.pow(Math.max(0,Math.sin(u*22+v*15+noise3(u*5,v*7,1)*4)),8);
+      const light=45+round*125+caustic*65+Math.exp(-Math.pow((d+.48)*9,2))*70;
+      const i=(y*192+x)*4;
+      pixels.data.set([light,light,light,edge*215],i);
+    }
+    c.putImageData(pixels,0,0);
   });
 }
 
-function water(): Texture {
-  return canvas(192,64,c => {
-    const g=c.createLinearGradient(0,0,0,64);
-    g.addColorStop(0,'rgba(255,255,255,0)'); g.addColorStop(.18,'rgba(250,255,255,.8)');
-    g.addColorStop(.35,'rgba(148,190,210,.55)'); g.addColorStop(.65,'rgba(80,120,150,.6)');
-    g.addColorStop(.85,'rgba(230,250,255,.65)'); g.addColorStop(1,'rgba(255,255,255,0)');
-    c.beginPath(); c.moveTo(0,32); c.bezierCurveTo(50,-9,125,6,192,32); c.bezierCurveTo(140,69,50,65,0,32); c.fillStyle=g; c.fill();
-    c.lineWidth=.9;
-    for(let i=0;i<13;i++) {
-      c.strokeStyle=`rgba(255,255,255,${.15+i%3*.12})`;
-      c.beginPath(); c.moveTo(12+i*4,30); c.bezierCurveTo(65,5+i*3,110,58-i*2,180-i*3,31); c.stroke();
+function foam(crown = false): Texture {
+  const rng=mulberry32(crown?93:67);
+  return canvas(160,128,c => {
+    if(crown) for(let i=0;i<13;i++) {
+      const a=i/13*Math.PI*2, x=80+Math.cos(a)*randRadius(), y=73+Math.sin(a)*13;
+      const top=10+rng()*29, tip=x+Math.cos(a)*(10+rng()*20);
+      const g=c.createLinearGradient(0,top,0,98);
+      g.addColorStop(0,'rgba(255,255,255,0)'); g.addColorStop(.28,'rgba(255,255,255,.9)'); g.addColorStop(1,'rgba(190,245,255,.15)');
+      c.strokeStyle=g; c.lineWidth=2+rng()*3; c.lineCap='round';
+      c.beginPath(); c.moveTo(80+Math.cos(a)*12,95); c.quadraticCurveTo(x,y,tip,top); c.stroke();
+    }
+    for(let i=0;i<(crown?340:440);i++) {
+      const a=rng()*Math.PI*2, r=Math.sqrt(rng());
+      const x=crown?80+Math.cos(a)*(25+r*45):80+Math.cos(a)*r*68;
+      const y=crown?94+Math.sin(a)*12-r*r*(16+40*Math.abs(Math.cos(a*4))):64+Math.sin(a)*r*43;
+      const size=(crown?1.2:1.5)+rng()*4;
+      const g=c.createRadialGradient(x,y,0,x,y,size);
+      g.addColorStop(0,`rgba(255,255,255,${.25+rng()*.6})`); g.addColorStop(.55,'rgba(240,255,255,.35)'); g.addColorStop(1,'rgba(220,250,255,0)');
+      c.fillStyle=g; c.fillRect(x-size,y-size,size*2,size*2);
     }
   });
+  function randRadius() { return 23+rng()*24; }
 }
 
-let cache: { crystals: Texture[]; frost: Texture; dragon: Texture; water: Texture } | undefined;
+let cache: { crystals: Texture[]; frost: Texture; water: Texture; foam: Texture; crown: Texture } | undefined;
 export function waterTextures() {
-  return cache ??= { crystals: [crystal(5),crystal(19),crystal(31)], frost: frost(), dragon: dragon(), water: water() };
+  return cache ??= { crystals: [crystal(5),crystal(19),crystal(31)], frost: frost(), water: water(), foam: foam(), crown: foam(true) };
 }

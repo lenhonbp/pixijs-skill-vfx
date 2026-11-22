@@ -2,7 +2,6 @@ import { clamp01, envelope, lerp, outCubic, pick, rand } from './ease';
 import { group } from './group';
 import type { Palette } from './recipes';
 import type { VfxTextures } from './textures';
-import { flowRibbon } from './trail';
 import type { Vec3, VfxWorld } from './vfx-world';
 import { waterTextures } from './water-textures';
 
@@ -76,7 +75,7 @@ export function glacierPath(w: VfxWorld, tex: VfxTextures, o: {
   return g;
 }
 
-/** Braided pressure jet with a sculpted dragon crest and a continuously breaking impact. */
+/** A rolling pressure column with aerated foam and a continuously breaking impact crown. */
 export function tidalBeam(w: VfxWorld, tex: VfxTextures, o: {
   from: () => Vec3; to: () => Vec3; palette: Palette; duration?: number;
 }) {
@@ -91,42 +90,59 @@ export function tidalBeam(w: VfxWorld, tex: VfxTextures, o: {
     out.x=lerp(a.x,b.x,t); out.y=lerp(a.y,b.y,t)+Math.cos(t*9-age*.01+phase)*radius*w.groundSquash;
     out.z=lerp(a.z??40,b.z??40,t)+wave;
   };
-  for(let i=0;i<6;i++) g.addHandle(flowRibbon(w,{ life:dur,width:i<2?34:rand(3,7),
-    tint:i===0?p.dark:i<4?p.main:p.core, blend:'normal',alpha:()=>env()*(i<2?.64:.72),
-    point:(u,_,out)=>point(u,i*.6,i<2?19:24,out) }));
-  g.addHandle(w.stream({rate:36,duration:dur,make:()=> {
-    const phase=rand(-.3,.3), life=430, at={x:0,y:0,z:0};
-    return {texture:waterTextures().water,x:0,y:0,life,blend:'normal',tint:p.main,
-      scaleX:rand(.48,.69),scaleY:rand(.29,.43),alpha:()=>env()*.65,
-      onUpdate:(q,t)=> {
-        point(t,phase,21,at);
+  const angle=()=> {
+    const a=o.from(),b=o.to();
+    return Math.atan2(b.y-(b.z??40)-a.y+(a.z??40),b.x-a.x);
+  };
+  for(let i=0;i<18;i++) {
+    const u=i/17, at={x:0,y:0,z:0};
+    g.add(w.spawn({texture:waterTextures().water,x:0,y:0,life:dur,blend:'normal',tint:p.main,
+      scaleX:.86,scaleY:()=>.53+Math.sin(u*10-age*.013)*.07,
+      alpha:()=>env()*.58,
+      onUpdate:q=> {
+        point(u,0,14,at);
         q.px=at.x; q.py=at.y; q.pz=at.z??0;
-        const a=o.from(),b=o.to(); q.rotation=Math.atan2(b.y-(b.z??40)-a.y+(a.z??40),b.x-a.x)+Math.cos(t*9-age*.01)*.12;
+        q.rotation=angle()+Math.cos(u*9-age*.01)*.15;
+      }}));
+  }
+  g.addHandle(w.stream({rate:36,duration:dur,make:()=> {
+    const phase=rand(-.4,.4), at={x:0,y:0,z:0};
+    return {texture:waterTextures().foam,x:0,y:0,life:440,blend:'normal',tint:p.core,
+      scaleX:rand(.35,.65),scaleY:rand(.07,.13),alpha:envelope(.12,.7,.8),
+      onUpdate:(q,t)=> {
+        point(t,phase,24,at); q.px=at.x; q.py=at.y; q.pz=(at.z??0)+8;
+        q.rotation=angle()+Math.cos(t*9-age*.01)*.18; q.alphaMul=env();
       }};
   }}));
   const head={x:0,y:0,z:0};
-  g.add(w.spawn({ texture:waterTextures().dragon,x:0,y:0,life:dur,blend:'normal',tint:p.core,
-    anchorX:.85,scaleX:.73,scaleY:()=>o.to().x<o.from().x?-.73:.73,alpha:()=>env()*.9,
+  g.add(w.spawn({ texture:waterTextures().foam,x:0,y:0,life:dur,blend:'normal',tint:p.core,
+    scaleX:()=>.49+Math.sin(age*.027)*.05,scaleY:()=>.42+Math.cos(age*.022)*.04,alpha:()=>env()*.9,
     onUpdate:q=> {
       point(1,0,0,head); q.px=head.x; q.py=head.y; q.pz=head.z;
-      const a=o.from(),b=o.to(); q.rotation=Math.atan2(b.y-(b.z??40)-a.y+(a.z??40),b.x-a.x);
+      q.rotation=angle()+age*.001;
     } }));
-  g.addHandle(w.stream({rate:48,duration:dur,make:()=> {
-    const at=o.to(), a=rand(0,TAU), v=rand(35,150);
-    return {texture:tex.drop,...at,life:rand(260,620),blend:'normal',tint:p.core,scale:rand(.12,.29),
-      vx:Math.cos(a)*v,vy:Math.sin(a)*v*w.groundSquash,vz:rand(25,130),gravity:380,
+  g.addHandle(w.stream({rate:60,duration:dur,make:()=> {
+    const at=o.to(), a=rand(0,TAU), v=rand(65,205);
+    return {texture:tex.drop,...at,life:rand(280,620),blend:'normal',tint:p.core,scale:rand(.15,.33),
+      vx:Math.cos(a)*v,vy:Math.sin(a)*v*w.groundSquash,vz:rand(45,170),gravity:460,
       faceVelocity:true,alpha:envelope(.03,.5,.85)};
+  }}));
+  g.addHandle(w.stream({rate:9,duration:dur,make:()=> {
+    const at=o.to();
+    return {texture:waterTextures().crown,...at,life:400,blend:'normal',tint:p.core,
+      scaleX:[.2,.95,outCubic],scaleY:[.25,.85,outCubic],alpha:envelope(.08,.35,.86),
+      vz:-25,gravity:120};
   }}));
   g.addHandle(w.stream({rate:18,duration:dur,make:()=> {
     const at=o.to();
     return {texture:tex.puff,...at,life:rand(240,440),blend:'normal',tint:p.core,
-      scale:[.06,.27],alpha:envelope(.04,.35,.36),vx:rand(-45,85),vy:rand(-25,25)*w.groundSquash,
+      scale:[.12,.43],alpha:envelope(.04,.35,.26),vx:rand(-45,85),vy:rand(-25,25)*w.groundSquash,
       vz:rand(-15,35),gravity:100};
   }}));
   g.addHandle(w.stream({rate:25,duration:dur,make:()=> {
     const at={x:0,y:0,z:0}; point(rand(.1,1),rand(0,TAU),16,at);
-    return {texture:tex.streak,...at,life:rand(130,270),blend:'normal',tint:p.core,scaleX:rand(.08,.17),scaleY:.045,
-      vx:(o.to().x-o.from().x)*1.1,vz:rand(-20,30),alpha:envelope(.05,.4,.8)};
+    return {texture:tex.drop,...at,life:rand(180,360),blend:'normal',tint:p.core,scale:rand(.1,.21),
+      vx:(o.to().x-o.from().x)*.7,vy:rand(-25,25)*w.groundSquash,vz:rand(-25,65),gravity:240,faceVelocity:true,alpha:envelope(.05,.4,.8)};
   }}));
   const at=o.to();
   w.spawn({texture:tex.disc,x:at.x,y:at.y,layer:'ground',groundAligned:true,life:dur+900,
