@@ -7,8 +7,19 @@ import { random, envelope, lerpColor, outBack, outCubic, outQuad, rand } from '.
 
 const TAU = Math.PI * 2;
 
-/** One spike erupting from the ground: rises, holds, sinks. Rock (earth) or ice (water). */
-export function spike(w: VfxWorld, tex: VfxTextures, o: Vec3 & { palette: Palette; height?: number; width?: number; life?: number; ice?: boolean }) {
+/** Natural rock color carrying a hint of the palette, for grey baked stone textures (rock, rockSpike, mountain, rockPlate). */
+export function stoneTint(p: Palette, k = 0.32): number {
+  return lerpColor(0xd8d2c8, p.main, k);
+}
+
+/** Dust color for an earth palette: dry soil, not glow. */
+export function dustTint(p: Palette): number {
+  return lerpColor(0x8a7d6c, p.main, 0.2);
+}
+
+/** One spike erupting from the ground: rises, holds, sinks. Rock (earth) or ice (water).
+ *  `lean` tilts it (radians, + = right); `fx: false` skips debris and dust for cheap side spikes. */
+export function spike(w: VfxWorld, tex: VfxTextures, o: Vec3 & { palette: Palette; height?: number; width?: number; life?: number; ice?: boolean; lean?: number; fx?: boolean }) {
   const h = o.height ?? 90;
   const life = o.life ?? 900;
   const flip = litFlip(w);
@@ -17,24 +28,63 @@ export function spike(w: VfxWorld, tex: VfxTextures, o: Vec3 & { palette: Palett
     const a = t * life;
     return a < 120 ? outBack(a / 120) : a > life - 220 ? Math.max(0, (life - a) / 220) : 1;
   };
+  if (o.ice) {
+    w.spawn({
+      texture: tex.spike, blend: 'normal', x: o.x, y: o.y, life, anchorY: 1, rotation: o.lean ?? rand(-0.12, 0.12),
+      scaleX: flip * ((o.width ?? 1) * h * 0.5) / 64, scaleY: (t) => (h / M.spikeHeight) * rise(t),
+      alpha: 0.85, tint: lerpColor(p.core, p.main, 0.35),
+    });
+    w.spawn({ texture: tex.glow, x: o.x, y: o.y, z: h * 0.5, life, zBias: 1, scaleX: 0.25, scaleY: h / 70, alpha: (t) => 0.08 * rise(t), tint: p.main });
+    w.spawn({ texture: tex.glow, layer: 'ground', groundAligned: true, blend: 'normal', x: o.x, y: o.y, life: life + 400, scale: h / 70, alpha: envelope(0.05, 0.5, 0.5), tint: p.dark });
+    if (o.fx === false) return;
+    w.burst(5, () => {
+      const a = rand(0, TAU), sp = rand(60, 180);
+      return {
+        texture: tex.shard, blend: 'normal', x: o.x, y: o.y, z: 6, life: rand(500, 800), vx: Math.cos(a) * sp, vy: Math.sin(a) * sp * w.groundSquash,
+        vz: rand(150, 330), gravity: 1200, bounce: 0.3, rotation: rand(0, TAU), spin: rand(-10, 10), scale: rand(0.15, 0.3), tint: p.core,
+      };
+    });
+    w.burst(4, () => {
+      const a = rand(0, TAU), sp = rand(20, 70);
+      return { texture: tex.puff, blend: 'normal', x: o.x, y: o.y, z: 4, life: 700, vx: Math.cos(a) * sp, vy: Math.sin(a) * sp * w.groundSquash, vz: 20, drag: 2, scale: [0.4, 0.65, outCubic], alpha: envelope(0.1, 0.5, 0.12), tint: p.main };
+    });
+    return;
+  }
+  // Rock: punches up with a little overshoot and ground heave, holds, then sinks back through its own rubble.
+  const stone = lerpColor(stoneTint(p), p.dark, rand(0.12, 0.35)), dust = dustTint(p);
+  const sink = (t: number) => {
+    const a = t * life;
+    return a < 110 ? outBack(a / 110) : a > life - 260 ? Math.max(0, (life - a) / 260) ** 0.7 : 1;
+  };
   w.spawn({
-    texture: tex.spike, blend: 'normal', x: o.x, y: o.y, life, anchorY: 1, rotation: rand(-0.12, 0.12),
-    scaleX: flip * ((o.width ?? 1) * h * 0.5) / 64, scaleY: (t) => (h / M.spikeHeight) * rise(t),
-    alpha: o.ice ? 0.85 : 1, tint: o.ice ? lerpColor(p.core, p.main, 0.35) : lerpColor(p.main, p.dark, 0.35),
+    texture: tex.rockSpike, blend: 'normal', x: o.x, y: o.y, life, anchorY: 1, rotation: o.lean ?? rand(-0.1, 0.1),
+    scaleX: flip * ((o.width ?? 1) * h * 0.55) / 64 * (random() < 0.5 ? 1 : 0.85), scaleY: (t) => (h / M.spikeHeight) * sink(t),
+    tint: stone,
   });
-  if (o.ice) w.spawn({ texture: tex.glow, x: o.x, y: o.y, z: h * 0.5, life, zBias: 1, scaleX: 0.25, scaleY: h / 70, alpha: (t) => 0.08 * rise(t), tint: p.main });
-  w.spawn({ texture: tex.glow, layer: 'ground', groundAligned: true, blend: 'normal', x: o.x, y: o.y, life: life + 400, scale: h / 70, alpha: envelope(0.05, 0.5, 0.5), tint: o.ice ? p.dark : 0x1a1008 });
-  w.burst(o.ice ? 5 : 7, () => {
-    const a = rand(0, TAU), sp = rand(60, 180);
+  w.spawn({ texture: tex.glow, layer: 'ground', groundAligned: true, blend: 'normal', x: o.x, y: o.y, life: life + 300, scale: h / 85, alpha: envelope(0.04, 0.45, 0.6), tint: 0x140d06 });
+  if (o.fx === false) return;
+  w.spawn({ texture: tex.fissure, layer: 'ground', groundAligned: true, blend: 'normal', x: o.x, y: o.y, life: life + 900, rotation: rand(0, TAU),
+    scaleX: h / 220, scaleY: h / 110, alpha: envelope(0.03, 0.4, 0.85), tint: stone });
+  w.burst(5, () => {
+    const a = rand(0, TAU), sp = rand(50, 160);
     return {
-      texture: o.ice ? tex.shard : tex.rock, blend: 'normal', x: o.x, y: o.y, z: 6, life: rand(500, 800), vx: Math.cos(a) * sp, vy: Math.sin(a) * sp * w.groundSquash,
-      vz: rand(150, 330), gravity: 1200, bounce: 0.3, rotation: rand(0, TAU), spin: rand(-10, 10), scale: rand(0.15, 0.3), tint: o.ice ? p.core : 0x8a7458,
+      texture: tex.rock, blend: 'normal', x: o.x, y: o.y, z: 6, life: rand(650, 950), vx: Math.cos(a) * sp, vy: Math.sin(a) * sp * w.groundSquash,
+      vz: rand(160, 340), gravity: 1300, bounce: 0.25, drag: 0.6, rotation: rand(0, TAU), spin: rand(-9, 9), scale: rand(0.14, 0.3),
+      alpha: envelope(0, 0.25), tint: lerpColor(stone, 0x6a5a48, rand(0, 0.5)),
     };
   });
-  w.burst(4, () => {
-    const a = rand(0, TAU), sp = rand(20, 70);
-    return { texture: tex.puff, blend: 'normal', x: o.x, y: o.y, z: 4, life: 700, vx: Math.cos(a) * sp, vy: Math.sin(a) * sp * w.groundSquash, vz: 20, drag: 2, scale: [0.4, o.ice ? 0.65 : 0.9, outCubic], alpha: envelope(0.1, o.ice ? 0.5 : 0.35, o.ice ? 0.12 : 0.5), tint: o.ice ? p.main : 0xb8a080 };
+  w.burst(3, () => {
+    const a = rand(0, TAU), sp = rand(25, 70);
+    return { texture: tex.puff, blend: 'normal', x: o.x + rand(-8, 8), y: o.y, z: rand(4, h * 0.3), life: rand(900, 1300), zBias: 3,
+      vx: Math.cos(a) * sp, vy: Math.sin(a) * sp * w.groundSquash, vz: rand(14, 34), drag: 1.6, rotation: rand(0, TAU), spin: rand(-0.6, 0.6),
+      scale: [0.35, rand(0.9, 1.2), outCubic], alpha: envelope(0.08, 0.6, 0.38), tint: lerpColor(dust, 0x5a4e40, rand(0, 0.4)) };
   });
+  // crumble: chips fall off the top as it sinks
+  w.after(life - 260, () => w.burst(3, () => ({
+    texture: tex.rock, blend: 'normal', x: o.x + rand(-h * 0.12, h * 0.12), y: o.y, z: h * rand(0.35, 0.8), life: rand(450, 650),
+    vx: rand(-40, 40), vz: rand(10, 70), gravity: 1100, bounce: 0.2, rotation: rand(0, TAU), spin: rand(-6, 6), scale: rand(0.12, 0.22),
+    alpha: envelope(0, 0.3), tint: stone,
+  })));
 }
 
 /** A line of spikes erupting one after another along ground angle `angle` (earth fissure, ice path). */
@@ -46,15 +96,24 @@ export function spikeLine(
   const p = o.palette ?? (o.ice ? WUXING.thuy.palette : WUXING.tho.palette);
   const n = o.count ?? 7;
   const sp = o.spacing ?? 42;
+  const along = (d: number) => ({ x: o.from.x + Math.cos(o.angle) * d, y: o.from.y + Math.sin(o.angle) * d * w.groundSquash, z: 0 });
   for (let i = 0; i < n; i++) {
     w.after(i * (o.intervalMs ?? 65), () => {
       const d = (i + 1) * sp;
-      const at = { x: o.from.x + Math.cos(o.angle) * d, y: o.from.y + Math.sin(o.angle) * d * w.groundSquash, z: 0 };
+      const at = along(d);
       const h = (o.height ?? 80) * (0.75 + 0.5 * (i / n));
+      if (!o.ice) {
+        // the ground tears open ahead of each spike
+        const seg = along(d - sp * 0.5);
+        w.spawn({ texture: tex.fissure, layer: 'ground', groundAligned: true, blend: 'normal', ...seg, life: 1900 - i * 40,
+          rotation: o.angle + rand(-0.08, 0.08), scaleX: [sp * 0.6 / 256, sp * 1.25 / 256, outCubic], scaleY: [0.4, 0.9 + i / n * 0.5, outCubic],
+          alpha: envelope(0.02, 0.35, 0.9), tint: stoneTint(p) });
+      }
       spike(w, tex, { ...at, palette: p, height: h, ice: o.ice });
       for (const side of [-1, 1]) {
         const ox = -Math.sin(o.angle) * side * rand(14, 22), oy = Math.cos(o.angle) * side * rand(8, 12);
-        spike(w, tex, { x: at.x + ox, y: at.y + oy, palette: p, height: h * rand(0.35, 0.55), ice: o.ice, life: 800 });
+        spike(w, tex, { x: at.x + ox, y: at.y + oy, palette: p, height: h * rand(0.35, 0.55), ice: o.ice, life: 800,
+          ...(o.ice ? {} : { lean: Math.sign(ox || side) * rand(0.18, 0.38), fx: false }) });
       }
       w.shake(o.ice ? 2 : 4, 120);
       o.onSpike?.(at, i);
