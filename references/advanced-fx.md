@@ -20,11 +20,12 @@ high speed.
 
 ### Parametric ribbons
 
-`flowRibbon(w, { point, alpha, life, width, tint, blend?, layer? })` draws a timed
+`flowRibbon(w, { point, alpha, life, width, segments?, tint, blend?, layer? })` draws a timed
 curve instead of recording target history. `point(u, ageMs, out)` writes ground x/y
 and height z for u in 0..1; `alpha(ageMs)` controls opacity. The mesh projects each
 sample to `(x, y - z)`. `life` is milliseconds, `width` is pixels, and layer is
 `ground` or `body` (default body, sorted at the curve midpoint's ground y).
+`segments` defaults to 10; use 48 for smooth multi-turn evolution spirals.
 It returns a Handle; stop, natural expiry and world clear dispose the owned mesh.
 Unlike `ribbonTrail.stop()`, stop removes it immediately, so put any fade into alpha.
 Used by specialized water/wind effects. See the [API index](api.md) for both ribbon APIs.

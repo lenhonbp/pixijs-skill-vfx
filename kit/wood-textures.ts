@@ -74,6 +74,8 @@ interface WoodTextures {
 
 let cache: WoodTextures | undefined;
 
+export const isWoodEnergyTexture = (texture: Texture) => texture === cache?.halo || texture === cache?.shaft;
+
 export function woodTextures(): WoodTextures {
   return cache ??= {
     leaves: [leaf(0), leaf(7), leaf(-4)],

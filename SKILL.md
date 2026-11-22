@@ -77,11 +77,74 @@ smoke/aftermath 0.8-2.5 s.
 
 ### Activation tiers and evolution
 
-Use `skillActivation` before a cast and `skillEvolution` for a tier transition.
-The [activation contract](references/recipes.md#activation-and-evolution) covers release
-scheduling, cast-local world facades and aura ownership. Both one-shots return void;
-`empoweredAura` may return undefined. Pass `element` to `empoweredHit` for elemental
-material feedback. The demo's `__vfxDebug` helpers require `?debug` in the URL.
+Wrap casts with `skillActivation(w, tex, { at: () => caster.feet, height, palette, element, tier })`.
+Tier 1 (Cơ bản) releases immediately; tier 2 (Thức tỉnh) at 250 ms; tier 3
+(Tiến hoá) at 400 ms. Schedule gameplay on `w.after(activationRelease(tier), cast)`
+for tiers 2/3, and include that pre-roll in showcase waits. Evolved tiers use
+element motifs instead of a shared rune/wisp stack. The release pillar
+uses the palette's main colour at alpha <=0.16; there is no bright chest overlay
+or top flash at tiers 2/3. Use `empoweredAura` for a sustained post-release remnant
+(`skillActivation.duration` remains accepted for compatibility but has no effect).
+Use `skillEvolution(w, tex, { at, height, palette, element, fromTier, toTier })` for the
+1600 ms one-shot upgrade with element-specific gather → transform → stamp beats:
+converging blades, blooming vine spiral, water spiral/crystal crest, flame vortex,
+rising/slamming rocks, cyclone or lightning cage/strike. Utility gathers palette
+rings. The destination motif stamps at 950 ms; there is no shared rune stack.
+For gameplay after release, run `empoweredAura` for the skill's length and call
+`empoweredHit` at each positive-damage target's chest. Both are no-ops at tier 1.
+Pass an `empoweredWorld(world, { tier, palette, textures })` facade to the skill itself:
+recognized additive energy textures grow 1.2x/1.45x and brighten without retinting,
+including private fire flames, water foam and wood halos/light shafts. Additive
+rope ribbons widen around their unchanged centerline; their endpoints never move.
+Read-only `VfxWorld.energyScale` is 1 normally and 1.2/1.45 on a textured facade;
+lightning widens its channels/halos with it, retaining endpoint coordinates and opacity.
+Normal-blended art, smoke, rocks, icons and other authored materials stay unchanged;
+omitting `textures` conservatively disables visual transforms. Density and trail
+proportions are preserved, as are endpoint-anchored graphics and sprite anchors.
+Checks enforce the total skill+overlay budget.
+Each facade retains its own tier across delayed callbacks and overlapping casts;
+the shared world and tier 1 remain unchanged. Damage in the demo scales 1.3x/1.7x,
+with tier-3 crit numbers. `empoweredAura` returns a stoppable handle and accepts
+`duration: Infinity, idle: true` for a persistent motif (one to seven sprites, or two/three short lightning ribbons).
+Pass `element` to activation, evolution, aura and hit helpers: `kim` orbiting blades
+and a thin ring; `moc` leaf spiral and ground vines/ring; `thuy` ripples and frost shards;
+`hoa` flame tongues/embers; `tho` low rocks and dust ring (cracks only during activation);
+`phong` wind spirals; `loi` continuous feet/leg arcs and violet ground ring.
+Tier 2 is a lighter version of tier 3. Unknown/neutral elements use a visible
+ground halo (alpha <=0.5) in the supplied skill palette, never across the torso.
+No evolved caster motif uses the shared rune or a bright body glow; all render
+behind the caster, and floor rings follow x/y with z=0, even during jumps.
+Always keep native `hitSpark`/authored hit feedback at every tier: `empoweredHit`
+adds alpha-capped behind-target signatures, not a replacement. Frost uses an ice
+ring and six shards; wood sprouts six thorned vines; lightning branches behind
+the target over a violet scorch. Tier-3 signatures last 520 ms; elemental ticks
+use one smaller accent. Repeated
+accents at the same ground position are throttled for their lifetime.
+For Fissure's readable impact, `hitSpark` accepts `coreAlpha: 0` to omit its body
+glow while retaining the native star and eight streaks; the sample uses a warm
+palette core and `feedback: 0.18` at every tier. Other samples' defaults are unchanged.
+For rapid evolved hits the demo uses `hitSpark(..., { ..., refresh: true })`:
+every hit re-triggers the full native burst at that target instead of stacking
+still-living bursts. The default is unchanged. `damageNumber` accepts `compact`;
+evolved demo numbers bake all glyphs into one temporary sprite, retaining
+crit colour/`!`/pop and lifetime. The texture is disposed on completion or clear.
+These keep total budgets without thinning the skill's own art or removing hits.
+The demo disables idle auras in debug/check mode; toggle with `__vfxDebug.idleAura(true)`.
+Pass skills a `withDamageTickFeedback(world, (feet, height, damage) => ...)` facade
+to observe their positive DoT ticks, including delayed status effects, without
+changing skill recipes. Capture the cast's tier/palette in that callback; use
+`empoweredHit(..., { ..., tick: true, element })` for light ground-ring tick feedback.
+Pass `element` for metal glints, wood leaves, fire embers, wind crescents, earth rocks,
+water shard burst/ice ring or branching lightning/scorch; unknown/utility elements get only the supplied
+palette's ring. All accents render behind targets; repeat hits at the same ground
+position are suppressed until the previous accent expires or is cleared.
+Floor-aligned pieces ignore caster height; behind-caster body wisps follow jumps.
+Finite and idle motifs use one to seven sprites; lightning uses a floor ring and
+two/three filterless ribbons, replaced every 115/85 ms and disposed on stop/clear.
+Zero-halo lightning allocates no blur filters. Keep flashes localized.
+All timers/particles use the world clock and `clear()` cancels them.
+Both one-shots return void; `empoweredAura` may return undefined. See the
+[activation contract](references/recipes.md#activation-and-evolution).
 
 Read `references/recipes.md` for the recipe catalog and `kit/recipes.ts` for the code. Start from
 the closest recipe, copy it into the game as a named skill function, and tune it. Core API:
@@ -281,6 +344,7 @@ with `node tools/NAME.mjs`; browser tests require Playwright Chromium. See the
 | `tools/check-docs.mjs` | Export coverage, file map and sample-count gate; npm run check:docs | No; separate CI step |
 | `tools/blender_vfx_rig.py` | Run in Blender to print camera/sun values | No |
 | `tools/test-activation.mjs` | tier facade isolation, density and aura cleanup | No |
+| `tools/test-empowerment-regressions.mjs` | facade hit throttle and filterless idle lightning | No |
 | `tools/test-fire-dragon.mjs` | swept dragon contacts, burn ticks and collision misses; exports checkFireDragon(browser) | Yes; imported helper, not a standalone runner |
 | `tools/test-floor-ring.mjs` | depth, following, mask cleanup and WebGL seam/occlusion pixels | No |
 | `tools/test-hit.mjs` | hit-skin restoration, replacement and recoil transforms | No |

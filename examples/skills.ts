@@ -39,7 +39,7 @@ export interface SkillContext {
   /** All enemies (target included). */
   targets: Unit[];
   /** Apply damage (positive) or healing (negative) and show it. */
-  hurt(u: Unit, amount: number, o?: { crit?: boolean; palette?: Palette; angle?: number; color?: number; feedback?: number; skin?: HitSkinName; push?: number; numberDuration?: number }): void;
+  hurt(u: Unit, amount: number, o?: { crit?: boolean; palette?: Palette; angle?: number; color?: number; feedback?: number; coreAlpha?: number; skin?: HitSkinName; push?: number; numberDuration?: number }): void;
   /** Put the caster back on its start position after a movement skill. */
   returnHome(): void;
   /** Show/hide a unit (blink). */
@@ -389,7 +389,7 @@ export const SKILLS: SkillDef[] = [
           spikeLine(w, tex, {
             from: caster.feet, angle: angleTo(w, caster, target), count: 8, spacing: 48, height: 92,
             onSpike: (at) => near(at, 38, targets).forEach((u) => {
-              hurt(u, 76, { palette: P.tho, angle: -Math.PI / 2 });
+              hurt(u, 76, { palette: { ...P.tho, core: P.tho.main }, feedback: 0.18, coreAlpha: 0, angle: -Math.PI / 2 });
               if (!hitOnce.has(u)) { hitOnce.add(u); stun(w, tex, { target: feetOf(u), height: u.height, duration: 1800 }); }
             }),
           });

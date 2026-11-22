@@ -97,13 +97,19 @@ try {
     const feet = spawned.find(q => !q.o.groundAligned && q.o.follow).o.follow();
     feet.z = 90;
     d.advance(450);
-    const grounded = spawned.filter(q => q.o.layer === 'ground').every(q => q.z === 0);
+    const grounded = spawned.filter(q => q.o.groundAligned).every(q => q.z === 0);
     feet.z = 0;
     w.spawn = spawn;
     w.clear();
-    return { rejected, cleared, grounded };
+    d.cast('kim-sword-rain', 3);
+    d.step(480);
+    const pillars = w.particles.filter(p => p.age >= 0 && p.o.life === 520);
+    const releaseBehindCaster = pillars.length > 0 && pillars.every(p => p.o.layer === 'ground' && p.sprite.alpha <= 0.16);
+    const fullDensity = w.density === 1;
+    w.clear();
+    return { rejected, cleared, grounded, releaseBehindCaster, fullDensity };
   });
-  assert.deepEqual(contracts, { rejected: true, cleared: true, grounded: true });
+  assert.deepEqual(contracts, { rejected: true, cleared: true, grounded: true, releaseBehindCaster: true, fullDensity: true });
   console.log('Activation tier validation, airborne ground projection and interrupted-effect cleanup: PASS');
   const salute = await page.evaluate(() => {
     const d = window.__vfxDebug, w = window.demo.vfx;
@@ -192,6 +198,7 @@ try {
   })));
   await page.close();
   const rows = [];
+  const nativeFeedback = new Map();
   for (const skill of skills) {
     console.log(`Checking ${skill.id}`);
     await browser.close();
@@ -202,14 +209,17 @@ try {
     await page.waitForFunction(() => !!window.__vfxDebug);
     const result = await page.evaluate(({ id, length, tier = 0 }) => {
       const d = window.__vfxDebug, w = window.demo.vfx;
-      let peak = 0, hits = 0, empoweredPeak = 0, tickSparks = 0;
+      let peak = 0, hits = 0, empoweredPeak = 0, tickSparks = 0, nativeSparks = 0, impactAccents = 0, largeFissureCores = 0;
       const empowered = new Map();
       const spawn = w.spawn.bind(w);
       w.spawn = (...args) => {
+        if (d.isEmpowering() && args[0].layer === 'ground' && args[0].life === 520) impactAccents++;
+        if (id === 'tho-fissure' && args[0].life === 110 && args[0].zBias === 5 && args[0].scale?.[0] > 0.4) largeFissureCores++;
         if (args[0].layer === 'top' && args[0].blend === 'normal' && [850, 1100].includes(args[0].life)) hits++;
+        if (((args[0].life === 110 && args[0].zBias === 5) || (args[0].life === 160 && args[0].zBias === 6)) && !d.isEmpowering()) nativeSparks++;
         const p = spawn(...args);
         if (p && d.isEmpowering()) empowered.set(p, p.o);
-        if (p && d.isEmpowering() && args[0].life === 140) tickSparks++;
+        if (p && d.isEmpowering() && args[0].life === 160) tickSparks++;
         for (const [q, o] of empowered) if (q.dead || q.o !== o) empowered.delete(q);
         empoweredPeak = Math.max(empoweredPeak, empowered.size);
         peak = Math.max(peak, w.count); return p;
@@ -222,7 +232,7 @@ try {
         for (let left = length + 1900; left > 0; left -= 16) d.advance(Math.min(left, 16));
         runs.push(d.stats());
       }
-      return { peak, runs, hits, empoweredPeak, tickSparks };
+      return { peak, runs, hits, empoweredPeak, tickSparks, nativeSparks, impactAccents, largeFissureCores };
     }, skill);
     await page.close();
     // SkillDef has no ultimate flag: every sample uses the ordinary 150 cap.
@@ -231,6 +241,10 @@ try {
     const issues = [];
     if (skill.label && ['hoa-fireball', 'tho-fissure', 'thuy-frost-nova', 'moc-toxic-spores'].includes(skill.id) && !result.hits) issues.push('no damaging hits exercised');
     if (skill.label && skill.id === 'moc-toxic-spores' && !result.tickSparks) issues.push('no empowered DoT ticks exercised');
+    if (!skill.label) nativeFeedback.set(skill.id, result.nativeSparks);
+    if (skill.label && nativeFeedback.get(skill.id) > 0 && !result.nativeSparks) issues.push('missing native hitSpark');
+    if (skill.label && ['thuy-frost-nova', 'moc-vine-bind', 'loi-heaven-strike'].includes(skill.id) && !result.impactAccents) issues.push('missing sustained elemental impact accent');
+    if (result.largeFissureCores) issues.push('oversized target-covering Fissure core');
     const budgetStatus = budgetResult(result.peak, budget,
       Object.hasOwn(baseline, skill.id) ? baseline[skill.id] : undefined);
     if (budgetStatus.failure) issues.push(budgetStatus.failure);

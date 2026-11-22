@@ -71,9 +71,53 @@ Works with pixi.js 7.4+ too: `npm i pixi.js@7` and rebuild.
 | `npm run check` | Browser lifecycle, pool, particle-budget and runtime contracts; build first |
 | `npm run check:docs` | Node-only export-index, file-map and sample-count gate |
 
+After `npm install`, install Chromium once with `npx playwright install chromium`.
+Run `npm run capture -- --skills thuy-tidal-beam,kim-sword-rain --out ~/audit/after/`
+to build and serve the demo, then capture seeded, deterministically stepped frames.
+Use comma-separated skill IDs (`--skills a,b`); omit `--skills` to capture all skills.
+Each output directory contains labeled PNG contact sheets and `counts-tierN.json`
+with `--tier N` (otherwise `counts.json`), with live particle counts at each skill's
+length + tier pre-roll + 1900 ms. The default output is `~/audit/before/`;
+`--seed INTEGER` overrides the default seed of 12345.
+
 See [verification and reproducibility](references/extending.md#verification-and-reproducibility)
 for setup, capture flags, tier-less versus tiered captures, exact checkpoints, RNG,
 particle baselines and focused regression tests. Inspect captures as well as counts.
+
+### Evolved casts
+
+Use `skillActivation(w, tex, { at, height, palette, element, tier })`, then start
+gameplay after `activationRelease(tier)` (0/250/400 ms). `empoweredAura` takes the
+same caster options plus `duration` (or `Infinity, idle: true`, keeping its stoppable
+handle). Activation, cast and idle share an element-specific motif: blades,
+vine/leaves, ripples/shards, flame tongues/embers, low rocks, wind spirals or
+lightning arcs. Tier 2 is lighter; tier 3 is stronger. Utility uses its own supplied
+palette's visible grounded halo, not a default purple. Earth adds a dust-coloured
+ring; lightning continuously crackles around feet/legs above a violet ring.
+No evolved shared rune/body glow; floor pieces remain at z=0. `skillEvolution`
+adds `fromTier`/`toTier`: gather → transform → stamp uses converging blades,
+blooming vines, a freezing water spiral, flame vortex, rising/slamming rocks,
+cyclone or lightning cage/strike. Utility gathers restrained palette rings.
+The destination motif appears at 950 ms; evolution finishes at 1600 ms.
+
+Pass `empoweredWorld(w, { tier, palette, textures: tex })` to native skill code:
+only recognized additive energy grows/brightens (1.2x/1.45x), including private fire
+flames, water foam and wood light shafts/halos. `VfxWorld.energyScale` is read-only
+(1 normally; 1.2/1.45 through the facade); lightning uses it to widen channels and
+halos without changing endpoints, opacity or violet colour. Additive ribbons widen without
+moving their centerline/endpoints. Density, tint, authored materials and particle
+trail proportions remain unchanged. Always retain
+native hit feedback at every tier; layer `empoweredHit(w, tex, { at, palette, tier,
+element, tick? })` behind the target for capped, throttled elemental accents, not
+generic ground ellipses. Tier 1 is unchanged. See [recipes](references/recipes.md).
+Fissure keeps its native glint and eight sparks but opts out of the bleaching body
+glow with `hitSpark`'s `coreAlpha: 0`; a warm palette and smaller sparks preserve wood detail.
+The evolved demo re-triggers rapid native bursts with `hitSpark`'s optional
+`refresh: true`, retaining all sparks on every hit without accumulating overlapping
+bursts. `damageNumber`'s optional `compact: true` bakes all glyphs into one temporary
+sprite (disposed on completion/clear), preserving crit styling and lifetime;
+neither option changes defaults or tier 1.
+
 
 ## Utility samples
 

@@ -61,13 +61,43 @@ export function shadowSlash(w: VfxWorld, tex: VfxTextures, o: ShadowSlashOptions
     faceVelocity: true, scaleX: [0.2, 0], scaleY: 0.2, tint: o.palette.main }));
 }
 
-/** Small directional impact burst: use on every hit. `angle` is screen-space (0 = right, -PI/2 = up). */
-export function hitSpark(w: VfxWorld, tex: VfxTextures, o: Vec3 & { angle?: number; palette: Palette; size?: number }) {
+const recentSparks = new WeakMap<VfxWorld, { x: number; y: number; parts: { p: Particle; options: Particle['o'] }[] }[]>();
+
+/** Small directional impact burst. refresh re-triggers living sparks at the same target instead of stacking bursts. */
+export function hitSpark(w: VfxWorld, tex: VfxTextures, o: Vec3 & { angle?: number; palette: Palette; size?: number; refresh?: boolean; coreAlpha?: number }) {
+  if (o.refresh) {
+    const recent = (recentSparks.get(w) ?? []).filter(hit => hit.parts.some(({ p, options }) => !p.dead && p.o === options));
+    const hit = recent.find(hit => hit.x === o.x && hit.y === o.y) ?? { x: o.x, y: o.y, parts: [] };
+    if (!recent.includes(hit)) recent.push(hit);
+    recentSparks.set(w, recent);
+    const previous = hit.parts;
+    hit.parts = [];
+    let index = 0;
+    const scoped = new Proxy(w, { get(target, key) {
+      if (key === 'spawn') return (options: Particle['o']) => {
+        const old = previous[index++];
+        let p: Particle | null;
+        if (old && !old.p.dead && old.p.o === old.options && old.options.texture === options.texture) {
+          p = old.p;
+          p.o = options; p.age = 0; p.px = p.py = p.pz = 0;
+          p.vx = options.vx ?? 0; p.vy = options.vy ?? 0; p.vz = options.vz ?? 0;
+          p.rotation = options.rotation ?? 0; p.alphaMul = 1; p.data = undefined;
+        } else p = target.spawn(options);
+        if (p) hit.parts.push({ p, options: p.o });
+        return p;
+      };
+      const value = Reflect.get(target, key, target);
+      return typeof value === 'function' ? value.bind(key === 'burst' ? scoped : target) : value;
+    } });
+    hitSpark(scoped, tex, { ...o, refresh: false });
+    return;
+  }
   const { x, y } = o;
   const z = o.z ?? 30;
   const size = o.size ?? 1;
   const angle = o.angle ?? 0;
-  w.spawn({ texture: tex.glow, x, y, z, life: 110, zBias: 5, scale: [0.9 * size, 1.6 * size, outQuad], alpha: [1, 0], tint: o.palette.core });
+  if ((o.coreAlpha ?? 1) > 0) w.spawn({ texture: tex.glow, x, y, z, life: 110, zBias: 5,
+    scale: [0.9 * size, 1.6 * size, outQuad], alpha: [o.coreAlpha ?? 1, 0], tint: o.palette.core });
   w.spawn({ texture: tex.star, x, y, z, life: 160, zBias: 6, rotation: rand(0, TAU), spin: 3, scale: [0.9 * size, 0.2 * size, outQuad], tint: o.palette.main });
   w.burst(8, () => {
     const a = angle + rand(-0.9, 0.9);
