@@ -3,7 +3,8 @@ import type { VfxWorld, Vec3 } from './vfx-world';
 import { VfxTextures, TEX_METRICS as M } from './textures';
 import type { Palette } from './recipes';
 import { WUXING, litFlip } from './elements';
-import { random, envelope, lerpColor, outBack, outCubic, outQuad, rand } from './ease';
+import { random, envelope, inQuad, lerp, lerpColor, outBack, outCubic, outQuad, rand } from './ease';
+import { metalSparks } from './metal';
 
 const TAU = Math.PI * 2;
 
@@ -133,7 +134,7 @@ export function spikeRing(w: VfxWorld, tex: VfxTextures, o: { x: number; y: numb
   }
 }
 
-/** Swords of light fall from the sky across an area and stick in the ground (metal). */
+/** Steel swords fall across an area and stick in the ground. */
 export function swordRain(
   w: VfxWorld,
   tex: VfxTextures,
@@ -141,49 +142,59 @@ export function swordRain(
 ) {
   const p = o.palette ?? WUXING.kim.palette;
   const r = o.radius ?? 100;
-  const n = o.count ?? 14;
-  const dur = o.duration ?? 900;
-  const g = { layer: 'ground', groundAligned: true, x: o.x, y: o.y } as const;
-  w.spawn({ ...g, texture: tex.ring, life: dur + 500, scale: (r * 1.05) / M.ringRadius, alpha: envelope(0.1, 0.8, 0.4), tint: p.main });
-  w.spawn({ ...g, texture: tex.glow, life: dur + 500, scale: r / 40, alpha: envelope(0.1, 0.25, 0.4), tint: p.main });
+  const n = o.count ?? 14, dur = o.duration ?? 900, height = o.height ?? 70;
   const fall = 150;
-  const visualCount = Math.ceil(n * 2);
+  w.spawn({ layer: 'ground', groundAligned: true, x: o.x, y: o.y,
+    texture: tex.ring, life: dur + 380, scale: r / M.ringRadius, alpha: envelope(0.08, 0.43, 0.31), tint: p.main });
+  const visualCount = n + Math.round(n * 0.5 * w.density);
   for (let i = 0; i < visualCount; i++) {
-    const t0 = ((i % n) / n) * dur + rand(-30, 30);
+    const t0 = Math.max(0, ((i % n) / n) * dur + rand(-30, 30));
     const a = rand(0, TAU), d = Math.sqrt(random()) * r * 0.9;
     const x = o.x + Math.cos(a) * d, y = o.y + Math.sin(a) * d * w.groundSquash;
-    const tilt = rand(-0.18, 0.18);
-    const length = (o.height ?? 70) * rand(0.6, 0.7), k = length / 160;
-    w.after(Math.max(0, t0), () => {
-      const z0 = 380;
-      w.spawn({ texture: tex.blade, blend: 'normal', x, y, z: z0, vz: -z0 / (fall / 1000), life: fall, anchorY: 1, rotation: tilt, scale: k, tint: p.main });
-      w.spawn({ texture: tex.streak, x: x + Math.sin(tilt) * length, y, z: z0 + Math.cos(tilt) * length,
-        vz: -z0 / (fall / 1000), life: fall, anchorX: 1, rotation: Math.PI / 2 + tilt,
-        scaleX: 0.22, scaleY: 0.2, alpha: [0.15, 0.3], tint: p.main });
-    });
-    w.after(Math.max(0, t0) + fall, () => {
-      const life = 950;
-      w.spawn({ texture: tex.blade, blend: 'normal', x, y, z: -2, life, anchorY: 1, rotation: tilt, scale: k, alpha: ms3(life), tint: p.main });
-      w.spawn({ texture: tex.star, x, y, z: 4, life: 160, zBias: 2, rotation: rand(0, TAU), scale: [0.18, 0], alpha: [0.5, 0], tint: p.main });
-      w.spawn({ texture: tex.ring, layer: 'ground', groundAligned: true, x, y, life: 260, scale: [0.02, 0.12, outCubic], alpha: [0.9, 0], tint: p.main });
-      w.spawn({ texture: tex.swordCrack, layer: 'ground', groundAligned: true, blend: 'normal', x, y,
-        life, rotation: rand(0, TAU), scale: 0.45, alpha: ms3(life), tint: p.dark });
-      w.spawn({ texture: tex.puff, blend: 'normal', x, y, z: 3, life: 300,
-        scale: [0.08, 0.3], alpha: [0.22, 0], tint: p.dark });
-      w.after(700, () => w.burst(4, () => ({ texture: tex.dot, x: x + rand(-5, 5), y,
-        z: rand(3, length), life: 350, vz: rand(15, 40), scale: [0.08, 0], alpha: [0.5, 0], tint: p.main })));
-      w.burst(3, () => {
-        const b = rand(0, TAU), sp = rand(150, 320);
-        return { texture: tex.streak, x, y, z: 4, life: rand(100, 180), vx: Math.cos(b) * sp, vy: Math.sin(b) * sp * w.groundSquash, vz: rand(60, 120), gravity: 900, killOnGround: true, faceVelocity: true, scaleX: [0.1, 0.02], scaleY: 0.2, alpha: [0.5, 0], tint: p.main };
+    const tilt = rand(-0.25, 0.25), length = height * rand(0.88, 1.14);
+    const k = length / 160, z0 = height * 3.55;
+    const blade = { texture: tex.blade, blend: 'normal', x, y, anchorY: 1, rotation: tilt, scale: k } as const;
+    w.after(t0, () => {
+      w.spawn({ texture: tex.puff, layer: 'ground', groundAligned: true, blend: 'normal', x, y,
+        life: fall, scale: [0.31, 0.14, inQuad], alpha: [0.1, 0.72, inQuad], tint: 0x17131b });
+      w.spawn({ ...blade, life: fall, onUpdate: (q, t) => {
+        const z = z0 * (1 - inQuad(t));
+        q.sprite.position.set(x + Math.sin(tilt) * z, y - z);
+        q.sprite.scale.x = k * lerp(0.6, 1, t);
+      } });
+      w.spawn({ texture: tex.streak, x, y, life: fall, anchorX: 1, rotation: Math.PI / 2 + tilt,
+        scaleX: [0.12, 0.68, inQuad], scaleY: [0.2, 0.52], alpha: envelope(0.22, 0.22, 0.52),
+        tint: lerpColor(p.main, 0xc5def3, 0.68), onUpdate: (q, t) => {
+          const z = z0 * (1 - inQuad(t)) + length * 0.48;
+          q.sprite.position.set(x + Math.sin(tilt) * z, y - z);
+        },
       });
+    });
+    w.after(t0 + fall, () => {
+      const life = rand(760, 930);
+      const phase = rand(0, TAU);
+      w.spawn({ ...blade, z: -5, life, alpha: envelope(0, 0.28),
+        onUpdate: (q, t) => {
+          q.sprite.rotation = tilt + Math.sin(t * 43) * Math.exp(-t * 25) * 0.12;
+          q.sprite.scale.x = k * (0.94 + Math.cos(phase + t * 9) * Math.exp(-t * 8) * 0.09);
+        },
+      });
+      w.spawn({ texture: tex.swordCrack, layer: 'ground', groundAligned: true, blend: 'normal', x, y,
+        life, rotation: rand(0, TAU), scale: rand(0.57, 0.85), alpha: envelope(0, 0.3, 0.89) });
       if (i < n) {
+        w.spawn({ texture: tex.puff, layer: 'ground', blend: 'normal', groundAligned: true, x, y, life: 260,
+          scale: [0.12, 0.37, outCubic], alpha: [0.38, 0], tint: 0x8e7c68 });
+        w.spawn({ texture: tex.star, x, y, z: 3, life: 110, rotation: rand(-0.5, 0.5), zBias: 2,
+          scaleX: [0.18, 0.03], scaleY: [0.09, 0.02], alpha: [0.85, 0], tint: p.core });
         w.shake(2.5, 90);
         o.onImpact?.({ x, y, z: 0 });
       }
+      metalSparks(w, tex, { x, y, z: 4 }, p, 3, undefined, 0.64);
+      if (i % 2 === 0) {
+        const z = length * rand(0.55, 0.77);
+        w.spawn({ texture: tex.star, x: x + Math.sin(tilt) * z, y, z, delay: rand(150, 430), life: 160,
+          zBias: 2, rotation: tilt, scale: [0.17, 0.028], alpha: envelope(0.12, 0.82, 0.72), tint: p.core });
+      }
     });
   }
-}
-
-function ms3(life: number) {
-  return (t: number) => (t * life > life - 250 ? Math.max(0, (life - t * life) / 250) : 1);
 }

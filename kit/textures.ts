@@ -2,6 +2,7 @@
 // colors it, and baked ONCE at startup (never per frame).
 import type { Texture } from 'pixi.js';
 import { textureFromCanvas } from './pixi-compat';
+import { makeBellSurfaces, makeSteelBlade } from './metal-surfaces';
 
 export interface VfxTextures {
   /** Soft radial glow, quadratic falloff. Size 128. The workhorse. */
@@ -60,7 +61,7 @@ export interface VfxTextures {
   plus: Texture;
   /** Split shield outline with a jagged crack. 64x80. Armor break. */
   crackedShield: Texture;
-  /** Temple bell with hanging loop, bands, studs and translucent engraved body. 256x320. */
+  /** Cast-bronze temple bell with hanging loop, bands and engravings. 256x320. */
   bell: Texture;
   /** Fractures aligned to bell, with the same size and anchor. */
   bellCracks: Texture;
@@ -256,32 +257,17 @@ export function createVfxTextures(): VfxTextures {
     return textureFromCanvas(c);
   })();
 
-  const blade = (() => {
-    const [c, ctx] = makeCanvas(64, 160);
-    const g = ctx.createLinearGradient(21, 0, 43, 0);
-    g.addColorStop(0, '#fff8db'); g.addColorStop(0.18, '#ffffff');
-    g.addColorStop(0.48, '#dbcda5'); g.addColorStop(0.52, '#8d8060'); g.addColorStop(1, '#c0ad7d');
-    ctx.fillStyle = g;
-    ctx.beginPath();
-    ctx.moveTo(21, 45); ctx.lineTo(43, 45); ctx.lineTo(41, 132); ctx.lineTo(32, 159); ctx.lineTo(23, 132);
-    ctx.closePath(); ctx.fill();
-    ctx.strokeStyle = '#766346'; ctx.lineWidth = 2; ctx.stroke();
-    ctx.beginPath(); ctx.moveTo(32, 55); ctx.lineTo(32, 132); ctx.stroke();
-    ctx.fillStyle = '#e6d19a'; ctx.strokeStyle = '#75603b';
-    ctx.beginPath(); ctx.moveTo(5, 35); ctx.lineTo(23, 39); ctx.lineTo(32, 35); ctx.lineTo(41, 39);
-    ctx.lineTo(59, 35); ctx.lineTo(56, 48); ctx.lineTo(8, 48); ctx.closePath(); ctx.fill(); ctx.stroke();
-    ctx.fillStyle = '#756044'; ctx.fillRect(26, 12, 12, 24);
-    ctx.strokeStyle = '#d8c492';
-    for (const y of [17, 24, 31]) { ctx.beginPath(); ctx.moveTo(27, y); ctx.lineTo(37, y + 3); ctx.stroke(); }
-    ctx.fillStyle = '#f0ddaa'; ctx.beginPath(); ctx.arc(32, 9, 7, 0, Math.PI * 2); ctx.fill();
-    return textureFromCanvas(c);
-  })();
+  const blade = makeSteelBlade();
   const swordCrack = (() => {
     const [c, ctx] = makeCanvas(64, 32);
-    ctx.strokeStyle = 'white'; ctx.lineWidth = 3; ctx.lineJoin = 'bevel';
-    ctx.beginPath(); ctx.moveTo(3, 19); ctx.lineTo(18, 14); ctx.lineTo(29, 19);
-    ctx.lineTo(36, 10); ctx.lineTo(60, 13); ctx.moveTo(29, 19); ctx.lineTo(38, 28);
-    ctx.moveTo(36, 10); ctx.lineTo(29, 2); ctx.stroke();
+    ctx.lineJoin = 'bevel';
+    ctx.beginPath(); ctx.moveTo(3, 23); ctx.lineTo(16, 17); ctx.lineTo(31, 16);
+    ctx.lineTo(38, 9); ctx.lineTo(60, 6); ctx.moveTo(31, 16); ctx.lineTo(41, 26); ctx.lineTo(54, 28);
+    ctx.moveTo(31, 16); ctx.lineTo(27, 10); ctx.lineTo(17, 6);
+    ctx.lineWidth = 4; ctx.strokeStyle = '#867264'; ctx.stroke();
+    ctx.lineWidth = 2; ctx.strokeStyle = '#18141b'; ctx.stroke();
+    ctx.fillStyle = '#17131a';
+    ctx.beginPath(); ctx.ellipse(31, 16, 9, 4, -0.17, 0, Math.PI * 2); ctx.fill();
     return textureFromCanvas(c);
   })();
 
@@ -591,70 +577,7 @@ export function createVfxTextures(): VfxTextures {
     ctx.strokeStyle = '#3b3731'; ctx.lineWidth = 2.5; ctx.stroke();
     return textureFromCanvas(c);
   })();
-  const bell = (() => {
-    const [c, ctx] = makeCanvas(256, 320);
-    ctx.beginPath();
-    ctx.moveTo(100, 48);
-    ctx.bezierCurveTo(72, 54, 58, 72, 55, 106);
-    ctx.lineTo(44, 244);
-    ctx.quadraticCurveTo(42, 262, 22, 279);
-    ctx.lineTo(18, 296);
-    ctx.quadraticCurveTo(128, 320, 238, 296);
-    ctx.lineTo(234, 279);
-    ctx.quadraticCurveTo(214, 262, 212, 244);
-    ctx.lineTo(201, 106);
-    ctx.bezierCurveTo(198, 72, 184, 54, 156, 48);
-    ctx.closePath();
-    const fill = ctx.createLinearGradient(18, 0, 238, 0);
-    fill.addColorStop(0, 'rgba(86,70,48,0.72)');
-    fill.addColorStop(0.18, 'rgba(211,195,159,0.58)');
-    fill.addColorStop(0.3, 'rgba(255,249,222,0.62)');
-    fill.addColorStop(0.4, 'rgba(220,206,169,0.56)');
-    fill.addColorStop(0.7, 'rgba(157,137,100,0.58)');
-    fill.addColorStop(1, 'rgba(76,59,38,0.76)');
-    ctx.fillStyle = fill; ctx.fill();
-    ctx.strokeStyle = 'rgba(134,112,72,0.88)'; ctx.lineWidth = 7; ctx.stroke();
-    ctx.beginPath(); ctx.ellipse(128, 27, 14, 20, 0, 0, Math.PI * 2);
-    ctx.strokeStyle = 'rgba(224,208,161,0.95)'; ctx.lineWidth = 12; ctx.stroke();
-    ctx.fillStyle = 'rgba(180,155,102,0.95)'; ctx.fillRect(108, 43, 40, 12);
-    for (const [y, x] of [[104, 55], [220, 46], [278, 24]]) {
-      ctx.beginPath(); ctx.moveTo(x, y); ctx.quadraticCurveTo(128, y + 14, 256 - x, y);
-      ctx.strokeStyle = 'rgba(100,78,44,0.8)'; ctx.lineWidth = 13; ctx.stroke();
-      ctx.beginPath(); ctx.moveTo(x, y + 7); ctx.quadraticCurveTo(128, y + 21, 256 - x, y + 7);
-      ctx.strokeStyle = 'rgba(242,226,182,0.85)'; ctx.lineWidth = 7; ctx.stroke();
-    }
-    for (const x of [70, 99, 128, 157, 186]) {
-      ctx.beginPath(); ctx.arc(x, 130 + Math.sin((x - 55) / 146 * Math.PI) * 4, 4.5, 0, Math.PI * 2);
-      ctx.fillStyle = 'rgba(255,255,255,0.85)'; ctx.fill();
-    }
-    ctx.strokeStyle = 'rgba(95,74,40,0.32)'; ctx.lineWidth = 2;
-    for (const x of [65, 108, 151]) {
-      ctx.strokeRect(x, 151, 36, 53);
-      ctx.beginPath(); ctx.moveTo(x + 9, 168); ctx.lineTo(x + 27, 168);
-      ctx.lineTo(x + 18, 189); ctx.closePath(); ctx.stroke();
-      ctx.strokeRect(x - 3, 238, 39, 24);
-    }
-    const lip = ctx.createLinearGradient(0, 282, 0, 309);
-    lip.addColorStop(0, 'rgba(240,222,172,0.92)');
-    lip.addColorStop(0.45, 'rgba(165,137,84,0.9)');
-    lip.addColorStop(1, 'rgba(73,53,28,0.94)');
-    ctx.fillStyle = lip;
-    ctx.beginPath(); ctx.ellipse(128, 295, 110, 13, 0, 0, Math.PI * 2); ctx.fill();
-    ctx.strokeStyle = 'rgba(235,216,164,0.85)'; ctx.lineWidth = 4; ctx.stroke();
-    return textureFromCanvas(c);
-  })();
-  const bellCracks = (() => {
-    const [c, ctx] = makeCanvas(256, 320);
-    ctx.strokeStyle = 'white'; ctx.lineWidth = 4; ctx.lineJoin = 'bevel';
-    for (const points of [
-      [[115, 51], [133, 91], [117, 124], [147, 165], [129, 207], [153, 250], [139, 305]],
-      [[117, 124], [87, 149], [97, 177], [50, 200]],
-      [[129, 207], [179, 229], [171, 258], [222, 284]],
-    ]) {
-      ctx.beginPath(); points.forEach(([x, y], i) => i ? ctx.lineTo(x, y) : ctx.moveTo(x, y)); ctx.stroke();
-    }
-    return textureFromCanvas(c);
-  })();
+  const { bell, bellCracks } = makeBellSurfaces();
 
   const digits: Record<string, Texture> = {};
   for (const ch of '0123456789+-!') {

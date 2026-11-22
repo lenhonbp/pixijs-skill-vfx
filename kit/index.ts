@@ -11,6 +11,7 @@ export * from './thunder';
 export * from './numbers';
 export * from './status';
 export * from './bell';
+export { metalSlash, metalSparks, swordSalute } from './metal';
 export * from './stone-armor';
 export * from './spirit-guardian';
 export * from './mountain-crash';
