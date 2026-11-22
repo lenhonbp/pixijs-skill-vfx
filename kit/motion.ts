@@ -4,7 +4,10 @@ import type { Sprite } from 'pixi.js';
 import type { VfxWorld, Vec3, Handle, Particle } from './vfx-world';
 import { VfxTextures, TEX_METRICS as M } from './textures';
 import { dropShadow, shockwave, type Palette } from './recipes';
-import { envelope, inOutSine, inQuad, lerp, outCubic, outQuad, rand } from './ease';
+import { group } from './group';
+import { curlDrift } from './noise';
+import { fireTextures } from './fire-textures';
+import { envelope, inOutSine, inQuad, lerp, outCubic, outQuad, pick, rand } from './ease';
 
 const TAU = Math.PI * 2;
 
@@ -15,6 +18,55 @@ export function afterimage(w: VfxWorld, sprite: Sprite, at: Vec3, o: { tint?: nu
     anchorX: sprite.anchor.x, anchorY: sprite.anchor.y, scaleX: sprite.scale.x, scaleY: sprite.scale.y,
     alpha: [o.alpha ?? 0.55, 0, outQuad], tint: o.tint ?? 0xffffff,
   });
+}
+
+/** A ground-hugging smoke passage with a visible gathering phase and violet edges. */
+export function shadowStep(w: VfxWorld, tex: VfxTextures,
+  o: { from: Vec3; to: Vec3; palette: Palette; height: number; sprite?: Sprite;
+    windup?: number; travel?: number; onVanish?: () => void; onAppear?: () => void }): Handle {
+  const windup = o.windup ?? 260, travel = o.travel ?? 160, h = o.height, s = h / 96, p = o.palette;
+  const g = group(w, windup + travel + 1200, undefined, 200);
+  const smoke = (at: Vec3, n: number, rising: boolean) => {
+    for (let i = 0; i < n; i++) {
+      const x = rand(-22, 22) * s, z = rising ? rand(0.1, 0.8) * h : rand(2, 12);
+      g.add(w.spawn({ texture: pick(fireTextures().smoke), blend: 'normal', x: at.x + x, y: at.y + rand(-5, 5), z: (at.z ?? 0) + z,
+        life: rand(650, 1100), vx: rand(-16, 16), vz: rand(12, 35), spin: rand(-1, 1),
+        scaleX: [rand(0.35, 0.55) * s, 0.85 * s], scaleY: [0.45 * s, 0.65 * s],
+        alpha: envelope(0.08, 0.35, 0.65), tint: i % 2 ? 0x24172f : 0x493653,
+        onUpdate: curlDrift(25, 55, 0.8), zBias: 5 }));
+      if (i % 4 === 0) g.add(w.spawn({ texture: rising ? tex.crescent : tex.glow, x: at.x + x, y: at.y, z,
+        life: 400, scaleX: rising ? [0.08 * s, 0.15 * s] : [0.3 * s, 0.5 * s],
+        scaleY: rising ? [0.2 * s, 0.3 * s] : [0.12 * s, 0.05 * s],
+        rotation: rising ? rand(-0.7, 0.7) : 0, alpha: [rising ? 0.3 : 0.075, 0], tint: p.main, vz: 20, zBias: 6 }));
+    }
+  };
+  g.add(w.spawn({ texture: tex.disc, ...o.from, layer: 'ground', groundAligned: true, blend: 'normal',
+    life: windup + 600, scale: [0.1 * s, 0.4 * s, outCubic], alpha: envelope(0.15, 0.5, 0.8), tint: 0x130d20 }));
+  for (let i = 0; i < 6; i++) g.add(w.spawn({ texture: tex.crescent, ...o.from,
+    z: i * h * 0.1, life: windup + 160, delay: i * 18, blend: 'normal',
+    scaleX: [0.08 * s, 0.18 * s], scaleY: [0.18 * s, 0.32 * s],
+    alpha: envelope(0.15, 0.5, 0.8), tint: i % 2 ? p.dark : 0x30203e, spin: i % 2 ? 3 : -3,
+    onUpdate: (q) => { q.px = Math.sin(q.age * 0.012 + i) * 13 * s; q.pz = h * q.age / 900; } }));
+  g.addHandle(w.after(windup, () => {
+    o.onVanish?.();
+    smoke(o.from, 12, true);
+    for (let i = 0; i < 14; i++) g.addHandle(w.after(i / 14 * travel, () => {
+      const t = i / 13;
+      smoke({ x: lerp(o.from.x, o.to.x, t), y: lerp(o.from.y, o.to.y, t), z: 0 }, 1, false);
+    }));
+  }));
+  g.addHandle(w.after(windup + travel, () => {
+    o.onAppear?.();
+    smoke(o.to, 14, true);
+    if (o.sprite) for (let i = 0; i < 3; i++) {
+      const sprite = o.sprite;
+      g.add(w.spawn({ texture: sprite.texture, x: o.to.x + (o.from.x < o.to.x ? -1 : 1) * (i + 1) * 13 * s,
+        y: o.to.y, z: o.to.z ?? 0, life: 350 + i * 90, anchorX: sprite.anchor.x, anchorY: sprite.anchor.y,
+        scaleX: (o.from.x < o.to.x ? -1 : 1) * Math.abs(sprite.scale.x), scaleY: sprite.scale.y,
+        alpha: [0.23 - i * 0.04, 0], tint: p.main, blend: 'normal', zBias: -1 }));
+    }
+  }));
+  return g;
 }
 
 function dust(w: VfxWorld, tex: VfxTextures, at: Vec3, n: number, size: number, color = 0xb8ab98) {

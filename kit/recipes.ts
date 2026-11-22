@@ -33,6 +33,21 @@ export const PALETTES = {
 
 const TAU = Math.PI * 2;
 
+/** Crossing ink crescents with a narrow violet edge instead of a white impact core. */
+export function shadowSlash(w: VfxWorld, tex: VfxTextures, o: Vec3 & { facing: number; height: number; palette: Palette }) {
+  for (const angle of [-0.65, 0.65]) {
+    const base = { x: o.x, y: o.y, z: (o.z ?? 0) + o.height * 0.55,
+      rotation: angle + (o.facing > 0 ? 0 : Math.PI), life: 230, zBias: 8 };
+    w.spawn({ ...base, texture: tex.crescent, blend: 'normal', tint: 0x160b24,
+      scaleX: [0.25, 0.65, outCubic], scaleY: [0.55, 0.3], alpha: [0.85, 0], spin: o.facing * 3 });
+    w.spawn({ ...base, texture: tex.crescent, tint: o.palette.main, life: 130,
+      scaleX: [0.23, 0.6, outCubic], scaleY: [0.16, 0.05], alpha: [0.65, 0], spin: o.facing * 3 });
+  }
+  w.burst(6, () => ({ texture: tex.streak, x: o.x, y: o.y, z: (o.z ?? 0) + o.height * 0.55,
+    life: rand(150, 280), vx: o.facing * rand(60, 150), vz: rand(-70, 100), drag: 3,
+    faceVelocity: true, scaleX: [0.2, 0], scaleY: 0.2, tint: o.palette.main }));
+}
+
 /** Small directional impact burst: use on every hit. `angle` is screen-space (0 = right, -PI/2 = up). */
 export function hitSpark(w: VfxWorld, tex: VfxTextures, o: Vec3 & { angle?: number; palette: Palette; size?: number }) {
   const { x, y } = o;

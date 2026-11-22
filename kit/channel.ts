@@ -1,13 +1,77 @@
 // Channeled and cast-time effects: beams, cone breath, charge-up, summon circles.
 import type { VfxWorld, Vec3, Handle, Particle } from './vfx-world';
+import type { Sprite } from 'pixi.js';
 import { VfxTextures, TEX_METRICS as M } from './textures';
 import { shockwave, type Palette } from './recipes';
 import { floorRing } from './floor-ring';
 import { group, ms } from './group';
 import { Distortion } from './postfx';
+import { burnFlames } from './fire';
 import { clamp01, envelope, inQuad, lerp, lerpColor, outBack, outCubic, outQuad, rand } from './ease';
 
 const TAU = Math.PI * 2;
+
+/** Braced breath-in, directional sound fronts, then a single ember-wreathed rune. */
+export function battleCry(w: VfxWorld, tex: VfxTextures,
+  o: { target: () => Vec3; height: number; facing: number; palette: Palette; sprite?: Sprite; windup?: number; duration?: number }): Handle {
+  const windup = o.windup ?? 340, duration = o.duration ?? 2800, h = o.height, s = h / 96, p = o.palette;
+  const g = group(w, windup + duration, undefined, 250);
+  if (o.sprite) {
+    const sprite = o.sprite, sy = sprite.scale.y, rotation = sprite.rotation;
+    let age = 0, bracing = true;
+    const restore = () => {
+      if (bracing && !sprite.destroyed) { sprite.scale.y = sy; sprite.rotation = rotation; }
+      bracing = false;
+    };
+    const unown = w.own(restore);
+    g.addHandle({ stop: () => { restore(); unown(); }, get alive() { return bracing; } });
+    g.addHandle(w.addUpdater((dt) => {
+      age += dt;
+      if (sprite.destroyed || age >= windup + 180) { restore(); unown(); return false; }
+      const brace = age < windup ? outCubic(age / windup) : 1 - outQuad((age - windup) / 180);
+      sprite.scale.y = sy * (1 - brace * 0.09); sprite.rotation = rotation - o.facing * brace * 0.055;
+    }));
+  }
+  g.add(w.spawn({ texture: tex.glow, x: 0, y: 0, follow: o.target, layer: 'ground', groundAligned: true,
+    life: windup + 450, scale: [0.2 * s, 1.1 * s, outCubic], alpha: envelope(0.4, 0.5, 0.4), tint: p.main }));
+  g.add(w.spawn({ texture: tex.glow, x: 0, y: 0, z: h * 0.55, follow: o.target,
+    life: windup, scale: [0.15 * s, 0.65 * s], alpha: [0.05, 0.32], tint: p.main, zBias: 4 }));
+  for (let i = 0; i < 22; i++) {
+    const a = rand(0, TAU), r = rand(35, 75) * s, dust = i % 3 === 0;
+    const x = Math.cos(a) * r, z = Math.sin(a) * r;
+    g.add(w.spawn({ texture: dust ? tex.puff : tex.streak, blend: dust ? 'normal' : 'add',
+      x, y: 0, z: h * 0.55 + z, follow: o.target, life: windup, vx: -x / windup * 1000,
+      vz: -z / windup * 1000, faceVelocity: !dust, scaleX: dust ? 0.12 * s : [0.12 * s, 0.3 * s],
+      scaleY: dust ? 0.18 * s : 0.22 * s, alpha: envelope(0.15, 0.65, dust ? 0.3 : 0.65),
+      tint: dust ? 0x8c5841 : p.main }));
+  }
+  g.addHandle(w.after(windup, () => {
+    const at = o.target();
+    shockwave(w, tex, { ...at, radius: 100 * s, palette: p, duration: 450 });
+    w.shake(3, 180);
+    for (let i = 0; i < 3; i++) g.add(w.spawn({ texture: tex.crescent, ...at, z: h * 0.65,
+      delay: i * 85, life: 430, vx: o.facing * 75 * s, rotation: o.facing > 0 ? 0 : Math.PI,
+      scaleX: [0.15 * s, 0.95 * s, outCubic], scaleY: [0.2 * s, 0.85 * s, outCubic],
+      alpha: [0.6 - i * 0.1, 0], tint: i === 0 ? p.core : p.main, zBias: 8 }));
+    for (let i = 0; i < 12; i++) {
+      const a = i * TAU / 12 + rand(-0.1, 0.1), speed = rand(65, 130) * s;
+      g.add(w.spawn({ texture: tex.puff, blend: 'normal', ...at, z: 3, life: rand(550, 850),
+        vx: Math.cos(a) * speed, vy: Math.sin(a) * speed * w.groundSquash, vz: rand(8, 25), drag: 2,
+        scale: [0.15 * s, 0.5 * s], alpha: envelope(0.1, 0.3, 0.28), tint: 0x98745b, spin: rand(-1, 1) }));
+    }
+    const rune = floorRing(w, tex, { around: o.target, texture: tex.rune, textureRadius: M.runeRadius,
+      radius: 44 * s, palette: p, duration, alpha: ms.env(duration, 180, 500, 0.65), spin: 0.25 });
+    g.add(rune.far); g.add(rune.near);
+    g.add(w.spawn({ texture: tex.glow, x: 0, y: 0, z: h * 0.42, follow: o.target,
+      life: duration, scaleX: 0.6 * s, scaleY: 1.2 * s, alpha: ms.env(duration, 200, 650, 0.15), tint: p.main, zBias: -1 }));
+    g.addHandle(w.stream({ rate: 20, duration: duration - 300, make: () => ({ texture: tex.dot,
+      x: rand(-22, 22) * s, y: rand(-8, 8) * s, z: rand(3, h * 0.35), follow: o.target,
+      life: rand(600, 1000), vz: rand(35, 75) * s, vx: rand(-9, 9) * s,
+      scale: [rand(0.045, 0.09) * s, 0], alpha: envelope(0.1, 0.5, 0.75), tint: [p.core, p.main] }) }));
+    g.addHandle(burnFlames(w, o.target, h * 0.85, duration - 400, p));
+  }));
+  return g;
+}
 
 /** Lay a beam sprite (anchorX 0) between two 3D points; sorted at the nearer end. */
 function placeSegment(q: Particle, a: Vec3, b: Vec3, scaleY: number) {

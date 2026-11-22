@@ -6,14 +6,14 @@ import type { Sprite } from 'pixi.js';
 import {
   VfxWorld, VfxTextures, Vec3, Palette, WUXING, PHONG, LOI, AnyElementName, SkillTiming, HitSkinName, onHits,
   tornado, windSlash, windSweep, vortex, windWisps, windPressure, windRush,
-  slash, hitSpark, hitFlash, hitSkin, projectile, lightningChain, telegraph, shockwave,
+  slash, shadowSlash, hitSpark, hitFlash, hitSkin, projectile, lightningChain, telegraph, shockwave,
   fireball, fireBreath, fireCharge, fireDragonCrossing, fireImpact, fireMeteor,
   woodCharge, seedFlight, springBloom, toxicSporeCloud,
   damageOverTime, stun, shock, freeze, slow, root, statChange, damageNumber,
   silence, blind, armorBreak, mark, fear, aura, empower, haste, sigilCharge, sunderingMark,
   goldenBell, metalSlash, metalSparks, swordSalute, stoneArmor, spiritGuardian, mountainCrash,
   lightningStrike, staticField, lightningCharge, lightningWarning, lightningStun, stormCloud,
-  dash, blink, leap, beam, chargeUp, summonCircle, spikeLine, spikeRing, swordRain,
+  dash, blink, shadowStep, battleCry, leap, beam, chargeUp, summonCircle, spikeLine, spikeRing, swordRain,
   rand, envelope, outCubic, outQuad, lerp, clamp01,
   frostNova, glacierPath, tidalBeam,
 } from '../kit';
@@ -662,35 +662,29 @@ export const SKILLS: SkillDef[] = [
   },
   {
     id: 'war-cry', element: 'neutral', category: 'buff', en: 'War Cry', vi: 'Chiến Hống',
-    timing: { windup: 300, hits: [], recovery: 3700 },
-    desc: 'A rallying shockwave surrounds the caster with a fiery power aura and trailing speed lines.',
-    uses: ['chargeUp', 'shockwave', 'aura', 'empower', 'haste'], length: 4000,
+    timing: { windup: 340, hits: [], recovery: 3660 },
+    desc: 'Brace, unleash a fiery roar, and rally within an ember-wreathed battle rune.',
+    uses: ['battleCry', 'shockwave'], length: 4000,
     cast: ({ w, tex, caster }) => {
-      chargeUp(w, tex, { target: () => hand(caster), palette: P.hoa, duration: 300,
-        release: { color: P.hoa.main, size: 0.6, coreSize: 0.2, alpha: 0.35 },
-        onDone: () => {
-          shockwave(w, tex, { ...caster.feet, radius: 85, palette: P.hoa, duration: 350 });
-          const at = { target: feetOf(caster), height: caster.height, duration: 3000 };
-          aura(w, tex, { ...at, palette: P.hoa, radius: 38, intensity: 0.65 });
-          empower(w, tex, at); haste(w, tex, at);
-        },
-      });
+      battleCry(w, tex, { target: feetOf(caster), height: caster.height, facing: caster.facing,
+        palette: P.hoa, sprite: caster.sprite, windup: 340, duration: 2800 });
     },
   },
   {
     id: 'shadow-blink', element: 'neutral', category: 'movement', en: 'Shadow Step', vi: 'Ảnh Bộ',
-    timing: { windup: 180, hits: [{ t: 340, skin: 'shadow', targets: 'primary' }], recovery: 800 },
-    desc: 'Teleport behind the target and strike.', uses: ['blink', 'slash'], length: 2200,
+    timing: { windup: 260, hits: [{ t: 580, skin: 'shadow', targets: 'primary' }], recovery: 800 },
+    desc: 'Dissolve into creeping shadows, reform behind the target, and carve a violet cross.', uses: ['shadowStep', 'shadowSlash'], length: 2200,
     cast: ({ w, tex, caster, target, hurt, returnHome, setVisible }) => {
       const to = { x: target.feet.x + caster.facing * 55, y: target.feet.y + 4, z: 0 };
-      blink(w, tex, {
-        from: { ...caster.feet }, to, palette: P.shadow, height: caster.height,
+      shadowStep(w, tex, {
+        from: { ...caster.feet }, to, palette: P.shadow, height: caster.height, sprite: caster.sprite,
         onVanish: () => setVisible(caster, false),
         onAppear: () => {
           caster.feet.x = to.x; caster.feet.y = to.y; caster.facing *= -1; setVisible(caster, true);
           w.after(90, () => {
-            slash(w, tex, { ...caster.feet, angle: caster.facing > 0 ? 0 : Math.PI, palette: P.shadow, radius: 90 });
-            w.after(70, () => hurt(target, 154, { palette: P.shadow, skin: 'shadow', crit: true, angle: caster.facing > 0 ? 0 : Math.PI }));
+            shadowSlash(w, tex, { ...target.feet, facing: caster.facing, height: target.height, palette: P.shadow });
+            w.after(70, () => hurt(target, 154, { palette: { ...P.shadow, core: P.shadow.main }, feedback: 0.18,
+              skin: 'shadow', crit: true, angle: caster.facing > 0 ? 0 : Math.PI }));
           });
           w.after(800, () => { caster.facing *= -1; returnHome(); });
         },
