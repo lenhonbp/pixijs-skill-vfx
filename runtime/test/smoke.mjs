@@ -125,6 +125,9 @@ try {
   await page.getByRole('button', { name: 'All elements', exact: true }).click();
   await page.locator('#search').fill('fireball'); assert.equal(await page.locator('.skill').count(), 1);
   await page.locator('#search').fill('');
+  await page.locator('#loop').check(); await page.locator('#sound').check();
+  await page.waitForFunction(() => window.__showcase.audioState() === 'running');
+  console.log('Showcase sound toggle: PASS (AudioContext starts while an existing loop is active)');
   await page.evaluate(async () => {
     const s = window.__showcase; s.select('hoa-fire-dragon-crossing');
     await s.vfx.load('./packs/free/hoa-fire-dragon-crossing.vfxb');

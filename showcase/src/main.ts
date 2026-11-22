@@ -44,6 +44,7 @@ const response = await fetch(`${base}packs/free/index.json`); if (!response.ok) 
 const packs: Entry[] = await response.json();
 let selected = packs.find(p => p.id === 'hoa-fireball')!, current: Playback | undefined, filter = 'all', request = 0;
 let audio: AudioContext | undefined;
+async function enableAudio() { audio ??= new AudioContext(); await audio.resume(); }
 const colors: Record<string, string> = { kim: '#d6b477', moc: '#9cbe85', thuy: '#83bfd6', hoa: '#ed9674', tho: '#c6a783', phong: '#91c9b8', loi: '#b6a2e0', neutral: '#b1afbf' };
 const labels: Record<string, string> = { all: 'All elements', kim: 'Kim', moc: 'Mộc', thuy: 'Thủy', hoa: 'Hỏa', tho: 'Thổ', phong: 'Phong', loi: 'Lôi', neutral: 'Utility' };
 const icons: Record<string, string> = { kim: '✧', moc: '❋', thuy: '❄', hoa: '♨', tho: '◈', phong: '≋', loi: 'ϟ', neutral: '⌘' };
@@ -72,7 +73,7 @@ async function cast() {
   const token = ++request, pack = selected; current?.stop(); el('status').textContent = 'Loading pack…';
   try {
     for (const other of packs) if (other.id !== pack.id) vfx.unload(other.id);
-    if (el<HTMLInputElement>('sound').checked) { audio ??= new AudioContext(); await audio.resume(); }
+    if (el<HTMLInputElement>('sound').checked) await enableAudio();
     await vfx.load(`${base}packs/free/${pack.id}.vfxb`);
     if (token !== request) { if (pack.id !== selected.id) vfx.unload(pack.id); return; }
     current = vfx.play(pack.id, { from, to, parent: world, loop: el<HTMLInputElement>('loop').checked });
@@ -89,6 +90,7 @@ vfx.on('cue', (cue: CueEvent) => {
 });
 el('replay').onclick = () => void cast(); el('stage').onclick = () => void cast();
 el('loop').onchange = () => void cast();
+el('sound').onchange = () => { if (el<HTMLInputElement>('sound').checked) void enableAudio().catch(() => {}); };
 el('shake').onchange = () => { vfx.shakeEnabled = el<HTMLInputElement>('shake').checked; };
 el('search').oninput = renderList;
 el('copy').onclick = async () => {
@@ -99,5 +101,5 @@ window.addEventListener('keydown', event => { if (event.code === 'Space' && !['I
 renderSelection();
 try { await vfx.load(`${base}packs/free/${selected.id}.vfxb`); el('status').textContent = 'Ready to cast'; }
 catch { el('status').textContent = 'Pack download failed. Tap Replay to retry.'; }
-(window as any).__showcase = { vfx, app, packs, from, to, world, cast, select(id: string) { selected = packs.find(p => p.id === id)!; renderSelection(); } };
+(window as any).__showcase = { vfx, app, packs, from, to, world, cast, audioState: () => audio?.state, select(id: string) { selected = packs.find(p => p.id === id)!; renderSelection(); } };
 window.addEventListener('pagehide', () => { resize.disconnect(); vfx.destroy(); void audio?.close(); app.destroy(true, { children: true }); }, { once: true });
