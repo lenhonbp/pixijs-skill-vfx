@@ -4,7 +4,7 @@
 // copy one into your project and replace hurt()/returnHome() with your own systems.
 import type { Sprite } from 'pixi.js';
 import {
-  VfxWorld, VfxTextures, Vec3, Palette, WUXING, PHONG, LOI, AnyElementName, SkillTiming, onHits,
+  VfxWorld, VfxTextures, Vec3, Palette, WUXING, PHONG, LOI, AnyElementName, SkillTiming, HitSkinName, onHits,
   tornado, windSlash, windSweep, vortex, windWisps, gustLines,
   slash, hitSpark, hitFlash, projectile, lightningChain, telegraph, shockwave,
   fireball, fireBreath, fireCharge, fireImpact, fireMeteor,
@@ -37,7 +37,7 @@ export interface SkillContext {
   /** All enemies (target included). */
   targets: Unit[];
   /** Apply damage (positive) or healing (negative) and show it. */
-  hurt(u: Unit, amount: number, o?: { crit?: boolean; palette?: Palette; angle?: number; color?: number; feedback?: number }): void;
+  hurt(u: Unit, amount: number, o?: { crit?: boolean; palette?: Palette; angle?: number; color?: number; feedback?: number; skin?: HitSkinName; push?: number }): void;
   /** Put the caster back on its start position after a movement skill. */
   returnHome(): void;
   /** Show/hide a unit (blink). */
@@ -100,10 +100,13 @@ const P = {
 
 const GOLDEN_EDGE_TIMING: SkillTiming = {
   windup: 160, hits: [{ t: 240, skin: 'metal', targets: 'primary' },
-    { t: 430, stop: 70, shake: 5, skin: 'metal', targets: 'primary' }], recovery: 800,
+    { t: 430, stop: 70, shake: 5, push: 12, skin: 'metal', targets: 'primary' }], recovery: 800,
 };
 const SPRING_BLOOM_TIMING: SkillTiming = {
-  windup: 0, hits: Array.from({ length: 4 }, (_, i) => ({ t: 300 + i * 420, skin: 'nature' })), recovery: 840,
+  windup: 0, hits: Array.from({ length: 4 }, (_, i) => ({ t: 300 + i * 420, skin: 'nature', push: 0 })), recovery: 840,
+};
+const MOUNTAIN_CRASH_TIMING: SkillTiming = {
+  windup: 320, hits: [{ t: 640, stop: 70, shake: 10 * 110 / 90, push: 26, skin: 'earth', targets: 'all' }], recovery: 1500,
 };
 
 export const SKILLS: SkillDef[] = [
@@ -142,7 +145,7 @@ export const SKILLS: SkillDef[] = [
           w.after(GOLDEN_EDGE_TIMING.hits[1].t - GOLDEN_EDGE_TIMING.hits[0].t, () => {
             metalSlash(w, tex, cut(), { angle: a + 0.57, span: caster.height * 2.3, palette: P.kim, reverse: true });
             w.after(80, () => {
-              hurt(target, 131, { crit: true, feedback: 0 });
+              hurt(target, 131, { crit: true, feedback: 0, skin: GOLDEN_EDGE_TIMING.hits[1].skin, push: GOLDEN_EDGE_TIMING.hits[1].push });
               hitFlash(w, target.sprite, 105, P.kim.core, 0.7);
               metalSparks(w, tex, cut(), P.kim, 17, a + 0.28);
               w.hitStop(GOLDEN_EDGE_TIMING.hits[1].stop!);
@@ -215,7 +218,7 @@ export const SKILLS: SkillDef[] = [
   // ------------------------------------------------------------------ THỦY / WATER
   {
     id: 'thuy-frost-nova', element: 'thuy', category: 'control', en: 'Frost Nova', vi: 'Băng Phong Tỏa',
-    timing: { windup: 500, hits: [{ t: 500, skin: 'ice', targets: 'primary' }, { t: 2700, stop: 40, shake: 3, skin: 'ice', targets: 'primary' }], recovery: 600 },
+    timing: { windup: 500, hits: [{ t: 500, skin: 'ice', push: 6, targets: 'primary' }, { t: 2700, stop: 40, shake: 3, skin: 'ice', push: 12, targets: 'primary' }], recovery: 600 },
     desc: 'Ice spikes erupt around the target and freeze it solid, then it shatters.', uses: ['chargeUp', 'frostNova'], length: 3300,
     cast: ({ w, tex, caster, target, hurt }) => {
       chargeUp(w, tex, {
@@ -229,7 +232,7 @@ export const SKILLS: SkillDef[] = [
   },
   {
     id: 'thuy-tidal-beam', element: 'thuy', category: 'channel', en: 'Tidal Beam', vi: 'Thủy Long Xạ',
-    timing: { windup: 380, hits: Array.from({ length: 5 }, (_, i) => ({ t: 530 + i * 280, skin: 'ice', targets: 'primary' })), recovery: 1500 },
+    timing: { windup: 380, hits: Array.from({ length: 5 }, (_, i) => ({ t: 530 + i * 280, skin: 'ice', push: 0, targets: 'primary' })), recovery: 1500 },
     desc: 'A channeled water dragon torrent that drenches and slows the target.', uses: ['chargeUp', 'tidalBeam', 'slow'], length: 3800,
     cast: ({ w, tex, caster, target, hurt }) => {
       const orb = () => {
@@ -240,7 +243,7 @@ export const SKILLS: SkillDef[] = [
         target: orb, palette: P.thuy, duration: 380,
         onDone: () => {
           const b = tidalBeam(w, tex, { from: orb, to: () => chest(target), palette: P.thuy, duration: 1500 });
-          for (let i = 0; i < 5; i++) w.after(150 + i * 280, () => b.alive && hurt(target, Math.round(rand(20, 28)), { palette: P.thuy, angle: Math.PI * (caster.facing > 0 ? 1 : 0) }));
+          for (let i = 0; i < 5; i++) w.after(150 + i * 280, () => b.alive && hurt(target, Math.round(rand(20, 28)), { palette: P.thuy, push: 0, angle: Math.PI * (caster.facing > 0 ? 1 : 0) }));
           w.after(1500, () => slow(w, tex, { target: feetOf(target), height: target.height, duration: 2000 }));
         },
       });
@@ -264,7 +267,7 @@ export const SKILLS: SkillDef[] = [
   // ------------------------------------------------------------------ HỎA / FIRE
   {
     id: 'hoa-fireball', element: 'hoa', category: 'attack', en: 'Fireball', vi: 'Hỏa Cầu Thuật',
-    timing: { windup: 420, hits: [{ t: 420, travel: 720, stop: 50, shake: 7 * 80 / 90, skin: 'char', targets: 'all' }], recovery: 2400 },
+    timing: { windup: 420, hits: [{ t: 420, travel: 720, stop: 50, shake: 7 * 80 / 90, push: 12, skin: 'char', targets: 'all' }], recovery: 2400 },
     desc: 'A charged fireball that explodes and leaves the target burning.', uses: ['fireCharge', 'fireball', 'fireImpact', 'damageOverTime(burn)', 'hitFlash'], length: 3600,
     cast: ({ w, tex, caster, target, targets, hurt }) => {
       fireCharge(w, tex, {
@@ -273,7 +276,7 @@ export const SKILLS: SkillDef[] = [
           from: hand(caster), to: chest(target, 0.45), palette: P.hoa, speed: 720, size: 1.3,
           onHit: (at) => {
             fireImpact(w, tex, { x: at.x, y: at.y, radius: 80, palette: P.hoa });
-            near(at, 90, targets).forEach((u) => hurt(u, u === target ? 142 : 71, { palette: P.hoa, crit: u === target }));
+            near(at, 90, targets).forEach((u) => hurt(u, u === target ? 142 : 71, { palette: P.hoa, crit: u === target, push: 12 }));
             damageOverTime(w, tex, { target: feetOf(target), height: target.height, kind: 'burn', duration: 2400, tickMs: 600, damage: () => Math.round(rand(11, 16)), onTick: () => hitFlash(w, target.sprite, 90, 0xffa040) });
           },
         }),
@@ -282,7 +285,7 @@ export const SKILLS: SkillDef[] = [
   },
   {
     id: 'hoa-dragon-breath', element: 'hoa', category: 'channel', en: 'Dragon Breath', vi: 'Long Tức Liệt Diễm',
-    timing: { windup: 300, hits: Array.from({ length: 4 }, (_, i) => ({ t: 600 + i * 360, skin: 'char', targets: 'all' })), recovery: 1800 },
+    timing: { windup: 300, hits: Array.from({ length: 4 }, (_, i) => ({ t: 600 + i * 360, skin: 'char', push: 0, targets: 'all' })), recovery: 1800 },
     desc: 'A sweeping cone of flame that sets everything in front ablaze.', uses: ['fireCharge', 'fireBreath', 'damageOverTime(burn)'], length: 3900,
     cast: ({ w, tex, caster, target, targets, hurt }) => {
       const mouth = () => ({ x: caster.feet.x + caster.facing * caster.height * 0.07, y: caster.feet.y, z: caster.feet.z + caster.height * 0.87 });
@@ -296,7 +299,7 @@ export const SKILLS: SkillDef[] = [
           const range = Math.min(640, Math.hypot(target.feet.x - caster.feet.x, (target.feet.y - caster.feet.y) / w.groundSquash) + 140);
           fireBreath(w, tex, { origin: mouth, angle: () => a, palette: P.hoa, range, spread: 0.6, duration: 1700 });
           const inBreath = (u: Unit) => inCone(w, caster, u, a, range, 0.6 + 0.5);
-          for (let i = 0; i < 4; i++) w.after(300 + i * 360, () => targets.filter(inBreath).forEach((u) => hurt(u, Math.round(rand(24, 32)), { palette: P.hoa })));
+          for (let i = 0; i < 4; i++) w.after(300 + i * 360, () => targets.filter(inBreath).forEach((u) => hurt(u, Math.round(rand(24, 32)), { palette: P.hoa, push: 0 })));
           w.after(1500, () => targets.filter(inBreath).forEach((u) => damageOverTime(w, tex, { target: feetOf(u), height: u.height, kind: 'burn', duration: 1800, tickMs: 600, damage: 9 })));
         },
       });
@@ -337,7 +340,7 @@ export const SKILLS: SkillDef[] = [
   },
   {
     id: 'tho-mountain-leap', element: 'tho', category: 'movement', en: 'Mountain Crash', vi: 'Thái Sơn Áp Đỉnh',
-    timing: { windup: 320, hits: [{ t: 640, stop: 70, shake: 10 * 110 / 90, skin: 'earth', targets: 'all' }], recovery: 1500 },
+    timing: MOUNTAIN_CRASH_TIMING,
     desc: 'A giant craggy mountain forms overhead and crushes the ground as the caster lands.', uses: ['leap', 'mountainCrash', 'stun'], length: 3300,
     cast: ({ w, tex, caster, target, targets, hurt, returnHome }) => {
       const to = { x: target.feet.x - caster.facing * 40, y: target.feet.y + 6, z: 0 };
@@ -351,7 +354,7 @@ export const SKILLS: SkillDef[] = [
       });
       mountainCrash(w, tex, { ...to, radius: 110, height: caster.height * 2.3, palette: P.tho, delay: 320,
         onHit: () => near(to, 130, targets).forEach((u) => {
-          hurt(u, 168, { palette: P.tho, crit: u === target, angle: -Math.PI / 2 });
+          hurt(u, 168, { palette: P.tho, crit: u === target, angle: -Math.PI / 2, skin: MOUNTAIN_CRASH_TIMING.hits[0].skin, push: MOUNTAIN_CRASH_TIMING.hits[0].push });
           stun(w, tex, { target: feetOf(u), height: u.height, duration: 1500 });
         }),
       });
@@ -385,7 +388,7 @@ export const SKILLS: SkillDef[] = [
             from: hand(caster), to: chest(u, 0.45), palette: P.phong, size: 1.1, speed: 1000,
             onHit: () => {
               const k = angleTo(w, caster, u);
-              hurt(u, Math.round(rand(48, 62)), { palette: P.phong, angle: k, feedback: 0.38 });
+              hurt(u, Math.round(rand(48, 62)), { palette: P.phong, angle: k, push: 34, feedback: 0.38 });
               const home = { ...u.feet };
               moveUnit(w, u, { x: home.x + Math.cos(k) * 34, y: home.y + Math.sin(k) * 34 * w.groundSquash, z: 0 }, 140);
               w.after(520, () => moveUnit(w, u, home, 380));
@@ -424,7 +427,7 @@ export const SKILLS: SkillDef[] = [
   },
   {
     id: 'phong-tornado', element: 'phong', category: 'control', en: 'Dragon Cyclone', vi: 'Long Quyển Phong',
-    timing: { windup: 320, hits: [...Array.from({ length: 7 }, (_, i) => ({ t: 620 + i * 360, skin: 'wind' as const, targets: 'all' as const, optional: i === 0 })), { t: 3080, skin: 'wind', targets: 'all' }], recovery: 420 },
+    timing: { windup: 320, hits: [...Array.from({ length: 7 }, (_, i) => ({ t: 620 + i * 360, skin: 'wind' as const, push: 0, targets: 'all' as const, optional: i === 0 })), { t: 3080, skin: 'wind', targets: 'all' }], recovery: 420 },
     desc: 'A roaring tornado travels through the enemies, pulls them in and lifts them off the ground.', uses: ['chargeUp', 'tornado', 'vortex'], length: 3600,
     cast: ({ w, tex, caster, target, targets, hurt }) => {
       chargeUp(w, tex, { target: () => hand(caster), palette: P.phong, duration: 380, size: 0.7 });
@@ -448,7 +451,7 @@ export const SKILLS: SkillDef[] = [
               u.feet.x = at.x + Math.cos(a) * r;
               u.feet.y = at.y + Math.sin(a) * r * w.groundSquash;
               u.feet.z = lerp(u.feet.z, (40 + 10 * Math.sin(a)) * clamp01(1.25 - d / 160), 0.25);
-              if (tick % 6 === 0) hurt(u, Math.round(rand(16, 24)), { palette: P.phong, angle: -Math.PI / 2, feedback: 0.22 });
+              if (tick % 6 === 0) hurt(u, Math.round(rand(16, 24)), { palette: P.phong, push: 0, angle: -Math.PI / 2 });
             }
           },
         });
@@ -515,7 +518,7 @@ export const SKILLS: SkillDef[] = [
   },
   {
     id: 'loi-thunder-domain', element: 'loi', category: 'control', en: 'Thunder Domain', vi: 'Lôi Vực',
-    timing: { windup: 300, hits: Array.from({ length: 5 }, (_, i) => ({ t: 800 + i * 500, skin: 'shock', targets: 'all' })), recovery: 450 },
+    timing: { windup: 300, hits: Array.from({ length: 5 }, (_, i) => ({ t: 800 + i * 500, skin: 'shock', push: 0, targets: 'all' })), recovery: 450 },
     desc: 'A violet electric field crackles under the enemy group, dealing periodic damage and shock.',
     uses: ['chargeUp', 'staticField', 'shock'], length: 3600,
     cast: ({ w, tex, caster, target, targets, hurt }) => {
@@ -528,7 +531,7 @@ export const SKILLS: SkillDef[] = [
         const radius = Math.max(120, ...targets.map((u) => Math.hypot(u.feet.x - center.x, (u.feet.y - center.y) / w.groundSquash) + 16));
         staticField(w, tex, { ...center, radius, palette: P.loi, duration: 2500, onTick: () => {
           for (const u of targets) if (Math.hypot(u.feet.x - center.x, (u.feet.y - center.y) / w.groundSquash) <= radius) {
-            hurt(u, 24, { palette: P.loi, feedback: 0.1 });
+            hurt(u, 24, { palette: P.loi, feedback: 0.1, push: 0 });
             shock(w, tex, { target: feetOf(u), height: u.height, palette: P.loi, duration: 450 });
           }
         } });
@@ -601,7 +604,7 @@ export const SKILLS: SkillDef[] = [
           caster.feet.x = to.x; caster.feet.y = to.y; caster.facing *= -1; setVisible(caster, true);
           w.after(90, () => {
             slash(w, tex, { ...caster.feet, angle: caster.facing > 0 ? 0 : Math.PI, palette: P.shadow, radius: 90 });
-            w.after(70, () => hurt(target, 154, { palette: P.shadow, crit: true, angle: caster.facing > 0 ? 0 : Math.PI }));
+            w.after(70, () => hurt(target, 154, { palette: P.shadow, skin: 'shadow', crit: true, angle: caster.facing > 0 ? 0 : Math.PI }));
           });
           w.after(800, () => { caster.facing *= -1; returnHome(); });
         },

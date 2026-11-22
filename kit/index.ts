@@ -17,6 +17,7 @@ export * from './spirit-guardian';
 export * from './mountain-crash';
 export * from './vine-bind';
 export * from './skill-timing';
+export * from './hit-reaction';
 export * from './motion';
 export * from './channel';
 export * from './elemental';

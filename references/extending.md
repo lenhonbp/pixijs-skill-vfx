@@ -135,9 +135,10 @@ interface SkillHit {
   landings, Glacier Path/Fissure spikes, and Cyclone's first capture tick. These
   fields do not create extra damage or change targeting. Actual damage stays in `hurt`.
 - `stop` is hit-stop ms, `shake` is screen-shake amplitude in px, and `push` is knockback
-  distance in px. `skin` is metadata for later integration, one of `char`, `ice`, `shock`,
+  distance in px. `skin` selects a hit-reaction style, one of `char`, `ice`, `shock`,
   `holy`, `shadow`, `poison`, `earth`, `metal`, `wind`, `nature`, `red`. Neither `skin` nor
-  `push` automatically changes rendering or movement. `targets` describes primary versus
+  `push` automatically changes rendering or movement in `onHits`; pass them to the game's
+  `hurt` callback to opt into reactions (the demo does this). `targets` describes primary versus
   group opportunities, not guaranteed collisions or a target-count multiplier.
 - `recovery` follows the last **resolved** hit. The bound is
   `lastResolvedHit + recovery <= length`; windup is not added again. Empty-hit skills use
@@ -186,6 +187,78 @@ showcase and a closer layout. It records `hurt`, hit-stop and shake against nomi
 (spread + 17 ms), validates phase/order/length bounds, and reports optional misses. It uses
 1 ms simulation steps to avoid accumulating the existing timers' frame-rounding error;
 coarse variable frame steps can drift, especially Cyclone's periodically reset tick timer.
+
+## Element hit skins and rock-back
+
+`hitSkin(w, sprite, skin, { duration = 300, strength = 0.9 })` tints the actual sprite and
+eases back to its exact pre-hit tint on the VFX clock. Strength is clamped to 0..1. Char
+briefly transitions from deep orange to near-black before fading; shock flickers between
+violet and pale violet-white. A normal color-mix filter preserves texture detail while
+blending toward the skin color (multiply-only tint turns brown sprites green instead of
+cyan). The original sprite tint is preserved, and existing filters are retained. All eleven
+`HitSkinName` values are supported:
+
+| Skin | Color | Element default |
+|---|---|---|
+| `char` | Deep orange → charcoal | Hỏa |
+| `ice` | Pale cyan | Thủy |
+| `shock` | Violet-white flicker | Lôi |
+| `holy` | Warm white-gold | — |
+| `shadow` | Dark purple | — |
+| `poison` | Sickly green | — |
+| `earth` | Brown | Thổ |
+| `metal` | Gold | Kim |
+| `wind` | Pale mint | Phong |
+| `nature` | Green | Mộc |
+| `red` | Plain red | Custom/unknown/neutral fallback |
+
+`Element.hitSkin` is optional. Pass it in `defineElement({ ...definition, hitSkin: 'shadow' })`
+to override the custom-element red fallback; resolve defaults with
+`getElement(elementId)?.hitSkin ?? 'red'`. Palette recoloring alone does not pick a new skin.
+
+`rockBack(w, sprite, { push, angle, duration = 320 })` is a damped spring impulse in parent
+space: `angle = 0` pushes right and `Math.PI / 2` pushes down. `push` is the approximate
+peak displacement in px; the spring slightly overshoots the rest position before settling.
+It offsets `sprite.pivot`, not `sprite.position`, so movement code can keep assigning x/y
+every frame. The offset compensates for sprite rotation and scale, including mirrored
+facing. Don't animate pivot simultaneously; if your character controller owns pivot, apply
+the reaction to a separate visual child instead. Ground feet, collision and sorting stay
+unchanged; this is visual recoil, not gameplay knockback.
+
+```ts
+import { getElement, hitSkin, rockBack } from '../kit';
+import type { HitSkinName, VfxWorld } from '../kit';
+import type { Sprite } from 'pixi.js';
+
+function react(w: VfxWorld, sprite: Sprite, element: string,
+  hit: { skin?: HitSkinName; push?: number; angle?: number; crit?: boolean }) {
+  const tint = hitSkin(w, sprite, hit.skin ?? getElement(element)?.hitSkin ?? 'red');
+  const recoil = rockBack(w, sprite, {
+    push: hit.push ?? (hit.crit ? 12 : 6), angle: hit.angle ?? 0,
+  });
+  return { stop() { tint.stop(); recoil.stop(); } };
+}
+```
+
+The demo's `hurt` uses these same defaults and accepts explicit `skin`/`push` options.
+Samples pass stronger pushes for heavy impacts (Mountain Crash: 26 px); periodic beam,
+breath, cyclone and thunder-field hits pass `push: 0`. Healing has no hit reaction. Copy
+the relevant `timing.hits[i].skin` and `.push` into your damage callback when composing a
+new skill: timing metadata does not automatically execute reactions. Decorative DoT
+numbers still belong to their status helper and do not go through demo `hurt`.
+
+Both helpers return `Handle`s. The newest reaction of each kind replaces the earlier one
+on that sprite, even across worlds; an old handle cannot stop its replacement. Tint and
+recoil are independent and can coexist. Repeated hits retain the true original tint and
+pivot, so neither drifts. Natural completion, `stop()` and `w.clear()` restore the originals
+and unregister cleanup/updaters; destroyed sprites are released on the next update.
+Zero duration, zero strength, or zero push cancels the previous reaction without starting
+a new one. Durations/strength/angles must be finite and push nonnegative. Existing
+`hitFlash` remains a separate additive-overlay helper for backward compatibility; avoid
+stacking it over the same impact if you want the skin to remain readable.
+
+Run `node tools/test-hit.mjs` for tint restoration, replacement, moving/mirrored recoil,
+simultaneous reactions, cancellation, destruction and cleanup coverage.
 
 ## Compose a skill and synchronize gameplay
 
