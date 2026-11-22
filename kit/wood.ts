@@ -1,3 +1,5 @@
+// Copyright (c) 2026 lenhonbp <lenhonbp@gmail.com> — https://github.com/lenhonbp/pixijs-skill-vfx
+// SPDX-License-Identifier: MIT
 import type { Handle, Vec3, VfxWorld } from './vfx-world';
 import { group } from './group';
 import { clamp01, envelope, lerp, outCubic, pick, rand } from './ease';

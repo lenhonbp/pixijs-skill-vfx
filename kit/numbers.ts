@@ -1,3 +1,5 @@
+// Copyright (c) 2026 lenhonbp <lenhonbp@gmail.com> — https://github.com/lenhonbp/pixijs-skill-vfx
+// SPDX-License-Identifier: MIT
 // Floating combat numbers from baked glyph sprites (no Text objects per hit).
 import type { VfxTextures } from './textures';
 import { TEX_METRICS as M } from './textures';

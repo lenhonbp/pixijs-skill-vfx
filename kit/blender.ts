@@ -1,3 +1,5 @@
+// Copyright (c) 2026 lenhonbp <lenhonbp@gmail.com> — https://github.com/lenhonbp/pixijs-skill-vfx
+// SPDX-License-Identifier: MIT
 // Match VFX to characters pre-rendered from Blender (3D -> 2.5D sprites).
 // All numbers come from the Blender scene: the camera, the render size and the sun.
 // Run tools/blender_vfx_rig.py inside Blender to print them, or fill them in by hand.

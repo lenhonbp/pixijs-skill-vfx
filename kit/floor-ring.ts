@@ -1,3 +1,5 @@
+// Copyright (c) 2026 lenhonbp <lenhonbp@gmail.com> — https://github.com/lenhonbp/pixijs-skill-vfx
+// SPDX-License-Identifier: MIT
 import { Graphics, type Sprite, type Texture } from 'pixi.js';
 import type { Handle, Particle, SpawnOptions, Vec3, VfxWorld } from './vfx-world';
 import { TEX_METRICS as M, type VfxTextures } from './textures';

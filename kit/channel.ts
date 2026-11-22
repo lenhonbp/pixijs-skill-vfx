@@ -1,3 +1,5 @@
+// Copyright (c) 2026 lenhonbp <lenhonbp@gmail.com> — https://github.com/lenhonbp/pixijs-skill-vfx
+// SPDX-License-Identifier: MIT
 // Channeled and cast-time effects: beams, cone breath, charge-up, summon circles.
 import type { VfxWorld, Vec3, Handle, Particle } from './vfx-world';
 import type { Sprite } from 'pixi.js';

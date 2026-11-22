@@ -1,3 +1,5 @@
+// Copyright (c) 2026 lenhonbp <lenhonbp@gmail.com> — https://github.com/lenhonbp/pixijs-skill-vfx
+// SPDX-License-Identifier: MIT
 // Wu Xing (Ngũ Hành) element palettes and the visual language of each element.
 // Use one element per skill; mix only on purpose (e.g. Thủy + Mộc for a healing rain).
 import type { Palette } from './recipes';

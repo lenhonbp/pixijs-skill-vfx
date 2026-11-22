@@ -1,5 +1,6 @@
 ---
 name: pixijs-skill-vfx
+license: MIT
 description: Build skill/ability VFX (slashes, projectiles, explosions, AoE telegraphs, lightning, beams, cone breath, heals, shields, buffs/debuffs, damage-over-time, stun/freeze/slow/root, dash/blink/leap, summon circles, damage numbers, Wu Xing five-element skills) drawn in code for 2.5D PixiJS (v7 or v8) HTML5 canvas games. Use when asked to create, improve, port or debug a skill effect, particle effect, hit effect, or "juice" (screen shake, hit-stop, flashes) in a PixiJS game.
 ---
 

@@ -1,3 +1,5 @@
+// Copyright (c) 2026 lenhonbp <lenhonbp@gmail.com> — https://github.com/lenhonbp/pixijs-skill-vfx
+// SPDX-License-Identifier: MIT
 // Movement skills. The recipe drives a position over time and calls onMove(pos) every frame:
 // move your unit there (feet + z). Gameplay (collision, i-frames) stays in your code.
 import type { Sprite } from 'pixi.js';

@@ -1,3 +1,5 @@
+// Copyright (c) 2026 lenhonbp <lenhonbp@gmail.com> — https://github.com/lenhonbp/pixijs-skill-vfx
+// SPDX-License-Identifier: MIT
 import type { VfxTextures } from './textures';
 import type { Handle, SpawnOptions, Vec3, VfxWorld } from './vfx-world';
 import type { Palette } from './recipes';

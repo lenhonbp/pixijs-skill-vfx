@@ -1,3 +1,5 @@
+// Copyright (c) 2026 lenhonbp <lenhonbp@gmail.com> — https://github.com/lenhonbp/pixijs-skill-vfx
+// SPDX-License-Identifier: MIT
 // Screen-space post effects, the way engines do them, on stock PixiJS v7/v8 filters:
 // - Distortion: effects draw "displacement sprites" into an offscreen buffer that a single
 //   DisplacementFilter reads (shockwave refraction, heat haze, portal warps). The filter is
