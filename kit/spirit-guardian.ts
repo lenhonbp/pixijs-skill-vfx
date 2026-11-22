@@ -1,38 +1,50 @@
-import type { Handle, Vec3, VfxWorld } from './vfx-world';
+import type { Handle, Particle, Vec3, VfxWorld } from './vfx-world';
 import { TEX_METRICS as M, type VfxTextures } from './textures';
 import type { Palette } from './recipes';
 import { afterimage } from './motion';
 import { group } from './group';
 import { clamp01, lerp, outCubic, rand } from './ease';
 
-/** Spectral halberd warrior: reveal, advance, cleave and slam, rising-mote dissolve. */
+/** Spectral warrior: levitating approach, articulated halberd combo, rising-mote dissolve. */
 export function spiritGuardian(w: VfxWorld, tex: VfxTextures,
   o: { x: number; y: number; z?: number; palette: Palette; height?: number; duration?: number;
     target?: () => Vec3; strikes?: number; slamRadius?: number; onStrike?: (i: number, at: Vec3) => void; facing?: number }): Handle {
   const h = o.height ?? 100, k = h / 240, count = Math.max(0, Math.floor(o.strikes ?? 3));
-  const reveal = 350, advance = 650, cycle = 650, dissolve = 450;
+  const reveal = 350, advance = 650, cycle = 650, impactPhase = 0.48, dissolve = 450;
   const end = reveal + (o.target ? advance + count * cycle : (o.duration ?? 1200));
   const g = group(w, end + dissolve, undefined, 80);
-  const pos = { x: o.x, y: o.y, z: o.z ?? 0 };
+  const ground = { x: o.x, y: o.y, z: o.z ?? 0 }, pos = { ...ground };
+  const grip = { ...pos }, tip = { ...pos };
   let aim: Vec3 = { ...pos }, dest = { ...pos };
-  let age = 0, facing = o.facing ?? 1, lean = 0, lift = 0, step = -1, ghost = 0, strike = -1, hit = -1;
+  let age = 0, facing = o.facing ?? 1, lean = 0, twist = 1, squash = 1, weaponAngle = 0;
+  let weaponFlat = 1, ghost = 0, strike = -1, hit = -1;
+  const bodies: Particle[] = [], weapons: Particle[] = [];
   const opacity = () => clamp01(age / reveal) * (1 - clamp01((age - end) / dissolve));
-  const dust = () => {
-    for (let i = 0; i < 3; i++) g.add(w.spawn({ texture: tex.puff, blend: 'normal',
-      x: pos.x + rand(-0.12, 0.12) * h, y: pos.y, z: 2, life: 360,
-      vx: -facing * rand(12, 35), vz: rand(8, 20), drag: 3,
-      scale: [h / 650, h / 330], alpha: [0.18, 0], tint: o.palette.main }));
+  const pose = () => {
+    const lx = 66 * k * facing * twist, ly = -116 * k * squash;
+    const c = Math.cos(lean), s = Math.sin(lean);
+    grip.x = pos.x + lx * c - ly * s;
+    grip.y = pos.y;
+    grip.z = pos.z - lx * s - ly * c;
+    const angle = lean + facing * weaponAngle;
+    tip.x = grip.x + Math.sin(angle) * 120 * k * weaponFlat;
+    tip.y = grip.y;
+    tip.z = grip.z + Math.cos(angle) * 120 * k * weaponFlat;
+    for (const q of bodies) {
+      q.rotation = lean;
+      q.sprite.rotation = lean;
+      q.sprite.position.set(pos.x, pos.y - pos.z);
+      q.sprite.scale.set(k * facing * twist, k * squash);
+    }
+    for (const q of weapons) {
+      q.rotation = angle;
+      q.sprite.rotation = angle;
+      q.sprite.position.set(grip.x, grip.y - (grip.z ?? 0));
+      q.sprite.scale.set(k * facing, k * weaponFlat);
+    }
   };
   const impact = (i: number) => {
-    const heavy = i % 3 === 2, sweep = i % 3 === 1;
-    const angle = Math.atan2((aim.y - pos.y) / w.groundSquash, aim.x - pos.x);
-    const radius = h * (sweep ? 0.95 : 0.8);
-    for (const core of [false, true]) g.add(w.spawn({ texture: tex.crescent,
-      x: pos.x, y: pos.y, z: pos.z + h * 0.4, life: heavy ? 260 : 220, zBias: 25,
-      rotation: heavy ? -Math.PI / 2 : angle - (sweep ? 1.4 : 0.8),
-      spin: facing * (heavy ? 5 : 12), groundAligned: sweep,
-      scaleX: radius / M.crescentRadius, scaleY: radius / M.crescentRadius * (core ? 0.55 : 1),
-      alpha: [core ? 0.95 : 0.7, 0], tint: core ? o.palette.core : o.palette.main }));
+    const heavy = i % 3 === 2;
     if (heavy) {
       for (const core of [false, true]) g.add(w.spawn({ texture: tex.ring, layer: 'ground', groundAligned: true,
         x: aim.x, y: aim.y, life: 420, scale: [0.05, (o.slamRadius ?? h * 1.1) / M.ringRadius * (core ? 0.8 : 1), outCubic],
@@ -45,57 +57,100 @@ export function spiritGuardian(w: VfxWorld, tex: VfxTextures,
           rotation: a, spin: rand(-4, 4), alpha: [0.65, 0], tint: o.palette.dark }));
       }
     }
-    w.hitStop(heavy ? 65 : 28); w.shake(heavy ? 5 : 2, heavy ? 220 : 100);
+    w.hitStop(heavy ? 65 : 35); w.shake(heavy ? 5 : 2, heavy ? 220 : 100);
     o.onStrike?.(i, { ...aim });
   };
+  const trail = (previous: Vec3) => {
+    const dx = tip.x - previous.x, dy = tip.y - (tip.z ?? 0) - previous.y + (previous.z ?? 0);
+    g.add(w.spawn({ texture: tex.streak, x: previous.x, y: previous.y, z: previous.z,
+      anchorX: 0, rotation: Math.atan2(dy, dx), life: 110, zBias: 24,
+      scaleX: Math.hypot(dx, dy) / 128, scaleY: [0.55, 0], alpha: [0.7, 0], tint: o.palette.core }));
+    g.add(w.spawn({ texture: tex.crescent, x: grip.x, y: grip.y, z: grip.z, life: 130, zBias: 23,
+      rotation: lean + facing * weaponAngle - Math.PI / 2, scaleX: h * 0.5 / M.crescentRadius,
+      scaleY: h * 0.5 / M.crescentRadius * weaponFlat, alpha: [0.32, 0], tint: o.palette.main }));
+  };
   g.addHandle(w.addUpdater((dt) => {
-    age += dt; lean = 0; lift = 0;
-    if (!o.target || age < reveal || age >= end) return;
+    age += dt;
+    lean = 0; twist = 1; squash = 1;
+    pos.z = ground.z - h * 0.22 * (1 - clamp01(age / reveal)) + Math.sin(age / 380) * h * 0.015;
+    if (!o.target || age < reveal) { pose(); return; }
+    if (age >= end) { pos.z = ground.z + (strike % 3 === 2 ? 0 : 40); pose(); return; }
     if (age - dt <= reveal) {
       aim = { ...o.target() };
       const dx = aim.x - o.x, dy = aim.y - o.y, distance = Math.hypot(dx, dy);
       const travel = Math.max(0, distance - h * 0.45) / Math.max(1, distance);
-      dest = { x: o.x + dx * travel, y: o.y + dy * travel, z: pos.z };
+      dest = { x: o.x + dx * travel, y: o.y + dy * travel, z: ground.z };
       facing = dx === 0 ? facing : Math.sign(dx);
     }
     const t = age - reveal;
+    const hover = 40 + Math.sin(t / 280) * 4;
     if (t < advance) {
       const p = t / advance;
-      pos.x = lerp(o.x, dest.x, p); pos.y = lerp(o.y, dest.y, p);
-      lift = Math.abs(Math.sin(p * Math.PI * 3)) * h * 0.035;
-      lean = facing * (0.08 + Math.sin(p * Math.PI * 6) * 0.035);
-      if (Math.floor(p * 3) !== step) { step = Math.floor(p * 3); dust(); }
-      ghost -= dt;
-      if (ghost <= 0 && body) { ghost = 110; g.add(afterimage(w, body.sprite, pos, { tint: o.palette.main, alpha: 0.13, life: 200 })); }
+      ground.x = lerp(o.x, dest.x, p); ground.y = lerp(o.y, dest.y, p);
+      pos.x = ground.x; pos.y = ground.y;
+      pos.z = ground.z + hover * outCubic(clamp01(t / 200));
+      lean = facing * 0.1; weaponAngle = -0.2;
+      pose(); ghost -= dt;
+      if (ghost <= 0) {
+        ghost = 85;
+        for (const q of bodies.slice(0, 1)) g.add(afterimage(w, q.sprite, pos, { tint: o.palette.main, alpha: 0.16, life: 240 }));
+        g.add(w.spawn({ texture: tex.streak, x: pos.x, y: pos.y, z: pos.z + h * 0.2,
+          life: 280, vx: -facing * 45, vz: 12, rotation: -facing * 0.2,
+          scaleX: [0.4, 0.05], scaleY: [0.5, 0], alpha: [0.2, 0], tint: o.palette.main }));
+      }
       return;
     }
-    pos.x = dest.x; pos.y = dest.y;
-    const i = Math.floor((t - advance) / cycle), phase = ((t - advance) % cycle) / cycle;
+    const i = Math.floor((t - advance) / cycle), rawPhase = ((t - advance) % cycle) / cycle;
+    const crossing = hit < i && rawPhase >= impactPhase;
+    const phase = crossing ? impactPhase : rawPhase;
+    const move = i % 3, heavy = move === 2;
     if (i !== strike) {
       strike = i; aim = { ...o.target() };
-      facing = aim.x === pos.x ? facing : Math.sign(aim.x - pos.x);
-      g.add(w.spawn({ texture: tex.star, x: 0, y: 0, follow: () => ({ x: pos.x + facing * h * 0.38, y: pos.y, z: pos.z + h * 0.92 }),
-        life: 220, scale: [0.05, 0.28], alpha: [0.1, 0.85], tint: o.palette.core, spin: 4, zBias: 24 }));
+      facing = aim.x === dest.x ? facing : Math.sign(aim.x - dest.x);
+      g.add(w.spawn({ texture: tex.star, x: 0, y: 0, follow: () => tip,
+        life: 220, scale: [0.05, 0.22], alpha: [0.1, 0.85], tint: o.palette.core, spin: 4, zBias: 24 }));
     }
-    lean = facing * (phase < 0.36 ? -0.26 * phase / 0.36 : phase < 0.52 ? lerp(-0.26, 0.4, (phase - 0.36) / 0.16) : 0.4 * (1 - phase) / 0.48);
-    if (i % 3 === 2 && phase < 0.5) lift = Math.sin(phase / 0.5 * Math.PI) * h * 0.25;
-    if (phase >= 0.48 && hit < i) { hit = i; impact(i); }
+    const wind = clamp01(phase / 0.34), swing = clamp01((phase - 0.34) / (impactPhase - 0.34));
+    const recover = clamp01((phase - 0.58) / 0.42);
+    const back = heavy ? -0.7 : move === 1 ? -2.1 : -1.4;
+    const contact = heavy ? 2.9 : move === 1 ? 1.6 : 1.8;
+    const previous = { ...tip };
+    weaponAngle = phase < 0.34 ? lerp(-0.2, back, outCubic(wind)) :
+      phase <= impactPhase ? lerp(back, contact, swing * swing) :
+      lerp(contact + Math.sin(clamp01((phase - impactPhase) / 0.1) * Math.PI / 2) * 0.22, -0.2, outCubic(recover));
+    weaponFlat = move === 1 ? lerp(0.55, 1, Math.abs(Math.cos(weaponAngle))) : 1;
+    lean = facing * (phase < 0.34 ? -0.16 * wind : phase <= impactPhase ? lerp(-0.16, 0.22, swing) : lerp(0.22, 0, outCubic(recover)));
+    twist = phase < 0.34 ? lerp(1, 0.82, wind) : lerp(0.82, 1, swing);
+    squash = phase >= impactPhase && phase < 0.58 ? 0.9 : 1;
+    const lunge = phase < 0.34 ? -h * 0.04 * wind : phase <= impactPhase ? lerp(-h * 0.04, h * 0.1, swing) : lerp(h * 0.1, 0, outCubic(recover));
+    pos.x = ground.x = dest.x + facing * lunge; pos.y = ground.y = dest.y;
+    pos.z = ground.z + (heavy ? phase < 0.34 ? lerp(40, 90, outCubic(wind)) : phase <= impactPhase ? lerp(90, 0, swing * swing) : 0 : hover);
+    pose();
+    if (dt > 0 && phase >= 0.34 && phase <= 0.58) trail(previous);
+    if (crossing) { hit = i; impact(i); }
   }));
-  let body: ReturnType<VfxWorld['spawn']> = null;
   for (const rim of [false, true]) {
-    const p = g.add(w.spawn({ texture: tex.guardian, blend: rim ? 'add' : 'normal',
+    const body = g.add(w.spawn({ texture: o.target ? tex.guardianBody : tex.guardian, blend: rim ? 'add' : 'normal',
       x: 0, y: 0, life: Infinity, anchorX: 88 / 192, anchorY: 244 / 256,
-      follow: () => pos, scaleX: () => k * facing, scaleY: k,
+      follow: () => pos, scaleX: () => k * facing * twist, scaleY: () => k * squash,
       tint: o.palette.main, alpha: () => opacity() * (rim ? 0.065 : 0.85), zBias: rim ? 21 : 20,
-      onUpdate: (q) => {
-        q.pz = -h * 0.22 * (1 - clamp01(age / reveal)) + lift + Math.sin(age / 380) * h * 0.015;
-        q.rotation = lean;
-      },
+      onUpdate: (q) => { q.rotation = lean; q.sprite.rotation = lean; },
     }));
-    if (!rim) body = p;
+    if (body) bodies.push(body);
+    if (o.target) {
+      const weapon = g.add(w.spawn({ texture: tex.guardianHalberd, blend: rim ? 'add' : 'normal',
+        x: 0, y: 0, follow: () => grip, life: Infinity, anchorX: 154 / 192, anchorY: 128 / 256,
+        scaleX: () => k * facing, scaleY: () => k * weaponFlat,
+        tint: o.palette.main, alpha: () => opacity() * (rim ? 0.065 : 0.9), zBias: rim ? 23 : 22,
+        onUpdate: (q) => { q.rotation = lean + facing * weaponAngle; q.sprite.rotation = q.rotation; },
+      }));
+      if (weapon) weapons.push(weapon);
+    }
   }
-  g.add(w.spawn({ texture: tex.glow, x: 0, y: 0, layer: 'ground', groundAligned: true, blend: 'normal', follow: () => pos,
-    life: Infinity, scaleX: h / 180, scaleY: h / 300, tint: 0x101020, alpha: () => opacity() * 0.4 }));
+  const altitude = () => Math.max(0, pos.z - ground.z);
+  g.add(w.spawn({ texture: tex.glow, x: 0, y: 0, layer: 'ground', groundAligned: true, blend: 'normal', follow: () => ({ ...ground, z: 0 }),
+    life: Infinity, scaleX: () => h / 180 / (1 + altitude() / 100), scaleY: () => h / 300 / (1 + altitude() / 100),
+    tint: 0x101020, alpha: () => opacity() * 0.4 / (1 + altitude() / 70) }));
   g.add(w.spawn({ texture: tex.glow, x: 0, y: 0, follow: () => pos, z: h * 0.5,
     life: Infinity, scaleX: h / 180, scaleY: h / 105, alpha: () => opacity() * 0.055, tint: o.palette.main, zBias: 19 }));
   g.addHandle(w.stream({ rate: 18, make: () => ({ texture: tex.dot,

@@ -41,6 +41,10 @@ export interface VfxTextures {
   fissure: Texture;
   /** Spectral armored halberd guardian, feet at (88, 244). 192x256. */
   guardian: Texture;
+  /** Guardian without weapon; same canvas and feet anchor as guardian. */
+  guardianBody: Texture;
+  /** Guardian halberd, grip at (154, 128) on a 192x256 canvas. */
+  guardianHalberd: Texture;
   /** Craggy mountain with lit ridges and dark ravines. 320x256, base anchor (0.5,1). */
   mountain: Texture;
   /** Leaf with a mid vein pointing +x. 48x24. Wood/nature. */
@@ -519,7 +523,18 @@ export function createVfxTextures(): VfxTextures {
     ctx.fillStyle = soil; ctx.fillRect(0, 0, 320, 256); ctx.restore();
     return textureFromCanvas(c);
   })();
-  const guardian = (() => {
+  const drawHalberd = (ctx: CanvasRenderingContext2D) => {
+    const metal = ctx.createLinearGradient(40, 0, 130, 0);
+    metal.addColorStop(0, '#f9edc6'); metal.addColorStop(0.3, '#b5a47c');
+    metal.addColorStop(0.65, '#655d49'); metal.addColorStop(1, '#d6c8a1');
+    ctx.fillStyle = '#b9aa84'; ctx.fillRect(151, 33, 5, 196);
+    ctx.lineJoin = 'round'; ctx.lineWidth = 2.5; ctx.strokeStyle = '#f5e7ba';
+    for (const points of [[[154,8],[178,39],[165,66],[154,52],[157,35]], [[152,47],[136,64],[147,71],[153,61]]]) {
+      ctx.beginPath(); points.forEach(([x, y], i) => i ? ctx.lineTo(x, y) : ctx.moveTo(x, y));
+      ctx.closePath(); ctx.fillStyle = metal; ctx.fill(); ctx.stroke();
+    }
+  };
+  const drawGuardian = (armed: boolean) => {
     const [c, ctx] = makeCanvas(192, 256);
     ctx.lineJoin = 'round';
     const metal = ctx.createLinearGradient(40, 0, 130, 0);
@@ -533,9 +548,7 @@ export function createVfxTextures(): VfxTextures {
     cape.addColorStop(0, 'rgba(158,145,110,0.65)'); cape.addColorStop(0.65, 'rgba(130,119,91,0.45)');
     cape.addColorStop(1, 'rgba(235,220,173,0)');
     shape([[47,79],[124,79],[138,185],[128,224],[115,209],[109,247],[92,219],[73,248],[64,216],[43,237],[32,191]], cape, 'rgba(231,214,169,0.35)');
-    ctx.fillStyle = '#b9aa84'; ctx.fillRect(151, 33, 5, 196);
-    shape([[154,8],[178,39],[165,66],[154,52],[157,35]], metal);
-    shape([[152,47],[136,64],[147,71],[153,61]], metal);
+    if (armed) drawHalberd(ctx);
     shape([[61,39],[65,22],[84,15],[105,24],[111,42],[100,56],[70,56]], metal);
     shape([[80,19],[86,4],[92,20],[89,40],[83,40]], '#e5d9b3');
     shape([[69,43],[103,43],[99,67],[86,76],[73,65]], '#514d41');
@@ -555,6 +568,12 @@ export function createVfxTextures(): VfxTextures {
     mist.addColorStop(0, 'rgba(216,202,159,0.8)'); mist.addColorStop(1, 'rgba(216,202,159,0)');
     shape([[62,176],[81,183],[78,225],[66,244],[57,219]], mist, 'rgba(244,229,185,0.3)');
     shape([[94,182],[111,177],[118,218],[106,242],[98,225]], mist, 'rgba(244,229,185,0.3)');
+    return textureFromCanvas(c);
+  };
+  const guardian = drawGuardian(true), guardianBody = drawGuardian(false);
+  const guardianHalberd = (() => {
+    const [c, ctx] = makeCanvas(192, 256);
+    drawHalberd(ctx);
     return textureFromCanvas(c);
   })();
   const rockPlate = (() => {
@@ -591,5 +610,5 @@ export function createVfxTextures(): VfxTextures {
     digits[ch] = textureFromCanvas(c);
   }
 
-  return { glow, dot, ring, disc, streak, beam, star, puff, crescent, shard, blade, swordCrack, spike, rock, rockPlate, rockSpike, fissure, guardian, mountain, leaf, drop, chevron, rune, bubble, tendril, vineSegment, plus, crackedShield, bell, bellCracks, digits };
+  return { glow, dot, ring, disc, streak, beam, star, puff, crescent, shard, blade, swordCrack, spike, rock, rockPlate, rockSpike, fissure, guardian, guardianBody, guardianHalberd, mountain, leaf, drop, chevron, rune, bubble, tendril, vineSegment, plus, crackedShield, bell, bellCracks, digits };
 }

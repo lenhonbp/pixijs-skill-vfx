@@ -602,7 +602,7 @@ export const SKILLS: SkillDef[] = [
   },
   {
     id: 'summon-spirit', element: 'neutral', category: 'summon', en: 'Summon Guardian', vi: 'Triệu Hồi Hộ Pháp',
-    desc: 'A spectral guardian strides into battle, cleaves twice, then leaps into a crushing holy slam.', uses: ['chargeUp', 'summonCircle', 'spiritGuardian', 'afterimage'], length: 5400,
+    desc: 'A spectral guardian flies into battle, swings its halberd twice, then dives into a crushing holy slam.', uses: ['chargeUp', 'summonCircle', 'spiritGuardian', 'afterimage'], length: 5400,
     cast: ({ w, tex, caster, target, targets, hurt, summon }) => {
       chargeUp(w, tex, { target: () => hand(caster), palette: P.holy, duration: 350 });
       const at = { x: caster.feet.x + caster.facing * 120, y: caster.feet.y + 40, z: 0 };
