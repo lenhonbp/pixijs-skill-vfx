@@ -146,11 +146,22 @@ try {
   const whirlwind = await page.evaluate(() => {
     const d = window.__vfxDebug, w = window.demo.vfx, spawn = w.spawn;
     const regular = [], waves = new Map();
-    let clearFinisher = true;
+    const bars = w.layers.top.children.filter((sprite) => sprite.tint === 0x5ee07a);
+    const critLines = new Map();
+    let clearFinisher = true, clearHealthBars = true;
     w.spawn = function (options) {
       const number = options.layer === 'top' && options.blend === 'normal' && options.follow;
-      if (number && options.tint === 0xffd04a && regular.some(({ particle, original }) => !particle.dead && particle.o === original)) {
-        clearFinisher = false;
+      if (number && options.tint === 0xffd04a) {
+        clearFinisher &&= !regular.some(({ particle, original }) => !particle.dead && particle.o === original);
+        const { x, y, z } = options.follow(), scale = options.scale(0);
+        const half = options.texture.width * scale / 2;
+        const left = x - half, right = x + half;
+        const h = options.texture.height * scale / 2;
+        clearHealthBars &&= !bars.some((bar) => bar.visible && left < bar.x + bar.width && right > bar.x
+          && Math.abs(y - z - bar.y) < h + bar.height / 2);
+        const line = critLines.get(y) ?? [];
+        line.push({ left, right });
+        critLines.set(y, line);
       }
       const particle = spawn.call(this, options);
       if (number && particle) {
@@ -162,13 +173,17 @@ try {
     try {
       d.cast('phong-whirlwind', 0);
       d.step(1250);
-      return { waves: [...waves.values()], clearFinisher };
+      const clearDigits = [...critLines.values()].every((line) => {
+        line.sort((a, b) => a.left - b.left);
+        return line.every(({ left }, i) => i === 0 || left >= line[i - 1].right - 0.01);
+      });
+      return { waves: [...waves.values()], clearFinisher, clearHealthBars, clearDigits };
     } finally {
       w.spawn = spawn;
       w.clear();
     }
   });
-  assert.deepEqual(whirlwind, { waves: [6, 6, 9], clearFinisher: true });
+  assert.deepEqual(whirlwind, { waves: [6, 6, 9], clearFinisher: true, clearHealthBars: true, clearDigits: true });
   console.log('Whirlwind shows two damage pulses and an unobscured critical finisher: PASS');
   skills.push(...skills.filter(s => !/^(activation|evolution)-/.test(s.id)).map(skill => ({
     ...skill, label: `${skill.id}-tier3`, tier: 3,

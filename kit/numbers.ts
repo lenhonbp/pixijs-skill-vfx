@@ -32,7 +32,7 @@ export function damageNumber(w: VfxWorld, tex: VfxTextures, o: NumberOptions) {
   const text = String(o.value) + (o.crit ? '!' : '');
   const h = (o.size ?? 22) * (o.crit ? 1.45 : 1);
   const k = h / M.digitHeight;
-  const adv = 30 * k;
+  const adv = M.digitWidth * k;
   const life = o.duration ?? (o.crit ? 1100 : 850);
   if (!Number.isFinite(life) || life <= 0) throw new RangeError('Damage number duration must be finite and positive');
   const slot = stackSlot(w, o.x, o.y, life);
@@ -41,6 +41,10 @@ export function damageNumber(w: VfxWorld, tex: VfxTextures, o: NumberOptions) {
   const drift = rand(-25, 25);
   const pop = o.crit ? 1.6 : 1.25;
   let t = 0;
+  const popScale = () => {
+    const q = t / life;
+    return q < 0.15 ? pop - (pop - 1) * outBack(q / 0.15) : 1;
+  };
   w.addUpdater((dt) => {
     t += dt;
     const u = Math.min(1, t / life);
@@ -52,9 +56,16 @@ export function damageNumber(w: VfxWorld, tex: VfxTextures, o: NumberOptions) {
     const g = tex.digits[ch];
     if (!g) return;
     const off = (i - (text.length - 1) / 2) * adv;
+    const glyph = { ...pos };
     w.spawn({
-      texture: g, layer: 'top', blend: 'normal', x: off, y: 0, follow: () => pos, life, tint: o.color ?? 0xffffff,
-      scale: (q) => k * (q < 0.15 ? pop - (pop - 1) * outBack(q / 0.15) : 1),
+      texture: g, layer: 'top', blend: 'normal', x: 0, y: 0, life, tint: o.color ?? 0xffffff,
+      follow: () => {
+        glyph.x = pos.x + off * popScale();
+        glyph.y = pos.y;
+        glyph.z = pos.z;
+        return glyph;
+      },
+      scale: () => k * popScale(),
       alpha: (q) => (q < 0.7 ? 1 : 1 - outQuad((q - 0.7) / 0.3)),
     });
   });

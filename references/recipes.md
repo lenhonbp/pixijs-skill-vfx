@@ -19,7 +19,7 @@ not a framework to extend with options. The [API index](api.md) covers every bar
 | `lightningStrike` (`thunder.ts`) | cloud-to-ground forked bolt, flash, scorch and sparks | instant impact; caller supplies warning | `x`, `y`, `palette`, `radius`, `delay`, `onHit`, `cloud`, `height`, `hitStop`, `shake`; see [Loi helpers](#loi-lightning) |
 | `staticField` (`thunder.ts`) | storm canopy, ground channels, rim sparks and strikes toward targets | sustained lightning AoE; returns handle | `x`, `y`, `radius`, `palette`, `duration`, `onTick` (every 500 ms), `targets`, `cloud`; see [Loi helpers](#loi-lightning) |
 | `healAura` | ground pad + shrinking rings, vertical column glow, rising swaying motes, some stars | heals, buffs, auras (return handle) | `target` (follow fn), `radius`, `duration` |
-| `damageNumber` | baked outlined digit sprites in `top`, pop + drift | every hit/heal/tick | `value`, `color`, `crit`, `size`, `duration` (ms; default 850, 1100 for crits) |
+| `damageNumber` | baked outlined digit sprites in `top`, pop scales glyph spacing as well as size | every hit/heal/tick | `value`, `color`, `crit`, `size`, `duration` (ms; default 850, 1100 for crits); place `z` above any health bar |
 | `dash` | afterimages of the unit sprite, speed lines, dust | dash, charge | `sprite`, `duration`, `onMove`, `onEnd` |
 | `blink` | implode + light column at `from`, faint trail, column + burst at `to` | teleport, shadow step | `gapMs`, `onVanish`, `onAppear` |
 | `leap` / `slam` | dust, airborne shadow, trail; slam: shockwave, cracks, dust ring, rock debris, shake | jump attacks, ground pound | `arc`, `duration`, `radius`, `onLand` |
