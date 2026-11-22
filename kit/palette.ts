@@ -3,7 +3,11 @@ import { clamp01, lerpColor } from './ease';
 
 /** Derive highlights and shadows; explicit overrides preserve art-directed colors. */
 export function paletteFrom(main: number, o: { core?: number; dark?: number } = {}): Palette {
-  return { core: o.core ?? lerpColor(main, 0xffffff, 0.85), main, dark: o.dark ?? lerpColor(main, 0, 0.65) };
+  return {
+    core: o.core ?? lerpColor(lerpColor(main, 0xffdca8, 0.18), 0xffffff, 0.85),
+    main,
+    dark: o.dark ?? lerpColor(lerpColor(main, 0x4240a0, 0.22), 0, 0.65),
+  };
 }
 
 /** Hue is in degrees, saturation is a multiplier, lightness an additive 0..1 offset. */

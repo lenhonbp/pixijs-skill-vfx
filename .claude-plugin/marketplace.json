@@ -1,0 +1,14 @@
+{
+  "name": "pixijs-skill-vfx",
+  "description": "Code-drawn 2.5D skill VFX for PixiJS.",
+  "owner": { "name": "lenhonbp", "url": "https://github.com/lenhonbp" },
+  "plugins": [
+    {
+      "name": "pixijs-skill-vfx",
+      "source": "./",
+      "description": "A skill and TypeScript kit for procedural PixiJS VFX.",
+      "category": "gamedev",
+      "tags": ["pixijs", "vfx", "gamedev"]
+    }
+  ]
+}

@@ -19,3 +19,5 @@ jobs:
       - run: npm install --no-save --package-lock=false pixi.js@8.23.0 typescript esbuild
       - run: npx tsc -p .
       - run: npm run build
+      - run: npx playwright install --with-deps chromium
+      - run: npm run check

@@ -3,7 +3,7 @@ import type { VfxTextures } from './textures';
 import { type Palette, hitSpark, shockwave } from './recipes';
 import { lightningBolt } from './lightning-bolt';
 import { group, ms } from './group';
-import { rand } from './ease';
+import { random, rand } from './ease';
 import { shiftPalette } from './palette';
 
 /** Instant sky strike. A warning telegraph, if desired, belongs to the caller. */
@@ -43,7 +43,7 @@ export function staticField(w: VfxWorld, tex: VfxTextures,
   g.add(w.spawn({ texture: tex.ring, layer: 'ground', groundAligned: true,
     x: o.x, y: o.y, life: o.duration, scale: r / 120, alpha: ms.env(o.duration, 150, 250, 0.48), tint: p.main }));
   const point = (rim = false) => {
-    const a = rand(0, Math.PI * 2), d = (rim ? 1 : Math.sqrt(Math.random())) * r;
+    const a = rand(0, Math.PI * 2), d = (rim ? 1 : Math.sqrt(random())) * r;
     return { x: o.x + Math.cos(a) * d, y: o.y + Math.sin(a) * d * w.groundSquash, z: 3 };
   };
   let arc = 0, age = 0, ticks = 0;

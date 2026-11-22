@@ -8,7 +8,8 @@
     "build": "esbuild demo/main.ts --bundle --minify --outfile=demo/demo.js",
     "dev": "esbuild demo/main.ts --bundle --outfile=demo/demo.js --servedir=demo --watch",
     "typecheck": "tsc -p .",
-    "capture": "node tools/capture-frames.mjs"
+    "capture": "node tools/capture-frames.mjs",
+    "check": "node tools/check.mjs"
   },
   "devDependencies": {
     "esbuild": "^0.25.0",

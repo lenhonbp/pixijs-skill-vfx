@@ -7,7 +7,7 @@ import { blend } from './pixi-compat';
 import { Distortion } from './postfx';
 import { ribbonTrail } from './trail';
 import { lightningBolt } from './lightning-bolt';
-import { colorRamp, envelope, inQuad, outCubic, outExpo, outQuad, rand, lerp, lerpColor } from './ease';
+import { random, colorRamp, envelope, inQuad, outCubic, outExpo, outQuad, rand, lerp, lerpColor } from './ease';
 
 export interface Palette {
   /** Hottest color, near white. */
@@ -308,7 +308,7 @@ export function lightningChain(w: VfxWorld, tex: VfxTextures, o: { points: Vec3[
   };
   for (let f = 0; f < flickers; f++) w.after(f * 65, bolt);
   o.points.forEach((q, i) => {
-    w.spawn({ texture: tex.glow, x: q.x, y: q.y, z: q.z ?? 40, life: flickers * 65 + 80, scale: (i === 0 ? 1.2 : 1.8) * Math.sqrt(impact), alpha: (t) => impact * (1 - t) * (0.6 + 0.4 * Math.random()), tint: p.main, zBias: 3 });
+    w.spawn({ texture: tex.glow, x: q.x, y: q.y, z: q.z ?? 40, life: flickers * 65 + 80, scale: (i === 0 ? 1.2 : 1.8) * Math.sqrt(impact), alpha: (t) => impact * (1 - t) * (0.6 + 0.4 * random()), tint: p.main, zBias: 3 });
     if (i > 0) w.after(20 + i * 30, () => hitSpark(w, tex, { x: q.x, y: q.y, z: q.z ?? 40, angle: rand(0, TAU), palette: p, size: Math.sqrt(impact) }));
   });
   w.shake(4, 200);
@@ -327,10 +327,10 @@ export function healAura(w: VfxWorld, tex: VfxTextures, o: { target: () => Vec3;
   const motes = w.stream({
     rate: 40, duration,
     make: () => {
-      const a = rand(0, TAU), d = Math.sqrt(Math.random()) * r;
+      const a = rand(0, TAU), d = Math.sqrt(random()) * r;
       const phase = rand(0, TAU);
       return {
-        texture: Math.random() < 0.15 ? tex.star : tex.dot, x: Math.cos(a) * d, y: Math.sin(a) * d * w.groundSquash, z: rand(0, 20), follow: o.target,
+        texture: random() < 0.15 ? tex.star : tex.dot, x: Math.cos(a) * d, y: Math.sin(a) * d * w.groundSquash, z: rand(0, 20), follow: o.target,
         vz: rand(50, 110), life: rand(700, 1100), zBias: Math.sin(a) * d * w.groundSquash,
         scale: [rand(0.35, 0.6), 0], alpha: envelope(0.2, 0.5), tint: [p.core, p.main],
         onUpdate: (q, t) => { q.px = Math.sin(phase + t * 6) * 6; },

@@ -7,7 +7,7 @@
 // so effects sort with characters.
 import { Container, Sprite, Texture } from 'pixi.js';
 import { blend, BlendName } from './pixi-compat';
-import { Ease, clamp01, lerp, lerpColor, linear } from './ease';
+import { Ease, clamp01, lerp, lerpColor, linear, random, setRng, mulberry32 } from './ease';
 
 export type Curve =
   | number
@@ -122,6 +122,9 @@ export class Particle {
 }
 
 export interface VfxWorldOptions {
+  /** Process-global: last constructed world wins. rng takes precedence over seed. */
+  rng?: () => number;
+  seed?: number;
   ground: Container;
   body: Container;
   top: Container;
@@ -176,6 +179,7 @@ export class VfxWorld {
   private shakeY = 0;
 
   constructor(opts: VfxWorldOptions) {
+    setRng(opts.rng ?? (opts.seed === undefined ? Math.random : mulberry32(opts.seed)));
     this.layers = { ground: opts.ground, body: opts.body, top: opts.top };
     this.camera = opts.camera;
     this.groundSquash = opts.groundSquash ?? 0.6;
@@ -204,6 +208,12 @@ export class VfxWorld {
 
   get count() {
     return this.particles.length;
+  }
+
+  /** Lifecycle diagnostics, including retained pool capacity. */
+  get stats() {
+    return { particles: this.count, updaters: this.updaters.filter((u) => u.alive).length,
+      sprites: this.pool.length + this.count, records: this.particlePool.length + this.count };
   }
 
   /** True during hit-stop. Freeze your character animations while this is true. */
@@ -464,8 +474,8 @@ export class VfxWorld {
       if (k <= 0) this.shakeAmp = 0;
       else {
         const a = this.shakeAmp * k * k;
-        nx = (Math.random() * 2 - 1) * a;
-        ny = (Math.random() * 2 - 1) * a;
+        nx = (random() * 2 - 1) * a;
+        ny = (random() * 2 - 1) * a;
       }
     }
     if (this.camera) {
