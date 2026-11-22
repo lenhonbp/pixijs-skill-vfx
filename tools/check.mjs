@@ -101,8 +101,8 @@ try {
   });
   assert.deepEqual(contracts, { rejected: true, cleared: true, grounded: true });
   console.log('Activation tier validation, airborne ground projection and interrupted-effect cleanup: PASS');
-  skills.push(...['hoa-fireball', 'tho-fissure', 'thuy-frost-nova', 'moc-toxic-spores'].map(id => ({
-    ...skills.find(s => s.id === id), label: `${id}-tier3`, tier: 3,
+  skills.push(...skills.filter(s => !/^(activation|evolution)-/.test(s.id)).map(skill => ({
+    ...skill, label: `${skill.id}-tier3`, tier: 3,
   })));
   await page.close();
   const rows = [];
@@ -143,10 +143,10 @@ try {
     // Future skills explicitly named *-ultimate (or ultimate-*) get 600.
     const budget = /(^|-)ultimate(-|$)/.test(skill.id) ? 600 : 150;
     const issues = [];
-    if (skill.label && !result.hits) issues.push('no damaging hits exercised');
+    if (skill.label && ['hoa-fireball', 'tho-fissure', 'thuy-frost-nova', 'moc-toxic-spores'].includes(skill.id) && !result.hits) issues.push('no damaging hits exercised');
     if (skill.label && skill.id === 'moc-toxic-spores' && !result.tickSparks) issues.push('no empowered DoT ticks exercised');
-    const budgetStatus = budgetResult(skill.label ? result.empoweredPeak : result.peak, budget,
-      !skill.label && Object.hasOwn(baseline, skill.id) ? baseline[skill.id] : undefined);
+    const budgetStatus = budgetResult(result.peak, budget,
+      Object.hasOwn(baseline, skill.id) ? baseline[skill.id] : undefined);
     if (budgetStatus.failure) issues.push(budgetStatus.failure);
     if (result.runs.some((r) => r.particles || r.updaters)) issues.push('leftovers');
     if (result.runs.slice(1).some((r, i) => Object.keys(r).some((key) => r[key] > result.runs[i][key]))) issues.push('growth');

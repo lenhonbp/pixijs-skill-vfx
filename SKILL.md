@@ -87,6 +87,15 @@ Use `skillEvolution(w, tex, { at, height, palette, fromTier, toTier })` for the
 which stamps the new seal at 950 ms. Stacked ascending runes show the destination tier.
 For gameplay after release, run `empoweredAura` for the skill's length and call
 `empoweredHit` at each positive-damage target's chest. Both are no-ops at tier 1.
+Pass an `empoweredWorld(world, { tier, palette })` facade to the skill itself:
+particle scales and raw effect sprites grow 1.2x/1.45x, highlights heat up, motion
+trails stretch and impact feedback strengthens. Burst/stream density is reduced
+to fund the larger silhouettes, so checks enforce the total skill+overlay budget.
+Each facade retains its own tier across delayed callbacks and overlapping casts;
+the shared world and tier 1 remain unchanged. Damage in the demo scales 1.3x/1.7x,
+with tier-3 crit numbers. `empoweredAura` returns a stoppable handle and accepts
+`duration: Infinity, idle: true` for a persistent four/six-sprite idle look.
+The demo disables idle auras in debug/check mode; toggle with `__vfxDebug.idleAura(true)`.
 Pass skills a `withDamageTickFeedback(world, (feet, height, damage) => ...)` facade
 to observe their positive DoT ticks, including delayed status effects, without
 changing skill recipes. Capture the cast's tier/palette in that callback; use

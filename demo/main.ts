@@ -4,7 +4,7 @@ import { Application, Container, Sprite, Texture } from 'pixi.js';
 import {
   VfxWorld, createVfxTextures, isPixiV8, textureFromCanvas, rigFromBlender, anchorAtFeet,
   hitSkin, rockBack, getElement, hitSpark, damageNumber, activeHitFlashes, ELEMENTS, Distortion, Bloom, Palette, Vec3, outCubic, lerp, rand, setRng, mulberry32,
-  skillActivation, skillEvolution, empoweredHit, empoweredAura, activationRelease, ActivationTier, PALETTES, withDamageTickFeedback,
+  skillActivation, skillEvolution, empoweredHit, empoweredAura, empoweredWorld, activationRelease, ActivationTier, PALETTES, withDamageTickFeedback, Handle,
 } from '../kit';
 import { SKILLS, SkillDef, Unit, SkillContext } from '../examples/skills';
 
@@ -237,13 +237,13 @@ function whiteTexture() {
   const castWorld = (selected: ActivationTier, palette: Palette) => {
     if (selected === 1) return w;
     const nextTick = new WeakMap<Vec3, number>();
-    return withDamageTickFeedback(w, (at, height) => {
+    return withDamageTickFeedback(empoweredWorld(w, { tier: selected, palette }), (at, height) => {
       if (w.now < (nextTick.get(at) ?? -Infinity)) return;
       nextTick.set(at, w.now + 120);
       enhance(() => empoweredHit(w, tex, { at: { ...at, z: (at.z ?? 0) + height * 0.55 }, palette, tier: selected, tick: true }));
     });
   };
-  const ctxFor = (selected: ActivationTier = 1, palette: Palette = PALETTES.arcane): SkillContext & { tier?: ActivationTier } => ({
+  const ctxFor = (selected: ActivationTier = 1, palette: Palette = PALETTES.arcane, element = 'neutral'): SkillContext & { tier?: ActivationTier } => ({
     tier: selected,
     w: castWorld(selected, palette), tex, caster: hero, target: enemies[0], targets: enemies,
     hurt: (u, amount, o = {}) => {
@@ -254,13 +254,15 @@ function whiteTexture() {
         return;
       }
       if (amount === 0) return;
-      if (selected > 1) enhance(() => empoweredHit(w, tex, { at: { ...u.feet, z: (u.feet.z ?? 0) + u.height * 0.55 }, palette, tier: selected }));
+      if (selected > 1) amount = Math.round(amount * (selected === 3 ? 1.7 : 1.3));
+      const crit = o.crit || selected === 3;
+      if (selected > 1) enhance(() => empoweredHit(w, tex, { at: { ...u.feet, z: (u.feet.z ?? 0) + u.height * 0.55 }, palette, tier: selected, element }));
       const feedback = o.feedback ?? 1;
       hitSkin(w, u.sprite, o.skin ?? getElement(current.element)?.hitSkin ?? 'red');
       rockBack(w, u.sprite, { push: o.push ?? (o.crit ? 12 : 6),
         angle: o.angle ?? Math.atan2(u.feet.y - hero.feet.y, u.feet.x - hero.feet.x) });
       if (o.palette) hitSpark(w, tex, { x: u.feet.x, y: u.feet.y, z: u.height * 0.55, palette: o.palette, angle: o.angle ?? Math.PI, size: Math.sqrt(feedback) });
-      damageNumber(w, tex, { x: u.feet.x, y: u.feet.y, z: u.height + 8, value: amount, crit: o.crit, color: o.color ?? (o.crit ? 0xffd04a : 0xffffff) });
+      damageNumber(w, tex, { x: u.feet.x, y: u.feet.y, z: u.height + 8, value: amount, crit, color: o.color ?? (crit ? 0xffd04a : 0xffffff) });
       du.hp = Math.max(0.05, du.hp - amount / 1600);
       lastHurt = w.now;
     },
@@ -302,19 +304,27 @@ function whiteTexture() {
     activeHitFlashes.clear();
     for (const u of units) { u.feet.x = u.home.x; u.feet.y = u.home.y; u.feet.z = 0; u.sprite.visible = true; u.hp = 1; }
     hero.facing = 1;
+    if (idleEnabled) refreshIdle();
   };
 
   // ---------------------------------------------------------------- UI
   const $ = (id: string) => document.getElementById(id)!;
   let current: SkillDef = SKILLS[0];
   let tier: ActivationTier = 1;
+  let idleAura: Handle | undefined;
+  let idleEnabled = !new URLSearchParams(location.search).has('debug');
   const setTier = (value: ActivationTier) => {
     if (![1, 2, 3].includes(value)) throw new Error(`Invalid activation tier: ${value}`);
     tier = value;
     ($('tier') as HTMLSelectElement).value = String(value);
+    refreshIdle();
   };
   const activationOptions = (element: string) => ({ at: () => hero.feet, height: hero.height,
     palette: ELEMENTS[element as keyof typeof ELEMENTS]?.palette ?? PALETTES.arcane });
+  const refreshIdle = () => {
+    idleAura?.stop(); idleAura = undefined;
+    if (idleEnabled && tier > 1) idleAura = empoweredAura(w, tex, { ...activationOptions(current.element), tier, duration: Infinity, idle: true });
+  };
   const flourishes = ['hoa', 'thuy'].flatMap(element => [
     ...([1, 2, 3] as const).map(t => ({ id: `activation-${element}-${t}`, length: 2300, element, tier: t })),
     { id: `evolution-${element}`, length: 1800, element, tier: 3 as const },
@@ -334,6 +344,7 @@ function whiteTexture() {
 
   const cast = (s: SkillDef, selected: ActivationTier | 0 = tier) => {
     current = s;
+    if (idleEnabled) refreshIdle();
     renderInfo();
     renderList();
     if (selected) skillActivation(w, tex, { ...activationOptions(s.element), tier: selected });
@@ -343,8 +354,8 @@ function whiteTexture() {
   };
   const startSkill = (s: SkillDef, selected: ActivationTier | 0) => {
     const options = activationOptions(s.element);
-    if (selected > 1) enhance(() => empoweredAura(w, tex, { ...options, tier: selected as ActivationTier, duration: s.length }));
-    s.cast(ctxFor(selected || 1, options.palette));
+    if (selected > 1 && !idleEnabled) enhance(() => empoweredAura(w, tex, { ...options, tier: selected as ActivationTier, duration: s.length }));
+    s.cast(ctxFor(selected || 1, options.palette, s.element));
   };
 
   const renderInfo = () => {
@@ -506,6 +517,7 @@ function whiteTexture() {
       skills: [...SKILLS.map(({ id, length }) => ({ id, length })), ...flourishes],
       setTier,
       getTier: () => tier,
+      idleAura: (enabled: boolean) => { idleEnabled = enabled; refreshIdle(); },
       activationRelease: (selected: ActivationTier | 0) => selected ? activationRelease(selected) : 0,
       isEmpowering: () => empowering,
       moveCaster: (at: Partial<Vec3>) => Object.assign(hero.feet, at),

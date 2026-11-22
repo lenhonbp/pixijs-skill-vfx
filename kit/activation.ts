@@ -1,13 +1,96 @@
-import { VfxWorld, Vec3 } from './vfx-world';
+import type { Container } from 'pixi.js';
+import { VfxWorld, Vec3, Curve, SpawnOptions } from './vfx-world';
 import { VfxTextures } from './textures';
 import { Palette } from './recipes';
-import { envelope, outCubic, rand } from './ease';
+import { envelope, outCubic, rand, lerpColor } from './ease';
+import { group } from './group';
 
 export type ActivationTier = 1 | 2 | 3;
 type Caster = { at: () => Vec3; height: number; palette: Palette };
 const TAU = Math.PI * 2;
 const groundAt = (at: () => Vec3) => () => { const p = at(); return { x: p.x, y: p.y, z: 0 }; };
 export const activationRelease = (tier: ActivationTier) => tier === 1 ? 0 : tier === 2 ? 250 : 400;
+
+const curveAt = (curve: Curve | undefined, t: number, fallback = 1): number => {
+  if (curve === undefined) return fallback;
+  if (typeof curve === 'number') return curve;
+  if (typeof curve === 'function') return curve(t);
+  const u = curve[2]?.(t) ?? t;
+  return curve[0] + (curve[1] - curve[0]) * u;
+};
+
+/** Cast-local styling: callbacks retain their scope, never mutate the shared world. */
+export function empoweredWorld(w: VfxWorld, o: { tier: ActivationTier; palette: Palette }): VfxWorld {
+  if (o.tier === 1) return w;
+  const factor = o.tier === 3 ? 1.45 : 1.2, heat = o.tier === 3 ? 0.22 : 0.1;
+  const roots = new Map<Container, { x: number; y: number; sx: number; sy: number; alpha: number }>();
+  const restore = () => {
+    for (const [root, base] of roots) {
+      if (root.destroyed || !root.parent) { roots.delete(root); continue; }
+      root.position.set(base.x, base.y); root.scale.set(base.sx, base.sy); root.alpha = base.alpha;
+    }
+  };
+  const styleRoots = () => {
+    for (const root of roots.keys()) {
+      if (root.destroyed || !root.parent) { roots.delete(root); continue; }
+      const base = { x: root.x, y: root.y, sx: root.scale.x, sy: root.scale.y, alpha: root.alpha };
+      roots.set(root, base);
+      const bounds = root.getLocalBounds(), cx = bounds.x + bounds.width / 2, cy = bounds.y + bounds.height / 2;
+      const dx = (cx - root.pivot.x) * base.sx * (factor - 1), dy = (cy - root.pivot.y) * base.sy * (factor - 1);
+      root.position.set(base.x - dx * Math.cos(root.rotation) + dy * Math.sin(root.rotation),
+        base.y - dx * Math.sin(root.rotation) - dy * Math.cos(root.rotation));
+      root.scale.set(base.sx * factor, base.sy * factor); root.alpha = Math.min(1, base.alpha * factor);
+    }
+  };
+  let depth = 0;
+  const run = <T>(fn: () => T): T => {
+    if (depth) return fn();
+    restore(); depth++;
+    try { return fn(); } finally { depth--; styleRoots(); }
+  };
+  const layers = Object.fromEntries(Object.entries(w.layers).map(([name, layer]) => [name, new Proxy(layer, {
+    get(target, key) {
+      if (key === 'addChild') return (...children: Container[]) => run(() => {
+        const result = target.addChild(...children);
+        for (const child of children) roots.set(child, { x: child.x, y: child.y, sx: child.scale.x, sy: child.scale.y, alpha: child.alpha });
+        return result;
+      });
+      const value = Reflect.get(target, key, target);
+      return typeof value === 'function' ? value.bind(target) : value;
+    },
+  })])) as VfxWorld['layers'];
+  const methods = new Map<PropertyKey, unknown>();
+  const scoped = new Proxy(w, {
+    get(target, key) {
+      if (key === 'layers') return layers;
+      if (key === 'density') return target.density * (o.tier === 3 ? 0.35 : 0.8);
+      if (key === 'spawn') return (p: SpawnOptions) => {
+        const particle = target.spawn({ ...p,
+          alpha: t => Math.min(1, curveAt(p.alpha, t) * (1 + heat)),
+          tint: t => lerpColor(typeof p.tint === 'number' ? p.tint : typeof p.tint === 'function' ? p.tint(t) :
+            p.tint ? lerpColor(p.tint[0], p.tint[1], p.tint[2]?.(t) ?? t) : 0xffffff, o.palette.core, heat),
+          stretch: p.stretch === undefined ? undefined : p.stretch * factor,
+          onUpdate: (q, t, dt) => {
+            run(() => p.onUpdate?.(q, t, dt));
+            q.sprite.scale.set(q.sprite.scale.x * factor, q.sprite.scale.y * factor);
+          },
+          onDeath: p.onDeath && (q => run(() => p.onDeath!(q))),
+        });
+        if (particle) particle.sprite.scale.set(particle.sprite.scale.x * factor, particle.sprite.scale.y * factor);
+        return particle;
+      };
+      if (key === 'addUpdater') return (fn: (dt: number) => boolean | void) => target.addUpdater(dt => run(() => fn(dt)));
+      if (key === 'shake') return (amplitude: number, ms: number) => target.shake(amplitude * factor, ms);
+      if (key === 'hitStop') return (ms: number) => target.hitStop(ms * factor);
+      const value = Reflect.get(target, key, target);
+      if (typeof value !== 'function') return value;
+      if (!methods.has(key)) methods.set(key, value.bind(['burst', 'stream', 'after'].includes(String(key)) ? scoped : target));
+      return methods.get(key);
+    },
+    set(target, key, value) { return Reflect.set(target, key, value, target); },
+  });
+  return scoped;
+}
 
 function sigil(w: VfxWorld, tex: VfxTextures, o: Caster, radius: number, life: number, spin: number) {
   w.spawn({ texture: tex.rune, layer: 'ground', groundAligned: true, x: 0, y: 0, follow: groundAt(o.at),
@@ -149,7 +232,7 @@ export function skillEvolution(w: VfxWorld, tex: VfxTextures, o: Caster & { from
  * Layers: grounded shock rings; chest crown/rays and embers in body.
  * Sync: call for positive damage only; tick uses a small spark, tier 1 is unchanged.
  */
-export function empoweredHit(w: VfxWorld, tex: VfxTextures, o: { at: Vec3; palette: Palette; tier: ActivationTier; tick?: boolean }) {
+export function empoweredHit(w: VfxWorld, tex: VfxTextures, o: { at: Vec3; palette: Palette; tier: ActivationTier; tick?: boolean; element?: string }) {
   if (o.tier === 1) return;
   const p = o.palette, big = o.tier === 3, s = big ? 1.4 : 0.8;
   const body = { x: o.at.x, y: o.at.y, z: o.at.z ?? 0 };
@@ -160,21 +243,19 @@ export function empoweredHit(w: VfxWorld, tex: VfxTextures, o: { at: Vec3; palet
       scaleX: [0.18 * s, 0], scaleY: 0.25, alpha: [0.55, 0], tint: p.main, zBias: 7 }));
     return;
   }
-  w.spawn({ ...body, texture: tex.crescent, life: 200, rotation: -Math.PI / 2,
-    scale: [0.12 * s, 0.6 * s, outCubic], alpha: [0.85, 0], tint: p.main, zBias: 8 });
-  w.spawn({ ...body, texture: tex.star, life: 150, scale: [0.5 * s, 0.1], alpha: [0.7, 0], tint: p.core, zBias: 9 });
-  for (let i = 0; i < (big ? 2 : 1); i++) w.spawn({ texture: tex.ring, layer: 'ground', groundAligned: true,
-    x: o.at.x, y: o.at.y, z: 0, delay: i * 45, life: 230, scale: [0.05, (0.45 + i * 0.2) * s, outCubic],
-    alpha: [0.6, 0], tint: p.main });
-  if (big) w.burst(4, (i, n) => ({ ...body, texture: tex.streak, life: 160, rotation: i / n * TAU + 0.4,
-    anchorX: 0, scaleX: [0.2, 0.9], scaleY: [0.8, 0], alpha: [0.75, 0], tint: p.main, zBias: 6 }));
-  w.burst(3, (i, n) => {
-    const a = i / n * TAU;
-    return { ...body, texture: big ? tex.rock : tex.streak, life: 240, rotation: a,
-      vx: Math.cos(a) * 160 * s, vy: Math.sin(a) * 80 * s, vz: 45, gravity: 450,
-      scaleX: [big ? 0.3 : 0.35, 0.05], scaleY: 0.25, alpha: [0.8, 0], tint: big ? [p.main, p.dark] : [p.core, p.main], zBias: 7 };
+  w.spawn({ ...body, texture: tex.glow, life: 220, scale: [0.65 * s, 1.25 * s], alpha: [0.38, 0], tint: p.main, zBias: 6 });
+  w.spawn({ texture: tex.ring, layer: 'ground', groundAligned: true,
+    x: o.at.x, y: o.at.y, z: 0, life: 300, scale: [0.12, 0.95 * s, outCubic], alpha: [0.8, 0], tint: p.main });
+  const earth = o.element === 'tho', ice = o.element === 'thuy', lightning = o.element === 'loi';
+  w.burst(big ? 3 : 2, (i, n) => {
+    const a = (i / Math.max(1, n - 1) - 0.5) * 2.1;
+    return { ...body, texture: earth ? tex.rock : ice ? tex.shard : lightning ? tex.streak : tex.puff,
+      life: 330, rotation: a, blend: earth ? 'normal' : 'add',
+      vx: Math.sin(a) * 145 * s, vz: (90 + Math.cos(a) * 70) * s, gravity: earth ? 500 : 80,
+      scaleX: [0.65 * s, 0.15], scaleY: [earth ? 0.75 * s : 1.45 * s, 0.1],
+      alpha: envelope(0.05, 0.6, earth ? 1 : 0.8), tint: earth ? [p.main, p.dark] : [p.core, p.main], zBias: 8 };
   });
-  if (big) w.shake(2, 90);
+  w.shake(big ? 5 : 2.5, 140); w.hitStop(big ? 35 : 15);
 }
 
 /** Fantasy: an evolved caster leaks restrained power throughout the skill.
@@ -183,25 +264,30 @@ export function empoweredHit(w: VfxWorld, tex: VfxTextures, o: { at: Vec3; palet
  * Layers: grounded glow/sigil; licking body tongues and orbiting shards.
  * Sync: duration is the skill length, beginning at gameplay release.
  */
-export function empoweredAura(w: VfxWorld, tex: VfxTextures, o: Caster & { tier: ActivationTier; duration: number }) {
+export function empoweredAura(w: VfxWorld, tex: VfxTextures, o: Caster & { tier: ActivationTier; duration: number; idle?: boolean }) {
   if (o.tier === 1 || o.duration <= 0) return;
   const big = o.tier === 3, life = o.duration;
-  const alpha = envelope(Math.min(0.2, 120 / life), Math.min(0.5, 300 / life), big ? 0.38 : 0.22);
-  w.spawn({ texture: big ? tex.rune : tex.glow, layer: 'ground', groundAligned: true,
-    x: 0, y: 0, follow: groundAt(o.at), life, scale: big ? 0.23 : 0.85, alpha, tint: o.palette.main, spin: 0.2 });
-  w.burst(big ? 4 : 3, (i, n) => ({ texture: tex.puff, x: 0, y: 0, follow: o.at, life,
-    scaleX: big ? 0.22 : 0.15, scaleY: big ? 0.7 : 0.45, alpha, tint: o.palette.main,
+  const g = group(w, life, undefined, 140);
+  const alpha = life === Infinity ? (big ? 0.65 : 0.4) :
+    envelope(Math.min(0.2, 120 / life), Math.min(0.5, 300 / life), big ? 0.8 : 0.6);
+  g.add(w.spawn({ texture: tex.glow, layer: 'ground', groundAligned: true,
+    x: 0, y: 0, follow: groundAt(o.at), life, scale: big ? 2.1 : 1.4, alpha: big ? 0.28 : 0.18, tint: o.palette.main }));
+  g.add(w.spawn({ texture: tex.rune, layer: 'ground', groundAligned: true,
+    x: 0, y: 0, follow: groundAt(o.at), life, scale: big ? 0.34 : 0.24, alpha, tint: o.palette.main, spin: 0.2 }));
+  for (let i = 0, n = big && !o.idle ? 3 : 2; i < n; i++) g.add(w.spawn({ texture: tex.puff, x: 0, y: 0, follow: o.at, life,
+    scaleX: big ? 0.45 : 0.3, scaleY: big ? 1.4 : 0.95, alpha, tint: o.palette.main,
     onUpdate: (q) => {
       const cycle = (q.age / 650 + i / n) % 1, a = i / n * TAU + q.age / 850;
       q.px = Math.cos(a) * 30; q.py = Math.sin(a) * 30 * w.groundSquash;
-      q.pz = 8 + cycle * o.height * 0.85; q.alphaMul = Math.sin(cycle * Math.PI);
+      q.pz = 12 + cycle * o.height * 0.85; q.alphaMul = 0.25 + Math.sin(cycle * Math.PI) * 0.75;
       q.rotation = Math.sin(a) * 0.4;
     } }));
-  if (big) w.burst(3, (i, n) => ({ texture: tex.shard, x: 0, y: 0, follow: o.at, life,
-    scale: 0.23, alpha, tint: o.palette.core,
+  if (big) for (let i = 0, n = 2; i < n; i++) g.add(w.spawn({ texture: tex.shard, x: 0, y: 0, follow: o.at, life,
+    scale: 0.45, alpha, tint: o.palette.core,
     onUpdate: (q) => {
       const a = i / n * TAU + q.age / 500;
       q.px = Math.cos(a) * 42; q.py = Math.sin(a) * 42 * w.groundSquash;
       q.pz = o.height * 0.45 + Math.sin(a * 2) * 12; q.rotation = a;
     } }));
+  return g;
 }
