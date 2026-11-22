@@ -109,8 +109,11 @@ export function hexField(w: VfxWorld, tex: VfxTextures,
   const ring = floorRing(w, tex, { x: o.x, y: o.y, radius: o.radius, palette: p,
     texture: tex.rune, textureRadius: M.runeRadius, duration: dur, spin: -0.12,
     scale: (t) => o.radius / M.runeRadius * outCubic(clamp01(t * dur / 360)),
-    alpha: ms.env(dur, 260, 500, 0.48), tint: p.core });
+    alpha: ms.env(dur, 260, 500, 0.7), tint: p.main });
   g.add(ring.far); g.add(ring.near);
+  g.add(w.spawn({ texture: tex.glow, x: o.x, y: o.y, layer: 'ground', groundAligned: true,
+    life: dur, scaleX: o.radius / 56, scaleY: o.radius / 56,
+    alpha: ms.env(dur, 360, 500, 0.16), tint: p.core }));
   for (let i = 0; i < 8; i++) {
     const a = i * TAU / 8, x = o.x + Math.cos(a) * o.radius * 0.85;
     const y = o.y + Math.sin(a) * o.radius * w.groundSquash * 0.85;
@@ -132,10 +135,10 @@ export function frailty(w: VfxWorld, tex: VfxTextures,
   for (let i = 0; i < 4; i++) {
     const side = i % 2 ? 1 : -1, x = side * (12 + Math.floor(i / 2) * 9) * s;
     for (const edge of [false, true]) g.add(w.spawn({ texture: tex.tendril, x, y: 0, follow: o.target,
-      life, anchorY: 1, scaleX: side * (edge ? 0.22 : 0.4) * s, rotation: -side * 0.22,
-      scaleY: (t) => 0.7 * s * outCubic(clamp01(t * life / 300)) * (1 - clamp01((t * life - dur) / 400)),
+      life, anchorY: 1, scaleX: side * (edge ? 0.38 : 0.54) * s, rotation: -side * 0.28,
+      scaleY: (t) => 0.85 * s * outCubic(clamp01(t * life / 300)) * (1 - clamp01((t * life - dur) / 400)),
       blend: edge ? 'add' : 'normal', tint: edge ? i < 2 ? p.core : p.main : p.dark,
-      alpha: ms.env(life, 170, 380, edge ? 0.48 : 0.9), zBias: i < 2 ? 5 : -1,
+      alpha: ms.env(life, 170, 380, edge ? 0.8 : 0.95), zBias: i < 2 ? 5 : -1,
       onUpdate: (q, t, dt) => { drift(q, t, dt); q.pz = -h * 0.65 * clamp01((q.age - dur) / 400); } }));
   }
   g.add(w.spawn({ texture: tex.glow, x: 0, y: 0, z: h * 0.4, follow: o.target,

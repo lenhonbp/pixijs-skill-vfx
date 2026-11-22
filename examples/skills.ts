@@ -697,7 +697,7 @@ export const SKILLS: SkillDef[] = [
     desc: 'A spreading hex binds and weighs down enemies, leaving a sickly, draining curse.',
     uses: ['sigilCharge', 'hexField', 'frailty'], length: 3200,
     cast: ({ w, tex, caster, target, targets }) => {
-      const palette = { core: 0x9bbb78, main: 0x9471b8, dark: 0x21182d };
+      const palette = { core: 0x91c76e, main: 0xa34de0, dark: 0x21182d };
       sigilCharge(w, tex, { target: () => hand(caster), palette, duration: 350 });
       w.stream({ rate: 35, duration: 300, make: () => {
         const at = hand(caster), a = rand(0, Math.PI * 2), r = rand(18, 34);
@@ -725,7 +725,8 @@ export const SKILLS: SkillDef[] = [
       chargeUp(w, tex, { target: () => hand(caster), palette: P.holy, duration: 350 });
       const at = { x: caster.feet.x + caster.facing * 120, y: caster.feet.y + 40, z: 0 };
       const slamRadius = caster.height * 2.4;
-      summonCircle(w, tex, { ...at, palette: P.holy, radius: 70, duration: 1200, columnAlpha: 0.2,
+      const gold = { core: 0xffeab4, main: 0xf4b93f, dark: 0xb08020 };
+      summonCircle(w, tex, { ...at, palette: gold, radius: 70, duration: 1200, linger: 3900, columnAlpha: 0.7,
         onSummon: () => {
           summon?.(at, 'neutral', true);
           w.after(200, () => spiritGuardian(w, tex, { ...at, palette: P.holy, height: caster.height * 1.4,

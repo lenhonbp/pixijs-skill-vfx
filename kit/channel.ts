@@ -313,35 +313,37 @@ export function chargeUp(w: VfxWorld, tex: VfxTextures, o: { target: () => Vec3;
 }
 
 /** Rune circle on the ground that charges for `duration`, then a pillar of light and onSummon. */
-export function summonCircle(w: VfxWorld, tex: VfxTextures, o: { x: number; y: number; palette: Palette; radius?: number; duration?: number; columnAlpha?: number; onSummon?: () => void }): Handle {
+export function summonCircle(w: VfxWorld, tex: VfxTextures, o: { x: number; y: number; palette: Palette; radius?: number; duration?: number; linger?: number; columnAlpha?: number; onSummon?: () => void }): Handle {
   const p = o.palette;
   const r = o.radius ?? 70;
   const dur = o.duration ?? 1300;
   const k = r / M.runeRadius;
   const gnd = { layer: 'ground', groundAligned: true, x: o.x, y: o.y } as const;
-  const total = dur + 700;
-  const g = group(w, total, undefined, 300);
-  const open = (t: number) => outBack(clamp01((t * total) / 320));
-  g.add(w.spawn({ ...gnd, texture: tex.glow, life: total, scale: r / 34, alpha: ms.env(total, 200, 500, 0.45), tint: p.main }));
+  const total = dur + (o.linger ?? 700);
+  const g = group(w, total, undefined, 180);
+  const open = (t: number) => outCubic(clamp01((t * total) / 300)) * (1 - outCubic(clamp01((t * total - total + 450) / 450)));
+  g.add(w.spawn({ ...gnd, texture: tex.glow, life: total, scale: r / 48, alpha: ms.env(total, 300, 500, 0.12), tint: p.main }));
   const outer = floorRing(w, tex, { x: o.x, y: o.y, texture: tex.rune, textureRadius: M.runeRadius,
-    radius: r, palette: p, duration: total, spin: 0.5, scale: (t) => k * open(t), alpha: ms.env(total, 150, 500, 0.95) });
-  const inner = floorRing(w, tex, { x: o.x, y: o.y, texture: tex.rune, textureRadius: M.runeRadius,
-    radius: r * 0.55, palette: p, duration: total, spin: -0.9, rotation: 0.4,
-    scale: (t) => k * 0.55 * open(t), alpha: ms.env(total, 250, 500, 0.7), tint: p.core });
+    radius: r, palette: p, duration: total, spin: 0.12, scale: (t) => k * open(t),
+    sweep: (t) => t * total / (dur * 0.85), alpha: ms.env(total, 160, 500, 0.85) });
+  const inner = floorRing(w, tex, { x: o.x, y: o.y, radius: r * 0.62, palette: p, duration: total,
+    scale: (t) => r * 0.62 / M.ringRadius * open(t),
+    sweep: (t) => (t * total - 160) / (dur * 0.8), alpha: ms.env(total, 280, 500, 0.5) });
   for (const ring of [outer, inner]) { g.add(ring.far); g.add(ring.near); }
-  for (let i = 0; i < 6; i++) {
-    const a = (i / 6) * TAU;
+  for (let i = 0; i < 4; i++) {
+    const a = (i / 4) * TAU;
     g.add(w.spawn({
-      texture: tex.glow, x: o.x + Math.cos(a) * r * 0.88, y: o.y + Math.sin(a) * r * 0.88 * w.groundSquash, z: 30, life: dur, delay: 150 + i * 60, zBias: 2,
-      scaleX: 0.22, scaleY: [0.2, 1.6, outCubic], alpha: envelope(0.2, 0.7, 0.3), tint: p.main,
+      texture: tex.rune, x: o.x, y: o.y, z: 4, life: 900, delay: 250 + i * 150, zBias: 2,
+      scale: [0.028, 0.018], alpha: envelope(0.15, 0.5, 0.7), tint: p.main, spin: 1.5, vz: 55,
+      onUpdate: (q, t) => { q.px = Math.cos(a + t * 1.8) * r * 0.8; q.py = Math.sin(a + t * 1.8) * r * 0.8 * w.groundSquash; },
     }));
   }
   g.addHandle(w.stream({
-    rate: 45, duration: dur,
+    rate: 10, duration: dur,
     make: () => {
       const a0 = rand(0, TAU), spin = 2.5;
       return {
-        texture: tex.dot, x: o.x, y: o.y, z: 2, life: 700, zBias: 3, vz: rand(20, 60), scale: [0.35, 0.1], tint: [p.main, p.core],
+        texture: tex.dot, x: o.x, y: o.y, z: 2, life: 500, zBias: 3, vz: rand(20, 50), scale: [0.075, 0], alpha: [0.65, 0], tint: p.main,
         onUpdate: (q, t) => {
           const rr = r * (1 - outQuad(t)) * 0.95;
           const a = a0 + t * spin;
@@ -352,15 +354,18 @@ export function summonCircle(w: VfxWorld, tex: VfxTextures, o: { x: number; y: n
     },
   }));
   g.addHandle(w.after(dur, () => {
-    const a = o.columnAlpha ?? 1;
-    w.spawn({ texture: tex.glow, x: o.x, y: o.y, z: 90, life: 600, zBias: 8, scaleX: [0.6, 1.4, outCubic], scaleY: [2, 6, outCubic], alpha: [0.9 * a, 0, inQuad], tint: p.main });
-    w.spawn({ texture: tex.glow, x: o.x, y: o.y, z: 90, life: 380, zBias: 9, scaleX: [0.3, 0.5], scaleY: [2, 5], alpha: [a, 0], tint: p.core });
-    shockwave(w, tex, { x: o.x, y: o.y, radius: r * 1.6, palette: p });
-    w.burst(20, () => {
-      const a = rand(0, TAU), sp = rand(100, 260);
-      return { texture: tex.star, x: o.x, y: o.y, z: rand(10, 80), life: rand(400, 700), zBias: 7, vx: Math.cos(a) * sp, vy: Math.sin(a) * sp * w.groundSquash, vz: rand(50, 200), drag: 3, rotation: rand(0, TAU), spin: 4, scale: [0.45, 0], tint: [p.core, p.main] };
+    const a = o.columnAlpha ?? 0.7;
+    g.add(w.spawn({ texture: tex.glow, x: o.x, y: o.y, z: 80, life: 700, zBias: 8,
+      scaleX: [0.18, 0.3, outCubic], scaleY: [0.4, 2.5, outCubic], alpha: envelope(0.1, 0.3, a), tint: p.main }));
+    g.add(w.spawn({ texture: tex.glow, x: o.x, y: o.y, z: 80, life: 500, zBias: 9,
+      scaleX: [0.06, 0.1], scaleY: [0.5, 2.2], alpha: [a * 0.65, 0], tint: p.core }));
+    w.burst(10, () => {
+      const a = rand(0, TAU), sp = rand(15, 45);
+      return { texture: tex.dot, x: o.x, y: o.y, z: rand(4, 30), life: rand(400, 650), zBias: 7,
+        vx: Math.cos(a) * sp, vy: Math.sin(a) * sp * w.groundSquash, vz: rand(60, 140),
+        scale: [0.09, 0], alpha: [0.7, 0], tint: p.main };
     });
-    w.shake(6, 260);
+    w.shake(2, 140);
     o.onSummon?.();
   }));
   return g;
