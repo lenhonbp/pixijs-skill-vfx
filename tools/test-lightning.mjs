@@ -70,11 +70,23 @@ try {
     check(canopy.alpha > 0 && canopy.children[1].alpha > 0, 'cloud: shaded body and lit interior');
     const source = cloud.source(10000);
     check(source.x <= 214 && source.y - source.z === 72, 'cloud: sources stay in shared canopy, regardless of target ground depth');
-    step(w, 300); check(!cloud.alive && canopy.destroyed && texture.destroyed, 'cloud: texture and sprites are owned'); clean(w);
+    step(w, 300); check(!cloud.alive && canopy.destroyed && !texture.destroyed && texture === tex.stormCloud,
+      'cloud: sprites released, startup texture retained'); clean(w);
     w = world(); const forever = stormCloud(w, tex, { x: 0, y: 0, palette: p, duration: Infinity });
+    check(w.layers.top.children[0].children.every((s) => s.texture === texture), 'cloud: repeated casts and worlds reuse the startup texture');
     step(w, 4000); check(forever.alive, 'cloud: Infinity'); w.clear(); check(!forever.alive, 'cloud: clear stops handle'); clean(w);
+    check(!texture.destroyed, 'cloud: world cleanup does not destroy another cast texture');
+    const owned = createVfxTextures();
+    check(owned.stormCloud !== texture, 'cloud: texture sets have independent ownership');
+    const other = world(); stormCloud(other, owned, { x: 0, y: 0, palette: p, duration: Infinity });
+    other.clear(); clean(other);
+    for (const value of Object.values(owned)) {
+      if (value.destroy) value.destroy(true);
+      else for (const digit of Object.values(value)) digit.destroy(true);
+    }
+    check(owned.stormCloud.destroyed && !texture.destroyed, 'cloud: texture-set teardown releases the canopy without affecting other sets');
     w = world(); check(!stormCloud(w, tex, { x: 0, y: 0, palette: p, duration: 0 }).alive, 'cloud: zero duration'); clean(w);
-    results.push('Storm canopy: gather/shading/inner flash, shared-depth sources, owned texture, finite/Infinity/zero/clear PASS');
+    results.push('Storm canopy: gather/shading/inner flash, shared-depth sources, startup texture reuse, independent texture-set ownership/teardown, finite/Infinity/zero/clear PASS');
 
     w = world(); let releases = 0;
     let charge = lightningCharge(w, tex, { target: () => a, palette: p, duration: 100, onDone: () => releases++ });

@@ -7,38 +7,18 @@ import { group, ms } from './group';
 import { floorRing } from './floor-ring';
 import { clamp01, envelope, random, rand } from './ease';
 import { shiftPalette } from './palette';
-import { blend, textureFromCanvas } from './pixi-compat';
+import { blend } from './pixi-compat';
 
 export interface StormCloudHandle extends Handle { flash(): void; source(x: number): Vec3 }
 
-/** A shaded overhead cloud, with a separately lit interior. Owns its generated texture. */
+/** A shaded overhead cloud, with a separately lit interior. Shares the startup cloud texture. */
 export function stormCloud(w: VfxWorld, tex: VfxTextures,
   o: { x: number; y: number; palette: Palette; width?: number; height?: number; duration?: number }): StormCloudHandle {
   const duration = o.duration ?? 1800, height = o.height ?? 235;
   const source = (x: number) => ({ x: Math.max(o.x - (o.width ?? 330) * 0.38, Math.min(o.x + (o.width ?? 330) * 0.38, x)), y: o.y, z: height - 12 });
   if (!(Number.isFinite(duration) || duration === Infinity)) throw new RangeError('Invalid cloud duration');
   if (duration <= 0) return { alive: false, stop() {}, flash() {}, source };
-  const canvas = document.createElement('canvas'); canvas.width = 512; canvas.height = 192;
-  const ctx = canvas.getContext('2d')!;
-  const octaves = [8, 16, 32, 64].map((n) => ({ n, grid: Array.from({ length: (n + 1) ** 2 }, () => random()) }));
-  const noise = (x: number, y: number) => octaves.reduce((sum, { n, grid }, octave) => {
-    const u = x / 512 * n, v = y / 192 * n, ix = Math.floor(u), iy = Math.floor(v);
-    const fx = u - ix, fy = v - iy, sx = fx * fx * (3 - 2 * fx), sy = fy * fy * (3 - 2 * fy);
-    const a = grid[iy * (n + 1) + ix], b = grid[iy * (n + 1) + ix + 1];
-    const c = grid[(iy + 1) * (n + 1) + ix], d = grid[(iy + 1) * (n + 1) + ix + 1];
-    return sum + ((a + (b - a) * sx) * (1 - sy) + (c + (d - c) * sx) * sy) / 2 ** (octave + 1);
-  }, 0);
-  const image = ctx.createImageData(512, 192);
-  for (let y = 0; y < 192; y++) for (let x = 0; x < 512; x++) {
-    const n = noise(x, y), edge = 1 - ((x - 256) / 245) ** 2 - ((y - 98) / 72) ** 2;
-    const density = clamp01((edge + (n - 0.46) * 1.35) * 2.4);
-    const light = 24 + n * 64 + Math.max(0, (110 - y) / 95) * 35 + (1 - x / 512) * 9;
-    const i = (y * 512 + x) * 4;
-    image.data[i] = light * 0.72; image.data[i + 1] = light * 0.84; image.data[i + 2] = light * 1.08;
-    image.data[i + 3] = density * 245;
-  }
-  ctx.putImageData(image, 0, 0);
-  const texture = textureFromCanvas(canvas), root = new Container();
+  const texture = tex.stormCloud, root = new Container();
   const body = new Sprite(texture), light = new Sprite(texture);
   for (const s of [body, light]) { s.anchor.set(0.5); s.width = o.width ?? 330; s.height = (o.width ?? 330) * 0.52; root.addChild(s); }
   light.tint = 0xa3b4ff; light.blendMode = blend('add'); light.alpha = 0;
@@ -46,7 +26,7 @@ export function stormCloud(w: VfxWorld, tex: VfxTextures,
   let age = 0, flash = 0, alive = true, updater: Handle | undefined, unown: (() => void) | undefined;
   const stop = () => {
     if (!alive) return;
-    alive = false; updater?.stop(); unown?.(); root.destroy({ children: true }); texture.destroy(true);
+    alive = false; updater?.stop(); unown?.(); root.destroy({ children: true });
   };
   unown = w.own(stop);
   updater = w.addUpdater((dt) => {
