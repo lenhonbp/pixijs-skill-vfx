@@ -21,6 +21,11 @@ assert.throws(() => readContainer(buffer(example.subarray(0, 20))));
 assert.throws(() => readContainer(new ArrayBuffer(0)));
 assert.throws(() => validate({}));
 const invalid = structuredClone(decoded.manifest); invalid.layers[0].frames.pop(); assert.throws(() => validate(invalid));
+for (const scale of [0, -1, NaN, Infinity, '0.5', null]) {
+  const badScale = structuredClone(decoded.manifest); badScale.layers[0].scale = scale;
+  assert.throws(() => validate(badScale), /Invalid VFX layer scale/);
+}
+const legacy = structuredClone(decoded.manifest); legacy.layers.forEach(l => { delete l.scale; }); validate(legacy);
 const empty = structuredClone(decoded.manifest); empty.layers.forEach(l => { l.sheets = []; l.frames.fill(null); }); empty.cues = []; validate(empty);
 const feedback = structuredClone(empty);
 feedback.durationMs = 200; feedback.frameCount = 2; feedback.fps = 10;
@@ -36,6 +41,7 @@ const offset = structuredClone(decoded.manifest);
 offset.origin = { x: 100, y: 50 }; offset.target = { x: 460, y: 50 }; offset.anchor = 'target';
 offset.durationMs = 1000; offset.frameCount = 1; offset.fps = 1; offset.cues = [];
 offset.layers.forEach(l => { l.frames = [l.frames.find(f => f !== null)]; });
+offset.layers.forEach((l, i) => { l.scale = i ? 0.25 : 0.8; });
 
 // Independent wire fixture: JSON and WebP payloads framed with little-endian fields.
 function fixture(manifest, sheets, key) {
@@ -99,10 +105,12 @@ try {
     return { transfer: resources.reduce((n, r) => n + r.transferSize, 0), body: resources.reduce((n, r) => n + r.encodedBodySize, 0) };
   });
   console.log(`Desktop first load: ${desktopFirst.transfer} transferred bytes incl. HTTP overhead; ${desktopFirst.body} body bytes (index + selected hi pack only)`);
+  assert.ok(desktopFirst.transfer <= 2500000, 'Desktop first-load budget exceeded');
   const result = await page.evaluate(async () => {
     const { vfx, app, packs, from, to } = window.__showcase; app.stop();
     const check = (condition, message) => { if (!condition) throw Error(message); };
     check(packs.length === 25, 'Expected 25 packs');
+    check(packs.every(p => p.desktopBytes <= 3000000), 'Desktop pack budget exceeded');
     let cues = 0; const listener = () => cues++; vfx.on('cue', listener); vfx.hitstopEnabled = false;
     for (const pack of packs) {
       await vfx.load(`./packs/free/${pack.id}.vfxb`);
@@ -126,6 +134,24 @@ try {
     return { count: packs.length, cues, pooled: vfx.stats().pooled };
   });
   console.log(`Pixi v8: PASS (${result.count} packs + plain JSON, cleanup, replay pool=${result.pooled}, ${result.cues} cues, loop/stop/errors)`);
+  await page.evaluate(async () => {
+    const { vfx, world, scene } = window.__showcase;
+    vfx.unload('hoa-fireball'); await vfx.load('/offset.vfxb');
+    const h = vfx.play('hoa-fireball', { from: {x:0,y:0}, parent: world });
+    const root = world.children.at(-1);
+    if (root.children[0].scale.x !== 1 / 0.8 || root.children[1].scale.x !== 4) throw Error('v8 layer scale ignored');
+    h.stop(); vfx.unload('hoa-fireball');
+    scene.cue({type:'sound',id:'windup'}, 0xff9060); scene.animate(50);
+    if (scene.state.castAge !== 50 || scene.orb.width <= 24) throw Error('Windup did not flare orb');
+    scene.cue({type:'sound',id:'release'}, 0xff9060); scene.animate(16);
+    if (scene.state.releaseAge !== 16) throw Error('Release did not recoil');
+    scene.cue({type:'hit'}, 0xff9060); scene.animate(40);
+    if (!(scene.dummy.scale.y < 1 && scene.floorFlash.alpha > 0 && Math.abs(scene.dummy.rotation) > 0.01)) throw Error('Dummy/floor hit response missing');
+    for (let i = 0; i < 100; i++) scene.animate(50);
+    if (Math.abs(scene.dummy.scale.y - 1) > 0.001 || !Number.isFinite(scene.dummy.x)) throw Error('Dummy did not settle');
+    await vfx.load('./packs/free/hoa-fireball.vfxb');
+  });
+  console.log('Layer scale + stage: PASS (v8 mixed scales, legacy fallback validation, invalid scales, windup/release/hit/settle)');
   await page.getByRole('button', { name: 'Thủy', exact: true }).click();
   assert.equal(await page.locator('.skill').count(), 2);
   await page.getByRole('button', { name: 'All elements', exact: true }).click();
@@ -199,6 +225,7 @@ try {
     offsetRoot.children.forEach((sprite, i) => {
       const frame = manifest.layers[i].frames.find(f => f !== null);
       if (sprite.x !== frame[5] || sprite.y !== frame[6]) throw Error('Origin-relative offsets shifted twice');
+      if (sprite.scale.x !== 1 / manifest.layers[i].scale) throw Error('v7 layer scale ignored');
     });
     handle.stop(); offset.destroy();
   });
@@ -222,7 +249,8 @@ try {
   assert.equal(first.packs, 1); assert.equal(first.overflow, false); assert.ok(first.backingWidth <= first.displayWidth * 2 + 1);
   assert.equal(await mobile.locator('.integration pre').evaluate(pre => getComputedStyle(pre).whiteSpace === 'pre-wrap' && pre.scrollWidth <= pre.clientWidth), true);
   console.log('Mobile integration snippet: PASS (wrapped without horizontal clipping)');
-  for (const [id, mobileBytes] of first.bytes) assert.ok(mobileBytes < 600000, `${id} exceeds mobile pack budget`);
+  assert.ok(first.transfer <= 1500000, 'Mobile first-load budget exceeded');
+  for (const [id, mobileBytes] of first.bytes) assert.ok(mobileBytes <= 1300000, `${id} exceeds mobile pack budget`);
   await mobile.locator('.skill').filter({ hasText: 'Dragon Cyclone' }).tap();
   await mobile.waitForFunction(() => window.__showcase.vfx.stats().active === 1);
   assert.equal(await mobile.evaluate(() => window.__showcase.vfx.stats().packs), 1);

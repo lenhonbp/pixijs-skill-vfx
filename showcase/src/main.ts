@@ -1,14 +1,16 @@
 // Copyright (c) 2026 lenhonbp <lenhonbp@gmail.com> — https://github.com/lenhonbp/pixijs-skill-vfx
 // SPDX-License-Identifier: MIT
-import { Application, Container, Graphics, Sprite, Texture } from 'pixi.js';
+import { Application, Container, Texture } from 'pixi.js';
 import { VfxPlayer } from '../../runtime/src/index';
 import type { Playback, CueEvent } from '../../runtime/src/index';
 import './style.css';
+import { createStage } from './stage';
 function canvas(w: number, h: number): [HTMLCanvasElement, CanvasRenderingContext2D] {
   const c = document.createElement('canvas');
-  c.width = w;
-  c.height = h;
-  return [c, c.getContext('2d')!];
+  c.width = w * 3;
+  c.height = h * 3;
+  const ctx = c.getContext('2d')!; ctx.scale(3, 3);
+  return [c, ctx];
 }
 
 function figurePainter(ctx: CanvasRenderingContext2D) {
@@ -29,7 +31,7 @@ function figurePainter(ctx: CanvasRenderingContext2D) {
   return { shade, shape, line };
 }
 
-function heroTexture() {
+function heroTexture(part: 'body' | 'staff') {
   const [c, ctx] = canvas(80, 120);
   const { shade, shape, line } = figurePainter(ctx);
   const gold = shade(22, 30, 35, '#fff0b0', '#cda65f', '#785139');
@@ -84,6 +86,8 @@ function heroTexture() {
   pearl.addColorStop(0, '#ffffff'); pearl.addColorStop(0.35, '#c6ffff'); pearl.addColorStop(0.75, '#70bacf'); pearl.addColorStop(1, '#4b6eaa');
   ctx.fillStyle = pearl; ctx.beginPath(); ctx.ellipse(67, 16, 4.8, 6, -0.2, 0, Math.PI * 2); ctx.fill();
   line('M63 24 Q67 27 72 22 M66 29 L69 29', '#fff0bd', 1);
+  if (part === 'body') ctx.clearRect(62, 0, 18, 120);
+  else ctx.clearRect(0, 0, 62, 120);
   return Texture.from(c);
 }
 
@@ -148,27 +152,17 @@ document.querySelector<HTMLDivElement>('#app')!.innerHTML = `
 <footer><span>© 2026 lenhonbp &lt;lenhonbp@gmail.com&gt; · <a href="https://opensource.org/license/mit">MIT license</a></span><span>Runtime & free collection · MIT</span></footer></main>`;
 const el = <T extends HTMLElement>(id: string) => document.getElementById(id) as T;
 const app = new Application();
-await app.init({ width: 1000, height: 580, backgroundColor: 0x121620, antialias: true, resolution: Math.min(devicePixelRatio, 2) * Math.min(1, el('stage').clientWidth / 1000), autoDensity: true });
+await app.init({ width: 1000, height: 580, backgroundColor: 0x121620, antialias: true, resolution: Math.min(devicePixelRatio, 2) * el('stage').clientWidth / 1000, autoDensity: true });
 el('stage').prepend(app.canvas);
 const resize = new ResizeObserver(() => {
-  app.renderer.resolution = Math.min(devicePixelRatio, 2) * Math.min(1, el('stage').clientWidth / 1000);
+  app.renderer.resolution = Math.min(devicePixelRatio, 2) * el('stage').clientWidth / 1000;
   app.renderer.resize(1000, 580);
   app.canvas.style.width = app.canvas.style.height = '100%';
 });
 resize.observe(el('stage'));
 const world = new Container(); app.stage.addChild(world);
-const floor = new Graphics();
-for (let x = -700; x < 1500; x += 100) { floor.moveTo(x, 580).lineTo(x + 500, 80); floor.moveTo(x, 80).lineTo(x + 500, 580); }
-floor.stroke({ color: 0x8595b0, width: 1, alpha: 0.09 });
-floor.ellipse(500, 370, 360, 145).stroke({ color: 0x9aa5bd, alpha: 0.12, width: 1 });
-world.addChild(floor);
 const from = { x: 300, y: 365 }, to = { x: 660, y: 365 };
-const caster = new Sprite(heroTexture()), dummy = new Sprite(dummyTexture());
-for (const [point, sprite] of [[from, caster], [to, dummy]] as const) {
-  const shadow = new Graphics().ellipse(point.x, point.y + 2, 31, 12).fill({ color: 0, alpha: 0.4 });
-  sprite.anchor.set(0.5, 1); sprite.position.set(point.x, point.y);
-  world.addChild(shadow, sprite);
-}
+const scene = createStage(world, from, to, { body: heroTexture('body'), staff: heroTexture('staff'), dummy: dummyTexture() });
 const vfx = await VfxPlayer.create(app, { shake: { target: world }, hitstop: true });
 const response = await fetch(`${base}packs/free/index.json`); if (!response.ok) throw Error('Collection index unavailable');
 const packs: Entry[] = await response.json();
@@ -214,14 +208,15 @@ async function cast() {
   } catch (error) { el('status').textContent = `Could not play: ${String(error)}`; }
 }
 vfx.on('cue', (cue: CueEvent) => {
-  if (cue.type === 'hit') dummy.rotation = 0.045;
+  const element = packs.find(p => p.id === cue.packId)?.element ?? 'neutral';
+  scene.cue(cue, Number.parseInt((colors[element] ?? colors.neutral).slice(1), 16));
   if (cue.type !== 'sound' || !el<HTMLInputElement>('sound').checked || !audio) return;
   const oscillator = audio.createOscillator(), gain = audio.createGain(), now = audio.currentTime;
   oscillator.type = cue.id === 'impact' ? 'triangle' : 'sine'; oscillator.frequency.setValueAtTime(cue.id === 'impact' ? 100 : cue.id === 'release' ? 420 : 260, now);
   oscillator.frequency.exponentialRampToValueAtTime(55, now + 0.18); gain.gain.setValueAtTime(0.04, now); gain.gain.exponentialRampToValueAtTime(0.001, now + 0.22);
   oscillator.connect(gain).connect(audio.destination); oscillator.start(); oscillator.stop(now + 0.23); oscillator.onended = () => { oscillator.disconnect(); gain.disconnect(); };
 });
-app.ticker.add((ticker: any) => { if (dummy.rotation) { dummy.rotation *= Math.max(0, 1 - ticker.deltaMS / 180); if (Math.abs(dummy.rotation) < 0.001) dummy.rotation = 0; } });
+app.ticker.add((ticker: any) => scene.animate(ticker.deltaMS));
 el('replay').onclick = () => void cast(); el('stage').onclick = () => void cast();
 el('loop').onchange = () => void cast();
 el('sound').onchange = () => { if (el<HTMLInputElement>('sound').checked) void enableAudio().catch(() => {}); };
@@ -235,7 +230,7 @@ window.addEventListener('keydown', event => { if (event.code === 'Space' && !['I
 renderSelection();
 try { await vfx.load(packUrl(selected)); el('status').textContent = 'Ready to cast'; }
 catch { el('status').textContent = 'Pack download failed. Tap Replay to retry.'; }
-(window as any).__showcase = { vfx, app, packs, from, to, world, cast, audioState: () => audio?.state, select(id: string) { selected = packs.find(p => p.id === id)!; renderSelection(); } };
+(window as any).__showcase = { vfx, app, packs, from, to, world, scene, animate: scene.animate, cast, audioState: () => audio?.state, select(id: string) { selected = packs.find(p => p.id === id)!; renderSelection(); } };
 window.addEventListener('pagehide', event => {
   if (event.persisted) return;
   resize.disconnect(); vfx.destroy(); void audio?.close(); app.destroy(true, { children: true });
