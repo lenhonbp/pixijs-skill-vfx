@@ -68,15 +68,18 @@ let browser;
 try {
   await new Promise((ok, fail) => { server.once('error', fail); server.listen(0, '127.0.0.1', ok); });
   browser = await chromium.launch({ headless: true });
-  const page = await browser.newPage();
-  page.on('pageerror', (error) => failures.push(error.message));
   const url = `http://127.0.0.1:${server.address().port}/?debug&quality=high&seed=12345`;
-  await page.goto(url);
+  let page = await browser.newPage();
+  page.on('pageerror', (error) => failures.push(error.message));
+  await page.goto(url, { waitUntil: 'domcontentloaded' });
   await page.waitForFunction(() => !!window.__vfxDebug);
   const skills = await page.evaluate(() => window.__vfxDebug.skills);
+  await page.close();
   const rows = [];
   for (const skill of skills) {
-    await page.goto(url);
+    page = await browser.newPage();
+    page.on('pageerror', (error) => failures.push(error.message));
+    await page.goto(url, { waitUntil: 'domcontentloaded' });
     await page.waitForFunction(() => !!window.__vfxDebug);
     const result = await page.evaluate(({ id, length }) => {
       const d = window.__vfxDebug, w = window.demo.vfx;
@@ -92,6 +95,7 @@ try {
       }
       return { peak, runs };
     }, skill);
+    await page.close();
     // SkillDef has no ultimate flag: every sample uses the ordinary 150 cap.
     // Future skills explicitly named *-ultimate (or ultimate-*) get 600.
     const budget = /(^|-)ultimate(-|$)/.test(skill.id) ? 600 : 150;
