@@ -22,7 +22,7 @@ export function spike(w: VfxWorld, tex: VfxTextures, o: Vec3 & { palette: Palett
     scaleX: flip * ((o.width ?? 1) * h * 0.5) / 64, scaleY: (t) => (h / M.spikeHeight) * rise(t),
     alpha: o.ice ? 0.85 : 1, tint: o.ice ? lerpColor(p.core, p.main, 0.35) : lerpColor(p.main, p.dark, 0.35),
   });
-  if (o.ice) w.spawn({ texture: tex.glow, x: o.x, y: o.y, z: h * 0.5, life, zBias: 1, scaleX: 0.5, scaleY: h / 50, alpha: (t) => 0.3 * rise(t), tint: p.main });
+  if (o.ice) w.spawn({ texture: tex.glow, x: o.x, y: o.y, z: h * 0.5, life, zBias: 1, scaleX: 0.25, scaleY: h / 70, alpha: (t) => 0.08 * rise(t), tint: p.main });
   w.spawn({ texture: tex.glow, layer: 'ground', groundAligned: true, blend: 'normal', x: o.x, y: o.y, life: life + 400, scale: h / 70, alpha: envelope(0.05, 0.5, 0.5), tint: o.ice ? p.dark : 0x1a1008 });
   w.burst(o.ice ? 5 : 7, () => {
     const a = rand(0, TAU), sp = rand(60, 180);
@@ -33,7 +33,7 @@ export function spike(w: VfxWorld, tex: VfxTextures, o: Vec3 & { palette: Palett
   });
   w.burst(4, () => {
     const a = rand(0, TAU), sp = rand(20, 70);
-    return { texture: tex.puff, blend: 'normal', x: o.x, y: o.y, z: 4, life: 700, vx: Math.cos(a) * sp, vy: Math.sin(a) * sp * w.groundSquash, vz: 20, drag: 2, scale: [0.4, 0.9, outCubic], alpha: envelope(0.1, 0.35, 0.5), tint: o.ice ? 0xe0f6ff : 0xb8a080 };
+    return { texture: tex.puff, blend: 'normal', x: o.x, y: o.y, z: 4, life: 700, vx: Math.cos(a) * sp, vy: Math.sin(a) * sp * w.groundSquash, vz: 20, drag: 2, scale: [0.4, o.ice ? 0.65 : 0.9, outCubic], alpha: envelope(0.1, o.ice ? 0.5 : 0.35, o.ice ? 0.12 : 0.5), tint: o.ice ? p.main : 0xb8a080 };
   });
 }
 
@@ -97,7 +97,7 @@ export function swordRain(
     w.after(Math.max(0, t0), () => {
       const z0 = 380;
       w.spawn({ texture: tex.blade, blend: 'normal', x, y, z: z0, vz: -z0 / (fall / 1000), life: fall, anchorY: 1, rotation: tilt, scale: k, tint: 0xf4f0e6 });
-      w.spawn({ texture: tex.streak, x, y, z: z0 * 0.5, vz: -z0 / (fall / 1000), life: fall, rotation: Math.PI / 2 + tilt, scaleX: 1.6, scaleY: 0.35, alpha: [0.2, 0.8], tint: p.main });
+      w.spawn({ texture: tex.streak, x, y, z: z0 + 45 * k, vz: -z0 / (fall / 1000), life: fall, anchorX: 1, rotation: Math.PI / 2 + tilt, scaleX: 0.5, scaleY: 0.25, alpha: [0.2, 0.6], tint: p.main });
     });
     w.after(Math.max(0, t0) + fall, () => {
       const life = dur - t0 + 600;
@@ -119,4 +119,3 @@ export function swordRain(
 function ms3(life: number) {
   return (t: number) => (t * life > life - 250 ? Math.max(0, (life - t * life) / 250) : 1);
 }
-

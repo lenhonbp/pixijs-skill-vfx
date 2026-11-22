@@ -54,7 +54,7 @@ export function hitSpark(w: VfxWorld, tex: VfxTextures, o: Vec3 & { angle?: numb
 /** Live hitFlash overlays; destroy them yourself if you call `clear()` mid-flash. */
 export const activeHitFlashes = new Set<Sprite>();
 
-export function hitFlash(w: VfxWorld, target: Sprite, ms = 120, color = 0xffffff) {
+export function hitFlash(w: VfxWorld, target: Sprite, ms = 120, color = 0xffffff, opacity = 1) {
   // A sibling that copies the target's transform (v8 Sprites cannot hold children).
   const parent = target.parent;
   if (!parent) return;
@@ -62,6 +62,7 @@ export function hitFlash(w: VfxWorld, target: Sprite, ms = 120, color = 0xffffff
   f.anchor.copyFrom(target.anchor);
   f.blendMode = blend('add');
   f.tint = color;
+  f.alpha = opacity;
   parent.addChildAt(f, parent.getChildIndex(target) + 1);
   activeHitFlashes.add(f);
   let age = 0;
@@ -77,7 +78,7 @@ export function hitFlash(w: VfxWorld, target: Sprite, ms = 120, color = 0xffffff
     f.rotation = target.rotation;
     f.zIndex = target.zIndex;
     f.visible = target.visible;
-    f.alpha = 1 - age / ms;
+    f.alpha = opacity * (1 - age / ms);
   });
 }
 
@@ -123,7 +124,7 @@ export function slash(
 export function telegraph(
   w: VfxWorld,
   tex: VfxTextures,
-  o: { x: number; y: number; radius: number; duration: number; palette: Palette; onDone?: () => void },
+  o: { x: number; y: number; radius: number; duration: number; palette: Palette; finishAlpha?: number; onDone?: () => void },
 ): Handle {
   const k = o.radius / M.ringRadius;
   const kd = o.radius / M.discRadius;
@@ -134,7 +135,7 @@ export function telegraph(
     w.spawn({ ...ground, texture: tex.disc, life: o.duration, scale: [0, kd], alpha: [0.1, 0.35], tint: o.palette.main }),
   ];
   return w.after(o.duration, () => {
-    w.spawn({ ...ground, texture: tex.disc, life: 160, scale: kd, alpha: [0.6, 0], tint: o.palette.core });
+    if (o.finishAlpha !== 0) w.spawn({ ...ground, texture: tex.disc, life: 160, scale: kd, alpha: [o.finishAlpha ?? 0.6, 0], tint: o.palette.core });
     o.onDone?.();
     for (const p of parts) p?.kill();
   });
@@ -306,10 +307,11 @@ function jagged(a: { x: number; y: number }, b: { x: number; y: number }, depth:
 }
 
 /** Chain lightning through `points` (caster first). Re-rolls the bolt a few times for flicker. */
-export function lightningChain(w: VfxWorld, tex: VfxTextures, o: { points: Vec3[]; palette: Palette; flickers?: number; width?: number }) {
+export function lightningChain(w: VfxWorld, tex: VfxTextures, o: { points: Vec3[]; palette: Palette; flickers?: number; width?: number; impactIntensity?: number }) {
   const p = o.palette;
   const width = o.width ?? 1;
   const flickers = o.flickers ?? 4;
+  const impact = o.impactIntensity ?? 1;
   const screen = o.points.map((q) => ({ x: q.x, y: q.y - (q.z ?? 40), gy: q.y }));
   const bolt = () => {
     for (let i = 0; i < screen.length - 1; i++) {
@@ -329,8 +331,8 @@ export function lightningChain(w: VfxWorld, tex: VfxTextures, o: { points: Vec3[
   };
   for (let f = 0; f < flickers; f++) w.after(f * 65, bolt);
   o.points.forEach((q, i) => {
-    w.spawn({ texture: tex.glow, x: q.x, y: q.y, z: q.z ?? 40, life: flickers * 65 + 80, scale: i === 0 ? 1.2 : 1.8, alpha: (t) => (1 - t) * (0.6 + 0.4 * Math.random()), tint: p.main, zBias: 3 });
-    if (i > 0) w.after(20 + i * 30, () => hitSpark(w, tex, { x: q.x, y: q.y, z: q.z ?? 40, angle: rand(0, TAU), palette: p }));
+    w.spawn({ texture: tex.glow, x: q.x, y: q.y, z: q.z ?? 40, life: flickers * 65 + 80, scale: (i === 0 ? 1.2 : 1.8) * Math.sqrt(impact), alpha: (t) => impact * (1 - t) * (0.6 + 0.4 * Math.random()), tint: p.main, zBias: 3 });
+    if (i > 0) w.after(20 + i * 30, () => hitSpark(w, tex, { x: q.x, y: q.y, z: q.z ?? 40, angle: rand(0, TAU), palette: p, size: Math.sqrt(impact) }));
   });
   w.shake(4, 200);
 }

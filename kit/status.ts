@@ -158,25 +158,26 @@ export function stun(w: VfxWorld, tex: VfxTextures, o: OnUnit & { duration?: num
 }
 
 /** Ice encasement. Ends (or stop()) with a shatter; onShatter is where you resume the unit. */
-export function freeze(w: VfxWorld, tex: VfxTextures, o: OnUnit & { duration?: number; palette?: Palette; onShatter?: () => void }): Handle {
+export function freeze(w: VfxWorld, tex: VfxTextures, o: OnUnit & { duration?: number; palette?: Palette; glowIntensity?: number; onShatter?: () => void }): Handle {
   const h = o.height ?? 70;
   const dur = o.duration ?? 2500;
   const p = o.palette ?? WUXING.thuy.palette;
   const T = o.target;
   const s = h / 70;
+  const glow = o.glowIntensity ?? 1;
   const shatter = () => {
     const at = T();
-    w.spawn({ texture: tex.glow, x: at.x, y: at.y, z: h * 0.5, life: 160, zBias: 20, scale: [1.2 * s, 2.2 * s, outQuad], alpha: [0.9, 0], tint: p.core });
+    w.spawn({ texture: tex.glow, x: at.x, y: at.y, z: h * 0.5, life: 160, zBias: 20, scale: [1.2 * s * Math.sqrt(glow), 2.2 * s * Math.sqrt(glow), outQuad], alpha: [0.9 * glow, 0], tint: glow < 1 ? p.main : p.core });
     w.burst(18, () => {
       const a = rand(0, TAU);
       const sp = rand(120, 320);
       return {
-        texture: tex.shard, x: at.x + rand(-10, 10) * s, y: at.y, z: h * rand(0.2, 0.9), life: rand(500, 800), zBias: 8,
+        texture: tex.shard, blend: glow < 1 ? 'normal' : 'add', x: at.x + rand(-10, 10) * s, y: at.y, z: h * rand(0.2, 0.9), life: rand(500, 800), zBias: 8,
         vx: Math.cos(a) * sp, vy: Math.sin(a) * sp * w.groundSquash, vz: rand(80, 300), gravity: 1100, bounce: 0.3, rotation: rand(0, TAU), spin: rand(-12, 12),
         scale: rand(0.25, 0.45) * s, alpha: envelope(0, 0.7), tint: [p.core, p.main],
       };
     });
-    w.burst(10, () => ({ texture: tex.star, x: at.x + rand(-20, 20) * s, y: at.y, z: h * rand(0.1, 1), life: rand(250, 450), zBias: 9, scale: [0.35, 0], rotation: rand(0, TAU), tint: p.core }));
+    w.burst(10, () => ({ texture: tex.star, x: at.x + rand(-20, 20) * s, y: at.y, z: h * rand(0.1, 1), life: rand(250, 450), zBias: 9, scale: [0.35, 0], alpha: Math.sqrt(glow), rotation: rand(0, TAU), tint: glow < 1 ? p.main : p.core }));
     w.spawn({ texture: tex.ring, layer: 'ground', groundAligned: true, x: at.x, y: at.y, life: 300, scale: [0.1 * s, 0.35 * s, outCubic], alpha: [0.8, 0], tint: p.main });
     w.hitStop(40);
     w.shake(3, 150);
@@ -184,7 +185,7 @@ export function freeze(w: VfxWorld, tex: VfxTextures, o: OnUnit & { duration?: n
   };
   const g = group(w, dur, shatter, 60);
   const grow = (t: number) => outBack(clamp01((t * dur) / 200));
-  g.add(w.spawn({ texture: tex.glow, layer: 'ground', groundAligned: true, x: 0, y: 0, follow: T, life: dur, scale: 1.4 * s, alpha: ms.env(dur, 150, 100, 0.55), tint: p.main }));
+  g.add(w.spawn({ texture: tex.glow, layer: 'ground', groundAligned: true, x: 0, y: 0, follow: T, life: dur, scale: 1.4 * s, alpha: ms.env(dur, 150, 100, 0.55 * glow), tint: p.main }));
   for (let i = 0; i < 8; i++) {
     const a = (i / 8) * TAU + rand(-0.2, 0.2);
     g.add(w.spawn({ texture: tex.shard, layer: 'ground', groundAligned: true, x: Math.cos(a) * 30 * s, y: Math.sin(a) * 30 * s * w.groundSquash, follow: T, life: dur, rotation: a, scale: (t) => rand(0.35, 0.5) * s * grow(t), alpha: 0.5, tint: p.core }));
@@ -201,7 +202,7 @@ export function freeze(w: VfxWorld, tex: VfxTextures, o: OnUnit & { duration?: n
       scaleX: wide, scaleY: (t) => tall * grow(t), alpha: 0.62, tint: lerpColor(p.core, p.main, rand(0.2, 0.6)),
     }));
   }
-  g.add(w.spawn({ texture: tex.glow, x: 0, y: 0, z: h * 0.5, follow: T, life: dur, zBias: 12, scaleX: 0.8 * s, scaleY: 1.3 * s, alpha: ms.env(dur, 100, 100, 0.35), tint: p.core }));
+  g.add(w.spawn({ texture: tex.glow, x: 0, y: 0, z: h * 0.5, follow: T, life: dur, zBias: 12, scaleX: 0.8 * s, scaleY: 1.3 * s, alpha: ms.env(dur, 100, 100, 0.35 * glow), tint: glow < 1 ? p.main : p.core }));
   g.addHandle(w.stream({
     rate: 6, duration: dur,
     make: () => ({ texture: tex.star, x: rand(-16, 16) * s, y: rand(0, 6), z: rand(0.1, 1) * h, follow: T, life: 400, zBias: 14, rotation: rand(0, TAU), scale: (t) => 0.3 * Math.sin(t * Math.PI), tint: p.core }),

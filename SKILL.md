@@ -174,6 +174,16 @@ chest / head / above), `socketPoint(feet, sockets, dir)`, `vfx.shadowPoint(pos)`
    casts do not grow it (leaked streams/updaters).
 4. Report what the effect looks like with the frames, not just "implemented".
 
+### Frame captures
+
+For the kit demo, run `npm install` and `npx playwright install chromium` once, then
+`npm run capture -- --skills thuy-tidal-beam,kim-sword-rain --out ~/audit/after/`.
+Pass comma-separated IDs (`--skills a,b`) or omit `--skills` for all skills. The harness
+builds and serves the demo, seeds randomness, stops the ticker and steps deterministically.
+It writes labeled contact sheets and `counts.json` at each skill's length + 1500 ms.
+Output defaults to `~/audit/before/`; use the same `--seed` (default 12345) for comparisons.
+Inspect the sheets as well as the counts.
+
 ## Files
 
 - `kit/` - runtime: `vfx-world.ts` (VfxWorld, curves, physics, ground transform), `textures.ts`
