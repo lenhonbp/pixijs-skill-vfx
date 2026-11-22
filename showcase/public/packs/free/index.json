@@ -133,16 +133,16 @@
       "files": [
         {
           "name": "kim-golden-bell.evolved.vfxb",
-          "bytes": 3954149
+          "bytes": 3954428
         },
         {
           "name": "kim-golden-bell.evolved.m.vfxb",
-          "bytes": 1389941
+          "bytes": 1389230
         }
       ],
-      "bytes": 3954149,
-      "desktopBytes": 3954149,
-      "mobileBytes": 1389941,
+      "bytes": 3954428,
+      "desktopBytes": 3954428,
+      "mobileBytes": 1389230,
       "frameCount": 253
     }
   },
@@ -182,16 +182,16 @@
       "files": [
         {
           "name": "moc-vine-bind.evolved.vfxb",
-          "bytes": 1617186
+          "bytes": 1617184
         },
         {
           "name": "moc-vine-bind.evolved.m.vfxb",
-          "bytes": 532639
+          "bytes": 532617
         }
       ],
-      "bytes": 1617186,
-      "desktopBytes": 1617186,
-      "mobileBytes": 532639,
+      "bytes": 1617184,
+      "desktopBytes": 1617184,
+      "mobileBytes": 532617,
       "frameCount": 151
     }
   },
@@ -425,16 +425,16 @@
       "files": [
         {
           "name": "hoa-fireball.evolved.vfxb",
-          "bytes": 2420041
+          "bytes": 2419941
         },
         {
           "name": "hoa-fireball.evolved.m.vfxb",
-          "bytes": 1006535
+          "bytes": 1006426
         }
       ],
-      "bytes": 2420041,
-      "desktopBytes": 2420041,
-      "mobileBytes": 1006535,
+      "bytes": 2419941,
+      "desktopBytes": 2419941,
+      "mobileBytes": 1006426,
       "frameCount": 169
     }
   },
@@ -695,16 +695,16 @@
     "files": [
       {
         "name": "phong-gale-blade.vfxb",
-        "bytes": 579830
+        "bytes": 579953
       },
       {
         "name": "phong-gale-blade.m.vfxb",
-        "bytes": 167384
+        "bytes": 168231
       }
     ],
-    "bytes": 579830,
-    "desktopBytes": 579830,
-    "mobileBytes": 167384,
+    "bytes": 579953,
+    "desktopBytes": 579953,
+    "mobileBytes": 168231,
     "desktopScales": {
       "glow-back": 0.75,
       "base": 1.5,
@@ -719,16 +719,16 @@
       "files": [
         {
           "name": "phong-gale-blade.evolved.vfxb",
-          "bytes": 994869
+          "bytes": 999320
         },
         {
           "name": "phong-gale-blade.evolved.m.vfxb",
-          "bytes": 375796
+          "bytes": 376965
         }
       ],
-      "bytes": 994869,
-      "desktopBytes": 994869,
-      "mobileBytes": 375796,
+      "bytes": 999320,
+      "desktopBytes": 999320,
+      "mobileBytes": 376965,
       "frameCount": 205
     }
   },
@@ -744,16 +744,16 @@
     "files": [
       {
         "name": "phong-whirlwind.vfxb",
-        "bytes": 1304117
+        "bytes": 1308295
       },
       {
         "name": "phong-whirlwind.m.vfxb",
-        "bytes": 412680
+        "bytes": 413775
       }
     ],
-    "bytes": 1304117,
-    "desktopBytes": 1304117,
-    "mobileBytes": 412680,
+    "bytes": 1308295,
+    "desktopBytes": 1308295,
+    "mobileBytes": 413775,
     "desktopScales": {
       "glow-back": 0.75,
       "base": 1.5,
@@ -768,16 +768,16 @@
       "files": [
         {
           "name": "phong-whirlwind.evolved.vfxb",
-          "bytes": 3797120
+          "bytes": 3705316
         },
         {
           "name": "phong-whirlwind.evolved.m.vfxb",
-          "bytes": 1361342
+          "bytes": 1368105
         }
       ],
-      "bytes": 3797120,
-      "desktopBytes": 3797120,
-      "mobileBytes": 1361342,
+      "bytes": 3705316,
+      "desktopBytes": 3705316,
+      "mobileBytes": 1368105,
       "frameCount": 247
     }
   },
@@ -793,16 +793,16 @@
     "files": [
       {
         "name": "phong-tornado.vfxb",
-        "bytes": 2807034
+        "bytes": 2806473
       },
       {
         "name": "phong-tornado.m.vfxb",
-        "bytes": 1304484
+        "bytes": 1304145
       }
     ],
-    "bytes": 2807034,
-    "desktopBytes": 2807034,
-    "mobileBytes": 1304484,
+    "bytes": 2806473,
+    "desktopBytes": 2806473,
+    "mobileBytes": 1304145,
     "desktopScales": {
       "glow-back": 0.5,
       "base": 0.95,
@@ -817,16 +817,16 @@
       "files": [
         {
           "name": "phong-tornado.evolved.vfxb",
-          "bytes": 3781986
+          "bytes": 3782203
         },
         {
           "name": "phong-tornado.evolved.m.vfxb",
-          "bytes": 1468003
+          "bytes": 1467022
         }
       ],
-      "bytes": 3781986,
-      "desktopBytes": 3781986,
-      "mobileBytes": 1468003,
+      "bytes": 3782203,
+      "desktopBytes": 3782203,
+      "mobileBytes": 1467022,
       "frameCount": 154
     }
   },
@@ -842,16 +842,16 @@
     "files": [
       {
         "name": "phong-tailwind.vfxb",
-        "bytes": 1171910
+        "bytes": 1170867
       },
       {
         "name": "phong-tailwind.m.vfxb",
-        "bytes": 352624
+        "bytes": 350755
       }
     ],
-    "bytes": 1171910,
-    "desktopBytes": 1171910,
-    "mobileBytes": 352624,
+    "bytes": 1170867,
+    "desktopBytes": 1170867,
+    "mobileBytes": 350755,
     "desktopScales": {
       "glow-back": 0.75,
       "base": 1.5,
@@ -866,16 +866,16 @@
       "files": [
         {
           "name": "phong-tailwind.evolved.vfxb",
-          "bytes": 3885091
+          "bytes": 3887015
         },
         {
           "name": "phong-tailwind.evolved.m.vfxb",
-          "bytes": 1328075
+          "bytes": 1329382
         }
       ],
-      "bytes": 3885091,
-      "desktopBytes": 3885091,
-      "mobileBytes": 1328075,
+      "bytes": 3887015,
+      "desktopBytes": 3887015,
+      "mobileBytes": 1329382,
       "frameCount": 253
     }
   },
@@ -915,16 +915,16 @@
       "files": [
         {
           "name": "lightning-chain.evolved.vfxb",
-          "bytes": 349719
+          "bytes": 349811
         },
         {
           "name": "lightning-chain.evolved.m.vfxb",
-          "bytes": 134675
+          "bytes": 134611
         }
       ],
-      "bytes": 349719,
-      "desktopBytes": 349719,
-      "mobileBytes": 134675,
+      "bytes": 349811,
+      "desktopBytes": 349811,
+      "mobileBytes": 134611,
       "frameCount": 106
     }
   },
@@ -1062,16 +1062,16 @@
       "files": [
         {
           "name": "seal-silence.evolved.vfxb",
-          "bytes": 3863532
+          "bytes": 3872500
         },
         {
           "name": "seal-silence.evolved.m.vfxb",
-          "bytes": 1478090
+          "bytes": 1370436
         }
       ],
-      "bytes": 3863532,
-      "desktopBytes": 3863532,
-      "mobileBytes": 1478090,
+      "bytes": 3872500,
+      "desktopBytes": 3872500,
+      "mobileBytes": 1370436,
       "frameCount": 142
     }
   },
@@ -1111,16 +1111,16 @@
       "files": [
         {
           "name": "sunder-mark.evolved.vfxb",
-          "bytes": 1979761
+          "bytes": 1983341
         },
         {
           "name": "sunder-mark.evolved.m.vfxb",
-          "bytes": 705975
+          "bytes": 702549
         }
       ],
-      "bytes": 1979761,
-      "desktopBytes": 1979761,
-      "mobileBytes": 705975,
+      "bytes": 1983341,
+      "desktopBytes": 1983341,
+      "mobileBytes": 702549,
       "frameCount": 133
     }
   },
@@ -1160,16 +1160,16 @@
       "files": [
         {
           "name": "war-cry.evolved.vfxb",
-          "bytes": 3958380
+          "bytes": 3958893
         },
         {
           "name": "war-cry.evolved.m.vfxb",
-          "bytes": 1488034
+          "bytes": 1489390
         }
       ],
-      "bytes": 3958380,
-      "desktopBytes": 3958380,
-      "mobileBytes": 1488034,
+      "bytes": 3958893,
+      "desktopBytes": 3958893,
+      "mobileBytes": 1489390,
       "frameCount": 142
     }
   },
@@ -1209,15 +1209,15 @@
       "files": [
         {
           "name": "curse-weaken.evolved.vfxb",
-          "bytes": 3354343
+          "bytes": 3353867
         },
         {
           "name": "curse-weaken.evolved.m.vfxb",
           "bytes": 1234909
         }
       ],
-      "bytes": 3354343,
-      "desktopBytes": 3354343,
+      "bytes": 3353867,
+      "desktopBytes": 3353867,
       "mobileBytes": 1234909,
       "frameCount": 142
     }
