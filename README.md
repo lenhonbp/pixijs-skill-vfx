@@ -1,6 +1,50 @@
 # pixijs-skill-vfx
 
-[Live demo](https://lenhonbp.github.io/pixijs-skill-vfx/)
+[Live VFX showcase](https://lenhonbp.github.io/pixijs-skill-vfx/) · [Runtime docs](runtime/README.md) · [Pack format](docs/pack-format.md)
+
+## Free runtime. Instant magic.
+
+**Runtime is free forever (MIT)** — a zero-runtime-dependency atlas player for
+PixiJS v7 and v8, with 25 free baked effects, English/Vietnamese names, additive
+glow, pooling, cue events, optional shake and hit-stop. Commercial games welcome.
+The [interactive showcase](showcase/) lets you filter, cast, replay and loop the
+collection, try synthesized sound hints, and copy integration code.
+
+```ts
+import { VfxPlayer } from '@lenhon/pixijs-vfx-runtime';
+const vfx = await VfxPlayer.create(app, { packs: ['packs/free/hoa-fireball.vfxb'] });
+vfx.play('hoa-fireball', { from: caster, to: target });
+```
+
+The 1.0.0 runtime package is prepared for publishing; see [local installation](runtime/README.md#install)
+until the npm release is available. Baked packs live in `showcase/public/packs/free/`.
+Only baked assets are distributed: no offline factory or baker code is included.
+
+### Premium Skill Packs — coming soon
+
+The runtime stays free; optional art collections will expand your library:
+
+| Collection | Theme | Stores (placeholder links; coming soon) |
+|---|---|---|
+| **Kiếm Hiệp** | Martial legends, sword auras and flying blades | [Gumroad](#gumroad-link-tbd) · [itch.io](#itch-link-tbd) |
+| **Ngũ Hành** | Metal, wood, water, fire and earth | [Gumroad](#gumroad-link-tbd) · [itch.io](#itch-link-tbd) |
+| **Ultimate Boss** | Arena-shaking final encounters | [Gumroad](#gumroad-link-tbd) · [itch.io](#itch-link-tbd) |
+
+### Run the showcase locally
+
+```sh
+npm install
+npm run dev:showcase
+# Production: npm run build:runtime && npm run build:showcase
+# Browser smoke (build first): npm run check:runtime
+```
+
+GitHub Pages now deploys the Vite showcase. The original procedural kit and its
+documentation remain below for compatibility; they are independent of the new runtime.
+
+---
+
+## Original agent skill & procedural kit
 
 An agent skill (Claude Code, Codex) plus a tested TypeScript kit for **code-drawn 2.5D skill VFX
 in PixiJS v7 and v8**. No art assets: textures are generated with Canvas 2D. The shared set is baked at startup;
@@ -48,7 +92,7 @@ the repository root, with the kit and references alongside it.
 
 ## Try the demo
 
-The live demo is built with PixiJS 8.23.0 and deployed to GitHub Pages on every push to `main`.
+The original demo is built locally with PixiJS 8. GitHub Pages deploys the new atlas showcase on every push to `main`.
 
 ```sh
 npm install
@@ -65,8 +109,9 @@ Works with pixi.js 7.4+ too: `npm i pixi.js@7` and rebuild.
 | Command | Purpose |
 |---|---|
 | `npm run dev` | Watch, rebuild and serve the demo |
-| `npm run typecheck` | TypeScript validation; equivalent to `npx tsc -p .` |
-| `npm run build` | Bundle `demo/demo.js` |
+| `npm run typecheck` | Validate the kit, runtime and showcase |
+| `npm run build` | Bundle the original demo, runtime ESM/declarations and Vite showcase |
+| `npm run check:runtime` | Built-showcase lifecycle/pool smoke, plain/container format, Pixi v7 compatibility |
 | `npm run capture` | Build/serve and capture deterministic contact sheets |
 | `npm run check` | Browser lifecycle, pool, particle-budget and runtime contracts; build first |
 | `npm run check:docs` | Node-only export-index, file-map and sample-count gate |

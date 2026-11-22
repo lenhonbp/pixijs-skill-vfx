@@ -6,14 +6,20 @@
   "author": { "name": "lenhonbp", "email": "lenhonbp@gmail.com", "url": "https://github.com/lenhonbp" },
   "license": "MIT",
   "scripts": {
-    "build": "esbuild demo/main.ts --bundle --minify --outfile=demo/demo.js",
+    "build": "esbuild demo/main.ts --bundle --minify --outfile=demo/demo.js && npm run build:runtime && npm run build:showcase",
+    "build:runtime": "npm --prefix runtime run build",
+    "build:showcase": "vite build --config showcase/vite.config.ts",
+    "dev:showcase": "vite --config showcase/vite.config.ts",
+    "check:runtime": "node runtime/test/smoke.mjs",
     "dev": "esbuild demo/main.ts --bundle --outfile=demo/demo.js --servedir=demo --watch",
-    "typecheck": "tsc -p .",
+    "typecheck": "tsc -p . && npm --prefix runtime run typecheck && tsc -p showcase",
     "capture": "node tools/capture-frames.mjs",
     "check": "node tools/check.mjs",
     "check:docs": "node tools/check-docs.mjs"
   },
   "devDependencies": {
+    "vite": "^6.4.1",
+    "pixi7": "npm:pixi.js@^7.4.3",
     "esbuild": "^0.25.0",
     "pixi.js": "^8.6.0",
     "playwright": "^1.65.1",
