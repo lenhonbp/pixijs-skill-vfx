@@ -506,6 +506,7 @@ function whiteTexture() {
       skills: [...SKILLS.map(({ id, length }) => ({ id, length })), ...flourishes],
       setTier,
       getTier: () => tier,
+      activationRelease: (selected: ActivationTier | 0) => selected ? activationRelease(selected) : 0,
       isEmpowering: () => empowering,
       moveCaster: (at: Partial<Vec3>) => Object.assign(hero.feet, at),
       cast: (id: string, selected: ActivationTier | 0 = tier) => {

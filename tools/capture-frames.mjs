@@ -78,12 +78,15 @@ try {
   for (const [index, skill] of skills.entries()) {
     if (index) await load();
     const label = options.tier && !/^(activation|evolution)-/.test(skill.id) ? `${skill.id}-tier${options.tier}` : skill.id;
+    const preRoll = /^(activation|evolution)-/.test(skill.id) ? 0 : await page.evaluate(
+      tier => window.__vfxDebug.activationRelease(tier), options.tier);
+    const frameTimes = times.map(time => time + preRoll);
     await page.evaluate(({ id, tier }) => window.__vfxDebug.cast(id, tier), { id: skill.id, tier: options.tier });
     let elapsed = 0;
     const frames = [];
     // Include the count checkpoint in the timeline even for very short skills.
-    const countTime = skill.length + 1900;
-    const checkpoints = [...new Set([...times, countTime])].sort((a, b) => a - b);
+    const countTime = skill.length + preRoll + 1900;
+    const checkpoints = [...new Set([...frameTimes, countTime])].sort((a, b) => a - b);
     for (const time of checkpoints) {
       const count = await page.evaluate((ms) => {
         window.__vfxDebug.step(ms);
@@ -91,7 +94,7 @@ try {
       }, time - elapsed);
       elapsed = time;
       if (time === countTime) counts[skill.id] = count;
-      if (times.includes(time)) {
+      if (frameTimes.includes(time)) {
         frames.push({ time, png: (await page.locator('#stage canvas').screenshot({ animations: 'disabled' })).toString('base64') });
       }
       if (pageError) throw pageError;
