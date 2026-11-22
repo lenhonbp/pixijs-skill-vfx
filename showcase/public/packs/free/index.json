@@ -646,40 +646,44 @@
     "files": [
       {
         "name": "tho-stone-skin.vfxb",
-        "bytes": 1296655
+        "bytes": 1359287
       },
       {
         "name": "tho-stone-skin.m.vfxb",
-        "bytes": 423291
+        "bytes": 453217
       }
     ],
-    "bytes": 1296655,
-    "desktopBytes": 1296655,
-    "mobileBytes": 423291,
+    "bytes": 1359287,
+    "desktopBytes": 1359287,
+    "mobileBytes": 453217,
     "desktopScales": {
-      "glow-back": 0.75,
-      "base": 1.5,
-      "glow": 0.75
+      "run-0": 1.5,
+      "run-1": 0.75,
+      "run-2": 1.5,
+      "run-3": 0.75,
+      "run-4": 1.5
     },
     "mobileScales": {
-      "glow-back": 0.5,
-      "base": 0.75,
-      "glow": 0.5
+      "run-0": 0.75,
+      "run-1": 0.5,
+      "run-2": 0.75,
+      "run-3": 0.5,
+      "run-4": 0.75
     },
     "evolved": {
       "files": [
         {
           "name": "tho-stone-skin.evolved.vfxb",
-          "bytes": 2994653
+          "bytes": 3046772
         },
         {
           "name": "tho-stone-skin.evolved.m.vfxb",
-          "bytes": 1013087
+          "bytes": 1042161
         }
       ],
-      "bytes": 2994653,
-      "desktopBytes": 2994653,
-      "mobileBytes": 1013087,
+      "bytes": 3046772,
+      "desktopBytes": 3046772,
+      "mobileBytes": 1042161,
       "frameCount": 154
     }
   },
