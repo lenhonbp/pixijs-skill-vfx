@@ -188,9 +188,13 @@ try {
     const guardian = kit.spiritGuardian(w, tex, { x: 200, y: 300, palette: gold, height: 105 });
     step(w, 160);
     const figure = w.particles.find((p) => p.o.texture === tex.guardian && p.o.blend === 'normal');
-    check(figure && figure.sprite.y > 300 && figure.sprite.alpha > 0 && figure.sprite.alpha < 0.85, 'guardian: fades upward into view');
+    check(figure && figure.sprite.y > 300 && figure.sprite.alpha === 0.85 && figure.sprite.mask,
+      'guardian: opaque body rises through a reveal mask');
+    const revealTop = figure.sprite.mask.getLocalBounds().y;
+    check(revealTop > figure.sprite.y - 105, 'guardian: reveal mask hides the upper body');
     step(w, 350);
-    check(guardian.alive && figure.sprite.alpha === 0.85, 'guardian: normal-blended hold');
+    check(guardian.alive && figure.sprite.alpha === 0.85 && figure.sprite.mask.getLocalBounds().y < revealTop,
+      'guardian: mask opens upward into normal-blended hold');
     const bob = figure.sprite.y; step(w, 400);
     check(figure.sprite.y !== bob && w.particles.some((p) => p.o.texture === tex.dot), 'guardian: bob and rising motes');
     step(w, 800);
@@ -208,8 +212,9 @@ try {
     for (const columnAlpha of [undefined, 0, 0.2]) {
       w = world(); kit.summonCircle(w, tex, { x: 0, y: 0, palette: gold, duration: 100, columnAlpha });
       step(w, 112);
-      const column = w.particles.find((p) => p.o.texture === tex.glow && p.o.life === 600);
-      check(column.o.alpha[0] === 0.9 * (columnAlpha ?? 1), 'summon: default/custom/zero column opacity');
+      const column = w.particles.find((p) => p.o.texture === tex.glow && p.o.life === 700);
+      check(column && column.o.alpha(0.2) === (columnAlpha ?? 0.7) && column.o.scaleX[1] === 0.3,
+        'summon: focused pillar with default/custom/zero peak opacity');
       clean(w, 'summon column');
     }
     w = world(); let summoned = 0, guardianHits = 0, guardianDamage = 0;
