@@ -242,7 +242,7 @@ export function empoweredHit(w: VfxWorld, tex: VfxTextures, o: { at: Vec3; palet
   const elemental = ['kim', 'moc', 'hoa', 'phong', 'tho', 'thuy', 'loi'].includes(o.element ?? '');
   const spawn = (options: SpawnOptions) => {
     const particle = w.spawn(options);
-    if (particle && !hits.has(key)) hits.set(key, { until: w.now + (o.tick ? 160 : 280), particle, options });
+    if (particle && !hits.has(key)) hits.set(key, { until: w.now + (o.tick ? 160 : 280), particle, options: particle.o });
   };
   if (!elemental || o.element === 'kim') spawn(ring);
   if (!elemental) return;
