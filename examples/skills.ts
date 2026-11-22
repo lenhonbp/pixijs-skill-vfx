@@ -6,12 +6,13 @@ import type { Sprite } from 'pixi.js';
 import {
   VfxWorld, VfxTextures, Vec3, Palette, WUXING, PHONG, LOI, AnyElementName,
   tornado, windSlash, windSweep, vortex, windWisps, gustLines, curlDrift,
-  slash, hitSpark, hitFlash, projectile, explosion, meteor, lightningChain, healAura, telegraph, shockwave,
+  slash, hitSpark, hitFlash, projectile, lightningChain, healAura, telegraph, shockwave,
+  fireball, fireBreath, fireCharge, fireImpact, fireMeteor,
   damageOverTime, stun, shock, freeze, slow, root, statChange, damageNumber,
   silence, blind, armorBreak, mark, fear, aura, empower, haste,
   goldenBell, stoneArmor, spiritGuardian, mountainCrash,
   lightningStrike, staticField,
-  dash, blink, leap, beam, coneBreath, chargeUp, summonCircle, spikeLine, spikeRing, swordRain,
+  dash, blink, leap, beam, chargeUp, summonCircle, spikeLine, spikeRing, swordRain,
   random, rand, envelope, outCubic, outQuad, lerp, clamp01,
 } from '../kit';
 
@@ -259,14 +260,14 @@ export const SKILLS: SkillDef[] = [
   // ------------------------------------------------------------------ HỎA / FIRE
   {
     id: 'hoa-fireball', element: 'hoa', category: 'attack', en: 'Fireball', vi: 'Hỏa Cầu Thuật',
-    desc: 'A charged fireball that explodes and leaves the target burning.', uses: ['chargeUp', 'projectile', 'explosion', 'damageOverTime(burn)', 'hitFlash'], length: 3600,
+    desc: 'A charged fireball that explodes and leaves the target burning.', uses: ['fireCharge', 'fireball', 'fireImpact', 'damageOverTime(burn)', 'hitFlash'], length: 3600,
     cast: ({ w, tex, caster, target, targets, hurt }) => {
-      chargeUp(w, tex, {
-        target: () => hand(caster), palette: P.hoa, duration: 420,
-        onDone: () => projectile(w, tex, {
+      fireCharge(w, tex, {
+        origin: () => hand(caster), palette: P.hoa, duration: 420,
+        onDone: () => fireball(w, tex, {
           from: hand(caster), to: chest(target, 0.45), palette: P.hoa, speed: 720, size: 1.3,
           onHit: (at) => {
-            explosion(w, tex, { x: at.x, y: at.y, z: 0, radius: 80, palette: P.hoa });
+            fireImpact(w, tex, { x: at.x, y: at.y, radius: 80, palette: P.hoa });
             near(at, 90, targets).forEach((u) => hurt(u, u === target ? 142 : 71, { palette: P.hoa, crit: u === target }));
             damageOverTime(w, tex, { target: feetOf(target), height: target.height, kind: 'burn', duration: 2400, tickMs: 600, damage: () => Math.round(rand(11, 16)), onTick: () => hitFlash(w, target.sprite, 90, 0xffa040) });
           },
@@ -276,17 +277,18 @@ export const SKILLS: SkillDef[] = [
   },
   {
     id: 'hoa-dragon-breath', element: 'hoa', category: 'channel', en: 'Dragon Breath', vi: 'Long Tức Liệt Diễm',
-    desc: 'A sweeping cone of flame that sets everything in front ablaze.', uses: ['chargeUp', 'coneBreath(fire)', 'damageOverTime(burn)'], length: 3900,
+    desc: 'A sweeping cone of flame that sets everything in front ablaze.', uses: ['fireCharge', 'fireBreath', 'damageOverTime(burn)'], length: 3900,
     cast: ({ w, tex, caster, target, targets, hurt }) => {
-      chargeUp(w, tex, {
-        target: () => hand(caster), palette: P.hoa, duration: 300,
+      const mouth = () => ({ x: caster.feet.x + caster.facing * caster.height * 0.07, y: caster.feet.y, z: caster.feet.z + caster.height * 0.87 });
+      fireCharge(w, tex, {
+        origin: mouth, palette: P.hoa, duration: 300, size: 0.72,
         onDone: () => {
           const base = angleTo(w, caster, target);
           let a = base - 0.25;
           w.addUpdater(((t) => (dt) => { t += dt; a = base - 0.25 + 0.5 * Math.min(1, t / 1600); return t < 1700; })(0));
           // Reach a bit past the main target so the flames visibly wash over it.
           const range = Math.min(640, Math.hypot(target.feet.x - caster.feet.x, (target.feet.y - caster.feet.y) / w.groundSquash) + 140);
-          coneBreath(w, tex, { origin: () => hand(caster), angle: () => a, palette: P.hoa, range, spread: 0.6, duration: 1700, style: 'fire' });
+          fireBreath(w, tex, { origin: mouth, angle: () => a, palette: P.hoa, range, spread: 0.6, duration: 1700 });
           const inBreath = (u: Unit) => inCone(w, caster, u, a, range, 0.6 + 0.5);
           for (let i = 0; i < 4; i++) w.after(300 + i * 360, () => targets.filter(inBreath).forEach((u) => hurt(u, Math.round(rand(24, 32)), { palette: P.hoa })));
           w.after(1500, () => targets.filter(inBreath).forEach((u) => damageOverTime(w, tex, { target: feetOf(u), height: u.height, kind: 'burn', duration: 1800, tickMs: 600, damage: 9 })));
@@ -296,11 +298,11 @@ export const SKILLS: SkillDef[] = [
   },
   {
     id: 'hoa-heaven-fire', element: 'hoa', category: 'aoe', en: 'Heavenfall Meteor', vi: 'Thiên Hỏa Lưu Tinh',
-    desc: 'Calls a meteor from the sky after a short warning.', uses: ['chargeUp', 'meteor'], length: 2600,
+    desc: 'Calls a meteor from the sky after a short warning.', uses: ['fireCharge', 'fireMeteor'], length: 2600,
     cast: ({ w, tex, caster, target, targets, hurt }) => {
-      chargeUp(w, tex, { target: () => hand(caster), palette: P.hoa, duration: 350 });
+      fireCharge(w, tex, { origin: () => hand(caster), palette: P.hoa, duration: 350 });
       const c = { x: target.feet.x, y: target.feet.y };
-      meteor(w, tex, { ...c, radius: 125, palette: P.hoa, castMs: 900, onHit: () => near(c, 130, targets).forEach((u) => hurt(u, Math.round(rand(180, 230)), { palette: P.hoa, crit: true, angle: -Math.PI / 2 })) });
+      fireMeteor(w, tex, { ...c, radius: 125, palette: P.hoa, castMs: 900, onHit: () => near(c, 130, targets).forEach((u) => hurt(u, Math.round(rand(180, 230)), { palette: P.hoa, crit: true, angle: -Math.PI / 2 })) });
     },
   },
 
