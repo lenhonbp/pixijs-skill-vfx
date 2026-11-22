@@ -37,7 +37,7 @@ export interface SkillContext {
   /** All enemies (target included). */
   targets: Unit[];
   /** Apply damage (positive) or healing (negative) and show it. */
-  hurt(u: Unit, amount: number, o?: { crit?: boolean; palette?: Palette; angle?: number; color?: number; feedback?: number; skin?: HitSkinName; push?: number }): void;
+  hurt(u: Unit, amount: number, o?: { crit?: boolean; palette?: Palette; angle?: number; color?: number; feedback?: number; skin?: HitSkinName; push?: number; numberDuration?: number }): void;
   /** Put the caster back on its start position after a movement skill. */
   returnHome(): void;
   /** Show/hide a unit (blink). */
@@ -464,7 +464,7 @@ export const SKILLS: SkillDef[] = [
               if (finish && victims.length) { w.hitStop(65); w.shake(7, 210); }
               victims.forEach((u) => {
                 const angle = angleTo(w, caster, u);
-                hurt(u, Math.round(rand(34, 46)) + i * 12, { skin: 'wind', crit: finish, angle });
+                hurt(u, Math.round(rand(34, 46)) + i * 12, { skin: 'wind', crit: finish, angle, numberDuration: finish ? undefined : 200 });
                 if (!finish) return;
                 const home = { ...u.feet };
                 windPressure(w, tex, { at: chest(u, 0.42), angle, radius: 94, palette: P.phong, duration: 390 });

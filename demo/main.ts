@@ -338,7 +338,7 @@ function whiteTexture() {
       rockBack(w, u.sprite, { push: o.push ?? (o.crit ? 12 : 6),
         angle: o.angle ?? Math.atan2(u.feet.y - hero.feet.y, u.feet.x - hero.feet.x) });
       if (o.palette) hitSpark(w, tex, { x: u.feet.x, y: u.feet.y, z: u.height * 0.55, palette: o.palette, angle: o.angle ?? Math.PI, size: Math.sqrt(feedback) });
-      damageNumber(w, tex, { x: u.feet.x, y: u.feet.y, z: u.height + 8, value: amount, crit, color: o.color ?? (crit ? 0xffd04a : 0xffffff) });
+      damageNumber(w, tex, { x: u.feet.x, y: u.feet.y, z: u.height + 8, value: amount, crit, color: o.color ?? (crit ? 0xffd04a : 0xffffff), duration: o.numberDuration });
       du.hp = Math.max(0.05, du.hp - amount / 1600);
       lastHurt = w.now;
     },

@@ -73,6 +73,9 @@ at 360), multiplies saturation, and adds lightness on the 0..1 HSL scale; satura
 lightness clamp to 0..1. Pass the result through the recipe/status `palette` option wherever
 supported. Some specialized APIs differ: `damageOverTime` selects a palette through `kind`,
 while `damageNumber` and `hitFlash` accept a color rather than a palette.
+Specialized wood recipes do not accept palettes: vegetation textures have baked
+colors. Changing `element` or an unrelated palette does not recolor those surfaces;
+adapt the recipe and texture generator if needed. See [texture sets](recipes.md#texture-sets).
 
 To recolor a sample, copy its `SkillDef` and change the palette **inside its cast function**.
 Changing only `element` or spreading a definition does not replace colors closed over by
@@ -88,6 +91,7 @@ export const iceBell: SkillDef = {
   ...original, id: 'ice-bell', element: 'thuy', en: 'Ice Bell', vi: 'Ice Bell',
   desc: 'A cold-colored shield gathers around the caster.',
   uses: ['chargeUp', 'shield'], length: 3800,
+  timing: { windup: 300, hits: [], recovery: 3500 },
   cast: ({ w, tex, caster }) => {
     chargeUp(w, tex, { target: () => ({ ...caster.feet, z: caster.feet.z + caster.height * 0.6 }),
       palette: ice, duration: 300,
@@ -100,7 +104,8 @@ export const iceBell: SkillDef = {
 ```
 
 This is a recolor, not an ice signature: add sharp shards and brittle shattering if the new
-skill must read as a different material. Update names, `uses` and `length` when copying.
+skill must read as a different material. Update names, `uses`, `length` and `timing` when copying; do not inherit timing
+metadata from a cast implementation you replaced.
 
 ## Skill timing
 
@@ -110,6 +115,8 @@ Every sample `SkillDef` has optional `timing: SkillTiming` data, readable withou
 your character animation while `w.frozen` is true so both clocks stay synchronized.
 
 ```ts
+import type { HitSkinName } from '../kit';
+
 interface SkillTiming { windup: number; hits: SkillHit[]; recovery: number }
 interface SkillHit {
   t: number;
@@ -124,6 +131,8 @@ interface SkillHit {
   **launch time** instead: `hitTimes(timing, distance)` returns
   `t + distance / travel * 1000` for each traveling hit and `t` for instantaneous hits.
   Omitting distance resolves traveling hits at launch (zero distance).
+  `hitTimes` throws RangeError for nonfinite/negative distance or nonfinite/nonpositive
+  travel speed; `onHits` uses the same validation before scheduling.
 - Measure distance exactly as the recipe does, not between sprite centers. `projectile`
   uses `hypot(to.x - from.x, to.y - from.y)`, with the sample's **hand** as the origin.
   `windSlash` additionally divides the y difference by `w.groundSquash`. Gale Blades uses
@@ -179,14 +188,14 @@ shared data. Release/assembly shakes without `hurt` are still recipe-driven, not
 
 The catalog describes calls to the game's `hurt`, including Spring Bloom's healing calls.
 Current damage-over-time helpers display their own tick numbers and do not call that game
-callback; their decorative ticks are not additional declared hits. Buffs, summons and pure
-debuffs therefore legitimately have empty hit arrays.
+callback; their decorative ticks are not additional declared hits. Buffs, nonattacking summons and pure
+debuffs can have empty hit arrays. The attacking guardian sample has contact hits.
 
-Run `node tools/test-timing.mjs` to cast all 28 samples in headless Chromium, in both the
-showcase and a closer layout. It records `hurt`, hit-stop and shake against nominal windows
-(spread + 17 ms), validates phase/order/length bounds, and reports optional misses. It uses
-1 ms simulation steps to avoid accumulating the existing timers' frame-rounding error;
-coarse variable frame steps can drift, especially Cyclone's periodically reset tick timer.
+The timing regression casts all 29 samples in the showcase and a closer layout.
+It records `hurt`, hit-stop and shake against nominal windows (spread + 17 ms), validates
+phase/order/length bounds and reports optional misses. It uses 1 ms simulation steps;
+coarse variable frame steps can drift, especially periodically reset tick timers.
+See [verification](#verification-and-reproducibility) for commands.
 
 ## Element hit skins and rock-back
 
@@ -257,8 +266,8 @@ a new one. Durations/strength/angles must be finite and push nonnegative. Existi
 `hitFlash` remains a separate additive-overlay helper for backward compatibility; avoid
 stacking it over the same impact if you want the skin to remain readable.
 
-Run `node tools/test-hit.mjs` for tint restoration, replacement, moving/mirrored recoil,
-simultaneous reactions, cancellation, destruction and cleanup coverage.
+The hit-reaction regression covers tint restoration, replacement, moving/mirrored recoil,
+simultaneous reactions, cancellation, destruction and cleanup; see [verification](#verification-and-reproducibility).
 
 ## Compose a skill and synchronize gameplay
 
@@ -373,21 +382,115 @@ These are visual helpers, not gameplay state machines: CC must be enforced by yo
 Set `numbers: false` when your game already displays numbers. Defaults for the nine extended
 statuses are finite (2–3 seconds); use Infinity for a buff controlled by your gameplay state.
 
-## Verify in the demo and your game
+## Verification and reproducibility
+
+This is the canonical home for check/capture commands and their timing contracts.
+The [SKILL tool map](../SKILL.md#tools) lists every tool and whether the general check
+runs it. The [API index](api.md) is the name-coverage source for `check:docs`.
+
+### Setup and checks
 
 ```sh
-npx tsc -p .
-npm run build
+npm install
 npx playwright install chromium
-node tools/test-loi.mjs
-node tools/test-status.mjs
-npm run capture -- --skills loi-heaven-strike,seal-silence,war-cry --out ~/audit/custom
+npm run check:docs
+npm run typecheck
+npm run build
+npm run check
 ```
 
-The two test scripts use Playwright Chromium, so they are not browser-free Node tests. Add a
-custom sample to `examples/skills.ts` (and its filter if using a custom element) before passing
-its ID to capture. The harness builds/serves the demo, seeds randomness (`--seed`, default
-12345), steps the paused world, and writes 5×2 labeled sheets plus `counts.json`. Omit `--skills`
-for all 29 samples. Inspect anticipation, arrival/impact, sustained state and dissipation at
-game zoom; counts must reach zero at `length + 1500 ms` for finite skills. Compare captures
-with the same seed. Also test Infinity + explicit stop, death and scene changes in your game.
+`npm run typecheck` is equivalent to `npx tsc -p .`. `npm run dev` starts the
+watching demo server. Build produces `demo/demo.js`; serve `demo/` with any static
+server. The lifecycle check reads that bundle: it does not build it. Capture builds
+and serves the demo itself.
+
+`npm run check:docs` needs only Node. It resolves the kit barrel exports against
+`references/api.md`, checks the SKILL file map against every kit TypeScript/tool file,
+and compares stated sample counts with `examples/skills.ts`. Run its browser-free
+regressions with `node --test tools/test-docs.mjs`.
+
+`npm run check` uses headless Chromium at high quality. It checks RNG/palette contracts,
+activation interruption/ground projection, Sword Rain hover/launch and dedicated
+fire-dragon contacts. It casts every sample at the tier-less baseline and at tier 3,
+plus six activation and two evolution effects. Each entry is cast three times without
+clearing between repeats; each run advances `length + 1900 ms` through the demo frame
+loop and requires zero particles/updaters and no pool growth. Tiered release pre-roll
+occurs inside that interval; this is not the capture checkpoint formula below.
+Peak counts include delayed particles. Normal sample budget is 150; a hyphen-delimited
+`ultimate` in a future ID selects 600. Existing overages in
+`tools/check-baseline.json` warn; unbaselined overages or peaks over baseline +5% fail.
+Shrink peaks and remove obsolete baseline entries rather than hiding regressions.
+
+Standalone browser regressions:
+
+```sh
+node tools/test-activation.mjs
+node tools/test-floor-ring.mjs
+node tools/test-hit.mjs
+node tools/test-lightning.mjs
+node tools/test-loi.mjs
+node tools/test-spirit-guardian.mjs
+node tools/test-status.mjs
+node tools/test-timing.mjs
+node tools/test-wood.mjs
+```
+
+These are not all part of `npm run check`. `tools/test-fire-dragon.mjs` exports
+`checkFireDragon(browser)`, which the general check invokes; running that file alone
+does not execute the test. See the [tool map](../SKILL.md#tools) for each test's scope.
+
+### Captures
+
+```sh
+npm run capture -- --skills thuy-tidal-beam,kim-sword-rain --out ~/audit/after/
+npm run capture -- --skills hoa-fireball,tho-fissure --tier 3 --out ~/audit/tier3/
+npm run capture -- --skills activation-hoa-3,evolution-thuy --out ~/audit/activation/
+```
+
+- `--skills a,b` selects comma-separated IDs. Register custom samples in
+  `examples/skills.ts` (and the filter for a custom element) before capture.
+- Omit `--skills` for the debug list: 29 samples plus six activation effects
+  (`activation-hoa-1/2/3`, `activation-thuy-1/2/3`) and two transitions
+  (`evolution-hoa`, `evolution-thuy`), 37 entries total.
+- `--tier 0|1|2|3` defaults to 0: the tier-less baseline, not the interactive demo's
+  tier-1 default. Tier 2/3 gameplay includes activation pre-roll. Pseudo-IDs encode
+  their own tier/transition and ignore the selected gameplay tier.
+- `--seed INTEGER` defaults to 12345. Each skill starts on a fresh seeded page at
+  high quality with a stopped ticker and deterministic stepping. Output defaults to
+  `~/audit/before/`; set `--out DIR` to keep iterations separate.
+- The harness writes labeled 5×2 PNG contact sheets. Counts are sampled at
+  `length + activation pre-roll + 1900 ms` (pseudo-IDs have no additional pre-roll).
+  Output is `counts.json` for tier 0, or `counts-tierN.json` when a tier is selected.
+  These are particle counts, not a full leak assertion; use check for updater/pool gates.
+
+Inspect anticipation, arrival/impact, sustained state, depth with units in front/behind,
+and dissipation at game zoom. Compare sheets with the same seed, camera and scale;
+a successful build or zero count alone is not visual verification. Also test
+Infinity + stop, death and scene changes in your game.
+
+### Curves and randomness
+
+Numeric particle curves accept a constant, `[from, to]`, `[from, to, ease]` or a
+normalized-time callback. Use the exported easing functions, `clamp01`, `lerp`,
+`lerpColor`, `colorRamp` and `envelope`. `ms.env(life, inMs, outMs, peak?)`
+expresses an envelope in milliseconds.
+
+Use `new VfxWorld({ ...layers, seed: 12345 })` or `rng: () => number` (takes
+precedence). `random`, `rand`, `randSign` and `pick` use the active RNG;
+`mulberry32` creates one and `setRng` replaces it. The RNG is process-global:
+the last world constructed wins. Use one active world or explicitly switch its RNG.
+Omitting seed/rng restores Math.random behavior. `pick([])` returns undefined.
+
+### World and ownership
+
+`VfxWorldOptions` configures layers, camera, ground squash, shadow, particle cap and
+RNG. `SpawnOptions` controls position, physics, curves, following and callbacks;
+`Curve` and `LayerName` are corresponding unions. `Particle` is pooled: do not retain
+its reference beyond its lifetime. `setGroundTransform` is a low-level ground
+projection helper; prefer `groundAligned` when spawning.
+
+`after` and `addUpdater` return stoppable Handles; updater callbacks stop by returning
+false. World time respects timeScale and hit-stop. `own(dispose)` registers cleanup
+for raw display objects; its return value unregisters that callback. Dispose/unregister
+on normal completion too. `clear()` cancels owned work, particles, updaters and plugins.
+See [plugins](advanced-fx.md#plugins) for the `WorldPlugin` update/clear interface.
