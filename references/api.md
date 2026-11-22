@@ -264,6 +264,8 @@ source-only contracts. Copy the whole kit, including its internal texture module
 - `vortex` — Inward or outward spiral field — [Wind recipes](recipes.md#wind).
 - `windWisps` — Following helical ribbon aura — [Wind recipes](recipes.md#wind).
 - `gustLines` — Directional speed-line burst — [Wind recipes](recipes.md#wind).
+- `windPressure` — Sector of converging or expanding air sheets and dust — [Wind recipes](recipes.md#wind).
+- `windRush` — Short ground step with twin slipstream trails and movement callbacks — [Wind recipes](recipes.md#wind).
 
 ## kit/fire.ts
 

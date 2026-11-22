@@ -45,7 +45,8 @@ function reaction(w: VfxWorld, sprite: Sprite, active: WeakMap<Sprite, Handle>, 
 /** Replace any previous skin, then ease back to the true pre-reaction tint. */
 export function hitSkin(w: VfxWorld, sprite: Sprite, skin: HitSkinName,
   o: { duration?: number; strength?: number } = {}): Handle {
-  const duration = o.duration ?? 300, strength = o.strength ?? 0.9;
+  const duration = o.duration ?? (skin === 'wind' ? 120 : 300);
+  const strength = o.strength ?? (skin === 'wind' ? 0.40 : 0.9);
   if (!Number.isFinite(duration) || !Number.isFinite(strength)) throw new RangeError('hitSkin options must be finite');
   tints.get(sprite)?.stop();
   if (sprite.destroyed) return reaction(w, sprite, tints, 0, () => {}, () => {});

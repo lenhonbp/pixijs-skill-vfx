@@ -109,7 +109,8 @@ for every public name and the [recipe catalog](references/recipes.md) for option
 - Thủy: `frostNova`, `glacierPath`, `tidalBeam`.
 - Lôi: `stormCloud`, `lightningCharge`, `lightningWarning`, `lightningStrike`,
   `lightningImpact`, `lightningStun`, `lightningChain`, `staticField`.
-- Phong: `windSweep`, `windSlash`, `tornado`, `vortex`, `windWisps`, `gustLines`.
+- Phong: `windPressure` (air intake and impact), `windRush` (slipstream step),
+  `windSweep`, `windSlash`, `tornado`, `vortex`, `windWisps`, `gustLines`.
 - Kim and Thổ: `swordSalute`, `swordRain`, `metalSlash`, `metalSparks`, `goldenBell`,
   `spikeLine`, `stoneArmor`, `mountainCrash`. Summons can use `spiritGuardian`.
 - Shared: generic impacts/projectiles, movement, channels, `floorRing`, numbers and

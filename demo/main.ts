@@ -9,6 +9,8 @@ import {
 import { SKILLS, SkillDef, Unit, SkillContext } from '../examples/skills';
 
 const W = 1120, H = 630;
+const HP_BAR_LIFT = 14;
+const NUMBER_CLEARANCE = 28;
 const HOTKEYS = '1234567890QWFERTYUIOZXCVBNMJK';
 const KEY_ORDER = ['kim', 'moc', 'thuy', 'hoa', 'tho', 'phong', 'loi', 'neutral']
   .flatMap((element) => SKILLS.filter((s) => s.element === element));
@@ -292,9 +294,10 @@ function whiteTexture() {
     u.shadow.scale.set(1.15, 1.15 * rig.groundSquash);
     u.shadow.visible = u.feet.z < 2 && u.sprite.visible;
     const bw = 56;
-    u.hpBack.position.set(u.feet.x - bw / 2 - 1, u.feet.y - u.height - 14);
+    const hudY = u.feet.y - u.height - HP_BAR_LIFT;
+    u.hpBack.position.set(u.feet.x - bw / 2 - 1, hudY);
     u.hpBack.scale.set((bw + 2) / 4, 7 / 4);
-    u.hpBar.position.set(u.feet.x - bw / 2, u.feet.y - u.height - 14);
+    u.hpBar.position.set(u.feet.x - bw / 2, hudY);
     u.hpBar.scale.set((bw * Math.max(0, u.hp)) / 4, 5 / 4);
   };
 
@@ -338,7 +341,8 @@ function whiteTexture() {
       rockBack(w, u.sprite, { push: o.push ?? (o.crit ? 12 : 6),
         angle: o.angle ?? Math.atan2(u.feet.y - hero.feet.y, u.feet.x - hero.feet.x) });
       if (o.palette) hitSpark(w, tex, { x: u.feet.x, y: u.feet.y, z: u.height * 0.55, palette: o.palette, angle: o.angle ?? Math.PI, size: Math.sqrt(feedback) });
-      damageNumber(w, tex, { x: u.feet.x, y: u.feet.y, z: u.height + 8, value: amount, crit, color: o.color ?? (crit ? 0xffd04a : 0xffffff) });
+      damageNumber(w, tex, { x: u.feet.x, y: u.feet.y, z: u.height + HP_BAR_LIFT + NUMBER_CLEARANCE,
+        value: amount, crit, color: o.color ?? (crit ? 0xffd04a : 0xffffff), duration: o.numberDuration });
       du.hp = Math.max(0.05, du.hp - amount / 1600);
       lastHurt = w.now;
     },

@@ -217,7 +217,7 @@ cyan). The original sprite tint is preserved, and existing filters are retained.
 | `poison` | Sickly green | — |
 | `earth` | Brown | Thổ |
 | `metal` | Gold | Kim |
-| `wind` | Pale mint | Phong |
+| `wind` | Brief, translucent mint flash (120 ms by default) | Phong |
 | `nature` | Green | Mộc |
 | `red` | Plain red | Custom/unknown/neutral fallback |
 

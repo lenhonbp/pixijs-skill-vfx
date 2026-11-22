@@ -89,6 +89,7 @@ export const TEX_METRICS = {
   bladeLength: 128,
   spikeHeight: 128,
   tendrilHeight: 128,
+  digitWidth: 44,
   digitHeight: 64,
 } as const;
 
@@ -627,7 +628,7 @@ export function createVfxTextures(): VfxTextures {
 
   const digits: Record<string, Texture> = {};
   for (const ch of '0123456789+-!') {
-    const [c, ctx] = makeCanvas(44, 64);
+    const [c, ctx] = makeCanvas(TEX_METRICS.digitWidth, TEX_METRICS.digitHeight);
     ctx.font = '900 52px "Arial Black", Impact, system-ui, sans-serif';
     ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
     ctx.lineJoin = 'round'; ctx.lineWidth = 9; ctx.strokeStyle = 'rgba(0,0,0,0.9)';
