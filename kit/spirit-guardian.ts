@@ -8,7 +8,7 @@ import { clamp01, lerp, outCubic, rand } from './ease';
 /** Spectral halberd warrior: reveal, advance, cleave and slam, rising-mote dissolve. */
 export function spiritGuardian(w: VfxWorld, tex: VfxTextures,
   o: { x: number; y: number; z?: number; palette: Palette; height?: number; duration?: number;
-    target?: () => Vec3; strikes?: number; onStrike?: (i: number, at: Vec3) => void; facing?: number }): Handle {
+    target?: () => Vec3; strikes?: number; slamRadius?: number; onStrike?: (i: number, at: Vec3) => void; facing?: number }): Handle {
   const h = o.height ?? 100, k = h / 240, count = Math.max(0, Math.floor(o.strikes ?? 3));
   const reveal = 350, advance = 650, cycle = 650, dissolve = 450;
   const end = reveal + (o.target ? advance + count * cycle : (o.duration ?? 1200));
@@ -35,7 +35,7 @@ export function spiritGuardian(w: VfxWorld, tex: VfxTextures,
       alpha: [core ? 0.95 : 0.7, 0], tint: core ? o.palette.core : o.palette.main }));
     if (heavy) {
       for (const core of [false, true]) g.add(w.spawn({ texture: tex.ring, layer: 'ground', groundAligned: true,
-        x: aim.x, y: aim.y, life: 420, scale: [0.05, h / M.ringRadius * (core ? 0.8 : 1.1), outCubic],
+        x: aim.x, y: aim.y, life: 420, scale: [0.05, (o.slamRadius ?? h * 1.1) / M.ringRadius * (core ? 0.8 : 1), outCubic],
         alpha: [0.85, 0], tint: core ? o.palette.core : o.palette.main }));
       for (let j = 0; j < 10; j++) {
         const a = rand(0, Math.PI * 2), speed = rand(30, 100);

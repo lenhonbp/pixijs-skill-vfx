@@ -5,9 +5,10 @@ const bundle = await build({ stdin: { contents: `
   export { Container, Texture } from 'pixi.js';
   export { VfxWorld } from './kit/vfx-world';
   export { spiritGuardian } from './kit/spirit-guardian';
+  export { SKILLS } from './examples/skills';
 `, resolveDir: process.cwd() }, bundle: true, write: false, platform: 'node', format: 'esm' });
-const { Container, Texture, VfxWorld, spiritGuardian } = await import(`data:text/javascript;base64,${Buffer.from(bundle.outputFiles[0].text).toString('base64')}`);
-const tex = Object.fromEntries(['guardian', 'glow', 'dot', 'puff', 'star', 'crescent', 'ring', 'rock'].map((key) => [key, Texture.EMPTY]));
+const { Container, Texture, VfxWorld, spiritGuardian, SKILLS } = await import(`data:text/javascript;base64,${Buffer.from(bundle.outputFiles[0].text).toString('base64')}`);
+const tex = new Proxy({}, { get: () => Texture.EMPTY });
 const palette = { main: 0xffdd88, core: 0xffffff, dark: 0x554422 };
 const make = () => new VfxWorld({ ...VfxWorld.createLayers(new Container()), seed: 42 });
 const advance = (w, ms) => { for (let t = 0; t < ms; t += 16) w.update(Math.min(16, ms - t)); };
@@ -40,3 +41,22 @@ const empty = (w) => { assert.equal(w.count, 0); assert.equal(w.stats.updaters, 
   advance(w, 4000); assert.equal(hits, 0); empty(w);
 }
 console.log('Guardian contracts: PASS (advance, facing, three impacts, retarget, idle, zero strikes, cancellation, cleanup)');
+{
+  const w = make(), hits = [], rings = [];
+  w.groundSquash = 0.5;
+  const unit = (x, y) => ({ feet: { x, y, z: 0 }, height: 96, facing: 1 });
+  const caster = unit(330, 405), targets = [unit(790, 405), unit(900, 330), unit(905, 490), unit(1021, 405)];
+  const spawn = w.spawn.bind(w);
+  w.spawn = (o) => { if (o.life === 420 && o.layer === 'ground') rings.push(o); return spawn(o); };
+  SKILLS.find((s) => s.id === 'summon-spirit').cast({ w, tex, caster, target: targets[0], targets,
+    hurt: (u, amount, o) => hits.push({ target: targets.indexOf(u), amount, crit: o.crit }) });
+  advance(w, 7000);
+  assert.deepEqual(hits, [
+    { target: 0, amount: 92, crit: false }, { target: 0, amount: 92, crit: false },
+    { target: 0, amount: 185, crit: true }, { target: 1, amount: 185, crit: true }, { target: 2, amount: 185, crit: true },
+  ]);
+  assert.equal(rings.length, 2);
+  assert.equal(rings[0].scale[1] * 120, caster.height * 2.4, 'outer shockwave radius matches damage radius');
+  empty(w);
+  console.log('Summon AoE: PASS (3 demo enemies take 185 crit; outside enemy excluded; visual radius = hit radius = 230.4)');
+}

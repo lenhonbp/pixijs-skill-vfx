@@ -602,14 +602,16 @@ export const SKILLS: SkillDef[] = [
     cast: ({ w, tex, caster, target, targets, hurt, summon }) => {
       chargeUp(w, tex, { target: () => hand(caster), palette: P.holy, duration: 350 });
       const at = { x: caster.feet.x + caster.facing * 120, y: caster.feet.y + 40, z: 0 };
+      const slamRadius = caster.height * 2.4;
       summonCircle(w, tex, { ...at, palette: P.holy, radius: 70, duration: 1200, columnAlpha: 0.2,
         onSummon: () => {
           summon?.(at, 'neutral', true);
           w.after(200, () => spiritGuardian(w, tex, { ...at, palette: P.holy, height: caster.height * 1.4,
-            target: feetOf(target), strikes: 3,
+            target: feetOf(target), strikes: 3, slamRadius,
             onStrike: (i, impact) => {
               const angle = Math.atan2((impact.y - at.y) / w.groundSquash, impact.x - at.x);
-              const victims = i === 2 ? near(impact, caster.height * 1.5, targets) : [target];
+              const victims = i === 2 ? targets.filter((u) =>
+                Math.hypot(u.feet.x - impact.x, (u.feet.y - impact.y) / w.groundSquash) <= slamRadius) : [target];
               victims.forEach((u) => hurt(u, i === 2 ? 185 : 92, { palette: P.holy, angle, crit: i === 2 }));
             },
           }));
