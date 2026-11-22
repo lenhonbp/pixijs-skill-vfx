@@ -106,7 +106,7 @@ const SPRING_BLOOM_TIMING: SkillTiming = {
   windup: 0, hits: Array.from({ length: 4 }, (_, i) => ({ t: 300 + i * 420, skin: 'nature', push: 0 })), recovery: 840,
 };
 const MOUNTAIN_CRASH_TIMING: SkillTiming = {
-  windup: 320, hits: [{ t: 640, stop: 70, shake: 10 * 110 / 90, push: 26, skin: 'earth', targets: 'all' }], recovery: 1500,
+  windup: 320, hits: [{ t: 640, stop: 80, shake: 12 * (96 * 2.3 / 160), push: 26, skin: 'earth', targets: 'all' }], recovery: 1500,
 };
 
 export const SKILLS: SkillDef[] = [
@@ -451,7 +451,7 @@ export const SKILLS: SkillDef[] = [
               u.feet.x = at.x + Math.cos(a) * r;
               u.feet.y = at.y + Math.sin(a) * r * w.groundSquash;
               u.feet.z = lerp(u.feet.z, (40 + 10 * Math.sin(a)) * clamp01(1.25 - d / 160), 0.25);
-              if (tick % 6 === 0) hurt(u, Math.round(rand(16, 24)), { palette: P.phong, push: 0, angle: -Math.PI / 2 });
+              if (tick % 6 === 0) hurt(u, Math.round(rand(16, 24)), { palette: P.phong, push: 0, angle: -Math.PI / 2, feedback: 0.22 });
             }
           },
         });

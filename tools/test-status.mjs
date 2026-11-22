@@ -189,16 +189,22 @@ try {
       check(column.o.alpha[0] === 0.9 * (columnAlpha ?? 1), 'summon: default/custom/zero column opacity');
       clean(w, 'summon column');
     }
-    w = world(); let summoned = 0;
-    kit.SKILLS.find((s) => s.id === 'summon-spirit').cast({ w, tex,
+    w = world(); let summoned = 0, guardianHits = 0, guardianDamage = 0;
+    const guardianTarget = { feet: { x: 400, y: 240, z: 0 }, height: 70, facing: -1 };
+    const summonSkill = kit.SKILLS.find((s) => s.id === 'summon-spirit');
+    summonSkill.cast({ w, tex,
       caster: { feet: { x: 100, y: 200, z: 0 }, height: 70, facing: 1 },
+      target: guardianTarget, targets: [guardianTarget],
+      hurt: (_u, amount) => { guardianHits++; guardianDamage += amount; },
       summon: (at, element, visualized) => {
         check(at.x === 220 && at.y === 240 && element === 'neutral' && visualized, 'summon: gameplay callback preserved'); summoned++;
       },
     });
     step(w, 2100);
     check(summoned === 1 && w.particles.some((p) => p.o.texture === tex.guardian), 'summon: callback and guardian both occur');
+    step(w, summonSkill.length - 2100);
     clean(w, 'summon sample');
+    check(guardianHits === 3 && guardianDamage === 369, 'summon: merged guardian keeps two cleaves and heavy slam damage');
     results.push('spiritGuardian: materialize/hold/bob/dissolve, finite/zero/Infinity/stop, column options and summon callback PASS');
     w = world();
     kit.spike(w, tex, { x: 100, y: 200, palette: kit.WUXING.thuy.palette, height: 70, ice: true });
@@ -215,8 +221,10 @@ try {
     clean(w, 'ice spike');
     w = world();
     kit.spike(w, tex, { x: 0, y: 0, palette: kit.WUXING.tho.palette });
-    check(w.count === 13 && w.particles.filter((p) => p.o.texture === tex.rock).length === 7 &&
-      w.particles.filter((p) => p.o.texture === tex.puff).length === 4, 'earth spike: existing debris unchanged');
+    check(w.count === 11 && w.particles.filter((p) => p.o.texture === tex.rock).length === 5 &&
+      w.particles.filter((p) => p.o.texture === tex.puff).length === 3 &&
+      w.particles.some((p) => p.o.texture === tex.rockSpike && p.o.blend === 'normal') &&
+      w.particles.some((p) => p.o.texture === tex.fissure), 'earth spike: merged solid rock, fissure, five debris and three dust puffs preserved');
     clean(w, 'earth spike');
     const icePeaks = [];
     for (const seed of [0, 1, 12345]) {
@@ -294,7 +302,9 @@ try {
     check(peak.o.scaleX * 320 > 220 && peak.o.scaleY * 256 === 160, 'mountain: wider than crater, giant height');
     step(w, 160); check(crashes === 0, 'mountain: no early hit');
     step(w, 16); check(crashes === 1 && peak.pz === 0, 'mountain: impact and callback synchronized');
-    check(w.particles.some((p) => p.o.texture === tex.swordCrack) && w.particles.some((p) => p.o.texture === tex.rock && p.o.gravity > 0), 'mountain: crater and falling rubble');
+    check(w.particles.filter((p) => p.o.texture === tex.fissure && p.o.blend === 'normal' && p.o.groundAligned).length === 7 &&
+      w.particles.some((p) => p.o.texture === tex.rock && p.o.gravity > 0), 'mountain: merged radial fissure crater and falling rubble');
+    step(w, 1000);
     clean(w, 'mountain default'); check(!mountain.alive && crashes === 1, 'mountain: completes exactly once');
     w = world();
     const cancelledPeak = kit.mountainCrash(w, tex, { x: 0, y: 0, radius: 60, height: 100, palette: gold,
