@@ -195,6 +195,7 @@ These are visual helpers, not gameplay state machines: CC must be enforced by yo
 | `slow` | CC/debuff | Cold feet arcs, sinking chevrons and drips | `duration`, `palette` |
 | `root` | CC | Swaying vines, dirt and leaves | `duration`, `palette` |
 | `shield` | Buff | Rim-lit bubble, ground ring, impact ripple and break shards | `duration` (default Infinity), `palette`, `radius`, `onBreak`; handle adds `hit(angle)` / `break()` |
+| `goldenBell` | Buff | Translucent temple bell drops over the unit, rings on hits, cracks and falls into golden shards | `duration` (sustain after the 250 ms gather + 180 ms drop, default 3000; Infinity supported), `palette`, `onBreak`; handle adds `hit(angle?)` / `break()` |
 | `statChange` | Buff/debuff | Column and upward/downward chevrons | `up` (required), `duration`, `palette` |
 | `damageOverTime` | Debuff | Poison bubbles / burn embers / bleeding drops and tick numbers | `kind`, `duration`, `tickMs`, `damage` (number or function), `onTick(amount)`, `numbers` |
 | `shock` | Debuff | Crawling body arcs and feet sparks | `duration`, `palette`, `tickMs`, `onTick()` |

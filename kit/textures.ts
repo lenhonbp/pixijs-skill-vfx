@@ -46,6 +46,10 @@ export interface VfxTextures {
   plus: Texture;
   /** Split shield outline with a jagged crack. 64x80. Armor break. */
   crackedShield: Texture;
+  /** Temple bell with hanging loop, bands, studs and translucent engraved body. 256x320. */
+  bell: Texture;
+  /** Fractures aligned to bell, with the same size and anchor. */
+  bellCracks: Texture;
   /** Glyphs '0'-'9', '+', '-', '!' : white fill with black outline (tint colors the fill only). Height 64. */
   digits: Record<string, Texture>;
 }
@@ -373,6 +377,64 @@ export function createVfxTextures(): VfxTextures {
     return textureFromCanvas(c);
   })();
 
+  const bell = (() => {
+    const [c, ctx] = makeCanvas(256, 320);
+    ctx.beginPath();
+    ctx.moveTo(100, 48);
+    ctx.bezierCurveTo(72, 54, 58, 72, 55, 106);
+    ctx.lineTo(44, 244);
+    ctx.quadraticCurveTo(42, 262, 22, 279);
+    ctx.lineTo(18, 296);
+    ctx.quadraticCurveTo(128, 320, 238, 296);
+    ctx.lineTo(234, 279);
+    ctx.quadraticCurveTo(214, 262, 212, 244);
+    ctx.lineTo(201, 106);
+    ctx.bezierCurveTo(198, 72, 184, 54, 156, 48);
+    ctx.closePath();
+    const fill = ctx.createLinearGradient(18, 0, 238, 0);
+    fill.addColorStop(0, 'rgba(255,255,255,0.24)');
+    fill.addColorStop(0.3, 'rgba(255,255,255,0.08)');
+    fill.addColorStop(0.65, 'rgba(255,255,255,0.13)');
+    fill.addColorStop(1, 'rgba(255,255,255,0.2)');
+    ctx.fillStyle = fill; ctx.fill();
+    ctx.strokeStyle = 'rgba(255,255,255,0.95)'; ctx.lineWidth = 5; ctx.stroke();
+    ctx.beginPath(); ctx.ellipse(128, 27, 14, 20, 0, 0, Math.PI * 2);
+    ctx.lineWidth = 7; ctx.stroke();
+    ctx.fillStyle = 'rgba(255,255,255,0.7)'; ctx.fillRect(113, 43, 30, 9);
+    for (const [y, x] of [[104, 55], [220, 46], [278, 24]]) {
+      ctx.beginPath(); ctx.moveTo(x, y); ctx.quadraticCurveTo(128, y + 14, 256 - x, y);
+      ctx.strokeStyle = 'rgba(255,255,255,0.75)'; ctx.lineWidth = 5; ctx.stroke();
+      ctx.beginPath(); ctx.moveTo(x, y + 7); ctx.quadraticCurveTo(128, y + 21, 256 - x, y + 7);
+      ctx.strokeStyle = 'rgba(255,255,255,0.3)'; ctx.lineWidth = 2; ctx.stroke();
+    }
+    for (const x of [70, 99, 128, 157, 186]) {
+      ctx.beginPath(); ctx.arc(x, 130 + Math.sin((x - 55) / 146 * Math.PI) * 4, 4.5, 0, Math.PI * 2);
+      ctx.fillStyle = 'rgba(255,255,255,0.85)'; ctx.fill();
+    }
+    ctx.strokeStyle = 'rgba(255,255,255,0.28)'; ctx.lineWidth = 2;
+    for (const x of [65, 108, 151]) {
+      ctx.strokeRect(x, 151, 36, 53);
+      ctx.beginPath(); ctx.moveTo(x + 9, 168); ctx.lineTo(x + 27, 168);
+      ctx.lineTo(x + 18, 189); ctx.closePath(); ctx.stroke();
+      ctx.strokeRect(x - 3, 238, 39, 24);
+    }
+    ctx.strokeStyle = 'rgba(255,255,255,0.8)'; ctx.lineWidth = 4;
+    ctx.beginPath(); ctx.ellipse(128, 295, 109, 12, 0, 0, Math.PI * 2); ctx.stroke();
+    return textureFromCanvas(c);
+  })();
+  const bellCracks = (() => {
+    const [c, ctx] = makeCanvas(256, 320);
+    ctx.strokeStyle = 'white'; ctx.lineWidth = 4; ctx.lineJoin = 'bevel';
+    for (const points of [
+      [[115, 51], [133, 91], [117, 124], [147, 165], [129, 207], [153, 250], [139, 305]],
+      [[117, 124], [87, 149], [97, 177], [50, 200]],
+      [[129, 207], [179, 229], [171, 258], [222, 284]],
+    ]) {
+      ctx.beginPath(); points.forEach(([x, y], i) => i ? ctx.lineTo(x, y) : ctx.moveTo(x, y)); ctx.stroke();
+    }
+    return textureFromCanvas(c);
+  })();
+
   const digits: Record<string, Texture> = {};
   for (const ch of '0123456789+-!') {
     const [c, ctx] = makeCanvas(44, 64);
@@ -385,5 +447,5 @@ export function createVfxTextures(): VfxTextures {
     digits[ch] = textureFromCanvas(c);
   }
 
-  return { glow, dot, ring, disc, streak, beam, star, puff, crescent, shard, blade, spike, rock, leaf, drop, chevron, rune, bubble, tendril, plus, crackedShield, digits };
+  return { glow, dot, ring, disc, streak, beam, star, puff, crescent, shard, blade, spike, rock, leaf, drop, chevron, rune, bubble, tendril, plus, crackedShield, bell, bellCracks, digits };
 }

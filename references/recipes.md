@@ -25,6 +25,7 @@ not a framework to extend with options.
 | `slow` | spinning cold arcs at the feet, sinking chevrons, drips | slow, snare | `duration`, `palette` |
 | `root` | dirt burst, vines growing from the ground and swaying, leaves | root, entangle | `duration`, `palette` |
 | `shield` | rim-lit bubble with pulse, ground ring, crawling glints; `hit(angle)` ripple, `break()` shards | barriers, absorbs, invulnerability | `radius`, `duration`, `onBreak` |
+| `goldenBell` (`bell.ts`) | above-head gather, falling temple bell with hanging loop, dome, engraved translucent body, bands and studs; landing dust/ring, shimmer, sound ripples and gold shards | bell-shaped ward, distinct from a spherical shield | `target`, `height`, `palette`, `duration` (sustain after landing, default 3000; Infinity until stopped), `onBreak`; handle: `hit(angle?)`, `break()`, `stop()` |
 | `statChange` | light column, chevrons climbing (up) or sinking (down), ground ring | attack/defense/speed buffs and debuffs | `up`, `palette`, `duration` |
 | `dash` | afterimages of the unit sprite, speed lines, dust | dash, charge | `sprite`, `duration`, `onMove`, `onEnd` |
 | `blink` | implode + light column at `from`, faint trail, column + burst at `to` | teleport, shadow step | `gapMs`, `onVanish`, `onAppear` |

@@ -9,6 +9,7 @@ import {
   slash, hitSpark, hitFlash, projectile, explosion, meteor, lightningChain, healAura, telegraph, shockwave,
   damageOverTime, stun, shock, freeze, slow, root, shield, statChange, damageNumber,
   silence, blind, armorBreak, mark, fear, aura, empower, haste,
+  goldenBell,
   lightningStrike, staticField,
   dash, blink, leap, beam, coneBreath, chargeUp, summonCircle, spikeLine, spikeRing, swordRain,
   rand, envelope, outCubic, outQuad, lerp, clamp01,
@@ -135,10 +136,9 @@ export const SKILLS: SkillDef[] = [
   },
   {
     id: 'kim-golden-bell', element: 'kim', category: 'buff', en: 'Golden Bell', vi: 'Kim Chung Tráo',
-    desc: 'A golden barrier absorbs three hits, then shatters.', uses: ['shield', 'statChange', 'projectile'], length: 3200,
+    desc: 'A golden temple bell descends, rings under two hits, then shatters on the third.', uses: ['goldenBell', 'projectile'], length: 3800,
     cast: ({ w, tex, caster, targets }) => {
-      statChange(w, tex, { target: feetOf(caster), height: caster.height, up: true, palette: P.kim, duration: 900 });
-      const sh = shield(w, tex, { target: feetOf(caster), height: caster.height, palette: P.kim });
+      const sh = goldenBell(w, tex, { target: feetOf(caster), height: caster.height, palette: P.kim, duration: 3000 });
       targets.slice(0, 3).forEach((e, i) => {
         w.after(700 + i * 550, () => projectile(w, tex, {
           from: chest(e, 0.6), to: { ...chest(caster), x: caster.feet.x + caster.height * 0.5 }, palette: P.shadow, speed: 700, size: 0.8,

@@ -78,6 +78,51 @@ try {
     step(w, 600);
     check(w.particles.every((p) => p.sprite.alpha === 0), 'aura: zero intensity'); hidden.stop(); clean(w, 'aura zero');
     results.push('regen tick amounts/final tick/numbers/errors and aura intensity: PASS');
+    w = world();
+    let at = { x: 100, y: 200, z: 0 }, breaks = 0;
+    const bell = kit.goldenBell(w, tex, { target: () => at, duration: Infinity, height: 105, onBreak: () => breaks++ });
+    step(w, 200);
+    check(!w.particles.some((p) => p.o.texture === tex.bell && p.sprite.visible), 'bell: anticipation before drop');
+    step(w, 150);
+    check(w.particles.some((p) => p.o.texture === tex.bell && p.pz > 0), 'bell: drops from above');
+    step(w, 250);
+    const shell = w.particles.find((p) => p.o.texture === tex.bell);
+    check(shell && shell.pz === 0 && shell.o.blend === 'normal', 'bell: landed translucent silhouette');
+    at = { x: 500, y: 350, z: 20 };
+    step(w, 32);
+    check(shell.sprite.x === at.x && shell.sprite.y === at.y - at.z, 'bell: follows feet and airborne height');
+    bell.hit(); step(w, 32);
+    check(Math.abs(shell.sprite.x - at.x) > 0.1, 'bell: rings with horizontal wobble');
+    check(w.particles.some((p) => p.o.texture === tex.ring && p.o.zBias === 32), 'bell: concentric sound ripples');
+    step(w, 800); bell.hit(Math.PI); step(w, 800);
+    check(bell.alive && breaks === 0, 'bell: two hits do not break ward');
+    bell.break(); bell.break(); bell.hit();
+    check(!bell.alive && breaks === 1, 'bell: break exactly once');
+    check(w.particles.some((p) => p.o.texture === tex.bellCracks), 'bell: fracture texture');
+    check(w.particles.some((p) => p.o.texture === tex.shard && p.o.gravity > 0), 'bell: falling gold shards');
+    clean(w, 'bell break');
+    for (const duration of [0, 600, undefined, Infinity]) {
+      w = world();
+      const handle = kit.goldenBell(w, tex, { target: () => at, duration });
+      if (duration === Infinity) {
+        step(w, 7000); check(handle.alive && w.count > 0, 'bell: Infinity sustains');
+        handle.stop(); handle.stop(); handle.hit(); handle.break();
+      } else step(w, 5000);
+      clean(w, 'bell duration/stop');
+      check(!handle.alive, 'bell: duration or stop ends handle');
+    }
+    w = world();
+    const cancelled = kit.goldenBell(w, tex, { target: () => at, duration: Infinity, onBreak: () => breaks++ });
+    cancelled.stop(); clean(w, 'bell early cancellation');
+    check(breaks === 1, 'bell: stop does not invoke break callback');
+    w = world();
+    const broken = kit.goldenBell(w, tex, { target: () => at, onBreak: () => { throw new Error('bell callback'); } });
+    step(w, 600);
+    let bellError;
+    try { broken.break(); } catch (e) { bellError = e.message; }
+    check(bellError === 'bell callback' && !broken.alive, 'bell: callback error leaves stopped handle');
+    clean(w, 'bell callback error');
+    results.push('goldenBell: gather/drop/landing, hits/break, Infinity/stop, finite/zero/default, movement and errors PASS');
     return results;
   });
   results.forEach((line) => console.log(line));

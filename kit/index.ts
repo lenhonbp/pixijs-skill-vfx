@@ -10,6 +10,7 @@ export * from './palette';
 export * from './thunder';
 export * from './numbers';
 export * from './status';
+export * from './bell';
 export * from './motion';
 export * from './channel';
 export * from './elemental';
