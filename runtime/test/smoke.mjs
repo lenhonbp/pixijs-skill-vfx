@@ -234,7 +234,18 @@ try {
   await mobile.evaluate(() => {
     const s = window.__showcase; s.app.stop(); s.app.render();
   });
-  if (process.env.VFX_MOBILE_SCREENSHOT) { await mobile.screenshot({ path: process.env.VFX_MOBILE_SCREENSHOT, fullPage: true }); console.log(`Mobile screenshot: ${process.env.VFX_MOBILE_SCREENSHOT}`); }
+  if (process.env.VFX_MOBILE_SCREENSHOT) {
+    await mobile.evaluate(async () => {
+      const s = window.__showcase;
+      for (const pack of s.packs) s.vfx.unload(pack.id);
+      s.select('hoa-fire-dragon-crossing');
+      await s.vfx.load('./packs/free/hoa-fire-dragon-crossing.m.vfxb');
+      s.vfx.play('hoa-fire-dragon-crossing', { from: s.from, to: s.to, parent: s.world });
+      s.vfx.update(1300); s.app.render();
+    });
+    await mobile.screenshot({ path: process.env.VFX_MOBILE_SCREENSHOT, fullPage: true });
+    console.log(`Mobile Fire Dragon Crossing screenshot: ${process.env.VFX_MOBILE_SCREENSHOT}`);
+  }
   console.log(`Mobile 390x844 / DPR 3: PASS (touch selection, no overflow, backing width ${first.backingWidth}px <= 2x display, one resident pack)`);
   console.log(`First load: ${first.transfer} transferred bytes incl. HTTP overhead; ${first.body} body bytes (uncompressed local server; index + selected pack only)`);
   console.log(`Mobile emulation RAF: average ${timing.average.toFixed(1)}ms, max ${timing.max.toFixed(1)}ms over 90 frames (not a physical-device benchmark)`);

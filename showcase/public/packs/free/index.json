@@ -15,12 +15,12 @@
       },
       {
         "name": "kim-sword-rain.m.vfxb",
-        "bytes": 139718
+        "bytes": 186538
       }
     ],
     "bytes": 360897,
     "desktopBytes": 360897,
-    "mobileBytes": 139718
+    "mobileBytes": 186538
   },
   {
     "id": "kim-golden-edge",
@@ -38,12 +38,12 @@
       },
       {
         "name": "kim-golden-edge.m.vfxb",
-        "bytes": 83370
+        "bytes": 106211
       }
     ],
     "bytes": 171127,
     "desktopBytes": 171127,
-    "mobileBytes": 83370
+    "mobileBytes": 106211
   },
   {
     "id": "kim-golden-bell",
@@ -61,12 +61,12 @@
       },
       {
         "name": "kim-golden-bell.m.vfxb",
-        "bytes": 78264
+        "bytes": 98945
       }
     ],
     "bytes": 172086,
     "desktopBytes": 172086,
-    "mobileBytes": 78264
+    "mobileBytes": 98945
   },
   {
     "id": "moc-vine-bind",
@@ -84,12 +84,12 @@
       },
       {
         "name": "moc-vine-bind.m.vfxb",
-        "bytes": 38537
+        "bytes": 49202
       }
     ],
     "bytes": 81886,
     "desktopBytes": 81886,
-    "mobileBytes": 38537
+    "mobileBytes": 49202
   },
   {
     "id": "moc-spring-bloom",
@@ -107,12 +107,12 @@
       },
       {
         "name": "moc-spring-bloom.m.vfxb",
-        "bytes": 67718
+        "bytes": 90904
       }
     ],
     "bytes": 158160,
     "desktopBytes": 158160,
-    "mobileBytes": 67718
+    "mobileBytes": 90904
   },
   {
     "id": "moc-toxic-spores",
@@ -130,12 +130,12 @@
       },
       {
         "name": "moc-toxic-spores.m.vfxb",
-        "bytes": 372537
+        "bytes": 520656
       }
     ],
     "bytes": 915174,
     "desktopBytes": 915174,
-    "mobileBytes": 372537
+    "mobileBytes": 520656
   },
   {
     "id": "thuy-frost-nova",
@@ -153,12 +153,12 @@
       },
       {
         "name": "thuy-frost-nova.m.vfxb",
-        "bytes": 220758
+        "bytes": 311890
       }
     ],
     "bytes": 580448,
     "desktopBytes": 580448,
-    "mobileBytes": 220758
+    "mobileBytes": 311890
   },
   {
     "id": "thuy-glacier-path",
@@ -176,12 +176,12 @@
       },
       {
         "name": "thuy-glacier-path.m.vfxb",
-        "bytes": 230880
+        "bytes": 329237
       }
     ],
     "bytes": 580378,
     "desktopBytes": 580378,
-    "mobileBytes": 230880
+    "mobileBytes": 329237
   },
   {
     "id": "hoa-fireball",
@@ -199,12 +199,12 @@
       },
       {
         "name": "hoa-fireball.m.vfxb",
-        "bytes": 201914
+        "bytes": 270298
       }
     ],
     "bytes": 469981,
     "desktopBytes": 469981,
-    "mobileBytes": 201914
+    "mobileBytes": 270298
   },
   {
     "id": "hoa-dragon-breath",
@@ -222,12 +222,12 @@
       },
       {
         "name": "hoa-dragon-breath.m.vfxb",
-        "bytes": 277296
+        "bytes": 351905
       }
     ],
     "bytes": 583497,
     "desktopBytes": 583497,
-    "mobileBytes": 277296
+    "mobileBytes": 351905
   },
   {
     "id": "hoa-heaven-fire",
@@ -245,12 +245,12 @@
       },
       {
         "name": "hoa-heaven-fire.m.vfxb",
-        "bytes": 327927
+        "bytes": 453498
       }
     ],
     "bytes": 799600,
     "desktopBytes": 799600,
-    "mobileBytes": 327927
+    "mobileBytes": 453498
   },
   {
     "id": "hoa-fire-dragon-crossing",
@@ -268,12 +268,12 @@
       },
       {
         "name": "hoa-fire-dragon-crossing.m.vfxb",
-        "bytes": 244743
+        "bytes": 335996
       }
     ],
     "bytes": 603776,
     "desktopBytes": 603776,
-    "mobileBytes": 244743
+    "mobileBytes": 335996
   },
   {
     "id": "tho-fissure",
@@ -291,12 +291,12 @@
       },
       {
         "name": "tho-fissure.m.vfxb",
-        "bytes": 194181
+        "bytes": 274824
       }
     ],
     "bytes": 486761,
     "desktopBytes": 486761,
-    "mobileBytes": 194181
+    "mobileBytes": 274824
   },
   {
     "id": "tho-stone-skin",
@@ -314,12 +314,12 @@
       },
       {
         "name": "tho-stone-skin.m.vfxb",
-        "bytes": 86479
+        "bytes": 115494
       }
     ],
     "bytes": 199196,
     "desktopBytes": 199196,
-    "mobileBytes": 86479
+    "mobileBytes": 115494
   },
   {
     "id": "phong-gale-blade",
@@ -337,12 +337,12 @@
       },
       {
         "name": "phong-gale-blade.m.vfxb",
-        "bytes": 22617
+        "bytes": 28169
       }
     ],
     "bytes": 43949,
     "desktopBytes": 43949,
-    "mobileBytes": 22617
+    "mobileBytes": 28169
   },
   {
     "id": "phong-whirlwind",
@@ -360,12 +360,12 @@
       },
       {
         "name": "phong-whirlwind.m.vfxb",
-        "bytes": 51829
+        "bytes": 63648
       }
     ],
     "bytes": 104452,
     "desktopBytes": 104452,
-    "mobileBytes": 51829
+    "mobileBytes": 63648
   },
   {
     "id": "phong-tornado",
@@ -383,12 +383,12 @@
       },
       {
         "name": "phong-tornado.m.vfxb",
-        "bytes": 449061
+        "bytes": 596126
       }
     ],
     "bytes": 1026118,
     "desktopBytes": 1026118,
-    "mobileBytes": 449061
+    "mobileBytes": 596126
   },
   {
     "id": "phong-tailwind",
@@ -406,12 +406,12 @@
       },
       {
         "name": "phong-tailwind.m.vfxb",
-        "bytes": 49009
+        "bytes": 57486
       }
     ],
     "bytes": 91333,
     "desktopBytes": 91333,
-    "mobileBytes": 49009
+    "mobileBytes": 57486
   },
   {
     "id": "lightning-chain",
@@ -429,12 +429,12 @@
       },
       {
         "name": "lightning-chain.m.vfxb",
-        "bytes": 17954
+        "bytes": 20803
       }
     ],
     "bytes": 28505,
     "desktopBytes": 28505,
-    "mobileBytes": 17954
+    "mobileBytes": 20803
   },
   {
     "id": "loi-heaven-strike",
@@ -452,12 +452,12 @@
       },
       {
         "name": "loi-heaven-strike.m.vfxb",
-        "bytes": 89050
+        "bytes": 118539
       }
     ],
     "bytes": 193368,
     "desktopBytes": 193368,
-    "mobileBytes": 89050
+    "mobileBytes": 118539
   },
   {
     "id": "loi-thunder-domain",
@@ -475,12 +475,12 @@
       },
       {
         "name": "loi-thunder-domain.m.vfxb",
-        "bytes": 231290
+        "bytes": 298060
       }
     ],
     "bytes": 516941,
     "desktopBytes": 516941,
-    "mobileBytes": 231290
+    "mobileBytes": 298060
   },
   {
     "id": "seal-silence",
@@ -498,12 +498,12 @@
       },
       {
         "name": "seal-silence.m.vfxb",
-        "bytes": 81570
+        "bytes": 100350
       }
     ],
     "bytes": 175049,
     "desktopBytes": 175049,
-    "mobileBytes": 81570
+    "mobileBytes": 100350
   },
   {
     "id": "sunder-mark",
@@ -521,12 +521,12 @@
       },
       {
         "name": "sunder-mark.m.vfxb",
-        "bytes": 34473
+        "bytes": 38626
       }
     ],
     "bytes": 62780,
     "desktopBytes": 62780,
-    "mobileBytes": 34473
+    "mobileBytes": 38626
   },
   {
     "id": "war-cry",
@@ -544,12 +544,12 @@
       },
       {
         "name": "war-cry.m.vfxb",
-        "bytes": 75465
+        "bytes": 94985
       }
     ],
     "bytes": 160329,
     "desktopBytes": 160329,
-    "mobileBytes": 75465
+    "mobileBytes": 94985
   },
   {
     "id": "curse-weaken",
@@ -567,11 +567,11 @@
       },
       {
         "name": "curse-weaken.m.vfxb",
-        "bytes": 71445
+        "bytes": 94443
       }
     ],
     "bytes": 176194,
     "desktopBytes": 176194,
-    "mobileBytes": 71445
+    "mobileBytes": 94443
   }
 ]
