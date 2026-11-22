@@ -32,6 +32,8 @@ export interface VfxTextures {
   rock: Texture;
   /** Solid beveled armor slab with cracks. 64x80. Normal blend. */
   rockPlate: Texture;
+  /** Spectral armored halberd guardian, feet at (88, 244). 192x256. */
+  guardian: Texture;
   /** Leaf with a mid vein pointing +x. 48x24. Wood/nature. */
   leaf: Texture;
   /** Water droplet, round end at the bottom. 24x36. Water, bleed. */
@@ -379,6 +381,44 @@ export function createVfxTextures(): VfxTextures {
     return textureFromCanvas(c);
   })();
 
+  const guardian = (() => {
+    const [c, ctx] = makeCanvas(192, 256);
+    ctx.lineJoin = 'round';
+    const metal = ctx.createLinearGradient(40, 0, 130, 0);
+    metal.addColorStop(0, '#f9edc6'); metal.addColorStop(0.3, '#b5a47c');
+    metal.addColorStop(0.65, '#655d49'); metal.addColorStop(1, '#d6c8a1');
+    const shape = (points: number[][], fill: string | CanvasGradient, edge = '#f5e7ba', width = 2.5) => {
+      ctx.beginPath(); points.forEach(([x, y], i) => i ? ctx.lineTo(x, y) : ctx.moveTo(x, y));
+      ctx.closePath(); ctx.fillStyle = fill; ctx.fill(); ctx.strokeStyle = edge; ctx.lineWidth = width; ctx.stroke();
+    };
+    const cape = ctx.createLinearGradient(0, 80, 0, 250);
+    cape.addColorStop(0, 'rgba(158,145,110,0.65)'); cape.addColorStop(0.65, 'rgba(130,119,91,0.45)');
+    cape.addColorStop(1, 'rgba(235,220,173,0)');
+    shape([[47,79],[124,79],[138,185],[128,224],[115,209],[109,247],[92,219],[73,248],[64,216],[43,237],[32,191]], cape, 'rgba(231,214,169,0.35)');
+    ctx.fillStyle = '#b9aa84'; ctx.fillRect(151, 33, 5, 196);
+    shape([[154,8],[178,39],[165,66],[154,52],[157,35]], metal);
+    shape([[152,47],[136,64],[147,71],[153,61]], metal);
+    shape([[61,39],[65,22],[84,15],[105,24],[111,42],[100,56],[70,56]], metal);
+    shape([[80,19],[86,4],[92,20],[89,40],[83,40]], '#e5d9b3');
+    shape([[69,43],[103,43],[99,67],[86,76],[73,65]], '#514d41');
+    ctx.strokeStyle = '#fff2cc'; ctx.lineWidth = 3;
+    ctx.beginPath(); ctx.moveTo(74,50); ctx.lineTo(82,52); ctx.moveTo(91,52); ctx.lineTo(99,50); ctx.stroke();
+    shape([[82,44],[89,44],[92,68],[85,73],[80,65]], metal);
+    shape([[57,77],[85,70],[113,77],[112,117],[86,139],[59,119]], metal);
+    shape([[60,83],[85,96],[111,83],[104,108],[86,122],[66,108]], '#8d8266');
+    shape([[54,71],[34,75],[24,97],[52,105],[67,88]], metal);
+    shape([[116,71],[136,76],[145,98],[118,105],[104,88]], metal);
+    shape([[30,102],[48,108],[48,141],[34,147],[26,132]], metal);
+    shape([[125,105],[138,103],[148,122],[159,120],[162,134],[141,142],[124,126]], metal);
+    shape([[58,124],[111,124],[114,138],[56,138]], '#ded0a6');
+    shape([[57,142],[83,143],[79,181],[49,174]], metal);
+    shape([[89,143],[113,142],[123,174],[94,182]], metal);
+    const mist = ctx.createLinearGradient(0, 171, 0, 244);
+    mist.addColorStop(0, 'rgba(216,202,159,0.8)'); mist.addColorStop(1, 'rgba(216,202,159,0)');
+    shape([[62,176],[81,183],[78,225],[66,244],[57,219]], mist, 'rgba(244,229,185,0.3)');
+    shape([[94,182],[111,177],[118,218],[106,242],[98,225]], mist, 'rgba(244,229,185,0.3)');
+    return textureFromCanvas(c);
+  })();
   const rockPlate = (() => {
     const [c, ctx] = makeCanvas(64, 80);
     ctx.beginPath(); ctx.moveTo(14, 5); ctx.lineTo(48, 9); ctx.lineTo(60, 29);
@@ -470,5 +510,5 @@ export function createVfxTextures(): VfxTextures {
     digits[ch] = textureFromCanvas(c);
   }
 
-  return { glow, dot, ring, disc, streak, beam, star, puff, crescent, shard, blade, spike, rock, rockPlate, leaf, drop, chevron, rune, bubble, tendril, plus, crackedShield, bell, bellCracks, digits };
+  return { glow, dot, ring, disc, streak, beam, star, puff, crescent, shard, blade, spike, rock, rockPlate, guardian, leaf, drop, chevron, rune, bubble, tendril, plus, crackedShield, bell, bellCracks, digits };
 }

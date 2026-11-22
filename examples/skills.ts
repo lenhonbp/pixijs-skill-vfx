@@ -9,7 +9,7 @@ import {
   slash, hitSpark, hitFlash, projectile, explosion, meteor, lightningChain, healAura, telegraph, shockwave,
   damageOverTime, stun, shock, freeze, slow, root, statChange, damageNumber,
   silence, blind, armorBreak, mark, fear, aura, empower, haste,
-  goldenBell, stoneArmor,
+  goldenBell, stoneArmor, spiritGuardian,
   lightningStrike, staticField,
   dash, blink, leap, beam, coneBreath, chargeUp, summonCircle, spikeLine, spikeRing, swordRain,
   rand, envelope, outCubic, outQuad, lerp, clamp01,
@@ -39,8 +39,8 @@ export interface SkillContext {
   returnHome(): void;
   /** Show/hide a unit (blink). */
   setVisible(u: Unit, v: boolean): void;
-  /** Spawn a temporary summoned unit at a ground point. */
-  summon?(at: Vec3, element: AnyElementName | 'neutral'): void;
+  /** Spawn a temporary summoned unit; visualized means the skill supplies the figure's VFX. */
+  summon?(at: Vec3, element: AnyElementName | 'neutral', visualized?: boolean): void;
 }
 
 export type SkillCategory = 'attack' | 'aoe' | 'buff' | 'debuff' | 'control' | 'movement' | 'channel' | 'summon';
@@ -591,11 +591,16 @@ export const SKILLS: SkillDef[] = [
   },
   {
     id: 'summon-spirit', element: 'neutral', category: 'summon', en: 'Summon Guardian', vi: 'Triệu Hồi Hộ Pháp',
-    desc: 'A rune circle opens and calls a guardian spirit to the field.', uses: ['chargeUp', 'summonCircle'], length: 3200,
+    desc: 'A rune circle calls an armored spectral guardian bearing a halberd.', uses: ['chargeUp', 'summonCircle', 'spiritGuardian'], length: 4000,
     cast: ({ w, tex, caster, summon }) => {
       chargeUp(w, tex, { target: () => hand(caster), palette: P.holy, duration: 350 });
       const at = { x: caster.feet.x + caster.facing * 120, y: caster.feet.y + 40, z: 0 };
-      summonCircle(w, tex, { ...at, palette: P.holy, radius: 70, duration: 1200, onSummon: () => summon?.(at, 'neutral') });
+      summonCircle(w, tex, { ...at, palette: P.holy, radius: 70, duration: 1200, columnAlpha: 0.2,
+        onSummon: () => {
+          summon?.(at, 'neutral', true);
+          w.after(200, () => spiritGuardian(w, tex, { ...at, palette: P.holy, height: caster.height * 1.4, duration: 1200 }));
+        },
+      });
     },
   },
 ];

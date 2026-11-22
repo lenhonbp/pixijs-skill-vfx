@@ -3,7 +3,7 @@ import { chromium } from 'playwright';
 import { fileURLToPath } from 'node:url';
 
 const bundle = await build({
-  stdin: { contents: "export * from './kit'; export { Container } from 'pixi.js';", resolveDir: fileURLToPath(new URL('../', import.meta.url)) },
+  stdin: { contents: "export * from './kit'; export { Container } from 'pixi.js'; export { SKILLS } from './examples/skills';", resolveDir: fileURLToPath(new URL('../', import.meta.url)) },
   bundle: true, write: false, format: 'iife', globalName: 'kit', platform: 'browser',
 });
 const browser = await chromium.launch({ headless: true });
@@ -160,6 +160,46 @@ try {
     check(stoneError === 'stone callback' && !badArmor.alive, 'stone: callback error leaves handle stopped');
     clean(w, 'stone callback error');
     results.push('stoneArmor: assembly, eight plates, movement/hit/break, Infinity/stop, finite/default/zero and errors PASS');
+    const gold = { core: 0xffffff, main: 0xffde99, dark: 0x71552d };
+    w = world();
+    const guardian = kit.spiritGuardian(w, tex, { x: 200, y: 300, palette: gold, height: 105 });
+    step(w, 160);
+    const figure = w.particles.find((p) => p.o.texture === tex.guardian && p.o.blend === 'normal');
+    check(figure && figure.pz < 0 && figure.sprite.alpha > 0 && figure.sprite.alpha < 0.85, 'guardian: fades upward into view');
+    step(w, 350);
+    check(guardian.alive && figure.sprite.alpha === 0.85, 'guardian: normal-blended hold');
+    const bob = figure.pz; step(w, 400);
+    check(figure.pz !== bob && w.particles.some((p) => p.o.texture === tex.dot), 'guardian: bob and rising motes');
+    step(w, 800);
+    check(guardian.alive && figure.sprite.alpha < 0.85, 'guardian: dissolves after hold');
+    clean(w, 'guardian default'); check(!guardian.alive, 'guardian: default ends');
+    for (const duration of [0, 300, Infinity]) {
+      w = world();
+      const handle = kit.spiritGuardian(w, tex, { x: 0, y: 0, z: 35, palette: gold, duration });
+      if (duration === Infinity) {
+        step(w, 7000); check(handle.alive && w.count > 0, 'guardian: Infinity hold');
+        handle.stop(); handle.stop();
+      } else step(w, 2000);
+      clean(w, 'guardian duration/stop'); check(!handle.alive, 'guardian: duration/stop cleanup');
+    }
+    for (const columnAlpha of [undefined, 0, 0.2]) {
+      w = world(); kit.summonCircle(w, tex, { x: 0, y: 0, palette: gold, duration: 100, columnAlpha });
+      step(w, 112);
+      const column = w.particles.find((p) => p.o.texture === tex.glow && p.o.life === 600);
+      check(column.o.alpha[0] === 0.9 * (columnAlpha ?? 1), 'summon: default/custom/zero column opacity');
+      clean(w, 'summon column');
+    }
+    w = world(); let summoned = 0;
+    kit.SKILLS.find((s) => s.id === 'summon-spirit').cast({ w, tex,
+      caster: { feet: { x: 100, y: 200, z: 0 }, height: 70, facing: 1 },
+      summon: (at, element, visualized) => {
+        check(at.x === 220 && at.y === 240 && element === 'neutral' && visualized, 'summon: gameplay callback preserved'); summoned++;
+      },
+    });
+    step(w, 2100);
+    check(summoned === 1 && w.particles.some((p) => p.o.texture === tex.guardian), 'summon: callback and guardian both occur');
+    clean(w, 'summon sample');
+    results.push('spiritGuardian: materialize/hold/bob/dissolve, finite/zero/Infinity/stop, column options and summon callback PASS');
     return results;
   });
   results.forEach((line) => console.log(line));

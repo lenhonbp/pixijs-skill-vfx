@@ -248,7 +248,7 @@ export function chargeUp(w: VfxWorld, tex: VfxTextures, o: { target: () => Vec3;
 }
 
 /** Rune circle on the ground that charges for `duration`, then a pillar of light and onSummon. */
-export function summonCircle(w: VfxWorld, tex: VfxTextures, o: { x: number; y: number; palette: Palette; radius?: number; duration?: number; onSummon?: () => void }): Handle {
+export function summonCircle(w: VfxWorld, tex: VfxTextures, o: { x: number; y: number; palette: Palette; radius?: number; duration?: number; columnAlpha?: number; onSummon?: () => void }): Handle {
   const p = o.palette;
   const r = o.radius ?? 70;
   const dur = o.duration ?? 1300;
@@ -283,8 +283,9 @@ export function summonCircle(w: VfxWorld, tex: VfxTextures, o: { x: number; y: n
     },
   }));
   g.addHandle(w.after(dur, () => {
-    w.spawn({ texture: tex.glow, x: o.x, y: o.y, z: 90, life: 600, zBias: 8, scaleX: [0.6, 1.4, outCubic], scaleY: [2, 6, outCubic], alpha: [0.9, 0, inQuad], tint: p.main });
-    w.spawn({ texture: tex.glow, x: o.x, y: o.y, z: 90, life: 380, zBias: 9, scaleX: [0.3, 0.5], scaleY: [2, 5], alpha: [1, 0], tint: p.core });
+    const a = o.columnAlpha ?? 1;
+    w.spawn({ texture: tex.glow, x: o.x, y: o.y, z: 90, life: 600, zBias: 8, scaleX: [0.6, 1.4, outCubic], scaleY: [2, 6, outCubic], alpha: [0.9 * a, 0, inQuad], tint: p.main });
+    w.spawn({ texture: tex.glow, x: o.x, y: o.y, z: 90, life: 380, zBias: 9, scaleX: [0.3, 0.5], scaleY: [2, 5], alpha: [a, 0], tint: p.core });
     shockwave(w, tex, { x: o.x, y: o.y, radius: r * 1.6, palette: p });
     w.burst(20, () => {
       const a = rand(0, TAU), sp = rand(100, 260);
