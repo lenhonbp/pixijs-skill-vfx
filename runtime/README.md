@@ -130,17 +130,3 @@ app.ticker.add(() => {
   if (pose) hero.position.set(home.x + pose.x, home.y + pose.y - pose.lift);
 });
 ```
-
-## Evolved collection entries
-
-A variant uses id `<id>.evolved`, files `<id>.evolved.vfxb` (desktop) and
-`<id>.evolved.m.vfxb` (mobile), and name "<name> · Evolved". It is baked
-with activation tier 3 and evolved timing/length, falling back to base values.
-It has the same per-skill preset and budget as the base skill.
-The collection index retains 25 base entries. When available, a base entry has
-`evolved: { files, bytes, desktopBytes, mobileBytes, frameCount }`.
-Here `files` lists both variant containers, `bytes` is the desktop size,
-`frameCount` is the desktop count, and the tier byte counts are actual container sizes.
-Mobile FPS/frame counts can differ; use the loaded manifest for playback timing.
-Load only the selected
-variant/tier; use the evolved id when playing an evolved container.

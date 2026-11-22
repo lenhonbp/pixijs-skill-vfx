@@ -66,8 +66,7 @@ Draw layers in array order; names do not determine blend mode or ordering. Most
 free casts use up to three ordered layers: `glow-back` (add), `base` (normal),
 then `glow` (add), omitting empty layers. This groups interleaved draws into an
 approximation. Stone Skin (`tho-stone-skin`) instead preserves consecutive
-same-blend runs in exact draw order: five layers for Normal and seven for Evolved,
-within its eight-layer cap. The runtime supports arbitrary ordered layer counts,
+same-blend runs in exact draw order (five layers, within its eight-layer cap). The runtime supports arbitrary ordered layer counts,
 not only this collection's three-role layout.
 
 Normal-blend pixels are stored on transparent; additive light is stored on black
@@ -134,23 +133,24 @@ not two downloads required by the runtime.
 
 ### Current free collection and download sizes
 
-Snapshot verified on 2026-11-22: **25 Normal + 25 Evolved casts**, each with
-desktop and mobile assets, for **100 containers**. All containers are referenced
-by the 25-entry index; there are no orphan or missing containers.
+Snapshot verified on 2026-11-22: **25 skills**, each with desktop and mobile
+assets, for **50 containers**. All containers are referenced by the 25-entry
+index; there are no orphan or missing containers.
 
 | Assets | Bytes |
 |---|---:|
-| Desktop containers | 123,244,602 |
-| Mobile containers | 46,052,763 |
-| All containers | 169,297,365 |
-| `index.json` | 24,829 |
-| Pack directory including index | 169,322,194 |
-| Largest desktop: Sword Rain Evolved | 3,963,245 |
-| Largest mobile: Thunder Domain Evolved | 1,490,973 |
+| Desktop containers | 57,462,676 |
+| Mobile containers | 20,832,436 |
+| All containers | 78,295,112 |
+| `index.json` | 15,944 |
+| Pack directory including index | 78,311,056 |
+| Largest desktop: Glacier Path | 3,300,689 |
+| Largest mobile: Tornado | 1,304,145 |
 
 Bytes are decimal file sizes, not decoded texture memory or complete page loads.
 Every container fits the collection's 4,000,000-byte desktop / 1,500,000-byte mobile
-pack limits. The showcase downloads only its selected skill/tier, not this total.
+pack limits. The showcase downloads only its selected skill, not this total.
+18 desktop and 15 mobile packs use 60 FPS; the others use 30 FPS.
 
 Cold first loads of the built showcase, measured on the same date over a local
 uncompressed HTTP server, include code, character artwork, index, selected pack
@@ -158,13 +158,13 @@ and HTTP overhead. Desktop viewport was 1440×900; mobile was 390×844 at DPR 3.
 
 | Initial hash | Desktop transfer bytes | Mobile transfer bytes |
 |---|---:|---:|
-| `#hoa-fireball` (default) | 2,209,503 | 1,458,276 |
-| `#hoa-fireball/evolved` | 3,009,282 | 1,595,767 |
-| `#hoa-fire-dragon-crossing` | 3,033,141 | 1,636,751 |
+| `#hoa-fireball` (default) | 2,195,377 | 1,444,150 |
+| `#hoa-fire-dragon-crossing` | 3,019,015 | 1,622,625 |
+| `#thuy-glacier-path` (largest desktop pack) | 3,875,904 | 1,868,189 |
 
-Non-pack overhead was 589,341 bytes in these measurements. The default meets the
-3,000,000-byte desktop / 1,600,000-byte mobile first-load targets, but Fireball
-Evolved exceeds the desktop target and Fire Dragon Crossing exceeds both.
+Non-pack overhead was 575,215 bytes in these measurements. The default meets the
+3,000,000-byte desktop / 1,600,000-byte mobile first-load targets. Deep links to
+heavier skills exceed them because the selected pack alone is larger.
 Container limits do not guarantee whole-page first-load limits. These are local
 measurements, not CDN-compressed transfer sizes or physical-device benchmarks;
 remeasure after asset or application changes.
@@ -196,15 +196,3 @@ app.ticker.add(() => {
   if (pose) hero.position.set(home.x + pose.x, home.y + pose.y - pose.lift);
 });
 ```
-
-## Evolved collection entries
-
-A variant uses id `<id>.evolved`, files `<id>.evolved.vfxb` (desktop) and
-`<id>.evolved.m.vfxb` (mobile), and name "<name> · Evolved". It is baked
-with activation tier 3 and evolved timing/length, falling back to base values.
-It has the same per-skill preset and budget as the base skill.
-The collection index retains 25 base entries. When available, a base entry has
-`evolved: { files, bytes, desktopBytes, mobileBytes, frameCount }`.
-Here `files` lists both variant containers, `bytes` is the desktop size,
-`frameCount` is the desktop count, and the tier byte counts are actual container sizes. Load only the selected
-variant/tier; use the evolved id when playing an evolved container.

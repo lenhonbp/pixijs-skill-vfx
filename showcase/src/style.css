@@ -66,10 +66,6 @@ input::placeholder { color: #929baa; }
 .arena-header h2 { font-family: Georgia, serif; font-weight: 400; font-size: 30px; margin: 0; text-wrap: balance; }
 #selected-vi { font-size: 12px; color: var(--muted); margin: 7px 0 0; line-height: 1.6; }
 .effect-description { color: var(--muted); font-size: 12px; line-height: 1.8; padding: 0 28px; margin: 12px 0 0; max-width: 76ch; min-height: 44px; }
-.tier-switch { display: flex; padding: 4px; gap: 3px; border: 1px solid var(--line); border-radius: 8px; background: #0e121b; }
-.tier-switch button { border: 0; background: transparent; color: #a0a8b7; border-radius: 5px; padding: 9px 12px; font-size: 11px; min-height: 36px; }
-.tier-switch button[aria-pressed=true] { color: #f4ddad; background: #d6b4771c; box-shadow: inset 0 0 0 1px #d6b47740; }
-.tier-switch span { color: var(--gold); margin-left: 4px; }
 .browse { display: none; }
 #stage { position: relative; width: 100%; aspect-ratio: 1000 / 580; background: radial-gradient(ellipse at 50% 65%, #28304455, transparent 65%); overflow: hidden; cursor: crosshair; }
 #stage canvas { display: block; width: 100%; height: 100%; object-fit: contain; }
@@ -114,7 +110,6 @@ footer { display: flex; justify-content: space-between; padding: 26px 0 36px; bo
   h1 { font-size: 48px; }
   .intro-note { min-width: 240px; padding-left: 24px; }
   .arena-header { padding: 20px 20px 0; grid-template-columns: 1fr; gap: 12px; }
-  .tier-switch { justify-self: start; }
   .effect-description { padding: 0 20px; }
   .controls { gap: 12px; padding: 14px 20px; }
   #status { width: 100%; margin: 0; }
@@ -140,7 +135,6 @@ footer { display: flex; justify-content: space-between; padding: 26px 0 36px; bo
   .arena-header h2 { font-size: 27px; }
   .arena-header .eyebrow { font-size: 8px; }
   #selected-vi { font-size: 12px; }
-  .tier-switch button { min-height: 40px; padding: 8px 12px; }
   .browse { display: block; justify-self: end; border: 0; background: transparent; color: var(--gold); font-size: 10px; padding: 12px 0; min-height: 44px; }
   .effect-description { padding: 0 18px; margin-top: 12px; font-size: 11px; min-height: 0; }
   #stage { aspect-ratio: 1000 / 620; }

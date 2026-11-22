@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 
 export async function showcaseSmoke({ page, browser, url, collection }) {
   await page.evaluate(() => { document.getElementById('loop').checked = false; });
-  for (const id of ['kim-golden-edge', 'phong-tailwind.evolved']) {
+  for (const id of ['kim-golden-edge', 'phong-tailwind']) {
     await page.evaluate(id => { const s = window.__showcase; s.select(id); void s.cast(); }, id);
     await page.waitForFunction(() => document.getElementById('status').textContent.startsWith('Playing'));
     const motion = await page.evaluate(async () => {
@@ -23,8 +23,8 @@ export async function showcaseSmoke({ page, browser, url, collection }) {
       return { displacement, lift, shadowWidth, packs: s.vfx.stats().packs };
     });
     assert.equal(motion.packs, 1);
-    if (id === 'kim-golden-edge') assert.ok(motion.displacement > 200);
-    else { assert.ok(motion.lift > 20); assert.ok(motion.shadowWidth < 60); }
+    assert.ok(motion.displacement > 200);
+    if (id === 'phong-tailwind') { assert.ok(motion.lift > 5); assert.ok(motion.shadowWidth < 90); }
   }
   await page.evaluate(() => {
     const { scene, from, to } = window.__showcase;
@@ -94,47 +94,39 @@ export async function showcaseSmoke({ page, browser, url, collection }) {
   });
   console.log('Showcase swordsman: PASS (sheet, feet anchor, filtering/scale, idle, segment warp, release cue, playback clock/hitstop/loop/stop, dash/flight/shadows/flags/hit overlay)');
 
-  const tierPage = await browser.newPage({ viewport: { width: 390, height: 844 }, deviceScaleFactor: 2 });
+  const linkPage = await browser.newPage({ viewport: { width: 390, height: 844 }, deviceScaleFactor: 2 });
   const requests = [], errors = [];
-  tierPage.on('request', r => { if (r.url().endsWith('.vfxb')) requests.push(new URL(r.url()).pathname); });
-  tierPage.on('pageerror', e => errors.push(e.message));
+  linkPage.on('request', r => { if (r.url().endsWith('.vfxb')) requests.push(new URL(r.url()).pathname); });
+  linkPage.on('pageerror', e => errors.push(e.message));
   try {
-    await tierPage.goto(url + '/collection/#phong-tailwind/evolved');
-    await tierPage.waitForFunction(() => window.__showcase);
-    assert.deepEqual(requests, ['/collection/packs/free/phong-tailwind.evolved.m.vfxb']);
-    assert.match(await tierPage.locator('#snippet').textContent(), /phong-tailwind\.evolved/);
-    assert.match(await tierPage.locator('#selected-vi').textContent(), /.+/);
-    assert.notEqual(await tierPage.locator('#selected-vi').textContent(), collection.find(p => p.id === 'phong-tailwind').name.vi);
-    const evolvedDescription = await tierPage.locator('#description').textContent();
-    await tierPage.getByRole('button', { name: 'Normal', exact: true }).click();
-    await tierPage.waitForFunction(() => document.getElementById('status').textContent.startsWith('Playing'));
-    assert.notEqual(await tierPage.locator('#description').textContent(), evolvedDescription);
-    await tierPage.evaluate(() => {
-      for (const tier of ['evolved', 'normal', 'evolved']) document.querySelector('[data-tier="' + tier + '"]').click();
-    });
-    await tierPage.waitForFunction(() => document.getElementById('status').textContent.startsWith('Playing'));
-    assert.equal(new URL(tierPage.url()).hash, '#phong-tailwind/evolved');
-    assert.equal(await tierPage.evaluate(() => window.__showcase.vfx.stats().packs), 1);
-    assert.match(await tierPage.locator('#snippet').textContent(), /phong-tailwind\.evolved/);
-    await tierPage.goBack();
-    await tierPage.waitForFunction(() => location.hash === '#phong-tailwind' && document.getElementById('status').textContent.startsWith('Playing'));
-    assert.equal(await tierPage.evaluate(() => window.__showcase.vfx.stats().packs), 1);
-    assert.equal(await tierPage.evaluate(() => document.documentElement.scrollWidth > innerWidth), false);
-    await tierPage.locator('.skill').filter({ hasText: 'Golden Edge' }).click();
-    await tierPage.waitForFunction(() => document.getElementById('status').textContent.startsWith('Playing'));
-    await tierPage.waitForFunction(() => {
+    await linkPage.goto(url + '/collection/#phong-tailwind/evolved');
+    await linkPage.waitForFunction(() => window.__showcase);
+    assert.deepEqual(requests, ['/collection/packs/free/phong-tailwind.m.vfxb']);
+    assert.equal(new URL(linkPage.url()).hash, '#phong-tailwind');
+    assert.equal(await linkPage.evaluate(() => history.length), 2); // about:blank + this page: the legacy hash is replaced, not pushed
+    assert.match(await linkPage.locator('#snippet').textContent(), /'phong-tailwind'/);
+    assert.equal(await linkPage.locator('#selected-vi').textContent(), collection.find(p => p.id === 'phong-tailwind').name.vi);
+    assert.match(await linkPage.locator('#description').textContent(), /.+/);
+    assert.equal(await linkPage.locator('[data-tier]').count(), 0);
+    assert.equal(await linkPage.locator('.skill').count(), 25);
+    await linkPage.locator('.skill').filter({ hasText: 'Golden Edge' }).click();
+    await linkPage.waitForFunction(() => location.hash === '#kim-golden-edge' && document.getElementById('status').textContent.startsWith('Playing'));
+    assert.equal(await linkPage.evaluate(() => window.__showcase.vfx.stats().packs), 1);
+    await linkPage.waitForFunction(() => {
       const top = document.getElementById('library').getBoundingClientRect().top;
       return top >= 0 && top <= 40;
     });
+    await linkPage.goBack();
+    await linkPage.waitForFunction(() => location.hash === '#phong-tailwind' && document.getElementById('status').textContent.startsWith('Playing'));
+    assert.equal(await linkPage.evaluate(() => window.__showcase.vfx.stats().packs), 1);
+    assert.equal(await linkPage.evaluate(() => document.documentElement.scrollWidth > innerWidth), false);
+    assert.ok(requests.every(r => r.endsWith('.m.vfxb') && !r.includes('.evolved')));
     assert.deepEqual(errors, []);
-  } finally { await tierPage.close(); }
+  } finally { await linkPage.close(); }
 
   const fallback = await browser.newPage();
   try {
     await fallback.route('**/actors/ngu-hanh-sword/*.json', route => route.fulfill({ status: 503, body: 'Unavailable' }));
-    const withoutEvolved = structuredClone(collection);
-    delete withoutEvolved.find(p => p.id === 'hoa-fireball').evolved;
-    await fallback.route('**/packs/free/index.json', route => route.fulfill({ json: withoutEvolved }));
     let release;
     const gate = new Promise(resolve => { release = resolve; });
     await fallback.route('**/hoa-fireball.vfxb', async route => { await gate; await route.fulfill({ status: 503, body: 'Unavailable' }); });
@@ -143,7 +135,6 @@ export async function showcaseSmoke({ page, browser, url, collection }) {
     assert.match(await fallback.locator('#status').textContent(), /Loading · [\d.]+ (KB|MB)/);
     release(); await navigation; await fallback.waitForFunction(() => window.__showcase);
     assert.equal(await fallback.evaluate(() => !window.__showcase.scene.swordsman && window.__showcase.scene.rig.visible), true);
-    assert.equal(await fallback.locator('#tiers').isVisible(), false);
     assert.equal(new URL(fallback.url()).hash, '#hoa-fireball');
     assert.match(await fallback.locator('#status').textContent(), /failed/);
     assert.equal(await fallback.locator('#status').evaluate(el => el.classList.contains('is-loading')), false);
@@ -152,5 +143,5 @@ export async function showcaseSmoke({ page, browser, url, collection }) {
     await fallback.waitForFunction(() => document.getElementById('status').textContent.startsWith('Playing'));
     assert.equal(await fallback.evaluate(() => window.__showcase.vfx.stats().packs), 1);
   } finally { await fallback.close(); }
-  console.log('Showcase tiers: PASS (selected-only mobile load, metadata/snippet/hash/history, rapid switches, one resident tier, absent evolved, size indicator, load failure/retry, character sheet failure fallback)');
+  console.log('Showcase links: PASS (selected-only mobile load, metadata/snippet/hash/history, legacy tier links, one resident pack, size indicator, load failure/retry, character sheet failure fallback)');
 }
