@@ -200,6 +200,54 @@ try {
     check(summoned === 1 && w.particles.some((p) => p.o.texture === tex.guardian), 'summon: callback and guardian both occur');
     clean(w, 'summon sample');
     results.push('spiritGuardian: materialize/hold/bob/dissolve, finite/zero/Infinity/stop, column options and summon callback PASS');
+    w = world();
+    kit.spike(w, tex, { x: 100, y: 200, palette: kit.WUXING.thuy.palette, height: 70, ice: true });
+    check(w.count === 6, 'ice spike: solid spike, glow, shadow, two shards and one mist puff');
+    const iceBits = w.particles.filter((p) => p.o.texture === tex.shard);
+    check(iceBits.length === 2 && iceBits.every((p) => p.o.blend === 'normal' && p.o.life <= 440 && p.o.scale >= 0.25),
+      'ice spike: larger, short-lived solid shards');
+    const mist = w.particles.find((p) => p.o.texture === tex.puff);
+    check(mist.o.life === 350 && mist.o.scale[1] === 1.15, 'ice spike: one broad, brief mist shape');
+    step(w, 120);
+    const spear = w.particles.find((p) => p.o.texture === tex.spike);
+    check(spear.o.blend === 'normal' && spear.o.anchorY === 1 &&
+      Math.abs(spear.sprite.scale.y * kit.TEX_METRICS.spikeHeight - 70) < 0.001, 'ice spike: full solid silhouette retained');
+    clean(w, 'ice spike');
+    w = world();
+    kit.spike(w, tex, { x: 0, y: 0, palette: kit.WUXING.tho.palette });
+    check(w.count === 13 && w.particles.filter((p) => p.o.texture === tex.rock).length === 7 &&
+      w.particles.filter((p) => p.o.texture === tex.puff).length === 4, 'earth spike: existing debris unchanged');
+    clean(w, 'earth spike');
+    const icePeaks = [];
+    for (const seed of [0, 1, 12345]) {
+      w = world(); kit.setRng(kit.mulberry32(seed));
+      let peak = 0, eruptions = [];
+      const spawn = w.spawn.bind(w);
+      w.spawn = (o) => { const particle = spawn(o); peak = Math.max(peak, w.count); return particle; };
+      kit.spikeLine(w, tex, { from: { x: 0, y: 0 }, angle: 0, count: 9, height: 70, spacing: 44,
+        ice: true, onSpike: (at, i) => eruptions.push({ at, i, t: w.now }) });
+      clean(w, 'ice path');
+      check(peak <= 150, 'ice path: nine full triple-spike eruptions within particle budget');
+      check(eruptions.length === 9 && eruptions.every(({ at, i, t }, j) =>
+        i === j && at.x === (i + 1) * 44 && at.y === 0 && Math.abs(t - i * 65) <= 16), 'ice path: damage locations and cadence retained');
+      icePeaks.push(peak);
+    }
+    w = world();
+    kit.spikeRing(w, tex, { x: 0, y: 0, count: 10, ice: true });
+    step(w, 120);
+    check(w.particles.filter((p) => p.o.texture === tex.spike).length === 10, 'nova: all ten solid spikes retained');
+    clean(w, 'ice ring');
+    w = world();
+    kit.spikeRing(w, tex, { x: 0, y: 0, count: 0, ice: true });
+    kit.spikeLine(w, tex, { from: { x: 0, y: 0 }, angle: 0, count: 0, ice: true });
+    check(!w.count && !w.updaters.length, 'ice line/ring: empty counts are inert');
+    kit.spikeLine(w, tex, { from: { x: 0, y: 0 }, angle: 0, count: 1, ice: true,
+      onSpike: () => { throw new Error('ice callback'); } });
+    let iceError;
+    try { step(w, 16); } catch (e) { iceError = e.message; }
+    check(iceError === 'ice callback', 'ice path: callback errors propagate');
+    w.clear(); clean(w, 'ice callback error');
+    results.push(`Ice spikes: full silhouettes, larger debris, unchanged earth, nova count, path cadence, empty/errors/cleanup; seeded path peaks ${icePeaks.join('/')} <=150 PASS`);
     const random = Math.random;
     Math.random = () => 0.5;
     try {

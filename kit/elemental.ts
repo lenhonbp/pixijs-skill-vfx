@@ -38,16 +38,16 @@ export function spike(w: VfxWorld, tex: VfxTextures, o: Vec3 & { palette: Palett
     w.spawn({ texture: tex.glow, x: o.x, y: o.y, z: h * 0.5, life, zBias: 1, scaleX: 0.25, scaleY: h / 70, alpha: (t) => 0.08 * rise(t), tint: p.main });
     w.spawn({ texture: tex.glow, layer: 'ground', groundAligned: true, blend: 'normal', x: o.x, y: o.y, life: life + 400, scale: h / 70, alpha: envelope(0.05, 0.5, 0.5), tint: p.dark });
     if (o.fx === false) return;
-    w.burst(5, () => {
+    w.burst(2, () => {
       const a = rand(0, TAU), sp = rand(60, 180);
       return {
-        texture: tex.shard, blend: 'normal', x: o.x, y: o.y, z: 6, life: rand(500, 800), vx: Math.cos(a) * sp, vy: Math.sin(a) * sp * w.groundSquash,
-        vz: rand(150, 330), gravity: 1200, bounce: 0.3, rotation: rand(0, TAU), spin: rand(-10, 10), scale: rand(0.15, 0.3), tint: p.core,
+        texture: tex.shard, blend: 'normal', x: o.x, y: o.y, z: 6, life: rand(280, 440), vx: Math.cos(a) * sp, vy: Math.sin(a) * sp * w.groundSquash,
+        vz: rand(150, 330), gravity: 1200, bounce: 0.3, rotation: rand(0, TAU), spin: rand(-10, 10), scale: rand(0.25, 0.45), tint: p.core,
       };
     });
-    w.burst(4, () => {
+    w.burst(1, () => {
       const a = rand(0, TAU), sp = rand(20, 70);
-      return { texture: tex.puff, blend: 'normal', x: o.x, y: o.y, z: 4, life: 700, vx: Math.cos(a) * sp, vy: Math.sin(a) * sp * w.groundSquash, vz: 20, drag: 2, scale: [0.4, 0.65, outCubic], alpha: envelope(0.1, 0.5, 0.12), tint: p.main };
+      return { texture: tex.puff, blend: 'normal', x: o.x, y: o.y, z: 4, life: 350, vx: Math.cos(a) * sp, vy: Math.sin(a) * sp * w.groundSquash, vz: 20, drag: 2, scale: [0.65, 1.15, outCubic], alpha: envelope(0.1, 0.5, 0.17), tint: p.main };
     });
     return;
   }
