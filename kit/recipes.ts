@@ -301,7 +301,7 @@ export function lightningChain(w: VfxWorld, tex: VfxTextures, o: { points: Vec3[
   const width = o.width ?? 1;
   const flickers = o.flickers ?? 4;
   const impact = o.impactIntensity ?? 1;
-  const points = o.points.map((q) => ({ ...q }));
+  const points = o.points.map((q) => ({ x: q.x, y: q.y, z: q.z }));
   const bolt = () => {
     for (let i = 0; i < points.length - 1; i++) lightningBolt(w, tex, points[i], points[i + 1], p, { width });
   };
