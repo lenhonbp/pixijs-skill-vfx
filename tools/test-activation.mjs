@@ -40,6 +40,12 @@ try {
     kit.lightningBolt(three, tex, start, end, palette, { life: 220 });
     const bolt = w.layers.body.children.at(-1);
     step(16);
+    check(bolt.alpha === 1, 'anchored ribbon opacity is preserved');
+    const column = new Container(); column.alpha = 0.4;
+    three.layers.ground.addChild(column);
+    step(16);
+    check(column.alpha === 0.4, 'translucent column opacity is not amplified');
+    column.destroy();
     for (const point of [start, end]) {
       const projected = bolt.toGlobal({ x: point.x, y: point.y - point.z });
       check(projected.x === point.x && projected.y === point.y - point.z, 'empowered bolt retains both screen-space endpoints');
@@ -56,6 +62,9 @@ try {
     check(one.spawn(options).sprite.scale.x === 0.5, 'scope does not leak into later baseline casts'); w.clear();
     check(!empoweredAura(w, tex, { at: () => ({ x: 0, y: 0 }), height: 96, palette, tier: 3, duration: 0 }), 'empty aura');
     empoweredHit(w, tex, { at: { x: 0, y: 0 }, palette, tier: 1 }); check(!w.count, 'tier 1 hit unchanged');
+    empoweredHit(w, tex, { at: { x: 200, y: 300, z: 50 }, palette, tier: 3, element: 'loi' });
+    check(w.particles.every(p => p.o.layer === 'ground'), 'lightning empowerment stays behind the struck target');
+    w.clear();
     for (const tier of [2, 3]) {
       const at = { x: 100, y: 200, z: 50 };
       const aura = empoweredAura(w, tex, { at: () => at, height: 96, palette, tier, duration: Infinity, idle: true });

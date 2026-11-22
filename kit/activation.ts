@@ -36,7 +36,7 @@ export function empoweredWorld(w: VfxWorld, o: { tier: ActivationTier; palette: 
       const base = { sx: root.scale.x, sy: root.scale.y, alpha: root.alpha };
       roots.set(root, base);
       if (root instanceof Sprite) root.scale.set(base.sx * factor, base.sy * factor);
-      root.alpha = Math.min(1, base.alpha * factor);
+      if (root instanceof Sprite) root.alpha = Math.min(1, base.alpha * factor);
     }
   };
   let depth = 0;
@@ -232,7 +232,8 @@ export function skillEvolution(w: VfxWorld, tex: VfxTextures, o: Caster & { from
 export function empoweredHit(w: VfxWorld, tex: VfxTextures, o: { at: Vec3; palette: Palette; tier: ActivationTier; tick?: boolean; element?: string }) {
   if (o.tier === 1) return;
   const p = o.palette, big = o.tier === 3, s = big ? 1.4 : 0.8;
-  const body = { x: o.at.x, y: o.at.y, z: o.at.z ?? 0 };
+  const lightning = o.element === 'loi';
+  const body = { x: o.at.x, y: o.at.y, z: o.at.z ?? 0, layer: lightning ? 'ground' as const : 'body' as const };
   if (o.tick) {
     w.spawn({ ...body, texture: tex.star, life: 140, scale: [0.18 * s, 0], alpha: [0.5, 0], tint: p.core, zBias: 8 });
     w.burst(big ? 2 : 1, (i) => ({ ...body, texture: tex.streak, life: 180,
@@ -243,14 +244,14 @@ export function empoweredHit(w: VfxWorld, tex: VfxTextures, o: { at: Vec3; palet
   w.spawn({ ...body, texture: tex.glow, life: 220, scale: [0.65 * s, 1.25 * s], alpha: [0.38, 0], tint: p.main, zBias: 6 });
   w.spawn({ texture: tex.ring, layer: 'ground', groundAligned: true,
     x: o.at.x, y: o.at.y, z: 0, life: 300, scale: [0.12, 0.95 * s, outCubic], alpha: [0.8, 0], tint: p.main });
-  const earth = o.element === 'tho', ice = o.element === 'thuy', lightning = o.element === 'loi';
+  const earth = o.element === 'tho', ice = o.element === 'thuy';
   w.burst(big ? 3 : 2, (i, n) => {
     const a = (i / Math.max(1, n - 1) - 0.5) * 2.1;
     return { ...body, texture: earth ? tex.rock : ice ? tex.shard : lightning ? tex.streak : tex.puff,
       life: 330, rotation: a, blend: earth ? 'normal' : 'add',
       vx: Math.sin(a) * 145 * s, vz: (90 + Math.cos(a) * 70) * s, gravity: earth ? 500 : 80,
       scaleX: [0.65 * s, 0.15], scaleY: [earth ? 0.75 * s : 1.45 * s, 0.1],
-      alpha: envelope(0.05, 0.6, earth ? 1 : 0.8), tint: earth ? [p.main, p.dark] : [p.core, p.main], zBias: 8 };
+      alpha: envelope(0.05, 0.6, earth ? 1 : 0.8), tint: earth ? [p.main, p.dark] : lightning ? p.main : [p.core, p.main], zBias: 8 };
   });
   w.shake(big ? 5 : 2.5, 140); w.hitStop(big ? 35 : 15);
 }
