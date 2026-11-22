@@ -1,5 +1,5 @@
 import type { Texture } from 'pixi.js';
-import { clamp01, envelope, lerp, outCubic, rand } from './ease';
+import { clamp01, envelope, inOutSine, inQuad, lerp, outBack, outCubic, rand } from './ease';
 import { textureFromCanvas } from './pixi-compat';
 import type { Palette } from './recipes';
 import { type VfxTextures, TEX_METRICS as M } from './textures';
@@ -19,24 +19,63 @@ export function metalSparks(w: VfxWorld, tex: VfxTextures, at: Vec3, p: Palette,
   });
 }
 
-export function swordSalute(w: VfxWorld, tex: VfxTextures, at: () => Vec3, height: number, p: Palette, duration: number) {
+export function swordSalute(w: VfxWorld, tex: VfxTextures, at: () => Vec3, height: number, p: Palette, duration: number, aimAt?: () => Vec3) {
+  if (duration <= 0 || height <= 0) return;
   for (let i = -2; i <= 2; i++) {
-    const delay = Math.abs(i) * 22;
+    const delay = duration * Math.abs(i) * (i < 0 ? 0.065 : 0.047);
     const life = duration - delay;
+    const phase = i * 1.38 + rand(-0.24, 0.24);
+    const launchAt = 0.8 + Math.abs(i) * 0.024;
+    const scale = height / 273;
+    const pose = (t: number) => {
+      const origin = at(), target = aimAt?.();
+      const aim = target ? Math.atan2(target.y - origin.y, target.x - origin.x) : 0;
+      const dx = target ? Math.cos(aim) : 0, dy = target ? Math.sin(aim) : 0;
+      const riseT = clamp01(t * life / (duration * 0.36));
+      const rise = outBack(riseT);
+      const age = (t * life + delay) / duration;
+      const oscillation = age * 9.6 + phase;
+      const gather = inOutSine(clamp01((age - 0.62) / 0.19));
+      const launch = inQuad(clamp01((age - launchAt) / (1 - launchAt)));
+      const float = outCubic(riseT) * (1 - gather * 0.8);
+      const spread = i * (0.12 + 0.2 * rise - 0.1 * gather);
+      const lift = 0.16 + rise * (0.95 - Math.abs(i) * 0.075) + Math.sin(oscillation) * 0.11 * float;
+      const stagger = gather * (0.085 + i * dx * 0.065);
+      const travel = launch * 3.15;
+      const x = origin.x + height * (-dx * 0.23 + spread + Math.cos(oscillation) * 0.046 * float + dx * travel);
+      const y = origin.y + height * (-0.1 + 0.022 * i + dy * travel);
+      const z = (origin.z ?? 0) + height * (lift - stagger + launch * 1.7);
+      const hoverAngle = -Math.PI + i * (0.09 + 0.19 * rise) + Math.sin(oscillation + 0.6) * 0.145 * float;
+      const launchAngle = Math.atan2(dy * 3.15 - 1.7, dx * 3.15) - Math.PI / 2;
+      const turn = Math.atan2(Math.sin(launchAngle - hoverAngle), Math.cos(launchAngle - hoverAngle));
+      return { x, y, z, rotation: hoverAngle + turn * gather, roll: 1 - 0.17 * Math.cos(oscillation) * float };
+    };
+    const alpha = envelope(0.18, 0.14, 0.96);
     w.spawn({
-      texture: tex.blade, blend: 'normal', x: 0, y: 0, follow: at, rotation: Math.PI,
-      life, delay, scale: height / 273, alpha: envelope(0.16, 0.2, 0.92), zBias: 8,
+      texture: tex.blade, blend: 'normal', x: 0, y: 0, life, delay, scale, alpha,
       onUpdate: (q, t) => {
-        const origin = at(), spread = outCubic(clamp01(t * 2.9));
-        const release = clamp01((t - 0.76) / 0.24);
-        q.sprite.rotation = Math.PI + i * 0.29 * spread;
-        q.sprite.position.set(origin.x + i * height * (0.31 * spread + 0.1 * release),
-          origin.y - (origin.z ?? 0) - height * (0.6 + spread * 0.44 - Math.abs(i) * 0.1 + release ** 2));
+        const { x, y, z, rotation, roll } = pose(t);
+        q.sprite.position.set(x, y - z);
+        q.sprite.zIndex = y;
+        q.sprite.rotation = rotation;
+        q.sprite.scale.x = scale * roll;
+      },
+    });
+    w.spawn({
+      texture: tex.glow, blend: 'normal', layer: 'ground', groundAligned: true,
+      x: 0, y: 0, life, delay, alpha: 0, tint: 0x100d17,
+      onUpdate: (q, t) => {
+        const sword = pose(t), shadow = w.shadowPoint(sword);
+        const softness = clamp01(sword.z / (height * 2.7));
+        const size = (height / 128) * lerp(0.39, 0.65, softness);
+        q.sprite.position.set(shadow.x, shadow.y);
+        q.sprite.scale.set(size, size * w.groundSquash * 0.8);
+        q.sprite.alpha = alpha(t) * lerp(0.56, 0.15, softness);
       },
     });
   }
-  w.spawn({ texture: tex.star, x: 0, y: 0, z: height, follow: at, delay: duration - 100, life: 150,
-    scale: [0.1, 0.23], alpha: envelope(0.2, 0.65, 0.7), tint: p.core, zBias: 9 });
+  w.spawn({ texture: tex.star, x: -height * 0.16, y: 0, z: height * 1.02, follow: at, delay: duration * 0.72, life: duration * 0.23,
+    scaleX: [0.06, 0.24], scaleY: [0.04, 0.07], alpha: envelope(0.32, 0.68, 0.55), tint: p.core, zBias: 9 });
 }
 
 let cutTexture: Texture | undefined;

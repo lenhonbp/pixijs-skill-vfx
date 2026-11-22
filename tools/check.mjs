@@ -103,6 +103,39 @@ try {
   });
   assert.deepEqual(contracts, { rejected: true, cleared: true, grounded: true });
   console.log('Activation tier validation, airborne ground projection and interrupted-effect cleanup: PASS');
+  const salute = await page.evaluate(() => {
+    const d = window.__vfxDebug, w = window.demo.vfx;
+    const swords = [], shadows = [], spawn = w.spawn.bind(w);
+    w.spawn = o => {
+      const q = spawn(o);
+      if (q && o.blend === 'normal') {
+        if (o.layer === 'ground') shadows.push(q);
+        else swords.push(q);
+      }
+      return q;
+    };
+    d.seed(12345);
+    d.cast('kim-sword-rain', 0);
+    w.spawn = spawn;
+    d.step(30);
+    const staggered = swords.filter(q => q.sprite.visible).length === 3;
+    d.step(160);
+    const positions = swords.map(q => q.sprite.y);
+    const hovering = swords.length === 5 && swords.every(q => q.sprite.visible) &&
+      shadows.length === 5 && shadows.every(q => q.z === 0 && q.sprite.alpha > 0);
+    d.step(55);
+    const bob = swords.map((q, i) => q.sprite.y - positions[i]);
+    const independent = Math.min(...bob) < -2 && Math.max(...bob) > 2;
+    d.step(95);
+    const aimed = swords.every(q => -Math.sin(q.sprite.rotation) > 0.65);
+    const beforeLaunch = swords.map(q => q.sprite.x);
+    d.step(55);
+    const launched = swords.every((q, i) => q.sprite.x > beforeLaunch[i] + 25);
+    w.clear();
+    return { staggered, hovering, independent, aimed, launched };
+  });
+  assert.deepEqual(salute, { staggered: true, hovering: true, independent: true, aimed: true, launched: true });
+  console.log('Sword Rain stagger, independent hover, ground shadows, and aimed launch: PASS');
   skills.push(...skills.filter(s => !/^(activation|evolution)-/.test(s.id)).map(skill => ({
     ...skill, label: `${skill.id}-tier3`, tier: 3,
   })));

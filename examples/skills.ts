@@ -116,7 +116,7 @@ export const SKILLS: SkillDef[] = [
     timing: { windup: 450, hits: Array.from({ length: 16 }, (_, i) => ({ t: 500 + i * 900 / 16, spread: 30, shake: 2.5, skin: 'metal', targets: 'all', optional: true })), recovery: 400 },
     desc: 'A storm of gold-hilted blades falls on the area and pins every enemy inside.', uses: ['swordSalute', 'swordRain'], length: 2200,
     cast: ({ w, tex, caster, target, targets, hurt }) => {
-      swordSalute(w, tex, () => chest(caster), caster.height, P.kim, 390);
+      swordSalute(w, tex, () => chest(caster), caster.height, P.kim, 420, feetOf(target));
       const c = { x: target.feet.x, y: target.feet.y };
       w.after(350, () => swordRain(w, tex, {
         ...c, radius: 120, count: 16, duration: 900, height: caster.height, palette: P.kim,
