@@ -12,6 +12,8 @@ export type FloorRingOptions = Pick<SpawnOptions,
   texture?: Texture;
   textureRadius?: number;
   zBias?: number;
+  /** Clockwise reveal from the far half to the near half, normalized over particle life. */
+  sweep?: (t: number) => number;
 };
 
 export interface FloorRingHandle extends Handle {
@@ -25,9 +27,6 @@ function pooledMask(sprite: Sprite, near: boolean): Graphics {
   let mask = masks.get(sprite);
   if (!mask || mask.destroyed) {
     mask = new Graphics();
-    const size = 1e6;
-    if (isPixiV8()) mask.rect(-size, 0, size * 2, size).fill(0xffffff);
-    else (mask as any).beginFill(0xffffff).drawRect(-size, 0, size * 2, size).endFill();
     masks.set(sprite, mask);
     const owned = mask;
     sprite.once('destroyed', () => {
@@ -35,6 +34,10 @@ function pooledMask(sprite: Sprite, near: boolean): Graphics {
       masks.delete(sprite);
     });
   }
+  const size = 1e6;
+  mask.clear();
+  if (isPixiV8()) mask.rect(-size, 0, size * 2, size).fill(0xffffff);
+  else (mask as any).beginFill(0xffffff).drawRect(-size, 0, size * 2, size).endFill();
   mask.scale.y = near ? 1 : -1;
   mask.visible = true;
   return mask;
@@ -48,6 +51,20 @@ export function floorRing(w: VfxWorld, tex: VfxTextures, o: FloorRingOptions): F
   const records: { p: Particle; options: SpawnOptions; mask: Graphics }[] = [];
   let unown: (() => void) | undefined, updater: Handle | undefined;
   const follow = o.around ? () => { const at = o.around!(); return { x: at.x, y: at.y }; } : undefined;
+  const sweepMask = (mask: Graphics, near: boolean, t: number) => {
+    if (!o.sweep) return;
+    const progress = Math.max(0, Math.min(1, o.sweep(t)));
+    const start = near ? 0 : Math.PI;
+    const arc = Math.PI * Math.max(0, Math.min(1, progress * 2 - (near ? 1 : 0)));
+    const points = [0, 0];
+    for (let i = 0; i <= 32; i++) {
+      const angle = start + arc * i / 32;
+      points.push(Math.cos(angle) * 1e5, Math.sin(angle) * 1e5);
+    }
+    mask.clear(); mask.scale.y = 1;
+    if (isPixiV8()) mask.poly(points).fill(0xffffff);
+    else (mask as any).beginFill(0xffffff).drawPolygon(points).endFill();
+  };
   const cleanup = (record: typeof records[number]) => {
     const i = records.indexOf(record);
     if (i < 0) return;
@@ -63,11 +80,12 @@ export function floorRing(w: VfxWorld, tex: VfxTextures, o: FloorRingOptions): F
       zBias: near ? o.zBias ?? 0.1 : undefined, scale: o.scale ?? o.radius / metric,
       scaleX: o.scaleX, scaleY: o.scaleY, alpha: o.alpha, tint: o.tint ?? o.palette.main,
       blend: o.blend, rotation: o.rotation, spin: o.spin, delay: o.delay,
-      onUpdate: (q, t, dt) => { o.onUpdate?.(q, t, dt); record.mask.position.copyFrom(q.sprite.position); },
+      onUpdate: (q, t, dt) => { o.onUpdate?.(q, t, dt); sweepMask(record.mask, near, t); record.mask.position.copyFrom(q.sprite.position); },
       onDeath: () => cleanup(record),
     });
     if (!p) return null;
     const mask = pooledMask(p.sprite, near);
+    sweepMask(mask, near, 0);
     p.sprite.parent!.addChild(mask);
     p.sprite.mask = mask;
     const record = { p, options: p.o, mask };

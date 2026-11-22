@@ -119,6 +119,12 @@ for every public name and the [recipe catalog](references/recipes.md) for option
   see [timing and reactions](references/extending.md#skill-timing).
 - Advanced: ribbons, noise, distortion, bloom and quality tiers;
   see [advanced effects](references/advanced-fx.md).
+- Utility: `sigilCharge`, `sunderingMark`, `battleCry`, `shadowStep`, `shadowSlash`,
+  `hexField`, `frailty`, `projectile({ seal: true })`; swept `summonCircle` and bottom-up
+  guardian reveal/upward dissolve. `FloorRingOptions.sweep(t)` preserves split occlusion;
+  `VfxTextures.skull` is a tintable 64×72 weakened glyph. Keep timing, uses and docs in step;
+  status contacts use `SkillHit.effectOnly`, not gameplay damage. See
+  [utility composition](references/recipes.md#utility-composition-and-timing).
 
 Elements: `WUXING` in `elements.ts` gives the five elements (Kim, Mộc, Thủy, Hỏa, Thổ) with
 palette and shape language, plus variants `PHONG` (wind) and `LOI` (lightning); `ELEMENTS` has
@@ -282,5 +288,6 @@ with `node tools/NAME.mjs`; browser tests require Playwright Chromium. See the
 | `tools/test-spirit-guardian.mjs` | flight, weapon grip, contact timing, retargeting and summon AoE | No |
 | `tools/test-status.mjs` | status lifecycles, bell, armor, guardian, spikes, swords and vines | No |
 | `tools/test-timing.mjs` | nominal timing, feedback and sample damage windows | No |
+| `tools/test-utility.mjs` | utility contacts, bold seal layers, callback ownership and cleanup | No |
 | `tools/test-wood.mjs` | vegetation cache, seed flight, bloom/spore timing and cleanup | No |
 | `tools/test-docs.mjs` | documentation checker normal, empty, alias, cycle and error cases | No; run with node --test |

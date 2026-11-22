@@ -58,6 +58,10 @@ source-only contracts. Copy the whole kit, including its internal texture module
 
 ## kit/recipes.ts
 
+- `ShadowSlashOptions` — Crossed shadow slash options — [Utility composition](recipes.md#utility-composition-and-timing).
+- `shadowSlash` — Violet-edged crossing ink crescents — [Utility composition](recipes.md#utility-composition-and-timing).
+- `ProjectileOptions` — Arc projectile and seal-head options — [Recipe catalog](recipes.md).
+
 - `Palette` — Core/main/dark color interface — [Recipe catalog](recipes.md).
 - `PALETTES` — Generic named palettes — [Recipe catalog](recipes.md).
 - `hitSpark` — Localized contact burst — [Recipe catalog](recipes.md).
@@ -128,6 +132,15 @@ source-only contracts. Copy the whole kit, including its internal texture module
 
 ## kit/status.ts
 
+- `SigilChargeOptions` — Hand-sigil windup options — [Utility composition](recipes.md#utility-composition-and-timing).
+- `sigilCharge` — Rotating hand rune or crosshair — [Utility composition](recipes.md#utility-composition-and-timing).
+- `SunderingMarkOptions` — Reticle/fracture options with impact callback — [Utility composition](recipes.md#utility-composition-and-timing).
+- `sunderingMark` — Armor-fracturing lock-on reticle — [Utility composition](recipes.md#utility-composition-and-timing).
+- `HexFieldOptions` — Spreading ground-hex options — [Utility composition](recipes.md#utility-composition-and-timing).
+- `hexField` — Open curse circle with curling shadows — [Utility composition](recipes.md#utility-composition-and-timing).
+- `FrailtyOptions` — Draining binding/recoil options — [Utility composition](recipes.md#utility-composition-and-timing).
+- `frailty` — Rising bindings, downward pulse and sickly sustain — [Utility composition](recipes.md#utility-composition-and-timing).
+
 - `withDamageTickFeedback` — Cast-local observer for positive status damage ticks — [Status catalog](extending.md#status-catalog).
 - `OnUnit` — Feet-following status target and height options — [Status catalog](extending.md#status-catalog).
 - `SustainedStatusOptions` — Common palette/duration status options — [Status catalog](extending.md#status-catalog).
@@ -168,6 +181,8 @@ source-only contracts. Copy the whole kit, including its internal texture module
 
 ## kit/spirit-guardian.ts
 
+- `SpiritGuardianOptions` — Floating guardian reveal, targeting and strike options — [Recipe catalog](recipes.md).
+
 - `spiritGuardian` — Flying spectral attacker or idle summon — [Recipe catalog](recipes.md).
 
 ## kit/mountain-crash.ts
@@ -200,6 +215,9 @@ source-only contracts. Copy the whole kit, including its internal texture module
 
 ## kit/motion.ts
 
+- `ShadowStepOptions` — Dark smoke passage and arrival callbacks — [Utility composition](recipes.md#utility-composition-and-timing).
+- `shadowStep` — Violet-rimmed shadow teleport — [Utility composition](recipes.md#utility-composition-and-timing).
+
 - `afterimage` — Fading copy of a moving unit sprite — [Recipe catalog](recipes.md).
 - `dash` — Ground movement with onMove callback — [Recipe catalog](recipes.md).
 - `blink` — Vanish and reappear at separate points — [Recipe catalog](recipes.md).
@@ -207,6 +225,10 @@ source-only contracts. Copy the whole kit, including its internal texture module
 - `slam` — Ground-impact feedback — [Recipe catalog](recipes.md).
 
 ## kit/channel.ts
+
+- `BattleCryOptions` — Braced roar and fiery aura options — [Utility composition](recipes.md#utility-composition-and-timing).
+- `battleCry` — Chest-height roar arcs and ember aura — [Utility composition](recipes.md#utility-composition-and-timing).
+- `SummonCircleOptions` — Swept summon rune, pillar and linger options — [Recipe catalog](recipes.md).
 
 - `beam` — Following laser or water-style channel — [Recipe catalog](recipes.md).
 - `BreathStyle` — Fire/frost/poison/wind cone styles — [Recipe catalog](recipes.md).

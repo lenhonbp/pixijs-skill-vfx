@@ -87,8 +87,8 @@ try {
         const missed = [];
         t.hits.forEach((hit, i) => {
           const landed = hurts.some((hurt) => matches(hurt.t, i));
-          check(hit.optional || landed, `${skill.id}: missing required hit ${i} at ${times[i]}; actual ${hurts.map((h) => h.t)}`);
-          if (!landed) missed.push(i);
+          check(hit.effectOnly || hit.optional || landed, `${skill.id}: missing required hit ${i} at ${times[i]}; actual ${hurts.map((h) => h.t)}`);
+          if (!landed && !hit.effectOnly) missed.push(i);
           for (const key of ['stop', 'shake']) if (hit[key] !== undefined) {
             check(feedback.some((f) => matches(f.t, i) && Math.abs(f[key] - hit[key]) < 1e-8), `${skill.id}: ${key} at ${times[i]} matches cast`);
           }
