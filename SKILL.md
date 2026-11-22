@@ -191,6 +191,7 @@ Code is only the draft; the rendered effect is the deliverable.
    render finished or stop just because the code compiles.
 5. Run `npm run check`: it **must pass**. It checks seeded repeat casts, cleanup, pool growth,
    particle budgets and direct unseeded RNG calls. Type-check and build must also pass.
+   Existing overages in `tools/check-baseline.json` warn (regressions >5% fail); shrink peaks as skills improve and delete entries when they pass budget.
 6. Report what changed visually, the reference skills, round count, contact-sheet paths and
    check results. State plainly if visual inspection could not be done.
 

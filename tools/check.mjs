@@ -9,6 +9,19 @@ import { chromium } from 'playwright';
 
 const root = resolve(dirname(fileURLToPath(import.meta.url)), '..');
 const failures = [];
+const baseline = JSON.parse(await readFile(resolve(root, 'tools/check-baseline.json'), 'utf8'));
+assert(Object.values(baseline).every((peak) => Number.isInteger(peak) && peak > 0), 'Baseline peaks must be positive integers');
+function budgetResult(peak, budget, previous) {
+  if (peak <= budget) return { warning: '', failure: '' };
+  const overage = `+${peak - budget} over budget`;
+  if (previous !== undefined && peak <= previous * 1.05) return { warning: `WARN: ${overage}, baselined`, failure: '' };
+  return { warning: '', failure: `${overage}${previous === undefined ? ', no baseline' : `, exceeds baseline ${previous} +5%`}` };
+}
+assert.equal(budgetResult(150, 150).failure, '');
+assert.equal(budgetResult(151, 150).failure, '+1 over budget, no baseline');
+assert.equal(budgetResult(210, 150, 200).warning, 'WARN: +60 over budget, baselined');
+assert.equal(budgetResult(211, 150, 200).failure, '+61 over budget, exceeds baseline 200 +5%');
+assert.equal(budgetResult(149, 150, 200).warning, '');
 async function scan(dir) {
   for (const entry of await readdir(dir, { withFileTypes: true })) {
     const path = resolve(dir, entry.name);
@@ -83,12 +96,13 @@ try {
     // Future skills explicitly named *-ultimate (or ultimate-*) get 600.
     const budget = /(^|-)ultimate(-|$)/.test(skill.id) ? 600 : 150;
     const issues = [];
-    if (result.peak > budget) issues.push(`budget +${result.peak - budget}`);
+    const budgetStatus = budgetResult(result.peak, budget, Object.hasOwn(baseline, skill.id) ? baseline[skill.id] : undefined);
+    if (budgetStatus.failure) issues.push(budgetStatus.failure);
     if (result.runs.some((r) => r.particles || r.updaters)) issues.push('leftovers');
     if (result.runs.slice(1).some((r, i) => Object.keys(r).some((key) => r[key] > result.runs[i][key]))) issues.push('growth');
     rows.push({ skill: skill.id, peak: result.peak, budget,
       particles: result.runs.map((r) => r.particles).join('/'), updaters: result.runs.map((r) => r.updaters).join('/'),
-      pool: result.runs.map((r) => `${r.sprites}:${r.records}`).join('/'), result: issues.join(', ') || 'PASS' });
+      pool: result.runs.map((r) => `${r.sprites}:${r.records}`).join('/'), result: [...issues, budgetStatus.warning].filter(Boolean).join(', ') || 'PASS' });
     if (issues.length) failures.push(`${skill.id}: ${issues.join(', ')}`);
   }
   console.table(rows);

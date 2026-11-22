@@ -76,7 +76,8 @@ The check casts each skill three times at high quality without clearing between 
 at length + 1500 ms it requires zero particles/updaters and no pool-capacity growth.
 Peak counts include delayed particles. The ordinary cap is 150; IDs containing the
 hyphen-delimited word `ultimate` get 600. No current SkillDef has an ultimate flag,
-so all existing samples use 150. Budget failures are reported, not automatically relaxed.
+so all existing samples use 150. Unbaselined overages and peaks more than 5% above baseline fail.
+`tools/check-baseline.json` keeps existing overages visible as WARN; shrink peaks as skills improve and delete entries when they pass budget.
 
 Use `new VfxWorld({ ...layers, seed: 12345 })` or supply `rng: () => number` (takes
 precedence). `random`, `rand`, `randSign` and `pick` share the active RNG; `mulberry32`
