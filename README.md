@@ -47,6 +47,16 @@ Pick a skill from the list (or keys 1-0, Q-O, Z-V; tap the arena on phones), fil
 to 0.5x/0.25x, switch quality and toggle bloom/distortion, or press Showcase to cycle all skills. `#showcase` in the URL starts it directly.
 Works with pixi.js 7.4+ too: `npm i pixi.js@7` and rebuild.
 
+### Frame captures
+
+After `npm install`, install Chromium once with `npx playwright install chromium`.
+Run `npm run capture -- --skills thuy-tidal-beam,kim-sword-rain --out ~/audit/after/`
+to build and serve the demo, then capture seeded, deterministically stepped frames.
+Use comma-separated skill IDs (`--skills a,b`); omit `--skills` to capture all skills.
+Each output directory contains labeled PNG contact sheets and `counts.json` with live
+particle counts at each skill's length + 1500 ms. The default output is `~/audit/before/`;
+`--seed INTEGER` overrides the default seed of 12345.
+
 ## Layout
 
 | Path | What it is |
