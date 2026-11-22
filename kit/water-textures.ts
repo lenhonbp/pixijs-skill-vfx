@@ -71,7 +71,7 @@ function water(): Texture {
       const edge=Math.max(0,Math.min(1,(1-Math.abs(d)+turbulence)*6))*Math.pow(Math.sin(u*Math.PI),1.5);
       const round=Math.sqrt(Math.max(0,1-d*d));
       const caustic=Math.pow(Math.max(0,Math.sin(u*22+v*15+noise3(u*5,v*7,1)*4)),8);
-      const light=45+round*125+caustic*65+Math.exp(-Math.pow((d+.48)*9,2))*70;
+      const light=25+round*(d>0?65:155)+caustic*45+Math.exp(-Math.pow((d+.48)*9,2))*140;
       const i=(y*192+x)*4;
       pixels.data.set([light,light,light,edge*215],i);
     }

@@ -238,10 +238,14 @@ export const SKILLS: SkillDef[] = [
     id: 'thuy-tidal-beam', element: 'thuy', category: 'channel', en: 'Tidal Beam', vi: 'Thủy Long Xạ',
     desc: 'A channeled water dragon torrent that drenches and slows the target.', uses: ['chargeUp', 'tidalBeam', 'slow'], length: 3800,
     cast: ({ w, tex, caster, target, hurt }) => {
+      const orb = () => {
+        const at = hand(caster);
+        return { x: at.x - caster.facing * caster.height * 0.07, y: at.y, z: at.z! + caster.height * 0.38 };
+      };
       chargeUp(w, tex, {
-        target: () => hand(caster), palette: P.thuy, duration: 380,
+        target: orb, palette: P.thuy, duration: 380,
         onDone: () => {
-          const b = tidalBeam(w, tex, { from: () => hand(caster), to: () => chest(target), palette: P.thuy, duration: 1500 });
+          const b = tidalBeam(w, tex, { from: orb, to: () => chest(target), palette: P.thuy, duration: 1500 });
           for (let i = 0; i < 5; i++) w.after(150 + i * 280, () => b.alive && hurt(target, Math.round(rand(20, 28)), { palette: P.thuy, angle: Math.PI * (caster.facing > 0 ? 1 : 0) }));
           w.after(1500, () => slow(w, tex, { target: feetOf(target), height: target.height, duration: 2000 }));
         },
