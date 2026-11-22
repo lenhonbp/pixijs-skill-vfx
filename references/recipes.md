@@ -94,7 +94,21 @@ let finite droplets dissipate naturally.
 - **Damage sync**: deal damage in the recipe's `onHit` / at the same `vfx.after` as the impact,
   never on a separate timer, so hit-stop keeps them in sync.
 
-## dropShadow
+## Activation and evolution
+
+`skillActivation(w, tex, { at, height, palette, tier, duration? })` follows caster
+feet live. Cơ bản (1): sigil, motes, chest light; Thức tỉnh (2): rotating runes,
+body wisps, pillar and shockwave; Tiến hoá (3): counter-rotation, implosion/burst,
+white core, cracks, flash, shake and hit-stop. Each includes the lower tier's layers.
+Start gameplay immediately at tier 1, or after `activationRelease(tier)` (250/400 ms).
+`duration` controls the tier 3 lingering aura (1500 ms default).
+
+`skillEvolution(w, tex, { at, height, palette, fromTier, toTier })` gathers for
+550 ms, holds 100 ms, bursts into a ray crown, double shockwave and ascending
+sparks, then settles the destination seal by 1600 ms. Any palette is accepted.
+Capture with `npm run capture -- --skills activation-hoa-3,evolution-thuy`.
+
+## dropShadow (ground blob)
 
 Blob shadow under anything airborne (projectiles, meteors, jumping units). Lands where the
 baked sun puts shadows (`VfxWorld` `shadow`, from `rigFromBlender`), fades and widens with

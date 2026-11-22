@@ -74,6 +74,23 @@ try {
   await page.goto(url, { waitUntil: 'domcontentloaded' });
   await page.waitForFunction(() => !!window.__vfxDebug);
   const skills = await page.evaluate(() => window.__vfxDebug.skills);
+  assert.equal(skills.filter(s => s.id.startsWith('activation-')).length, 6);
+  assert.equal(skills.filter(s => s.id.startsWith('evolution-')).length, 2);
+  const contracts = await page.evaluate(() => {
+    const d = window.__vfxDebug, w = window.demo.vfx;
+    let rejected = false;
+    try { d.setTier(4); } catch { rejected = true; }
+    const cleared = ['activation-hoa-3', 'evolution-thuy'].every(id => {
+      d.cast(id);
+      d.advance(100);
+      w.clear();
+      d.advance(2000);
+      return !d.stats().particles && !d.stats().updaters;
+    });
+    return { rejected, cleared };
+  });
+  assert.deepEqual(contracts, { rejected: true, cleared: true });
+  console.log('Activation tier validation and interrupted-effect cleanup: PASS');
   await page.close();
   const rows = [];
   for (const skill of skills) {
@@ -89,7 +106,7 @@ try {
       const runs = [];
       for (let i = 0; i < 3; i++) {
         d.seed(12345);
-        if (i === 0) d.cast(id); else d.repeat(id);
+        if (i === 0) d.cast(id, 0); else d.repeat(id);
         for (let left = length + 1500; left > 0; left -= 16) d.advance(Math.min(left, 16));
         runs.push(d.stats());
       }

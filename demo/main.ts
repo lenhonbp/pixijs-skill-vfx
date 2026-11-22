@@ -4,6 +4,7 @@ import { Application, Container, Sprite, Texture } from 'pixi.js';
 import {
   VfxWorld, createVfxTextures, isPixiV8, textureFromCanvas, rigFromBlender, anchorAtFeet,
   hitFlash, hitSpark, damageNumber, activeHitFlashes, ELEMENTS, Distortion, Bloom, Palette, Vec3, outCubic, lerp, rand, setRng, mulberry32,
+  skillActivation, skillEvolution, activationRelease, ActivationTier, PALETTES,
 } from '../kit';
 import { SKILLS, SkillDef, Unit, SkillContext } from '../examples/skills';
 
@@ -288,16 +289,39 @@ function whiteTexture() {
   // ---------------------------------------------------------------- UI
   const $ = (id: string) => document.getElementById(id)!;
   let current: SkillDef = SKILLS[0];
+  let tier: ActivationTier = 1;
+  const setTier = (value: ActivationTier) => {
+    if (![1, 2, 3].includes(value)) throw new Error(`Invalid activation tier: ${value}`);
+    tier = value;
+    ($('tier') as HTMLSelectElement).value = String(value);
+  };
+  const activationOptions = (element: string) => ({ at: () => hero.feet, height: hero.height,
+    palette: ELEMENTS[element as keyof typeof ELEMENTS]?.palette ?? PALETTES.arcane });
+  const flourishes = ['hoa', 'thuy'].flatMap(element => [
+    ...([1, 2, 3] as const).map(t => ({ id: `activation-${element}-${t}`, length: 2300, element, tier: t })),
+    { id: `evolution-${element}`, length: 1800, element, tier: 3 as const },
+  ]);
+  const flourish = (id: string) => {
+    const effect = flourishes.find(f => f.id === id);
+    if (!effect) return false;
+    const options = activationOptions(effect.element);
+    if (id.startsWith('evolution')) skillEvolution(w, tex, { ...options, fromTier: 2, toTier: 3 });
+    else skillActivation(w, tex, { ...options, tier: effect.tier });
+    return true;
+  };
   let filter = 'all';
   // Showcase advances on the VFX clock, so it waits while paused and follows the speed setting.
   let showcase: { i: number; left: number } | null = null;
   let paused = false;
 
-  const cast = (s: SkillDef) => {
+  const cast = (s: SkillDef, selected: ActivationTier | 0 = tier) => {
     current = s;
     renderInfo();
     renderList();
-    s.cast(ctxFor());
+    if (selected) skillActivation(w, tex, { ...activationOptions(s.element), tier: selected });
+    const delay = selected ? activationRelease(selected) : 0;
+    if (delay) w.after(delay, () => s.cast(ctxFor()));
+    else s.cast(ctxFor());
   };
 
   const renderInfo = () => {
@@ -389,14 +413,22 @@ function whiteTexture() {
     $('showcase').classList.add('active');
     resetScene();
     cast(SKILLS[i % SKILLS.length]);
-    showcase = { i, left: SKILLS[i % SKILLS.length].length + 300 };
+    showcase = { i, left: SKILLS[i % SKILLS.length].length + 300 + activationRelease(tier) };
+  };
+  $('tier').onchange = () => setTier(Number(($('tier') as HTMLSelectElement).value) as ActivationTier);
+  $('evolve').onclick = () => {
+    stopShowcase();
+    resetScene();
+    const next = (tier % 3 + 1) as ActivationTier;
+    skillEvolution(w, tex, { ...activationOptions(current.element), fromTier: tier, toTier: next });
+    w.after(1600, () => setTier(next));
   };
   $('replay').onclick = () => { stopShowcase(); cast(current); };
   $('pause').onclick = togglePause;
   $('reset').onclick = () => { stopShowcase(); resetScene(); };
   $('showcase').onclick = () => (showcase === null ? runShowcase() : stopShowcase());
   addEventListener('keydown', (e) => {
-    if (e.target instanceof HTMLInputElement) return;
+    if (e.target instanceof HTMLInputElement || e.target instanceof HTMLSelectElement) return;
     const k = e.key.toUpperCase();
     const i = HOTKEYS.indexOf(k);
     if (i >= 0 && KEY_ORDER[i]) { stopShowcase(); cast(KEY_ORDER[i]); }
@@ -442,20 +474,25 @@ function whiteTexture() {
     step,
     vfx: w,
     setQuality,
+    setTier,
     postfx: { bloom, distortion },
   };
   if (new URLSearchParams(location.search).has('debug')) {
     app.ticker.stop();
     (window as any).__vfxDebug = {
-      skills: SKILLS.map(({ id, length }) => ({ id, length })),
-      cast: (id: string) => {
-        const skill = SKILLS.find((s) => s.id === id);
-        if (!skill) throw new Error(`Unknown skill: ${id}`);
+      skills: [...SKILLS.map(({ id, length }) => ({ id, length })), ...flourishes],
+      setTier,
+      getTier: () => tier,
+      cast: (id: string, selected: ActivationTier | 0 = tier) => {
         stopShowcase();
         resetScene();
         clock = 0;
         lastHurt = 0;
-        cast(skill);
+        if (!flourish(id)) {
+          const skill = SKILLS.find((s) => s.id === id);
+          if (!skill) throw new Error(`Unknown skill: ${id}`);
+          cast(skill, selected);
+        }
         for (const u of units) sync(u, clock);
       },
       step,
@@ -466,6 +503,7 @@ function whiteTexture() {
       advance: frame,
       // Repeat without clear(): lifecycle checks must not hide leaks between casts.
       repeat: (id: string) => {
+        if (flourish(id)) return;
         const skill = SKILLS.find((s) => s.id === id);
         if (!skill) throw new Error(`Unknown skill: ${id}`);
         for (const u of units) { u.feet.x = u.home.x; u.feet.y = u.home.y; u.feet.z = 0; u.sprite.visible = true; u.hp = 1; }

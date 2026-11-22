@@ -14,7 +14,7 @@ const args = process.argv.slice(2);
 for (let i = 0; i < args.length; i++) {
   const arg = args[i];
   if (arg === '--help') {
-    console.log('Usage: node tools/capture-frames.mjs [--out DIR] [--skills id,id] [--seed INTEGER]\nRequires: npx playwright install chromium\nEach skill starts in a fresh seeded page at high quality. Steps are 16 ms,\nwith a final shorter step to reach each exact capture/count time.');
+    console.log('Usage: node tools/capture-frames.mjs [--out DIR] [--skills id,id] [--seed INTEGER]\nPseudo ids: activation-hoa-1/2/3, activation-thuy-1/2/3, evolution-hoa, evolution-thuy.\nOrdinary skill ids capture the tier-less baseline. Requires: npx playwright install chromium.\nEach skill starts in a fresh seeded page at high quality, with exact 16 ms stepping.');
     process.exit(0);
   }
   if (!['--out', '--skills', '--seed'].includes(arg) || !args[i + 1]) throw new Error(`Invalid argument: ${arg}`);
@@ -73,7 +73,7 @@ try {
   const sheetPage = await context.newPage();
   for (const [index, skill] of skills.entries()) {
     if (index) await load();
-    await page.evaluate((id) => window.__vfxDebug.cast(id), skill.id);
+    await page.evaluate((id) => window.__vfxDebug.cast(id, 0), skill.id);
     let elapsed = 0;
     const frames = [];
     // Include the count checkpoint in the timeline even for very short skills.

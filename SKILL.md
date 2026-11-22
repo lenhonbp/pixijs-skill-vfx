@@ -74,6 +74,18 @@ smoke/aftermath 0.8-2.5 s.
 
 ## 4. Build it from primitives
 
+### Activation tiers and evolution
+
+Wrap casts with `skillActivation(w, tex, { at: () => caster.feet, height, palette, tier })`.
+Tier 1 (Cơ bản) releases immediately; tier 2 (Thức tỉnh) at 250 ms; tier 3
+(Tiến hoá) at 400 ms. Schedule gameplay on `w.after(activationRelease(tier), cast)`
+for tiers 2/3, and include that pre-roll in showcase waits. The tiers accumulate
+ground seals, body wisps/pillars, then inward shards, cracks and top-layer feedback.
+Tier 3's low aura lasts `duration` (default 1500 ms) after release.
+Use `skillEvolution(w, tex, { at, height, palette, fromTier, toTier })` for the
+1600 ms one-shot upgrade: gather, hold, coronation, then the new seal settles.
+All timers/particles use the world clock and `clear()` cancels them.
+
 Read `references/recipes.md` for the recipe catalog and `kit/recipes.ts` for the code. Start from
 the closest recipe, copy it into the game as a named skill function, and tune it. Core API:
 

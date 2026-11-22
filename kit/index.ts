@@ -18,6 +18,7 @@ export * from './mountain-crash';
 export * from './vine-bind';
 export * from './motion';
 export * from './channel';
+export * from './activation';
 export * from './elemental';
 export * from './noise';
 export * from './trail';
