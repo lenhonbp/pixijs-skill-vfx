@@ -6,10 +6,11 @@ import { envelope, outCubic, rand } from './ease';
 export type ActivationTier = 1 | 2 | 3;
 type Caster = { at: () => Vec3; height: number; palette: Palette };
 const TAU = Math.PI * 2;
+const groundAt = (at: () => Vec3) => () => { const p = at(); return { x: p.x, y: p.y, z: 0 }; };
 export const activationRelease = (tier: ActivationTier) => tier === 1 ? 0 : tier === 2 ? 250 : 400;
 
 function sigil(w: VfxWorld, tex: VfxTextures, o: Caster, radius: number, life: number, spin: number) {
-  w.spawn({ texture: tex.rune, layer: 'ground', groundAligned: true, x: 0, y: 0, follow: o.at,
+  w.spawn({ texture: tex.rune, layer: 'ground', groundAligned: true, x: 0, y: 0, follow: groundAt(o.at),
     life, spin, scale: t => radius / 236 * (0.65 + 0.35 * outCubic(Math.min(1, t * 5))),
     alpha: envelope(0.12, 0.5, 0.75), tint: o.palette.main });
 }
@@ -32,7 +33,7 @@ function release(w: VfxWorld, tex: VfxTextures, o: Caster, size: number, major: 
   const p = o.palette;
   w.spawn({ texture: tex.glow, x: 0, y: 0, z: o.height * 0.7, follow: o.at, life: 260,
     scale: [0.7 * size, 1.7 * size], alpha: [0.75, 0], tint: p.core, zBias: 6 });
-  w.spawn({ texture: tex.ring, layer: 'ground', groundAligned: true, x: 0, y: 0, follow: o.at,
+  w.spawn({ texture: tex.ring, layer: 'ground', groundAligned: true, x: 0, y: 0, follow: groundAt(o.at),
     life: 450, scale: [0.15, size * 0.95, outCubic], alpha: [0.65, 0], tint: p.main });
   w.spawn({ texture: tex.glow, x: 0, y: 0, z: o.height, follow: o.at, life: 520, zBias: 3,
     scaleX: [0.3 * size, 0.7 * size], scaleY: [o.height / 40, o.height / 22], alpha: [0.5, 0], tint: p.main });
@@ -60,7 +61,7 @@ export function skillActivation(w: VfxWorld, tex: VfxTextures, o: Caster & { tie
   const tier = o.tier, p = o.palette, time = activationRelease(tier);
   const life = tier === 1 ? 400 : tier === 2 ? 700 : 1000;
   sigil(w, tex, o, 38 + tier * 10, life, 0.4);
-  w.spawn({ texture: tex.glow, layer: 'ground', groundAligned: true, x: 0, y: 0, follow: o.at,
+  w.spawn({ texture: tex.glow, layer: 'ground', groundAligned: true, x: 0, y: 0, follow: groundAt(o.at),
     life, scale: [0.6, 1.5], alpha: envelope(0.1, 0.6, 0.4), tint: p.main });
   w.burst(5, () => ({ texture: tex.dot, x: rand(-25, 25), y: rand(-8, 8), follow: o.at,
     life: 400, vz: rand(50, 110), scale: [0.09, 0], tint: p.core, alpha: envelope(0.1, 0.6) }));
@@ -88,7 +89,7 @@ export function skillActivation(w: VfxWorld, tex: VfxTextures, o: Caster & { tie
     w.burst(5, (i) => ({ texture: tex.swordCrack, layer: 'ground', groundAligned: true,
       x: at.x, y: at.y, life: 1800, rotation: i * TAU / 5, scale: 1.7,
       blend: 'normal', tint: p.dark, alpha: [0.65, 0] }));
-    w.spawn({ texture: tex.glow, layer: 'ground', groundAligned: true, x: 0, y: 0, follow: o.at,
+    w.spawn({ texture: tex.glow, layer: 'ground', groundAligned: true, x: 0, y: 0, follow: groundAt(o.at),
       life: o.duration ?? 1500, scale: 1.7, alpha: [0.35, 0], tint: p.main });
   });
 }
@@ -107,7 +108,7 @@ export function skillEvolution(w: VfxWorld, tex: VfxTextures, o: Caster & { from
   w.after(650, () => {
     release(w, tex, o, 2, true);
     sigil(w, tex, o, 55 + o.toTier * 20, 950, 0.35);
-    w.spawn({ texture: tex.ring, layer: 'ground', groundAligned: true, x: 0, y: 0, follow: o.at,
+    w.spawn({ texture: tex.ring, layer: 'ground', groundAligned: true, x: 0, y: 0, follow: groundAt(o.at),
       delay: 100, life: 650, scale: [0.3, 2.2, outCubic], alpha: [0.8, 0], tint: o.palette.core });
     w.burst(12, (i, n) => ({ texture: tex.streak, x: 0, y: 0, z: o.height * 0.8, follow: o.at,
       life: 650, rotation: i / n * TAU, scaleX: [0.15, 1.8, outCubic], scaleY: [1.4, 0],
