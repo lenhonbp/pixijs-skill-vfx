@@ -1,3 +1,5 @@
+// Copyright (c) 2026 lenhonbp <lenhonbp@gmail.com> — https://github.com/lenhonbp/pixijs-skill-vfx
+// SPDX-License-Identifier: MIT
 // Smooth 2D/3D value noise and curl noise for organic, divergence-free particle motion
 // (wind, smoke, spores, magic wisps). Curl noise swirls without clumping or draining.
 import type { Particle } from './vfx-world';

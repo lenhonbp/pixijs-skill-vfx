@@ -1,3 +1,5 @@
+// Copyright (c) 2026 lenhonbp <lenhonbp@gmail.com> — https://github.com/lenhonbp/pixijs-skill-vfx
+// SPDX-License-Identifier: MIT
 // 29 sample skills: four Hỏa, three per other Wu Xing element, four Phong, three Lôi,
 // and six neutral utility skills.
 // Each skill is gameplay-agnostic: it only talks to the game through SkillContext, so you can

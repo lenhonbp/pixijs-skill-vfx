@@ -1,3 +1,5 @@
+// Copyright (c) 2026 lenhonbp <lenhonbp@gmail.com> — https://github.com/lenhonbp/pixijs-skill-vfx
+// SPDX-License-Identifier: MIT
 // Ribbon trails: a textured triangle strip (Pixi MeshRope / SimpleRope) that follows a moving
 // point. Use for blades, dashes, wind and projectiles: smooth continuous streaks that
 // particle trails cannot match, at the cost of one mesh per ribbon.

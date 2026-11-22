@@ -1,3 +1,5 @@
+// Copyright (c) 2026 lenhonbp <lenhonbp@gmail.com> — https://github.com/lenhonbp/pixijs-skill-vfx
+// SPDX-License-Identifier: MIT
 import { clamp01, envelope, lerp, outCubic, pick, rand } from './ease';
 import { group } from './group';
 import type { Palette } from './recipes';

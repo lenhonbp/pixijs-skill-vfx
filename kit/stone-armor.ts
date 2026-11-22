@@ -1,3 +1,5 @@
+// Copyright (c) 2026 lenhonbp <lenhonbp@gmail.com> — https://github.com/lenhonbp/pixijs-skill-vfx
+// SPDX-License-Identifier: MIT
 import type { VfxWorld } from './vfx-world';
 import type { VfxTextures } from './textures';
 import type { OnUnit, ShieldHandle } from './status';

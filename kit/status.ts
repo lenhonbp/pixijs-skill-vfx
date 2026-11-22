@@ -1,3 +1,5 @@
+// Copyright (c) 2026 lenhonbp <lenhonbp@gmail.com> — https://github.com/lenhonbp/pixijs-skill-vfx
+// SPDX-License-Identifier: MIT
 // Buffs, debuffs and crowd control that sit on a unit. Every effect takes `target`, a function
 // returning the unit's FEET (ground x, y, z = 0 unless airborne), and `height`, the unit's
 // on-screen height in px (feet to top of head), so it fits any sprite size.

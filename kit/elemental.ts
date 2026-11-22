@@ -1,3 +1,5 @@
+// Copyright (c) 2026 lenhonbp <lenhonbp@gmail.com> — https://github.com/lenhonbp/pixijs-skill-vfx
+// SPDX-License-Identifier: MIT
 // Signature element effects (Wu Xing) that need their own shapes: spikes, sword rain.
 import type { VfxWorld, Vec3 } from './vfx-world';
 import { VfxTextures, TEX_METRICS as M } from './textures';

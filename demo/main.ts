@@ -1,3 +1,5 @@
+// Copyright (c) 2026 lenhonbp <lenhonbp@gmail.com> — https://github.com/lenhonbp/pixijs-skill-vfx
+// SPDX-License-Identifier: MIT
 // Showcase for the kit: a 2.5D arena (Blender-style rig), a caster, three training dummies,
 // and every sample skill from examples/skills.ts. Build: npm run build (see README).
 import { Application, Container, Sprite, Texture } from 'pixi.js';

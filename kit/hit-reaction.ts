@@ -1,3 +1,5 @@
+// Copyright (c) 2026 lenhonbp <lenhonbp@gmail.com> — https://github.com/lenhonbp/pixijs-skill-vfx
+// SPDX-License-Identifier: MIT
 import { ColorMatrixFilter, type Sprite } from 'pixi.js';
 import type { Handle, VfxWorld } from './vfx-world';
 import type { HitSkinName } from './skill-timing';

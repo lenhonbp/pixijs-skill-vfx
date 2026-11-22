@@ -1,3 +1,5 @@
+// Copyright (c) 2026 lenhonbp <lenhonbp@gmail.com> — https://github.com/lenhonbp/pixijs-skill-vfx
+// SPDX-License-Identifier: MIT
 import assert from 'node:assert/strict';
 import test from 'node:test';
 import { documentationIssues, exportedNames } from './check-docs.mjs';

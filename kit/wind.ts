@@ -1,3 +1,5 @@
+// Copyright (c) 2026 lenhonbp <lenhonbp@gmail.com> — https://github.com/lenhonbp/pixijs-skill-vfx
+// SPDX-License-Identifier: MIT
 // Wind reads through motion: open wisps, swept-up debris and their depth around a target.
 import type { Sprite } from 'pixi.js';
 import { clamp01, envelope, lerp, lerpColor, outCubic, outQuad, rand } from './ease';

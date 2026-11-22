@@ -1,3 +1,5 @@
+// Copyright (c) 2026 lenhonbp <lenhonbp@gmail.com> — https://github.com/lenhonbp/pixijs-skill-vfx
+// SPDX-License-Identifier: MIT
 import { Container, Sprite } from 'pixi.js';
 import type { VfxWorld, Handle, Vec3 } from './vfx-world';
 import type { VfxTextures } from './textures';

@@ -1,3 +1,5 @@
+// Copyright (c) 2026 lenhonbp <lenhonbp@gmail.com> — https://github.com/lenhonbp/pixijs-skill-vfx
+// SPDX-License-Identifier: MIT
 // Small shims so the kit runs unchanged on PixiJS v7 and v8.
 import { Application, Texture } from 'pixi.js';
 
