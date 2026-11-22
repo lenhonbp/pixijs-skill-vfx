@@ -97,8 +97,10 @@ floor pieces remain at z=0. `skillEvolution` adds `fromTier`/`toTier` and ends i
 helix/crest/stamp sequence with the destination motif.
 
 Pass `empoweredWorld(w, { tier, palette, textures: tex })` to native skill code:
-only recognized additive energy grows/brightens (1.2x/1.45x). Density, tint, authored
-materials, trail proportions and endpoint anchors remain unchanged. Always retain
+only recognized additive energy grows/brightens (1.2x/1.45x), including private fire
+flames, water foam and wood light shafts/halos. Additive ribbons widen without
+moving their centerline/endpoints. Density, tint, authored materials and particle
+trail proportions remain unchanged. Always retain
 native hit feedback at every tier; layer `empoweredHit(w, tex, { at, palette, tier,
 element, tick? })` behind the target for capped, throttled elemental accents, not
 generic ground ellipses. Tier 1 is unchanged. See [recipes](references/recipes.md).

@@ -196,6 +196,7 @@ try {
   })));
   await page.close();
   const rows = [];
+  const nativeFeedback = new Map();
   for (const skill of skills) {
     console.log(`Checking ${skill.id}`);
     await browser.close();
@@ -236,7 +237,8 @@ try {
     const issues = [];
     if (skill.label && ['hoa-fireball', 'tho-fissure', 'thuy-frost-nova', 'moc-toxic-spores'].includes(skill.id) && !result.hits) issues.push('no damaging hits exercised');
     if (skill.label && skill.id === 'moc-toxic-spores' && !result.tickSparks) issues.push('no empowered DoT ticks exercised');
-    if (skill.label && ['hoa-dragon-breath', 'phong-whirlwind', 'tho-fissure'].includes(skill.id) && !result.nativeSparks) issues.push('missing native hitSpark');
+    if (!skill.label) nativeFeedback.set(skill.id, result.nativeSparks);
+    if (skill.label && nativeFeedback.get(skill.id) > 0 && !result.nativeSparks) issues.push('missing native hitSpark');
     const budgetStatus = budgetResult(result.peak, budget,
       Object.hasOwn(baseline, skill.id) ? baseline[skill.id] : undefined);
     if (budgetStatus.failure) issues.push(budgetStatus.failure);

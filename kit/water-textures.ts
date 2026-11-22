@@ -104,6 +104,7 @@ function foam(crown = false): Texture {
 }
 
 let cache: { crystals: Texture[]; frost: Texture; water: Texture; foam: Texture; crown: Texture } | undefined;
+export const isWaterEnergyTexture = (texture: Texture) => texture === cache?.foam || texture === cache?.crown;
 export function waterTextures() {
   return cache ??= { crystals: [crystal(5),crystal(19),crystal(31)], frost: frost(), water: water(), foam: foam(), crown: foam(true) };
 }

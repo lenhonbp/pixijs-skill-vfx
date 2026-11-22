@@ -90,7 +90,9 @@ which stamps the destination tier's element motif at 950 ms. Stacked ascending r
 For gameplay after release, run `empoweredAura` for the skill's length and call
 `empoweredHit` at each positive-damage target's chest. Both are no-ops at tier 1.
 Pass an `empoweredWorld(world, { tier, palette, textures })` facade to the skill itself:
-recognized additive energy textures grow 1.2x/1.45x and brighten without retinting.
+recognized additive energy textures grow 1.2x/1.45x and brighten without retinting,
+including private fire flames, water foam and wood halos/light shafts. Additive
+rope ribbons widen around their unchanged centerline; their endpoints never move.
 Normal-blended art, smoke, rocks, icons and other authored materials stay unchanged;
 omitting `textures` conservatively disables visual transforms. Density and trail
 proportions are preserved, as are endpoint-anchored graphics and sprite anchors.
@@ -98,12 +100,12 @@ Checks enforce the total skill+overlay budget.
 Each facade retains its own tier across delayed callbacks and overlapping casts;
 the shared world and tier 1 remain unchanged. Damage in the demo scales 1.3x/1.7x,
 with tier-3 crit numbers. `empoweredAura` returns a stoppable handle and accepts
-`duration: Infinity, idle: true` for a persistent motif (one to five sprites, or two/three short lightning ribbons).
+`duration: Infinity, idle: true` for a persistent motif (one to seven sprites, or two/three short lightning ribbons).
 Pass `element` to activation, evolution, aura and hit helpers: `kim` orbiting blades
-and a thin ring; `moc` climbing vine/leaves; `thuy` ripples and frost shards;
+and a thin ring; `moc` leaf spiral and ground vines/ring; `thuy` ripples and frost shards;
 `hoa` flame tongues/embers; `tho` low rocks (cracks only during activation);
 `phong` wind spirals; `loi` flickering arcs. Tier 2 is a lighter version of tier 3.
-Unknown/neutral elements use a restrained halo in the supplied skill palette.
+Unknown/neutral elements use a faint ground halo in the supplied skill palette.
 No evolved caster motif uses the shared rune or a bright body glow; all render
 behind the caster, and floor rings follow x/y with z=0, even during jumps.
 Always keep native `hitSpark`/authored hit feedback at every tier: `empoweredHit`

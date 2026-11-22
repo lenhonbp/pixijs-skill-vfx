@@ -1,11 +1,14 @@
-import { Container, Sprite } from 'pixi.js';
+import { Container, Sprite, Texture } from 'pixi.js';
 import { VfxWorld, Vec3, Curve, SpawnOptions, Handle } from './vfx-world';
 import { VfxTextures } from './textures';
 import { Palette } from './recipes';
 import { envelope, outCubic, rand } from './ease';
 import { group } from './group';
-import { blend } from './pixi-compat';
+import { blend, isPixiV8 } from './pixi-compat';
 import { lightningBolt } from './lightning-bolt';
+import { isFireEnergyTexture } from './fire-textures';
+import { isWaterEnergyTexture } from './water-textures';
+import { isWoodEnergyTexture } from './wood-textures';
 
 export type ActivationTier = 1 | 2 | 3;
 type Caster = { at: () => Vec3; height: number; palette: Palette; element?: string };
@@ -26,9 +29,29 @@ export function empoweredWorld(w: VfxWorld, o: { tier: ActivationTier; palette: 
   if (o.tier === 1) return w;
   const factor = o.tier === 3 ? 1.45 : 1.2, heat = o.tier === 3 ? 0.22 : 0.1;
   const energyTextures = new Set(o.textures ? [o.textures.glow, o.textures.dot, o.textures.ring,
-    o.textures.streak, o.textures.beam, o.textures.star, o.textures.crescent] : []);
+    o.textures.streak, o.textures.beam, o.textures.star, o.textures.crescent,
+    o.textures.shard, o.textures.drop] : []);
+  const energyTexture = (texture: Texture) => !!o.textures && (energyTextures.has(texture) ||
+    isFireEnergyTexture(texture) || isWaterEnergyTexture(texture) || isWoodEnergyTexture(texture));
   const energySprite = (root: Container): root is Sprite => root instanceof Sprite &&
-    root.blendMode === blend('add') && energyTextures.has(root.texture);
+    root.blendMode === blend('add') && energyTexture(root.texture);
+  const ropes = new WeakSet<Container>();
+  const styleRope = (root: Container) => {
+    const mesh = root as Container & { texture?: Texture; geometry?: { points?: unknown[] } };
+    if (!o.textures || !Array.isArray(mesh.geometry?.points) || !mesh.texture || mesh.blendMode !== blend('add')) return false;
+    if (!ropes.has(root)) {
+      const source = mesh.texture, orig = source.orig.clone();
+      orig.height *= factor;
+      const texture: Texture = isPixiV8() ? new Texture({ source: source.source, frame: source.frame,
+        orig, trim: source.trim, rotate: source.rotate }) :
+        new (Texture as any)((source as any).baseTexture, source.frame, orig, source.trim, source.rotate);
+      mesh.texture = texture;
+      const unown = w.own(() => { if (!texture.destroyed) texture.destroy(false); });
+      root.once('destroyed', () => { if (!texture.destroyed) texture.destroy(false); unown(); });
+      ropes.add(root);
+    }
+    return true;
+  };
   const roots = new Map<Container, { sx: number; sy: number; alpha: number }>();
   const restore = () => {
     for (const [root, base] of roots) {
@@ -44,7 +67,7 @@ export function empoweredWorld(w: VfxWorld, o: { tier: ActivationTier; palette: 
       if (energySprite(root)) {
         root.scale.set(base.sx * factor, base.sy * factor);
         root.alpha = Math.min(1, base.alpha * (1 + heat));
-      }
+      } else if (styleRope(root)) root.alpha = Math.min(1, base.alpha * (1 + heat));
     }
   };
   let depth = 0;
@@ -69,7 +92,7 @@ export function empoweredWorld(w: VfxWorld, o: { tier: ActivationTier; palette: 
     get(target, key) {
       if (key === 'layers') return layers;
       if (key === 'spawn') return (p: SpawnOptions) => {
-        const energy = (p.blend ?? 'add') === 'add' && energyTextures.has(p.texture);
+        const energy = (p.blend ?? 'add') === 'add' && energyTexture(p.texture);
         const particle = target.spawn({ ...p,
           alpha: energy ? t => Math.min(1, curveAt(p.alpha, t) * (1 + heat)) : p.alpha,
           onUpdate: (q, t, dt) => {
@@ -274,34 +297,35 @@ export function empoweredAura(w: VfxWorld, tex: VfxTextures, o: Caster & { tier:
   if (element === 'kim' || element === 'hoa') floor(big ? 0.62 : 0.48, 0.2);
   if (element === 'thuy') { floor(big ? 0.7 : 0.55); floor(big ? 0.46 : 0.33, -0.3); }
   if (!['kim', 'moc', 'thuy', 'hoa', 'tho', 'phong', 'loi'].includes(element ?? '')) {
-    g.add(w.spawn({ ...base, z: o.height * 0.48, scaleX: big ? 0.55 : 0.45,
-      scaleY: big ? 0.7 : 0.58, spin: 0.15 }));
+    g.add(w.spawn({ ...base, groundAligned: true, follow: groundAt(o.at), scale: big ? 0.55 : 0.45,
+      alpha: life === Infinity ? (big ? 0.18 : 0.12) : envelope(0.15, 0.3, big ? 0.18 : 0.12), spin: 0.15 }));
     return g;
   }
   if (element === 'loi') {
-    let arcs: Handle[] = [], left = 140;
+    const interval = big ? 85 : 115;
+    let arcs: Handle[] = [], left = interval;
     const flash = () => {
       for (const arc of arcs) arc.stop();
       arcs = [];
       const at = o.at(), phase = rand(0, TAU), n = big ? 3 : 2;
       for (let i = 0; i < n; i++) {
         const a = phase + i / n * TAU;
-        const from = { x: at.x + Math.cos(a) * 38, y: at.y + Math.sin(a) * 16,
+        const from = { x: at.x + Math.cos(a) * 56, y: at.y + Math.sin(a) * 22,
           z: (at.z ?? 0) + o.height * 0.55 + Math.sin(a * 2) * 20 };
         const to = { x: from.x + Math.cos(a + 1) * 20, y: from.y, z: from.z + 22 };
         arcs.push(lightningBolt(w, tex, from, to, { ...o.palette, core: o.palette.main }, {
-          layer: 'ground', width: big ? 0.8 : 0.6, life: 155, depth: 2, branches: 0,
-          leader: false, restrikes: 1, halo: 0, alpha: big ? 0.55 : 0.3, coreAlpha: 0.25 }));
+          layer: 'ground', width: big ? 1.6 : 1, life: interval + 30, depth: 2, branches: 0,
+          leader: false, restrikes: 1, halo: 0, alpha: big ? 0.85 : 0.5, coreAlpha: 0.55 }));
       }
     };
-    const loop = w.addUpdater(dt => { left -= dt; if (left <= 0) { left = 140; flash(); } });
+    const loop = w.addUpdater(dt => { left -= dt; if (left <= 0) { left = interval; flash(); } });
     const stop = () => { loop.stop(); for (const arc of arcs) arc.stop(); arcs = []; };
     const unown = w.own(stop);
     g.addHandle({ stop: () => { stop(); unown(); }, get alive() { return loop.alive; } });
     flash();
     return g;
   }
-  const n = element === 'kim' ? (big ? 4 : 3) : element === 'thuy' || element === 'tho' ? 2 : big ? 3 : 2;
+  const n = element === 'kim' || element === 'moc' ? (big ? 4 : 3) : element === 'thuy' || element === 'tho' ? 2 : big ? 3 : 2;
   const texture = element === 'kim' ? tex.blade : element === 'moc' ? tex.leaf :
     element === 'thuy' ? tex.shard : element === 'hoa' ? tex.puff :
     element === 'tho' ? tex.rock : tex.crescent;
@@ -309,23 +333,29 @@ export function empoweredAura(w: VfxWorld, tex: VfxTextures, o: Caster & { tier:
   for (let i = 0; i < n; i++) g.add(w.spawn({ ...base, texture,
     blend: element === 'tho' || element === 'moc' || element === 'kim' ? 'normal' : 'add',
     tint: element === 'kim' ? 0xffffff : element === 'moc' && i === n - 1 ? o.palette.core : o.palette.main,
-    alpha: element === 'kim' || element === 'moc' ? (big ? 0.75 : 0.5) : alpha,
-    scaleX: element === 'phong' ? 0.55 : element === 'hoa' ? 0.38 : element === 'moc' ? 0.5 : 0.26,
-    scaleY: element === 'phong' ? 0.2 : element === 'hoa' ? 1.2 : element === 'moc' ? 0.6 : 0.35,
+    alpha: element === 'kim' || element === 'moc' ? (big ? 0.85 : 0.6) : alpha,
+    scaleX: element === 'phong' ? 0.55 : element === 'hoa' ? 0.38 : element === 'moc' ? 0.7 : 0.26,
+    scaleY: element === 'phong' ? 0.2 : element === 'hoa' ? 1.2 : element === 'moc' ? 0.85 : 0.35,
     onUpdate: q => {
       const a = phase + i / n * TAU + q.age / 900;
       const rise = (q.age / 1050 + i / n) % 1;
-      const r = element === 'kim' ? 42 : element === 'tho' || element === 'moc' ? 40 : element === 'phong' ? 36 : 32;
-      q.px = Math.cos(a) * r; q.py = Math.sin(a) * r * w.groundSquash;
-      q.pz = element === 'tho' ? 8 + Math.sin(a * 2) * 5 :
+      const r = element === 'kim' ? 42 : element === 'tho' ? 64 : element === 'moc' ? 46 : element === 'phong' ? 36 : 32;
+      q.px = Math.cos(a) * r; q.py = Math.sin(a) * r * (element === 'tho' ? 0.18 : w.groundSquash);
+      q.pz = element === 'tho' ? 5 + Math.sin(a * 2) * 3 :
         element === 'moc' || element === 'hoa' ? 8 + rise * o.height :
         o.height * 0.55 + Math.sin(a * 2) * 18;
       q.rotation = element === 'kim' ? a + Math.PI / 2 : element === 'hoa' ? -0.15 * Math.sin(a) : a;
-      q.alphaMul = element === 'hoa' || element === 'moc' ? Math.sin(rise * Math.PI) : 0.65 + Math.sin(a) * 0.35;
+      q.alphaMul = element === 'hoa' ? Math.sin(rise * Math.PI) : element === 'moc' ? 0.35 + 0.65 * Math.sin(rise * Math.PI) : 0.65 + Math.sin(a) * 0.35;
     } }));
-  if (element === 'moc') g.add(w.spawn({ ...base, texture: tex.vineSegment, scaleX: 0.8, scaleY: 0.35,
-    blend: 'normal', alpha: big ? 0.7 : 0.45, z: o.height * 0.45,
-    onUpdate: q => { q.px = Math.sin(q.age / 850) * 30; q.rotation = -1.2 + Math.cos(q.age / 850) * 0.35; } }));
+  if (element === 'moc') {
+    floor(big ? 0.48 : 0.4);
+    for (let i = 0; i < 2; i++) g.add(w.spawn({ ...base, texture: tex.vineSegment,
+      groundAligned: true, follow: groundAt(o.at), scaleX: big ? 1.05 : 0.85, scaleY: 0.45,
+      blend: 'normal', alpha: big ? 0.8 : 0.55,
+      onUpdate: q => { const a = phase + i * Math.PI + q.age / 1600;
+        q.px = Math.cos(a) * 44; q.py = Math.sin(a) * 44 * w.groundSquash;
+        q.rotation = a + Math.PI / 2; } }));
+  }
   if (element === 'hoa') g.add(w.spawn({ ...base, texture: tex.dot, scale: 0.1,
     onUpdate: q => { const t = q.age / 900 % 1; q.px = Math.sin(q.age / 400) * 28;
       q.pz = t * o.height * 1.2; q.alphaMul = Math.sin(t * Math.PI); } }));

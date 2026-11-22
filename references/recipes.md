@@ -191,12 +191,13 @@ for a sustained remnant rather than stacking extra activation floor overlays.
 seal, lifts its shards into a helix and overhead crown, then stamps the destination
 element motif at 950 ms; ascending rune stacks and double shockwaves fade by 1600 ms.
 `empoweredAura(w, tex, { at, height, palette, element?, tier, duration, idle? })`
-sustains the same motif during gameplay or idle (one to five sprites, or two/three
-short unblurred lightning ribbons, replaced every 140 ms and disposed on stop/clear): metal
-blades/ring, wood vine/leaves, water ripples/shards, fire tongues/embers, earth
-rocks, wind spirals or lightning arcs. Earth cracks appear only during activation.
+sustains the same motif during gameplay or idle (one to seven sprites, or two/three
+short unblurred lightning ribbons, replaced every 115/85 ms and disposed on stop/clear): metal
+blades/ring, wood leaf spiral with two ground vines/ring, water ripples/shards,
+fire tongues/embers, wide shin-height earth rocks, wind spirals or lightning arcs.
+Earth cracks appear only during activation.
 All motifs render behind the caster; floor rings follow x/y with z=0. Unknown
-elements use only a restrained halo in the supplied skill palette.
+elements use only a faint ground halo (alpha <=0.18) in the supplied skill palette.
 `empoweredHit(w, tex, { at: chestPosition, palette, tier, element, tick? })` adds
 behind-target accents: `kim` crossed glints, `moc` leaves, `hoa` embers, `phong`
 crescents, `tho` rocks, `thuy` shards, `loi` streaks. Utility/unknown elements get
@@ -212,7 +213,10 @@ the texture is disposed on completion/clear. The evolved demo uses both
 options to retain full skill density within the total budget.
 Both helpers skip tier 1; no full-screen white flashes are used.
 Use `empoweredWorld(w, { tier, palette, textures: tex })` as the skill context's world
-for cast-local 1.2x/1.45x additive energy and stronger impact feedback. Authored
+for cast-local 1.2x/1.45x additive energy and stronger impact feedback. Private flame,
+water foam and wood halo/shaft textures are recognized without eagerly creating
+their caches. Additive rope ribbons widen without moving any centerline point;
+their temporary texture views are cast-local and disposed on stop/clear. Authored
 materials, tint, density and trail proportions are unchanged; without `textures`,
 visual transforms are disabled. The total cast must satisfy its ordinary budget.
 The facade retains delayed callbacks without changing other casts. For idle power,

@@ -99,6 +99,8 @@ interface FireTextures {
 
 let textures: FireTextures | undefined;
 
+export const isFireEnergyTexture = (texture: Texture) => textures?.flames.includes(texture) ?? false;
+
 export function fireTextures(): FireTextures {
   return textures ??= {
     flames: Array.from({ length: 5 }, (_, i) => flame(i * 7 + 1)),

@@ -3,7 +3,7 @@ import { chromium } from 'playwright';
 import { fileURLToPath } from 'node:url';
 
 const bundle = await build({
-  stdin: { contents: "export * from './kit'; export { lightningBolt } from './kit/lightning-bolt'; export { Container, Sprite } from 'pixi.js';", resolveDir: fileURLToPath(new URL('../', import.meta.url)) },
+  stdin: { contents: "export * from './kit'; export { lightningBolt } from './kit/lightning-bolt'; export { fireTextures } from './kit/fire-textures'; export { waterTextures } from './kit/water-textures'; export { Container, Sprite } from 'pixi.js';", resolveDir: fileURLToPath(new URL('../', import.meta.url)) },
   bundle: true, write: false, format: 'iife', globalName: 'kit', platform: 'browser',
 });
 const browser = await chromium.launch({ headless: true });
@@ -31,6 +31,21 @@ try {
         check(q.sprite.scale.x === 0.5 && q.sprite.alpha === 0.5 && q.sprite.tint === options.tint, 'authored non-energy art unchanged');
       }
     }
+    const fire = kit.fireTextures(), water = kit.waterTextures(), wood = kit.woodTextures();
+    for (const texture of [...fire.flames, water.foam, water.crown, wood.halo, wood.shaft, tex.shard, tex.drop]) {
+      const plain = one.spawn({ ...options, texture });
+      const warm = two.spawn({ ...options, texture });
+      const hot = three.spawn({ ...options, texture });
+      const material = three.spawn({ ...options, texture, blend: 'normal' });
+      check(Math.abs(hot.sprite.scale.x / plain.sprite.scale.x - 1.45) < 1e-6 &&
+        Math.abs(warm.sprite.scale.x / plain.sprite.scale.x - 1.2) < 1e-6 &&
+        hot.sprite.alpha > warm.sprite.alpha && warm.sprite.alpha > plain.sprite.alpha, 'private elemental energy grows and brightens at both tiers');
+      check(material.sprite.scale.x === 0.5 && material.sprite.alpha === 0.5, 'normal-blended private textures remain authored');
+    }
+    for (const texture of [...fire.smoke, fire.meteor, fire.scorch, ...water.crystals, wood.seed, ...wood.clouds]) {
+      const q = three.spawn({ ...options, texture });
+      check(q.sprite.scale.x === 0.5 && q.sprite.alpha === 0.5, 'private materials never misclassified as energy');
+    }
     const normal = three.spawn({ ...options, blend: 'normal', stretch: 0.002 });
     check(normal.sprite.scale.x === 0.5 && normal.o.stretch === 0.002, 'normal energy texture and trail proportions unchanged');
     const unclassified = empoweredWorld(w, { tier: 3, palette }).spawn(options);
@@ -48,6 +63,15 @@ try {
     const unown = three.own(() => root.destroy());
     three.addUpdater(() => { root.scale.set(1); root.position.set(350, 200); return true; });
     step(64); check(Math.abs(root.scale.x - 1.45) < 1e-6 && root.x === 350 && root.y === 200 && root.anchor.x === 0.2, 'raw sprite scales about its own anchor without moving');
+    const ribbonOptions = { life: 1000, width: 20, tint: 0x80ccff, alpha: () => 0.5,
+      point: (u, age, out) => { out.x = 100 + u * 200; out.y = 300; out.z = 40 + u * 20; } };
+    const baselineRibbon = kit.flowRibbon(one, ribbonOptions), baselineRope = w.layers.body.children.at(-1);
+    const ribbon = kit.flowRibbon(three, ribbonOptions), rope = w.layers.body.children.at(-1), ribbonTexture = rope.texture;
+    step(16); rope.onRender.call(rope);
+    check(Math.abs(rope.geometry.width / baselineRope.texture.height - 1.45) < 1e-6 && rope.alpha > baselineRope.alpha, 'additive ribbons widen and brighten, without stretching the path');
+    check(rope.scale.x === 1 && rope.scale.y === 1 && rope.x === 0 && rope.y === 0 &&
+      JSON.stringify(rope.geometry.points) === JSON.stringify(baselineRope.geometry.points), 'ribbon endpoints and centerline stay exact');
+    ribbon.stop(); check(ribbonTexture.destroyed && !baselineRope.texture.destroyed, 'cast-local ribbon texture cleans up without touching the baseline'); baselineRibbon.stop();
     const start = { x: 450, y: 400, z: 270 }, end = { x: 700, y: 420, z: 45 };
     kit.lightningBolt(three, tex, start, end, palette, { life: 220 });
     const bolt = w.layers.body.children.at(-1);
@@ -135,12 +159,27 @@ try {
       const at = { x: 100, y: 200, z: 50 };
       const caster = { at: () => at, height: 96, palette, tier, element };
       const aura = empoweredAura(w, tex, { ...caster, duration: Infinity, idle: true });
-      step(2000); check(aura.alive && w.count <= 6, 'cheap persistent idle aura');
+      step(2000); check(aura.alive && w.count <= 7, 'cheap persistent idle aura');
       const hasMotif = () => element === 'loi' ? w.layers.ground.children.some(child => child instanceof Container && !(child instanceof Sprite)) : w.particles.some(p => p.o.texture === texture);
       check(hasMotif(), 'each element has its own motif');
       check(element !== 'loi' || w.layers.ground.children.length === tier, 'lightning has only two/three short ribbons, not wind crescents');
       check(w.particles.every(p => p.o.texture !== tex.rune && p.o.texture !== tex.glow && p.o.layer === 'ground'), 'no shared rune or bright body overlay');
       check(element !== 'tho' || w.particles.every(p => p.o.texture !== tex.fissure), 'no sustained earth cracks');
+      if (element === 'tho') for (const p of w.particles) {
+        check(p.pz >= 2 && p.pz <= 8 && Math.abs(p.py) <= 12 &&
+          Math.abs(Math.hypot(p.px, p.py / 0.18) - 64) < 1e-6, 'earth rocks orbit wide at shin height, not across torso');
+      }
+      if (element === 'moc') {
+        check(w.particles.filter(p => p.o.texture === tex.leaf).length === (tier === 3 ? 4 : 3) &&
+          w.particles.filter(p => p.o.texture === tex.vineSegment && p.o.groundAligned).length === 2 &&
+          w.particles.some(p => p.o.texture === tex.ring && p.o.groundAligned), 'wood has a leaf spiral and two vines framing its ground ring');
+      }
+      if (element === 'neutral') check(w.particles.every(p => p.o.groundAligned && p.sprite.alpha <= 0.18), 'utility halo is faint and grounded');
+      if (element === 'loi') {
+        const arcs = [...w.layers.ground.children];
+        step(128);
+        check(arcs.every(arc => arc.destroyed) && w.layers.ground.children.length === tier, 'lightning flashes more frequently without accumulating ribbons');
+      }
       check(w.particles.filter(p => p.o.groundAligned).every(p => p.z === 0), 'idle aura floor stays grounded');
       aura.stop(); step(200); check(!w.count && !w.stats.updaters && !w.layers.ground.children.length, 'idle aura stops cleanly');
       empoweredAura(w, tex, { ...caster, duration: 400 });
@@ -156,6 +195,6 @@ try {
       w.clear();
       check(!w.layers.ground.children.length, 'clear disposes motif graphics');
     }
-    return 'Empowerment: tier-1 identity, full density, energy-only styling, anchored endpoints, elemental hits/throttle, eight activation/cast/idle/evolution motifs, no shared rune/body glow, grounded floor and cleanup PASS';
+    return 'Empowerment: tier-1 identity, full density, private elemental energy scale/heat, ribbon widths and anchored endpoints, authored materials, elemental hits/throttle, readable eight activation/cast/idle/evolution motifs, grounded utility/earth/wood and cleanup PASS';
   }));
 } finally { await browser.close(); }
