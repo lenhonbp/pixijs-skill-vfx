@@ -9,6 +9,7 @@ import { group, ms } from './group';
 import { WUXING, LOI } from './elements';
 import { lightningBolt } from './lightning-bolt';
 import { vineBind, type VineBindHandle } from './vine-bind';
+import { burnFlames } from './fire';
 import { clamp01, envelope, inQuad, outBack, outCubic, outQuad, rand, lerpColor } from './ease';
 
 const TAU = Math.PI * 2;
@@ -264,14 +265,7 @@ export function damageOverTime(
       },
     }));
   } else if (o.kind === 'burn') {
-    g.addHandle(w.stream({
-      rate: 40, duration: dur,
-      make: () => ({
-        texture: tex.puff, x: rand(-14, 14) * s, y: rand(-3, 3), z: rand(0.05, 0.75) * h, follow: T, life: rand(320, 520), zBias: 4,
-        vz: rand(90, 160), rotation: rand(0, TAU), spin: rand(-3, 3), scale: [rand(0.3, 0.45) * s, 0.05, inQuad], alpha: envelope(0.15, 0.6, 0.7),
-        tint: (t) => (t < 0.35 ? lerpColor(p.core, p.main, t / 0.35) : lerpColor(p.main, p.dark, (t - 0.35) / 0.65)),
-      }),
-    }));
+    g.addHandle(burnFlames(w, T, h, dur, p));
     g.addHandle(w.stream({
       rate: 10, duration: dur,
       make: () => ({ texture: tex.dot, x: rand(-12, 12) * s, y: 0, z: rand(0.3, 0.9) * h, follow: T, life: rand(500, 900), vx: rand(-30, 30), vz: rand(80, 150), drag: 1, zBias: 5, scale: [0.18, 0], tint: [p.core, p.main] }),
