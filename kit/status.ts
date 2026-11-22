@@ -10,6 +10,8 @@ import { WUXING, LOI } from './elements';
 import { lightningBolt } from './lightning-bolt';
 import { vineBind, type VineBindHandle } from './vine-bind';
 import { burnFlames } from './fire';
+import { clingingSpores } from './wood';
+import { floorRing, type FloorRingOptions } from './floor-ring';
 import { clamp01, envelope, inQuad, outBack, outCubic, outQuad, rand, lerpColor } from './ease';
 
 const TAU = Math.PI * 2;
@@ -30,7 +32,13 @@ function sustained(w: VfxWorld, o: SustainedStatusOptions, duration: number) {
     g.add(w.spawn({ ...spawn, x: spawn.x ?? 0, y: spawn.y ?? 0, follow: o.target, life: Infinity,
       onUpdate: (q, t, dt) => { spawn.onUpdate?.(q, t, dt); q.sprite.alpha *= clamp01(q.age / 140); },
     }));
-  return { g, h, s, dur, attach };
+  const floor = (tex: VfxTextures, spawn: FloorRingOptions) => {
+    const ring = floorRing(w, tex, { ...spawn, around: o.target, duration: Infinity,
+      onUpdate: (q, t, dt) => { spawn.onUpdate?.(q, t, dt); q.sprite.alpha *= clamp01(q.age / 140); } });
+    g.add(ring.far); g.add(ring.near);
+    return ring;
+  };
+  return { g, h, s, dur, attach, floor };
 }
 
 /** Crossed sealing rune above the head, enclosed by an orbiting chain of links. */
@@ -109,11 +117,11 @@ export function fear(w: VfxWorld, tex: VfxTextures, o: SustainedStatusOptions): 
 /** A palette-driven base for custom buffs, with optional translucent column. */
 export function aura(w: VfxWorld, tex: VfxTextures,
   o: SustainedStatusOptions & { radius?: number; intensity?: number; column?: boolean }): Handle {
-  const { g, h, s, dur, attach } = sustained(w, o, 3000);
+  const { g, h, s, dur, attach, floor } = sustained(w, o, 3000);
   const p = o.palette ?? { core: 0xe6f4ff, main: 0x88bded, dark: 0x294d75 };
   const r = o.radius ?? 34 * s, intensity = clamp01(o.intensity ?? 1);
-  attach({ texture: tex.rune, layer: 'ground', groundAligned: true, scale: r / M.runeRadius,
-    alpha: 0.3 * intensity, tint: p.main, spin: 0.7,
+  floor(tex, { texture: tex.rune, textureRadius: M.runeRadius, radius: r, palette: p,
+    alpha: 0.3 * intensity, spin: 0.7,
     onUpdate: (q) => { q.sprite.alpha *= 0.8 + Math.sin(q.age * 0.005) * 0.2; } });
   if (o.column) attach({ texture: tex.glow, z: h * 0.5, scaleX: r / 60, scaleY: h / 50,
     alpha: 0.12 * intensity, tint: p.main });
@@ -131,8 +139,8 @@ export function regen(w: VfxWorld, tex: VfxTextures,
   o: SustainedStatusOptions & { tickMs?: number; heal?: number | (() => number); numbers?: boolean; onTick?: (amount: number) => void }): Handle {
   const duration = o.duration ?? 3000, p = o.palette ?? WUXING.moc.palette;
   const tickMs = Math.max(16, o.tickMs ?? 700);
-  const { g, h, s, attach } = sustained(w, { ...o, duration: duration > 0 ? duration + tickMs / 2 : 0 }, duration);
-  attach({ texture: tex.ring, layer: 'ground', groundAligned: true, scale: 0.23 * s, alpha: 0.22, tint: p.main });
+  const { g, h, s, attach, floor } = sustained(w, { ...o, duration: duration > 0 ? duration + tickMs / 2 : 0 }, duration);
+  floor(tex, { radius: M.ringRadius * 0.23 * s, palette: p, alpha: 0.22 });
   g.addHandle(w.stream({ rate: 7, duration, make: () => ({ texture: tex.plus,
     x: rand(-20, 20) * s, y: 0, z: rand(5, 25) * s, follow: o.target, life: 1100, vz: rand(30, 55) * s,
     scale: [0.2 * s, 0.08 * s], alpha: envelope(0.15, 0.5, 0.6), tint: p.main, zBias: 7,
@@ -155,9 +163,9 @@ export function regen(w: VfxWorld, tex: VfxTextures,
 
 /** Trailing speed streaks and wind-tinted dust follow the unit's direction of motion. */
 export function haste(w: VfxWorld, tex: VfxTextures, o: SustainedStatusOptions): Handle {
-  const { g, h, s, dur, attach } = sustained(w, o, 3000), p = o.palette ?? { core: 0xd7fff1, main: 0x8fddc8, dark: 0x345f59 };
-  for (let i = 0; i < 2; i++) attach({ texture: tex.crescent, layer: 'ground', groundAligned: true,
-    scale: 0.34 * s, alpha: 0.8, tint: p.main, rotation: i * Math.PI, spin: 2.8 });
+  const { g, h, s, dur, attach, floor } = sustained(w, o, 3000), p = o.palette ?? { core: 0xd7fff1, main: 0x8fddc8, dark: 0x345f59 };
+  for (let i = 0; i < 2; i++) floor(tex, { texture: tex.crescent, radius: M.ringRadius * 0.34 * s,
+    palette: p, alpha: 0.8, rotation: i * Math.PI, spin: 2.8 });
   let last = { ...o.target() }, direction = 1;
   g.addHandle(w.stream({ rate: 22, duration: dur, make: (i) => {
     const at = o.target();
@@ -176,12 +184,12 @@ export function haste(w: VfxWorld, tex: VfxTextures, o: SustainedStatusOptions):
 
 /** Flaring feet, warm embers and a low-alpha pulsing body glow. */
 export function empower(w: VfxWorld, tex: VfxTextures, o: SustainedStatusOptions): Handle {
-  const { g, h, s, dur, attach } = sustained(w, o, 3000);
+  const { g, h, s, dur, attach, floor } = sustained(w, o, 3000);
   const p = o.palette ?? { core: 0xffd58a, main: 0xf5783d, dark: 0x8a2424 };
   attach({ texture: tex.bubble, z: h * 0.45, scaleX: 0.24 * s, scaleY: h / 175,
     alpha: 0.22, tint: p.main, onUpdate: (q) => { q.sprite.alpha *= 0.75 + Math.sin(q.age * 0.009) * 0.25; } });
   attach({ texture: tex.glow, layer: 'ground', groundAligned: true, scale: 0.8 * s, alpha: 0.13, tint: p.main });
-  attach({ texture: tex.ring, layer: 'ground', groundAligned: true, scale: 0.27 * s, alpha: 0.65, tint: p.main,
+  floor(tex, { radius: M.ringRadius * 0.27 * s, palette: p, alpha: 0.65,
     onUpdate: (q) => { q.sprite.alpha *= 0.85 + Math.sin(q.age * 0.007) * 0.15; } });
   for (let i = 0; i < 5; i++) attach({ texture: tex.crescent, z: h * 0.4, scaleX: 0.17 * s, scaleY: 0.3 * s,
     rotation: i % 2 ? Math.PI : 0, alpha: 0.4, tint: p.main, zBias: 6,
@@ -238,7 +246,7 @@ export const DOT_STYLE: Record<DotKind, { palette: Palette; number: number }> = 
 export function damageOverTime(
   w: VfxWorld,
   tex: VfxTextures,
-  o: OnUnit & { kind: DotKind; duration?: number; tickMs?: number; damage?: number | (() => number); numbers?: boolean; onTick?: (dmg: number) => void },
+  o: OnUnit & { kind: DotKind; duration?: number; tickMs?: number; damage?: number | (() => number); numbers?: boolean; onTick?: (dmg: number) => void; poisonVisual?: 'spores' },
 ): Handle {
   const { palette: p, number: numColor } = DOT_STYLE[o.kind];
   const h = o.height ?? 70;
@@ -249,8 +257,11 @@ export function damageOverTime(
   const s = h / 70;
 
   // sickly / hot / wounded tint over the body
-  g.add(w.spawn({ texture: tex.glow, x: 0, y: 0, z: h * 0.5, follow: T, life: dur, zBias: 2, scaleX: 0.9 * s, scaleY: 1.3 * s, alpha: ms.env(dur, 200, 300, o.kind === 'bleed' ? 0.12 : 0.22), tint: p.main }));
-  if (o.kind === 'poison') {
+  const spores = o.kind === 'poison' && o.poisonVisual === 'spores';
+  g.add(w.spawn({ texture: tex.glow, x: 0, y: 0, z: h * 0.5, follow: T, life: dur, zBias: 2, scaleX: 0.9 * s, scaleY: 1.3 * s, alpha: ms.env(dur, 200, 300, spores ? 0.07 : o.kind === 'bleed' ? 0.12 : 0.22), tint: spores ? 0x8a8953 : p.main }));
+  if (spores) {
+    g.addHandle(clingingSpores(w, T, h, dur));
+  } else if (o.kind === 'poison') {
     g.add(w.spawn({ texture: tex.glow, layer: 'ground', groundAligned: true, x: 0, y: 0, follow: T, life: dur, scale: 1.1 * s, alpha: ms.env(dur, 250, 300, 0.4), tint: p.main }));
     g.addHandle(w.stream({
       rate: 14, duration: dur,
@@ -290,12 +301,12 @@ export function damageOverTime(
     const at = T();
     const dmg = typeof o.damage === 'function' ? o.damage() : o.damage ?? 12;
     o.onTick?.(dmg);
-    w.spawn({ texture: tex.glow, x: 0, y: 0, z: h * 0.55, follow: T, life: 220, zBias: 3, scaleX: [0.9 * s, 1.4 * s, outQuad], scaleY: [1.3 * s, 1.8 * s, outQuad], alpha: [0.55, 0, outQuad], tint: p.main });
-    if (o.kind === 'poison') {
+    w.spawn({ texture: tex.glow, x: 0, y: 0, z: h * 0.55, follow: T, life: 220, zBias: 3, scaleX: [0.9 * s, 1.4 * s, outQuad], scaleY: [1.3 * s, 1.8 * s, outQuad], alpha: [spores ? 0.06 : 0.55, 0, outQuad], tint: spores ? 0x8a8953 : p.main });
+    if (o.kind === 'poison' && !spores) {
       w.burst(6, () => ({ texture: tex.dot, x: at.x, y: at.y, z: h * rand(0.3, 0.7), life: rand(300, 500), vx: rand(-90, 90), vz: rand(40, 140), gravity: 300, zBias: 5, scale: [0.3, 0], tint: p.main }));
     } else if (o.kind === 'burn') {
       w.spawn({ texture: tex.glow, x: 0, y: 0, z: h * 0.4, follow: T, life: 180, zBias: 4, scale: [0.6 * s, 1.1 * s], alpha: [0.8, 0], tint: p.core });
-    } else {
+    } else if (o.kind === 'bleed') {
       const side = n % 2 ? 1 : -1;
       w.burst(5, () => drop(w, tex, at, h, p, s, side * rand(60, 140), rand(40, 120)));
       w.spawn({ texture: tex.streak, x: at.x, y: at.y, z: h * 0.55, life: 160, zBias: 6, rotation: side * 0.6, scaleX: [0.6 * s, 0.9 * s], scaleY: 0.45, alpha: [1, 0], tint: p.core });
@@ -374,7 +385,8 @@ export function freeze(w: VfxWorld, tex: VfxTextures, o: OnUnit & { duration?: n
       };
     });
     w.burst(10, () => ({ texture: tex.star, x: at.x + rand(-20, 20) * s, y: at.y, z: h * rand(0.1, 1), life: rand(250, 450), zBias: 9, scale: [0.35, 0], alpha: Math.sqrt(glow), rotation: rand(0, TAU), tint: glow < 1 ? p.main : p.core }));
-    w.spawn({ texture: tex.ring, layer: 'ground', groundAligned: true, x: at.x, y: at.y, life: 300, scale: [0.1 * s, 0.35 * s, outCubic], alpha: [0.8, 0], tint: p.main });
+    floorRing(w, tex, { x: at.x, y: at.y, radius: M.ringRadius * 0.35 * s, palette: p,
+      duration: 300, scale: [0.1 * s, 0.35 * s, outCubic], alpha: [0.8, 0] });
     w.hitStop(40);
     w.shake(3, 150);
     o.onShatter?.();
@@ -471,7 +483,8 @@ export function shield(w: VfxWorld, tex: VfxTextures, o: OnUnit & { duration?: n
     },
   }));
   g.add(w.spawn({ texture: tex.glow, x: 0, y: 0, z: cz, follow: T, life: Infinity, zBias: -30, scale: k * 2.6, alpha: 0.18, tint: p.main }));
-  g.add(w.spawn({ texture: tex.ring, layer: 'ground', groundAligned: true, x: 0, y: 0, follow: T, life: Infinity, scale: (R * 0.95) / M.ringRadius, alpha: 0.55, tint: p.main }));
+  const rim = floorRing(w, tex, { around: T, radius: R * 0.95, palette: p, duration: Infinity, alpha: 0.55 });
+  g.add(rim.far); g.add(rim.near);
   g.add(w.spawn({ texture: tex.glow, layer: 'ground', groundAligned: true, x: 0, y: 0, follow: T, life: Infinity, scale: R / 40, alpha: 0.22, tint: p.main }));
   // cast pop
   w.spawn({ texture: tex.ring, x: 0, y: 0, z: cz, follow: T, life: 280, zBias: 31, scale: [k * 0.4, k * 1.15, outCubic], alpha: [0.9, 0], tint: p.core });
@@ -512,7 +525,8 @@ export function shield(w: VfxWorld, tex: VfxTextures, o: OnUnit & { duration?: n
           scale: rand(0.25, 0.42), alpha: envelope(0, 0.6), tint: [p.core, p.main],
         };
       });
-      w.spawn({ texture: tex.ring, layer: 'ground', groundAligned: true, x: at.x, y: at.y, life: 380, scale: [R / M.ringRadius, (R * 2.2) / M.ringRadius, outCubic], alpha: [0.9, 0], tint: p.main });
+      floorRing(w, tex, { x: at.x, y: at.y, radius: R * 2.2, palette: p,
+        duration: 380, scale: [R / M.ringRadius, (R * 2.2) / M.ringRadius, outCubic], alpha: [0.9, 0] });
       w.shake(5, 200);
       w.hitStop(60);
       o.onBreak?.();
@@ -534,7 +548,9 @@ export function statChange(w: VfxWorld, tex: VfxTextures, o: OnUnit & { up: bool
   const dir = o.up ? 1 : -1;
   g.add(w.spawn({ texture: tex.glow, x: 0, y: 0, z: h * 0.55, follow: T, life: dur, zBias: -4, scaleX: 0.75 * s, scaleY: 2.2 * s, alpha: ms.env(dur, 150, 500, 0.35), tint: p.main }));
   if (!o.up) g.add(w.spawn({ texture: tex.glow, layer: 'ground', groundAligned: true, blend: 'normal', x: 0, y: 0, follow: T, life: dur, scale: 1.2 * s, alpha: ms.env(dur, 150, 400, 0.5), tint: p.dark }));
-  g.add(w.spawn({ texture: tex.ring, layer: 'ground', groundAligned: true, x: 0, y: 0, follow: T, life: 600, scale: o.up ? [0.05 * s, 0.32 * s, outCubic] : [0.32 * s, 0.08 * s, outCubic], alpha: [0.9, 0], tint: p.main }));
+  const rim = floorRing(w, tex, { around: T, radius: M.ringRadius * 0.32 * s, palette: p, duration: 600,
+    scale: o.up ? [0.05 * s, 0.32 * s, outCubic] : [0.32 * s, 0.08 * s, outCubic], alpha: [0.9, 0] });
+  g.add(rim.far); g.add(rim.near);
   for (let i = 0; i < 3; i++) {
     for (const side of [-1, 1]) {
       g.add(w.spawn({

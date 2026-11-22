@@ -107,17 +107,25 @@ try {
   await page.close();
   const rows = [];
   for (const skill of skills) {
+    console.log(`Checking ${skill.id}`);
+    await browser.close();
+    browser = await chromium.launch({ headless: true });
     page = await browser.newPage();
     page.on('pageerror', (error) => failures.push(error.message));
     await page.goto(url, { waitUntil: 'domcontentloaded' });
     await page.waitForFunction(() => !!window.__vfxDebug);
     const result = await page.evaluate(({ id, length, tier = 0 }) => {
       const d = window.__vfxDebug, w = window.demo.vfx;
-      let peak = 0, hits = 0;
+      let peak = 0, hits = 0, empoweredPeak = 0;
+      const empowered = new Map();
       const spawn = w.spawn.bind(w);
       w.spawn = (...args) => {
         if (args[0].layer === 'top' && args[0].blend === 'normal' && [850, 1100].includes(args[0].life)) hits++;
-        const p = spawn(...args); peak = Math.max(peak, w.count); return p;
+        const p = spawn(...args);
+        if (p && d.isEmpowering()) empowered.set(p, p.o);
+        for (const [q, o] of empowered) if (q.dead || q.o !== o) empowered.delete(q);
+        empoweredPeak = Math.max(empoweredPeak, empowered.size);
+        peak = Math.max(peak, w.count); return p;
       };
       const runs = [];
       for (let i = 0; i < 3; i++) {
@@ -127,19 +135,20 @@ try {
         for (let left = length + 1900; left > 0; left -= 16) d.advance(Math.min(left, 16));
         runs.push(d.stats());
       }
-      return { peak, runs, hits };
+      return { peak, runs, hits, empoweredPeak };
     }, skill);
     await page.close();
     // SkillDef has no ultimate flag: every sample uses the ordinary 150 cap.
     // Future skills explicitly named *-ultimate (or ultimate-*) get 600.
     const budget = /(^|-)ultimate(-|$)/.test(skill.id) ? 600 : 150;
     const issues = [];
-    if (skill.tier && !result.hits) issues.push('no damaging hits exercised');
-    const budgetStatus = budgetResult(result.peak, budget, Object.hasOwn(baseline, skill.id) ? baseline[skill.id] : undefined);
+    if (skill.label && !result.hits) issues.push('no damaging hits exercised');
+    const budgetStatus = budgetResult(skill.label ? result.empoweredPeak : result.peak, budget,
+      !skill.label && Object.hasOwn(baseline, skill.id) ? baseline[skill.id] : undefined);
     if (budgetStatus.failure) issues.push(budgetStatus.failure);
     if (result.runs.some((r) => r.particles || r.updaters)) issues.push('leftovers');
     if (result.runs.slice(1).some((r, i) => Object.keys(r).some((key) => r[key] > result.runs[i][key]))) issues.push('growth');
-    rows.push({ skill: skill.label ?? skill.id, peak: result.peak, budget,
+    rows.push({ skill: skill.label ?? skill.id, peak: result.peak, empowered: skill.label ? result.empoweredPeak : '-', budget,
       particles: result.runs.map((r) => r.particles).join('/'), updaters: result.runs.map((r) => r.updaters).join('/'),
       pool: result.runs.map((r) => `${r.sprites}:${r.records}`).join('/'), result: [...issues, budgetStatus.warning].filter(Boolean).join(', ') || 'PASS' });
     if (issues.length) failures.push(`${skill.id}: ${issues.join(', ')}`);

@@ -1,28 +1,92 @@
-import type { Vec3, VfxWorld } from './vfx-world';
-import { TEX_METRICS as M, type VfxTextures } from './textures';
+import { BlurFilter, Container, Graphics } from 'pixi.js';
+import type { Handle, Vec3, VfxWorld } from './vfx-world';
+import type { VfxTextures } from './textures';
 import type { Palette } from './recipes';
+import { blend, isPixiV8 } from './pixi-compat';
 import { rand } from './ease';
 
-function jagged(a: Vec3, b: Vec3, depth: number, disp: number, out: Vec3[]) {
-  if (depth === 0) { out.push(b); return; }
-  const dx = b.x - a.x, dy = b.y - a.y, len = Math.hypot(dx, dy) || 1;
-  const m = { x: (a.x + b.x) / 2 - dy / len * rand(-disp, disp), y: (a.y + b.y) / 2 + dx / len * rand(-disp, disp) };
-  jagged(a, m, depth - 1, disp / 2, out);
-  jagged(m, b, depth - 1, disp / 2, out);
+type Point = { x: number; y: number };
+
+function jagged(a: Point, b: Point, depth: number, displacement: number): Point[] {
+  if (depth <= 0) return [a, b];
+  const dx = b.x - a.x, dy = b.y - a.y, length = Math.hypot(dx, dy) || 1;
+  const offset = rand(-displacement, displacement);
+  const m = { x: (a.x + b.x) / 2 - dy / length * offset, y: (a.y + b.y) / 2 + dx / length * offset };
+  return [...jagged(a, m, depth - 1, displacement * 0.48).slice(0, -1), ...jagged(m, b, depth - 1, displacement * 0.48)];
 }
 
-/** One finite jagged bolt, projected from world endpoints. No endpoint flashes or timers. */
+function ribbon(g: Graphics, points: Point[], width: number, color: number, alpha: number) {
+  const left: number[] = [], right: number[] = [];
+  points.forEach((p, i) => {
+    const a = points[Math.max(0, i - 1)], b = points[Math.min(points.length - 1, i + 1)];
+    const dx = b.x - a.x, dy = b.y - a.y, length = Math.hypot(dx, dy) || 1;
+    const taper = 0.18 + 0.82 * Math.pow(Math.sin(Math.PI * i / (points.length - 1)), 0.35);
+    const nx = -dy / length * width * taper / 2, ny = dx / length * width * taper / 2;
+    left.push(p.x + nx, p.y + ny); right.unshift(p.x - nx, p.y - ny);
+  });
+  const polygon = [...left, ...right];
+  if (isPixiV8()) g.poly(polygon).fill({ color, alpha });
+  else (g as any).beginFill(color, alpha).drawPolygon(polygon).endFill();
+}
+
+/** A tapered channel with stable large kinks, finer restrike jitter and terminating forks. */
 export function lightningBolt(w: VfxWorld, tex: VfxTextures, a: Vec3, b: Vec3, p: Palette,
-  o: { width?: number; life?: number; alpha?: number; coreAlpha?: number; depth?: number; halo?: number } = {}) {
+  o: { width?: number; life?: number; alpha?: number; coreAlpha?: number; depth?: number; halo?: number;
+    branches?: number; layer?: 'ground' | 'body' | 'top'; leader?: boolean; restrikes?: number } = {}): Handle {
+  const life = o.life ?? 210, width = o.width ?? 1, restrikes = o.restrikes ?? 2;
+  if (![life, width, a.x, a.y, a.z ?? 40, b.x, b.y, b.z ?? 40, o.depth ?? 4].every(Number.isFinite) ||
+    (o.branches !== undefined && (!Number.isInteger(o.branches) || o.branches < 0 || o.branches > 8)) ||
+    !Number.isSafeInteger(restrikes) || restrikes < 0)
+    throw new RangeError('Lightning needs finite endpoints, life, width, depth and 0..8 branches');
+  if (life <= 0 || width <= 0) return { alive: false, stop() {} };
   const start = { x: a.x, y: a.y - (a.z ?? 40) }, end = { x: b.x, y: b.y - (b.z ?? 40) };
-  const pts: Vec3[] = [start];
-  jagged(start, end, o.depth ?? 5, Math.hypot(end.x - start.x, end.y - start.y) * 0.18, pts);
-  const gy = Math.max(a.y, b.y) + 5, width = o.width ?? 1;
-  for (let j = 0; j < pts.length - 1; j++) {
-    const s = pts[j], e = pts[j + 1], len = Math.hypot(e.x - s.x, e.y - s.y);
-    const seg = { texture: tex.beam, x: s.x, y: gy, z: gy - s.y, anchorX: 0, rotation: Math.atan2(e.y - s.y, e.x - s.x), scaleX: (len + 1) / M.beamLength, life: o.life ?? 90 } as const;
-    if (o.halo) w.spawn({ ...seg, scaleY: 4 * width, alpha: [o.halo, 0], tint: p.main });
-    w.spawn({ ...seg, scaleY: 1.6 * width, alpha: [o.alpha ?? 0.55, 0], tint: p.main });
-    w.spawn({ ...seg, scaleY: 0.4 * width, alpha: [o.coreAlpha ?? 1, o.coreAlpha === undefined ? 0.2 : 0], tint: p.core, zBias: 1 });
+  const length = Math.hypot(end.x - start.x, end.y - start.y);
+  if (length < 0.1) return { alive: false, stop() {} };
+  const coarse = jagged(start, end, Math.max(1, Math.min(4, o.depth ?? 4)), length * 0.18);
+  const paths = [coarse];
+  const forks = o.branches ?? (length > 70 ? 3 : 1);
+  for (let i = 0; i < forks; i++) {
+    const root = coarse[Math.min(coarse.length - 2, 1 + Math.floor((i + 1) / (forks + 1) * (coarse.length - 2)))];
+    const dx = end.x - start.x, dy = end.y - start.y, side = i % 2 ? -1 : 1;
+    const fork = { x: root.x + dx * 0.14 - dy * side * rand(0.08, 0.2), y: root.y + dy * 0.14 + dx * side * rand(0.08, 0.2) };
+    paths.push(jagged(root, fork, 2, length * 0.025));
   }
+  const root = new Container(), halo = new Graphics(), glow = new Graphics(), core = new Graphics();
+  halo.blendMode = glow.blendMode = blend('add');
+  const blur = width >= 1 ? (isPixiV8() ? new BlurFilter({ strength: 2.8, quality: 2 }) : new (BlurFilter as any)(2.8, 2)) : undefined;
+  if (blur) { blur.blendMode = blend('add'); halo.filters = [blur]; }
+  root.addChild(halo, glow, core); root.zIndex = Math.max(a.y, b.y) + 6;
+  w.layers[o.layer ?? 'body'].addChild(root);
+  let age = 0, phase = -1, alive = true, updater: Handle | undefined, unown: (() => void) | undefined;
+  const stop = () => {
+    if (!alive) return;
+    alive = false; updater?.stop(); unown?.(); root.destroy({ children: true }); blur?.destroy();
+  };
+  const draw = () => {
+    const t = age / life;
+    const spacing = 0.24 / Math.max(1, restrikes - 1), stroke = Math.floor((t - 0.32) / spacing);
+    const strokeWidth = Math.min(0.12, spacing / 2);
+    const next = t < 0.08 ? 0 : t < 0.32 || !restrikes ? 1 : Math.min(restrikes - 1, stroke) + 2;
+    if (next !== phase) {
+      phase = next; halo.clear(); glow.clear(); core.clear();
+      paths.forEach((path, i) => {
+        const fine: Point[] = [];
+        for (let j = 0; j < path.length - 1; j++) fine.push(...jagged(path[j], path[j + 1], 1, Math.min(2.4, length * 0.007)).slice(0, -1));
+        fine.push(path[path.length - 1]);
+        const branch = i === 0 ? 1 : 0.42, wd = width * branch;
+        ribbon(halo, fine, 17 * wd, p.main, (o.halo ?? 0.11) * branch);
+        ribbon(glow, fine, 6 * wd, p.main, (o.alpha ?? 0.38) * branch);
+        ribbon(core, fine, 1.9 * wd, p.core, (o.coreAlpha ?? 0.95) * branch);
+      });
+    }
+    const end = restrikes === 0 ? 0.23 : 0.32 + (restrikes - 1) * spacing + strokeWidth;
+    const pulse = t < 0.08 ? (o.leader === false ? 1 : 0.09) : t < 0.23 ? 1 :
+      stroke >= 0 && stroke < restrikes && t < 0.32 + stroke * spacing + strokeWidth ? Math.max(0.2, 0.8 - stroke * 0.25) :
+      t >= end ? 0.16 * Math.pow((1 - t) / (1 - end), 2) : t < 0.32 ? 0.05 : 0.04;
+    core.alpha = pulse; glow.alpha = pulse * 0.8 + (1 - t) * 0.12;
+    halo.alpha = pulse * 0.6 + (1 - t) * 0.2;
+  };
+  draw(); unown = w.own(stop);
+  updater = w.addUpdater((dt) => { age += dt; if (age >= life) { stop(); return false; } draw(); });
+  return { get alive() { return alive; }, stop };
 }
