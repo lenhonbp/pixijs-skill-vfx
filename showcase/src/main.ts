@@ -102,4 +102,7 @@ renderSelection();
 try { await vfx.load(`${base}packs/free/${selected.id}.vfxb`); el('status').textContent = 'Ready to cast'; }
 catch { el('status').textContent = 'Pack download failed. Tap Replay to retry.'; }
 (window as any).__showcase = { vfx, app, packs, from, to, world, cast, audioState: () => audio?.state, select(id: string) { selected = packs.find(p => p.id === id)!; renderSelection(); } };
-window.addEventListener('pagehide', () => { resize.disconnect(); vfx.destroy(); void audio?.close(); app.destroy(true, { children: true }); }, { once: true });
+window.addEventListener('pagehide', event => {
+  if (event.persisted) return;
+  resize.disconnect(); vfx.destroy(); void audio?.close(); app.destroy(true, { children: true });
+}, { once: true });

@@ -128,6 +128,9 @@ try {
   await page.locator('#loop').check(); await page.locator('#sound').check();
   await page.waitForFunction(() => window.__showcase.audioState() === 'running');
   console.log('Showcase sound toggle: PASS (AudioContext starts while an existing loop is active)');
+  await page.evaluate(() => { const event = new Event('pagehide'); Object.defineProperty(event, 'persisted', { value: true }); dispatchEvent(event); });
+  if (!(await page.evaluate(() => window.__showcase.vfx.stats().packs))) throw Error('Persisted pagehide destroyed showcase');
+  console.log('Showcase bfcache lifecycle: PASS (persisted pagehide keeps player alive)');
   await page.evaluate(async () => {
     const s = window.__showcase; s.select('hoa-fire-dragon-crossing');
     await s.vfx.load('./packs/free/hoa-fire-dragon-crossing.vfxb');
