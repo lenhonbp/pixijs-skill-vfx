@@ -12,6 +12,9 @@ import { vineBind, type VineBindHandle } from './vine-bind';
 import { burnFlames } from './fire';
 import { clingingSpores } from './wood';
 import { floorRing, type FloorRingOptions } from './floor-ring';
+import { curlDrift } from './noise';
+import { rockBack } from './hit-reaction';
+import type { Sprite } from 'pixi.js';
 import { clamp01, envelope, inQuad, outBack, outCubic, outQuad, rand, lerp, lerpColor } from './ease';
 
 const TAU = Math.PI * 2;
@@ -98,6 +101,65 @@ export interface OnUnit {
 }
 
 export type SustainedStatusOptions = OnUnit & { duration?: number; palette?: Palette };
+
+/** An expanding, open hex boundary with low curling shadows rather than a filled disc. */
+export function hexField(w: VfxWorld, tex: VfxTextures,
+  o: Vec3 & { radius: number; palette: Palette; duration?: number }): Handle {
+  const dur = o.duration ?? 2300, p = o.palette, g = group(w, dur, undefined, 240);
+  const ring = floorRing(w, tex, { x: o.x, y: o.y, radius: o.radius, palette: p,
+    texture: tex.rune, textureRadius: M.runeRadius, duration: dur, spin: -0.12,
+    scale: (t) => o.radius / M.runeRadius * outCubic(clamp01(t * dur / 360)),
+    alpha: ms.env(dur, 260, 500, 0.48), tint: p.core });
+  g.add(ring.far); g.add(ring.near);
+  for (let i = 0; i < 8; i++) {
+    const a = i * TAU / 8, x = o.x + Math.cos(a) * o.radius * 0.85;
+    const y = o.y + Math.sin(a) * o.radius * w.groundSquash * 0.85;
+    for (const edge of [false, true]) g.add(w.spawn({ texture: tex.tendril, x, y, anchorY: 1,
+      life: dur, delay: i * 18, blend: edge ? 'add' : 'normal', tint: edge ? p.main : p.dark,
+      scaleX: edge ? 0.2 : 0.38, scaleY: [0.05, 0.62, outCubic], rotation: Math.cos(a) * 0.3,
+      alpha: ms.env(dur, 450, 500, edge ? 0.4 : 0.8), onUpdate: curlDrift(9, 65, 0.5) }));
+  }
+  return g;
+}
+
+/** Ground-grown bindings, a downward weight pulse and a draining, sickly aftermath. */
+export function frailty(w: VfxWorld, tex: VfxTextures,
+  o: SustainedStatusOptions & { sprite?: Sprite }): Handle {
+  const h = o.height ?? 70, s = h / 96, dur = o.duration ?? 1800;
+  const p = o.palette ?? { core: 0x9bbb78, main: 0x9471b8, dark: 0x21182d };
+  const g = group(w, dur + 450, undefined, 180), life = dur + 400;
+  const drift = curlDrift(7, 45, 0.65);
+  for (let i = 0; i < 4; i++) {
+    const side = i % 2 ? 1 : -1, x = side * (12 + Math.floor(i / 2) * 9) * s;
+    for (const edge of [false, true]) g.add(w.spawn({ texture: tex.tendril, x, y: 0, follow: o.target,
+      life, anchorY: 1, scaleX: side * (edge ? 0.22 : 0.4) * s, rotation: -side * 0.22,
+      scaleY: (t) => 0.7 * s * outCubic(clamp01(t * life / 300)) * (1 - clamp01((t * life - dur) / 400)),
+      blend: edge ? 'add' : 'normal', tint: edge ? i < 2 ? p.core : p.main : p.dark,
+      alpha: ms.env(life, 170, 380, edge ? 0.48 : 0.9), zBias: i < 2 ? 5 : -1,
+      onUpdate: (q, t, dt) => { drift(q, t, dt); q.pz = -h * 0.65 * clamp01((q.age - dur) / 400); } }));
+  }
+  g.add(w.spawn({ texture: tex.glow, x: 0, y: 0, z: h * 0.4, follow: o.target,
+    life, scaleX: 0.65 * s, scaleY: 1.2 * s, tint: p.core, alpha: ms.env(life, 250, 600, 0.18) }));
+  g.add(w.spawn({ texture: tex.skull, x: 0, y: 0, z: h + 34 * s, follow: o.target,
+    life, scale: 0.4 * s, tint: p.core, alpha: ms.env(life, 360, 500, 0.55), zBias: 10,
+    onUpdate: (q) => { q.pz = -q.age / life * 7 * s; q.sprite.rotation = Math.sin(q.age * 0.002) * 0.07; } }));
+  for (let i = 0; i < 2; i++) g.add(w.spawn({ texture: tex.chevron, x: 0, y: 0, z: h * 0.8,
+    follow: o.target, delay: 240 + i * 130, life: 420, rotation: Math.PI, vz: -h,
+    scaleX: 0.34 * s, scaleY: 0.22 * s, tint: p.core, alpha: [0.5, 0] }));
+  g.addHandle(w.after(240, () => {
+    if (o.sprite) g.addHandle(rockBack(w, o.sprite, { angle: Math.PI / 2, push: 5 * s, duration: 330 }));
+    g.add(w.spawn({ texture: tex.ring, x: 0, y: 0, follow: o.target, z: h * 0.75,
+      life: 340, vz: -h * 1.8, scaleX: [0.24 * s, 0.35 * s], scaleY: [0.045 * s, 0.02 * s],
+      tint: p.main, alpha: [0.8, 0], zBias: 8 }));
+  }));
+  g.addHandle(w.stream({ rate: 7, duration: dur - 200, make: () => {
+    const at = o.target();
+    return { texture: tex.drop, x: at.x + rand(-20, 20) * s, y: at.y, z: h * rand(0.45, 0.95),
+      life: rand(450, 650), vz: -rand(35, 60) * s, gravity: 35, scale: [rand(0.13, 0.22) * s, 0],
+      tint: rand(0, 1) < 0.5 ? p.core : p.main, alpha: envelope(0.1, 0.3, 0.55), onUpdate: curlDrift(8, 50, 0.5) };
+  } }));
+  return g;
+}
 
 function sustained(w: VfxWorld, o: SustainedStatusOptions, duration: number) {
   const h = o.height ?? 70, s = h / 70, dur = o.duration ?? duration;

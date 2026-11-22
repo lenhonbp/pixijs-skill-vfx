@@ -35,13 +35,20 @@ export function shadowStep(w: VfxWorld, tex: VfxTextures,
         alpha: envelope(0.08, 0.35, 0.65), tint: i % 2 ? 0x24172f : 0x493653,
         onUpdate: curlDrift(25, 55, 0.8), zBias: 5 }));
       if (i % 4 === 0) g.add(w.spawn({ texture: rising ? tex.crescent : tex.glow, x: at.x + x, y: at.y, z,
-        life: 400, scaleX: rising ? [0.08 * s, 0.15 * s] : [0.3 * s, 0.5 * s],
-        scaleY: rising ? [0.2 * s, 0.3 * s] : [0.12 * s, 0.05 * s],
-        rotation: rising ? rand(-0.7, 0.7) : 0, alpha: [rising ? 0.3 : 0.075, 0], tint: p.main, vz: 20, zBias: 6 }));
+        life: rising ? 550 : 750, scaleX: rising ? [0.1 * s, 0.2 * s] : [0.4 * s, 0.65 * s],
+        scaleY: rising ? [0.25 * s, 0.4 * s] : [0.14 * s, 0.05 * s],
+        rotation: rising ? rand(-0.7, 0.7) : 0, alpha: [rising ? 0.65 : 0.35, 0], tint: p.main, vz: rising ? 20 : 3, zBias: 6 }));
     }
   };
   g.add(w.spawn({ texture: tex.disc, ...o.from, layer: 'ground', groundAligned: true, blend: 'normal',
     life: windup + 600, scale: [0.1 * s, 0.4 * s, outCubic], alpha: envelope(0.15, 0.5, 0.8), tint: 0x130d20 }));
+  g.add(w.spawn({ texture: tex.ring, ...o.from, layer: 'ground', groundAligned: true,
+    life: windup + 500, scale: [0.08 * s, 0.4 * s, outCubic], alpha: envelope(0.18, 0.5, 0.65), tint: p.main }));
+  for (let i = 0; i < 3; i++) g.add(w.spawn({ texture: tex.crescent, ...o.from,
+    z: i * h * 0.2, life: windup + 220, delay: i * 25, tint: p.main,
+    scaleX: [0.08 * s, 0.2 * s], scaleY: [0.18 * s, 0.32 * s],
+    alpha: envelope(0.15, 0.5, 0.5), spin: i % 2 ? 3 : -3,
+    onUpdate: (q) => { q.px = Math.sin(q.age * 0.012 + i * 2) * 13 * s; q.pz = h * q.age / 900; } }));
   for (let i = 0; i < 6; i++) g.add(w.spawn({ texture: tex.crescent, ...o.from,
     z: i * h * 0.1, life: windup + 160, delay: i * 18, blend: 'normal',
     scaleX: [0.08 * s, 0.18 * s], scaleY: [0.18 * s, 0.32 * s],
@@ -52,7 +59,10 @@ export function shadowStep(w: VfxWorld, tex: VfxTextures,
     smoke(o.from, 12, true);
     for (let i = 0; i < 14; i++) g.addHandle(w.after(i / 14 * travel, () => {
       const t = i / 13;
-      smoke({ x: lerp(o.from.x, o.to.x, t), y: lerp(o.from.y, o.to.y, t), z: 0 }, 1, false);
+      const at = { x: lerp(o.from.x, o.to.x, t), y: lerp(o.from.y, o.to.y, t), z: 0 };
+      smoke(at, 1, false);
+      if (i % 3 === 0) g.add(w.spawn({ texture: tex.star, ...at, z: rand(4, 12), life: 370,
+        scale: [0.12 * s, 0], alpha: [0.7, 0], tint: p.core, spin: rand(-3, 3) }));
     }));
   }));
   g.addHandle(w.after(windup + travel, () => {

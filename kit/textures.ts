@@ -67,6 +67,8 @@ export interface VfxTextures {
   plus: Texture;
   /** Split shield outline with a jagged crack. 64x80. Armor break. */
   crackedShield: Texture;
+  /** Hollow-eyed skull sigil with a fractured jaw. 64x72. Curses. */
+  skull: Texture;
   /** Cast-bronze temple bell with hanging loop, bands and engravings. 256x320. */
   bell: Texture;
   /** Fractures aligned to bell, with the same size and anchor. */
@@ -502,6 +504,21 @@ export function createVfxTextures(): VfxTextures {
     return textureFromCanvas(c);
   })();
 
+  const skull = (() => {
+    const [c, ctx] = makeCanvas(64, 72);
+    ctx.fillStyle = 'white';
+    ctx.beginPath(); ctx.ellipse(32, 26, 23, 21, 0, 0, Math.PI * 2); ctx.fill();
+    ctx.beginPath(); ctx.moveTo(15, 35); ctx.lineTo(18, 57); ctx.lineTo(28, 63);
+    ctx.lineTo(31, 53); ctx.lineTo(35, 64); ctx.lineTo(46, 57); ctx.lineTo(49, 35); ctx.fill();
+    ctx.globalCompositeOperation = 'destination-out';
+    for (const x of [22, 42]) {
+      ctx.beginPath(); ctx.ellipse(x, 29, 7, 8, x < 32 ? -0.3 : 0.3, 0, Math.PI * 2); ctx.fill();
+    }
+    ctx.beginPath(); ctx.moveTo(32, 36); ctx.lineTo(27, 44); ctx.lineTo(36, 44); ctx.fill();
+    ctx.fillRect(23, 51, 3, 12); ctx.fillRect(39, 51, 3, 12);
+    return textureFromCanvas(c);
+  })();
+
   const vineSegment = (() => {
     const [c, ctx] = makeCanvas(96, 48);
     ctx.lineCap = 'round';
@@ -638,5 +655,5 @@ export function createVfxTextures(): VfxTextures {
     digits[ch] = textureFromCanvas(c);
   }
 
-  return { stormCloud, glow, dot, ring, disc, streak, beam, star, puff, crescent, shard, blade, swordCrack, spike, rock, rockPlate, rockSpike, fissure, guardian, guardianBody, guardianHalberd, mountain, leaf, drop, chevron, rune, bubble, tendril, vineSegment, plus, crackedShield, bell, bellCracks, digits };
+  return { stormCloud, glow, dot, ring, disc, streak, beam, star, puff, crescent, shard, blade, swordCrack, spike, rock, rockPlate, rockSpike, fissure, guardian, guardianBody, guardianHalberd, mountain, leaf, drop, chevron, rune, bubble, tendril, vineSegment, plus, crackedShield, skull, bell, bellCracks, digits };
 }

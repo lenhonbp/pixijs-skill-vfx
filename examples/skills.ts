@@ -10,7 +10,7 @@ import {
   fireball, fireBreath, fireCharge, fireDragonCrossing, fireImpact, fireMeteor,
   woodCharge, seedFlight, springBloom, toxicSporeCloud,
   damageOverTime, stun, shock, freeze, slow, root, statChange, damageNumber,
-  silence, blind, armorBreak, mark, fear, aura, empower, haste, sigilCharge, sunderingMark,
+  silence, blind, armorBreak, mark, fear, aura, empower, haste, sigilCharge, sunderingMark, hexField, frailty,
   goldenBell, metalSlash, metalSparks, swordSalute, stoneArmor, spiritGuardian, mountainCrash,
   lightningStrike, staticField, lightningCharge, lightningWarning, lightningStun, stormCloud,
   dash, blink, shadowStep, battleCry, leap, beam, chargeUp, summonCircle, spikeLine, spikeRing, swordRain,
@@ -681,9 +681,9 @@ export const SKILLS: SkillDef[] = [
         onVanish: () => setVisible(caster, false),
         onAppear: () => {
           caster.feet.x = to.x; caster.feet.y = to.y; caster.facing *= -1; setVisible(caster, true);
-          w.after(90, () => {
+          w.after(60, () => {
             shadowSlash(w, tex, { ...target.feet, facing: caster.facing, height: target.height, palette: P.shadow });
-            w.after(70, () => hurt(target, 154, { palette: { ...P.shadow, core: P.shadow.main }, feedback: 0.18,
+            w.after(100, () => hurt(target, 154, { palette: { ...P.shadow, core: P.shadow.main }, feedback: 0.18,
               skin: 'shadow', crit: true, angle: caster.facing > 0 ? 0 : Math.PI }));
           });
           w.after(800, () => { caster.facing *= -1; returnHome(); });
@@ -693,11 +693,28 @@ export const SKILLS: SkillDef[] = [
   },
   {
     id: 'curse-weaken', element: 'neutral', category: 'debuff', en: 'Curse of Frailty', vi: 'Suy Nhược Chú',
-    timing: { windup: 350, hits: [], recovery: 1650 },
-    desc: 'A dark sigil lowers the attack and defense of every enemy.', uses: ['chargeUp', 'telegraph', 'statChange(down)'], length: 2000,
+    timing: { windup: 350, hits: [], recovery: 2850 },
+    desc: 'A spreading hex binds and weighs down enemies, leaving a sickly, draining curse.',
+    uses: ['sigilCharge', 'hexField', 'frailty'], length: 3200,
     cast: ({ w, tex, caster, target, targets }) => {
-      chargeUp(w, tex, { target: () => hand(caster), palette: P.shadow, duration: 350 });
-      telegraph(w, tex, { x: target.feet.x, y: target.feet.y, radius: 130, duration: 380, palette: P.shadow, onDone: () => targets.forEach((u, i) => w.after(i * 90, () => statChange(w, tex, { target: feetOf(u), height: u.height, up: false, duration: 1500 }))) });
+      const palette = { core: 0x9bbb78, main: 0x9471b8, dark: 0x21182d };
+      sigilCharge(w, tex, { target: () => hand(caster), palette, duration: 350 });
+      w.stream({ rate: 35, duration: 300, make: () => {
+        const at = hand(caster), a = rand(0, Math.PI * 2), r = rand(18, 34);
+        return { texture: tex.dot, ...at, life: 250, tint: rand(0, 1) < 0.5 ? palette.main : palette.core,
+          scale: [0.08, 0], alpha: [0.7, 0],
+          onUpdate: (q, t) => { q.px = Math.cos(a) * r * (1 - t); q.pz = Math.sin(a) * r * (1 - t); } };
+      } });
+      w.after(350, () => {
+        const units = targets.length ? targets : [target];
+        const center = { x: units.reduce((sum, u) => sum + u.feet.x, 0) / units.length,
+          y: units.reduce((sum, u) => sum + u.feet.y, 0) / units.length };
+        const radius = Math.max(90, ...units.map((u) =>
+          Math.hypot(u.feet.x - center.x, (u.feet.y - center.y) / w.groundSquash) + u.height * 0.3));
+        hexField(w, tex, { ...center, radius, duration: 2300, palette });
+        targets.forEach((u, i) => w.after(260 + i * 140, () =>
+          frailty(w, tex, { target: feetOf(u), height: u.height, sprite: u.sprite, duration: 1700, palette })));
+      });
     },
   },
   {
