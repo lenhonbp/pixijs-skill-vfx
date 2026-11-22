@@ -181,7 +181,7 @@ try {
     step(480);
     check(w.particles.filter(p => p.o.texture === tex.glow && p.age >= 0).every(p => p.o.layer === 'ground'), 'activation release glow stays behind caster');
     check(w.particles.filter(p => p.o.texture === tex.glow && p.o.scaleY).every(p => p.sprite.alpha <= 0.16 && p.o.tint === palette.main), 'pillar mid-colour and alpha cap'); w.clear();
-    const motifs = { kim: tex.blade, moc: tex.vineSegment, thuy: tex.shard, hoa: tex.puff, tho: tex.rock, phong: tex.crescent, loi: undefined, neutral: tex.ring };
+    const motifs = { kim: tex.blade, moc: tex.vineSegment, thuy: tex.drop, hoa: fire.flames[0], tho: tex.rock, phong: tex.crescent, loi: undefined, neutral: tex.sealGlyph };
     for (const tier of [2, 3]) for (const [element, texture] of Object.entries(motifs)) {
       const at = { x: 100, y: 200, z: 50 };
       const caster = { at: () => at, height: 96, palette, tier, element };
@@ -201,7 +201,17 @@ try {
           w.particles.filter(p => p.o.texture === tex.vineSegment && p.o.groundAligned).length === 2 &&
           w.particles.some(p => p.o.texture === tex.ring && p.o.groundAligned), 'wood has a leaf spiral and two vines framing its ground ring');
       }
-      if (element === 'neutral') check(w.particles.every(p => p.o.groundAligned && p.sprite.alpha <= 0.5 && p.sprite.alpha >= 0.3), 'utility halo is visible and grounded');
+      if (['thuy', 'hoa', 'neutral'].includes(element)) {
+        const objects = w.particles.filter(p => p.o.texture === texture || (element === 'hoa' && fire.flames.includes(p.o.texture)));
+        check(objects.length === (tier === 3 ? 3 : 2), 'water, fire and utility retain two/three resting objects');
+        for (const p of objects) {
+          check(p.pz >= 5 && p.pz <= 22 && p.sprite.alpha > 0.5 && !p.o.groundAligned &&
+            Math.abs(Math.hypot(p.px, p.py / 0.4) - (element === 'thuy' ? 62 : element === 'hoa' ? 56 : 66)) < 1e-6,
+          'resting objects remain visible in wide low orbits behind the caster');
+          check(p.sprite.tint === palette.main, 'resting objects use the supplied palette');
+        }
+        check(w.particles.filter(p => p.o.texture === tex.ring).length === 1, 'one slow grounded ripple/halo complements the objects');
+      }
       if (element === 'loi') {
         const arcs = w.layers.ground.children.filter(c => !(c instanceof Sprite));
         step(128);
@@ -232,6 +242,28 @@ try {
       step(1900); check(!w.count && !w.stats.updaters && !w.layers.ground.children.length, 'all evolution beats finish cleanly');
     }
     check(signatures.size === 8, 'eight distinct evolution gathers/transforms');
-    return 'Empowerment: tier-1 identity, full density, private energy/anchored width scaling, authored art, frost/vine/branching lightning hits and throttle, eight distinct evolutions, grounded motifs and cleanup PASS';
+    for (const palette of [PALETTES.fire, PALETTES.holy, PALETTES.arcane]) {
+      w.clear();
+      kit.skillEvolution(w, tex, { at: () => ({ x: 200, y: 300 }), height: 96, palette, element: 'neutral', fromTier: 1, toTier: 3 });
+      step(200);
+      const gather = w.particles.filter(p => p.age >= 0);
+      check(gather.length === 4 && gather.every(p => p.o.texture === tex.sealGlyph && p.sprite.tint === palette.main), 'utility gathers four palette talismans, not rings');
+      step(500);
+      check(w.particles.some(p => p.o.texture === tex.sealGlyph && p.o.delay === 600 && p.pz > 150 && p.sprite.width > 20), 'utility talismans fold into a floating overhead emblem');
+      step(350);
+      check(w.particles.filter(p => p.o.texture === tex.sealGlyph && !p.o.delay).length === 3 &&
+        w.particles.some(p => p.o.texture === tex.ring && p.o.groundAligned), 'utility stamps into an orbiting-object halo');
+      w.clear(); check(!w.count && !w.stats.updaters, 'interrupted utility transformation clears');
+    }
+    empoweredAura(w, tex, { at: () => ({ x: 0, y: 0 }), height: 96, palette, tier: 1, duration: Infinity });
+    empoweredAura(w, tex, { at: () => ({ x: 0, y: 0 }), height: 96, palette, tier: 3, duration: 0 });
+    check(!w.count && !w.stats.updaters, 'tier-one and empty-duration auras remain no-ops');
+    kit.skillEvolution(w, tex, { at: () => ({ x: 200, y: 300 }), height: 96, palette, element: 'thuy', fromTier: 1, toTier: 3 });
+    step(200);
+    const streams = w.layers.ground.children.filter(c => !(c instanceof Sprite));
+    check(streams.length === 3 && streams.every(c => c.alpha > 0.8 && c.geometry.points.length === 49) &&
+      w.particles.filter(p => p.age >= 0 && p.o.texture === tex.drop).length === 6, 'water gather has three broad incoming streams and six visible drops');
+    w.clear();
+    return 'Empowerment: tier-1 identity, full density, energy/anchors, native feedback, elemental hits/throttle, eight evolutions, utility object transformation, persistent low water/fire/utility objects and cleanup PASS';
   }));
 } finally { await browser.close(); }

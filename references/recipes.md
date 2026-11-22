@@ -189,19 +189,27 @@ for a sustained remnant rather than stacking extra activation floor overlays.
 
 `skillEvolution(w, tex, { at, height, palette, element?, fromTier, toTier })` gathers
 0–330 ms, transforms 330–950 ms and stamps at 950 ms, finishing by 1600 ms.
-Metal blades converge into a crest; vines spiral and bloom; water spirals freeze
+Metal blades converge into a crest; vines spiral and bloom; three broad water
+streams spiral inward from the ground with six droplets and freeze
 into a crystal crest; fire forms a flame vortex; rocks rise and slam into a crest;
 wind forms a cyclone; lightning cages the caster then strikes down. Curved spirals
-use `flowRibbon` with `segments: 48` (default 10) for smooth paths. Utility uses
-grounded palette rings. No shared shatter/helix/rune-stack or bright body overlay.
+use `flowRibbon` with `segments: 48` (default 10) for smooth paths. Utility gathers
+four inscribed `sealGlyph` talismans, folds them into a floating overhead emblem,
+then stamps a grounded halo with orbiting talismans. Every object uses the skill's
+supplied palette, never a fixed purple. No shared shatter/helix/rune-stack or bright body overlay.
 `empoweredAura(w, tex, { at, height, palette, element?, tier, duration, idle? })`
 sustains the same motif during gameplay or idle (one to seven sprites, or two/three
 short filterless lightning ribbons plus a floor ring, replaced every 115/85 ms and disposed on stop/clear): metal
-blades/ring, wood leaf spiral with two ground vines/ring, water ripples/shards,
-fire tongues/embers, wide shin-height earth rocks/dust ring, wind spirals or continuous feet/leg lightning arcs.
+blades/ring, wood leaf spiral with two ground vines/ring, two/three orbiting water
+droplets over a slow ripple, two/three low orbiting fire tongues plus an ember mote,
+wide shin-height earth rocks/dust ring, wind spirals or continuous feet/leg lightning arcs.
 Earth cracks appear only during activation.
 All motifs render behind the caster; floor rings follow x/y with z=0. Unknown
-elements use a clearly visible ground halo (alpha <=0.5) in the supplied skill palette.
+elements use a clearly visible ground halo (alpha <=0.5) plus two/three orbiting
+inscribed talismans in the supplied skill palette. Water/fire/utility retain their
+objects through the evolution stamp, cast and idle; at tier 3 the whole motif costs
+four/five/four sprites respectively, with no periodic particle emission. Objects
+orbit low and wide behind the caster, never as a vertical column over the body.
 `empoweredHit(w, tex, { at: chestPosition, palette, tier, element, tick? })` adds
 behind-target accents: `kim` crossed glints, `moc` six sprouting thorned vines,
 `hoa` embers, `phong` crescents, `tho` rocks, `thuy` six shards plus an ice ring,

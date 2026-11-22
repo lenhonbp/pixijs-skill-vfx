@@ -209,10 +209,12 @@ try {
     await page.waitForFunction(() => !!window.__vfxDebug);
     const result = await page.evaluate(({ id, length, tier = 0 }) => {
       const d = window.__vfxDebug, w = window.demo.vfx;
-      let peak = 0, hits = 0, empoweredPeak = 0, tickSparks = 0, nativeSparks = 0, impactAccents = 0, largeFissureCores = 0;
+      let peak = 0, hits = 0, empoweredPeak = 0, tickSparks = 0, nativeSparks = 0, impactAccents = 0, largeFissureCores = 0, restingObjects = 0;
       const empowered = new Map();
       const spawn = w.spawn.bind(w);
       w.spawn = (...args) => {
+        if (d.isEmpowering() && args[0].layer === 'ground' && !args[0].groundAligned && args[0].life === length &&
+          [24, 128, 144].includes(args[0].texture.width)) restingObjects++;
         if (d.isEmpowering() && args[0].layer === 'ground' && args[0].life === 520) impactAccents++;
         if (id === 'tho-fissure' && args[0].life === 110 && args[0].zBias === 5 && args[0].scale?.[0] > 0.4) largeFissureCores++;
         if (args[0].layer === 'top' && args[0].blend === 'normal' && [850, 1100].includes(args[0].life)) hits++;
@@ -232,7 +234,7 @@ try {
         for (let left = length + 1900; left > 0; left -= 16) d.advance(Math.min(left, 16));
         runs.push(d.stats());
       }
-      return { peak, runs, hits, empoweredPeak, tickSparks, nativeSparks, impactAccents, largeFissureCores };
+      return { peak, runs, hits, empoweredPeak, tickSparks, nativeSparks, impactAccents, largeFissureCores, restingObjects };
     }, skill);
     await page.close();
     // SkillDef has no ultimate flag: every sample uses the ordinary 150 cap.
@@ -245,6 +247,7 @@ try {
     if (skill.label && nativeFeedback.get(skill.id) > 0 && !result.nativeSparks) issues.push('missing native hitSpark');
     if (skill.label && ['thuy-frost-nova', 'moc-vine-bind', 'loi-heaven-strike'].includes(skill.id) && !result.impactAccents) issues.push('missing sustained elemental impact accent');
     if (result.largeFissureCores) issues.push('oversized target-covering Fissure core');
+    if (skill.label && /^(thuy-|hoa-|seal-|sunder-|war-|shadow-|curse-|summon-)/.test(skill.id) && !result.restingObjects) issues.push('missing persistent evolved resting objects');
     const budgetStatus = budgetResult(result.peak, budget,
       Object.hasOwn(baseline, skill.id) ? baseline[skill.id] : undefined);
     if (budgetStatus.failure) issues.push(budgetStatus.failure);
