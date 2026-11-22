@@ -1,4 +1,4 @@
-import { Graphics, type Texture } from 'pixi.js';
+import { Graphics, type Sprite, type Texture } from 'pixi.js';
 import type { Handle, Particle, SpawnOptions, Vec3, VfxWorld } from './vfx-world';
 import { TEX_METRICS as M, type VfxTextures } from './textures';
 import type { Palette } from './recipes';
@@ -19,6 +19,27 @@ export interface FloorRingHandle extends Handle {
   readonly near: Particle | null;
 }
 
+const masks = new WeakMap<Sprite, Graphics>();
+
+function pooledMask(sprite: Sprite, near: boolean): Graphics {
+  let mask = masks.get(sprite);
+  if (!mask || mask.destroyed) {
+    mask = new Graphics();
+    const size = 1e6;
+    if (isPixiV8()) mask.rect(-size, 0, size * 2, size).fill(0xffffff);
+    else (mask as any).beginFill(0xffffff).drawRect(-size, 0, size * 2, size).endFill();
+    masks.set(sprite, mask);
+    const owned = mask;
+    sprite.once('destroyed', () => {
+      if (!owned.destroyed) owned.destroy();
+      masks.delete(sprite);
+    });
+  }
+  mask.scale.y = near ? 1 : -1;
+  mask.visible = true;
+  return mask;
+}
+
 /** Screen-space halves stay joined even while an elliptical rune rotates on the floor. */
 export function floorRing(w: VfxWorld, tex: VfxTextures, o: FloorRingOptions): FloorRingHandle {
   const life = o.duration ?? 380, metric = o.textureRadius ?? M.ringRadius;
@@ -32,7 +53,8 @@ export function floorRing(w: VfxWorld, tex: VfxTextures, o: FloorRingOptions): F
     if (i < 0) return;
     records.splice(i, 1);
     record.p.sprite.mask = null;
-    record.mask.destroy();
+    record.mask.parent?.removeChild(record.mask);
+    record.mask.visible = false;
     if (!records.length) { updater?.stop(); unown?.(); }
   };
   const half = (near: boolean) => {
@@ -45,10 +67,7 @@ export function floorRing(w: VfxWorld, tex: VfxTextures, o: FloorRingOptions): F
       onDeath: () => cleanup(record),
     });
     if (!p) return null;
-    const mask = new Graphics();
-    const size = 1e6;
-    if (isPixiV8()) mask.rect(-size, near ? 0 : -size, size * 2, size).fill(0xffffff);
-    else (mask as any).beginFill(0xffffff).drawRect(-size, near ? 0 : -size, size * 2, size).endFill();
+    const mask = pooledMask(p.sprite, near);
     p.sprite.parent!.addChild(mask);
     p.sprite.mask = mask;
     const record = { p, options: p.o, mask };

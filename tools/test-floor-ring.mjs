@@ -61,6 +61,22 @@ try {
     step(w, 200); clean(w, 'group fade');
     results.push('floorRing: layers/depth, ground squash, moving/airborne targets, finite/default/zero/Infinity, budget/errors, stop/clear/group fade and mask cleanup PASS');
 
+    const pooledWorld = world(), maskSet = new Set(), spriteSet = new Set();
+    for (let i = 0; i < 64; i++) {
+      const emission = floorRing(pooledWorld, tex, { radius: 30, palette, duration: 20 });
+      for (const p of [emission.far, emission.near]) {
+        maskSet.add(p.sprite.mask); spriteSet.add(p.sprite);
+      }
+      if (i % 3 === 0) pooledWorld.clear();
+      else step(pooledWorld, 30);
+      clean(pooledWorld, 'repeated emission');
+      check(maskSet.size === 2 && [...spriteSet].every((s) => !s.mask), 'repeated emissions reuse two pooled masks and reset sprite masks');
+      check([...maskSet].every((m) => !m.parent && !m.destroyed), 'idle pooled masks are detached, not recreated');
+    }
+    for (const sprite of spriteSet) sprite.destroy();
+    check([...maskSet].every((m) => m.destroyed), 'destroying pooled sprites releases their mask geometry');
+    results.push('floorRing pooling: 64 emissions/clear cycles reuse two Graphics masks; sprite teardown releases geometry PASS');
+
     const opts = { width: 240, height: 180, resolution: 1, antialias: false, preference: 'webgl' };
     const app = isPixiV8() ? new Application() : new Application(opts);
     if (isPixiV8()) await app.init(opts);
