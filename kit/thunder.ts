@@ -37,7 +37,7 @@ export function lightningStrike(w: VfxWorld, tex: VfxTextures,
 /** Sustained, low-intensity ground arcs; finite sparks dissipate after stop(). */
 export function staticField(w: VfxWorld, tex: VfxTextures,
   o: { x: number; y: number; radius: number; palette: Palette; duration: number; onTick?: () => void }): Handle {
-  const g = group(w, o.duration), r = o.radius, p = shiftPalette(o.palette, { hue: 12, sat: 1.5, light: -0.08 });
+  const tickMs = 500, g = group(w, o.duration > 0 ? o.duration + tickMs / 2 : 0), r = o.radius, p = shiftPalette(o.palette, { hue: 12, sat: 1.5, light: -0.08 });
   g.add(w.spawn({ texture: tex.glow, layer: 'ground', groundAligned: true,
     x: o.x, y: o.y, life: o.duration, scale: r / 45, alpha: ms.env(o.duration, 150, 250, 0.16), tint: p.main }));
   g.add(w.spawn({ texture: tex.ring, layer: 'ground', groundAligned: true,
@@ -46,10 +46,10 @@ export function staticField(w: VfxWorld, tex: VfxTextures,
     const a = rand(0, Math.PI * 2), d = (rim ? 1 : Math.sqrt(Math.random())) * r;
     return { x: o.x + Math.cos(a) * d, y: o.y + Math.sin(a) * d * w.groundSquash, z: 3 };
   };
-  let arc = 0, tick = 0;
+  let arc = 0, age = 0, ticks = 0;
   g.addHandle(w.addUpdater((dt) => {
-    arc += dt; tick += dt;
-    if (arc >= 40) {
+    arc += dt; age += dt;
+    if (age < o.duration && arc >= 40) {
       arc %= 40;
       for (let j = 0; j < 3; j++) {
         const a = point(), b = point(j === 0);
@@ -58,7 +58,7 @@ export function staticField(w: VfxWorld, tex: VfxTextures,
       const rim = point(true);
       w.spawn({ texture: tex.streak, ...rim, life: 220, vz: rand(30, 85), rotation: rand(0, Math.PI * 2), scale: [0.18, 0], alpha: [0.65, 0], tint: p.main });
     }
-    while (tick >= 500) { tick -= 500; o.onTick?.(); }
+    while (g.alive && (ticks + 1) * tickMs <= Math.min(age, o.duration)) { ticks++; o.onTick?.(); }
   }));
   return g;
 }

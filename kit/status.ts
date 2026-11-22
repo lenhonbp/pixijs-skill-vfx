@@ -201,11 +201,11 @@ export function empower(w: VfxWorld, tex: VfxTextures, o: SustainedStatusOptions
 export function shock(w: VfxWorld, tex: VfxTextures,
   o: OnUnit & { duration?: number; palette?: Palette; tickMs?: number; onTick?: () => void }): Handle {
   const duration = o.duration ?? 1500, p = o.palette ?? LOI.palette, h = o.height ?? 70;
-  const g = group(w, duration), tickMs = Math.max(16, o.tickMs ?? 500);
-  let arc = 0, tick = 0;
+  const tickMs = Math.max(16, o.tickMs ?? 500), g = group(w, duration > 0 ? duration + tickMs / 2 : 0);
+  let arc = 0, age = 0, ticks = 0;
   g.addHandle(w.addUpdater((dt) => {
-    arc += dt; tick += dt;
-    if (arc >= 80) {
+    arc += dt; age += dt;
+    if (age < duration && arc >= 80) {
       arc %= 80;
       const at = o.target(), s = h / 70;
       lightningBolt(w, tex, { x: at.x + rand(-14, 14) * s, y: at.y, z: (at.z ?? 0) + rand(0.1, 0.45) * h },
@@ -214,7 +214,7 @@ export function shock(w: VfxWorld, tex: VfxTextures,
       w.spawn({ texture: tex.streak, ...at, z: (at.z ?? 0) + 3, life: 180, vz: 50,
         scale: [0.1 * s, 0], rotation: rand(0, Math.PI * 2), alpha: [0.4, 0], tint: p.main });
     }
-    while (tick >= tickMs) { tick -= tickMs; o.onTick?.(); }
+    while (g.alive && (ticks + 1) * tickMs <= Math.min(age, duration)) { ticks++; o.onTick?.(); }
   }));
   return g;
 }
