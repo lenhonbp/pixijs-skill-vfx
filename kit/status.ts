@@ -158,10 +158,15 @@ export function frailty(w: VfxWorld, tex: VfxTextures, o: FrailtyOptions): Handl
     const side = i % 2 ? 1 : -1, x = side * (12 + Math.floor(i / 2) * 9) * s;
     for (const edge of [false, true]) g.add(w.spawn({ texture: tex.tendril, x, y: 0, follow: o.target,
       life, anchorY: 1, scaleX: side * (edge ? 0.38 : 0.54) * s, rotation: -side * 0.28,
-      scaleY: (t) => 0.85 * s * outCubic(clamp01(t * life / 300)) * (1 - clamp01((t * life - dur) / 400)),
+      scaleY: 0,
       blend: edge ? 'add' : 'normal', tint: edge ? i < 2 ? p.core : p.main : p.dark,
       alpha: ms.env(life, 170, 380, edge ? 0.8 : 0.95), zBias: i < 2 ? 5 : -1,
-      onUpdate: (q, t, dt) => { drift(q, t, dt); q.pz = -h * 0.65 * clamp01((q.age - dur) / 400); } }));
+      onUpdate: (q, t, dt) => {
+        drift(q, t, dt);
+        const sink = clamp01((q.age - dur) / 400);
+        q.sprite.scale.y = 0.85 * s * outCubic(clamp01(q.age / 300)) * (1 - sink);
+        q.pz = -h * 0.65 * sink;
+      } }));
   }
   g.add(w.spawn({ texture: tex.glow, x: 0, y: 0, z: h * 0.4, follow: o.target,
     life, scaleX: 0.65 * s, scaleY: 1.2 * s, tint: p.core, alpha: ms.env(life, 250, 600, 0.18) }));

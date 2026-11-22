@@ -18,6 +18,16 @@ try {
     const step = (w, ms) => { for (let i = 0; i < ms; i++) w.update(1); };
     const clean = (w) => check(!w.count && !w.stats.updaters, 'particles and updaters cleaned');
     {
+      const w = world();
+      const h = kit.frailty(w, tex, { target: () => ({ x: 100, y: 200 }), height: 96, duration: Infinity });
+      step(w, 1000);
+      const bindings = w.particles.filter(p => p.o.texture === tex.tendril);
+      check(bindings.length === 8 && bindings.every(p => Number.isFinite(p.sprite.scale.y) && p.sprite.scale.y > 0.8),
+        'frailty: infinite bindings tighten to a finite visible scale');
+      h.stop(); step(w, 2000); clean(w);
+      results.push('frailty: Infinity bindings visible and stop cleanup PASS');
+    }
+    {
       const w = world(), target = () => ({ x: 100, y: 200 });
       const seal = kit.silence(w, tex, { target, height: 96, duration: 2400 });
       step(w, 1000);
