@@ -102,6 +102,91 @@ export const iceBell: SkillDef = {
 This is a recolor, not an ice signature: add sharp shards and brittle shattering if the new
 skill must read as a different material. Update names, `uses` and `length` when copying.
 
+## Skill timing
+
+Every sample `SkillDef` has optional `timing: SkillTiming` data, readable without calling
+`cast()`. The exported types and helpers live in `kit/skill-timing.ts` (also exported from
+`kit`). Timings use **VFX-clock milliseconds from cast start**, excluding hit-stop; pause
+your character animation while `w.frozen` is true so both clocks stay synchronized.
+
+```ts
+interface SkillTiming { windup: number; hits: SkillHit[]; recovery: number }
+interface SkillHit {
+  t: number;
+  stop?: number; shake?: number; push?: number;
+  skin?: HitSkinName; targets?: 'primary' | 'all';
+  travel?: number; spread?: number; optional?: boolean;
+}
+```
+
+- `windup` is the anticipation/attack-animation phase. The first hit's `t` is at or after it.
+- `t` normally means impact time. With `travel` (projectile speed in ground px/s), it means
+  **launch time** instead: `hitTimes(timing, distance)` returns
+  `t + distance / travel * 1000` for each traveling hit and `t` for instantaneous hits.
+  Omitting distance resolves traveling hits at launch (zero distance).
+- Measure distance exactly as the recipe does, not between sprite centers. `projectile`
+  uses `hypot(to.x - from.x, to.y - from.y)`, with the sample's **hand** as the origin.
+  `windSlash` additionally divides the y difference by `w.groundSquash`. Gale Blades uses
+  one recipient per hit; resolve each entry with that recipient's distance. Its sample,
+  Chain Lightning and Heavenly Thunder describe the showcase's three enemies; adapt the
+  repeated entries when changing the enemy count.
+- `spread` is a ±ms uncertainty window, not a delay. Sword Rain declares ±30 ms landing
+  jitter. `optional` marks an opportunity that can miss in the showcase layout: the sword
+  landings, Glacier Path/Fissure spikes, and Cyclone's first capture tick. These
+  fields do not create extra damage or change targeting. Actual damage stays in `hurt`.
+- `stop` is hit-stop ms, `shake` is screen-shake amplitude in px, and `push` is knockback
+  distance in px. `skin` is metadata for later integration, one of `char`, `ice`, `shock`,
+  `holy`, `shadow`, `poison`, `earth`, `metal`, `wind`, `nature`, `red`. Neither `skin` nor
+  `push` automatically changes rendering or movement. `targets` describes primary versus
+  group opportunities, not guaranteed collisions or a target-count multiplier.
+- `recovery` follows the last **resolved** hit. The bound is
+  `lastResolvedHit + recovery <= length`; windup is not added again. Empty-hit skills use
+  `windup + recovery <= length`. `length` remains a showcase estimate at its demonstration
+  distance, not a promise for arbitrarily long projectile flights.
+
+For example, sync your own character's attack pose to Fireball without executing the skill
+to discover its timings:
+
+```ts
+import { hitTimes } from '../kit';
+import { hand, type SkillDef, type SkillContext } from '../examples/skills';
+
+function castWithAnimation(skill: SkillDef, ctx: SkillContext,
+  animate: (phase: 'windup' | 'contact' | 'recovery', duration?: number) => void) {
+  const timing = skill.timing;
+  if (!timing) { skill.cast(ctx); return; }
+  const from = hand(ctx.caster), to = ctx.target.feet;
+  const distance = Math.hypot(to.x - from.x, to.y - from.y); // projectile metric
+  const times = hitTimes(timing, distance);
+  animate('windup', timing.windup);
+  const timers = times.map((t) => ctx.w.after(t, () => animate('contact')));
+  timers.push(ctx.w.after(times.at(-1) ?? timing.windup,
+    () => animate('recovery', timing.recovery)));
+  skill.cast(ctx); // Existing impact callbacks still own damage and VFX feedback.
+  return { stop() { timers.forEach((timer) => timer.stop()); } };
+}
+```
+
+Use the returned handle to cancel these animation timers; it does not cancel the skill's
+VFX handles. For new fixed-timing casts, `onHits(w, timing, (hit, i) => { ... }, distance?)`
+schedules nominal hits, applies `stop`/`shake` (160 ms shake decay), then calls back. It
+returns a stoppable handle, does not roll `spread`, and leaves collision checks, damage,
+push and skins to you. Do not apply its feedback a second time around recipes that already
+provide it. Existing recipe-driven flight, random landing and status callbacks remain intact
+in the samples; Spring Bloom uses `onHits`, and Golden Edge reads timings/feedback from its
+shared data. Release/assembly shakes without `hurt` are still recipe-driven, not fake hits.
+
+The catalog describes calls to the game's `hurt`, including Spring Bloom's healing calls.
+Current damage-over-time helpers display their own tick numbers and do not call that game
+callback; their decorative ticks are not additional declared hits. Buffs, summons and pure
+debuffs therefore legitimately have empty hit arrays.
+
+Run `node tools/test-timing.mjs` to cast all 28 samples in headless Chromium, in both the
+showcase and a closer layout. It records `hurt`, hit-stop and shake against nominal windows
+(spread + 17 ms), validates phase/order/length bounds, and reports optional misses. It uses
+1 ms simulation steps to avoid accumulating the existing timers' frame-rounding error;
+coarse variable frame steps can drift, especially Cyclone's periodically reset tick timer.
+
 ## Compose a skill and synchronize gameplay
 
 This skeleton uses the sample application's `SkillContext`; replace its callbacks with your
