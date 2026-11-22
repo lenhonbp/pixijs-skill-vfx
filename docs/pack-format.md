@@ -6,7 +6,10 @@ One effect is one pack, with two equivalent delivery formats:
 - Container: `<id>.vfxb`, including the same manifest and WebP bytes.
 
 The free collection ships containers for every effect and plain examples for
-Fireball and Frost Nova in `docs/format-examples/` (outside the deployed site). All are MIT licensed.
+Fireball and Frost Nova in `docs/format-examples/` (outside the deployed site). These
+legacy two-layer, uniform-scale examples demonstrate compatibility, not the current
+collection's quality presets. All VFX packs and format examples are MIT licensed;
+the showcase's character artwork is separate and is not covered by that licence.
 Only baked output is needed to play an effect. No factory or baker is distributed here.
 
 ## Manifest
@@ -59,13 +62,26 @@ Mirror horizontally when the real target is left of the caster; optional
 `fitDistance` scales X by real horizontal distance / baked horizontal distance.
 Never rotate the effect to aim: that would break the 2.5D projection.
 
-Draw layers in array order, normally base then glow. Base contains normal-blend
-pixels on transparent; glow contains additive light on black and plays with
-additive blending. Frames exclude unit sprites, damage/healing numbers and UI.
+Draw layers in array order; names do not determine blend mode or ordering. Most
+free casts use up to three ordered layers: `glow-back` (add), `base` (normal),
+then `glow` (add), omitting empty layers. This groups interleaved draws into an
+approximation. Stone Skin (`tho-stone-skin`) instead preserves consecutive
+same-blend runs in exact draw order: five layers for Normal and seven for Evolved,
+within its eight-layer cap. The runtime supports arbitrary ordered layer counts,
+not only this collection's three-role layout.
+
+Normal-blend pixels are stored on transparent; additive light is stored on black
+and plays with additive blending. Frames exclude unit sprites, damage/healing numbers and UI.
 Hit-stop and shake are metadata, not baked frozen frames or camera movement.
-The free bake uses seeded recipe timing at 30 fps, with separate base/glow scales
-(desktop 1.0/0.5 and mobile 0.6/0.36, with per-pack base reductions to fit budgets), drains particles
-and timers through the fade, and has a 15-second safety cap (`capped` extension).
+The free collection uses per-skill desktop/mobile scales and quality settings,
+with selective 60 FPS for fast casts and 30 FPS elsewhere. Desktop normal scales
+reach 1.5 and additive scales 1.25; mobile scales reach 0.75 for both roles.
+Both additive roles use the additive scale; exact-order runs use the scale for
+their blend mode. Per-pack budget reductions lower only the normal scale, not
+additive scale, quality or FPS. Read each loaded manifest's actual layer scales
+and FPS rather than assuming one fixed pair of scales or a shared frame rate.
+Effects drain particles and timers through the fade, with a 15-second safety cap
+(`capped` extension).
 
 Cues use animation-clock milliseconds. Types include `hit`, `shake` (`amp`, `ms`),
 `hitstop` (`ms`), and `sound` (`id`). Sound IDs are hints:
@@ -106,10 +122,52 @@ A client necessarily holds enough information to decode it.
 ## Collection index
 
 `index.json` is an array of entries with `id`, `name: {en, vi}`, `element`,
-`category`, `frameCount`, `files: [{name, bytes}]` and aggregate `bytes`.
-The showcase index lists only files shipped in this repository, not the factory's
-additional plain output. Container and plain examples are alternatives, not
-two downloads required by the runtime.
+`category`, `frameCount`, `files: [{name, bytes}]`, `bytes`, `desktopBytes` and
+`mobileBytes`. The showcase index lists only shipped desktop `<id>.vfxb` and mobile
+`<id>.m.vfxb` containers, not additional plain output. `bytes` equals
+`desktopBytes`, not the sum of the two files; each size is an actual container
+byte count. Optional `desktopScales` / `mobileScales` map layer names to scales.
+The single index `frameCount` is the desktop count. Some mobile casts use a lower
+FPS and a different frame count; use the loaded manifest's `fps`, `frameCount`
+and `durationMs` for playback. Container and plain examples are alternatives,
+not two downloads required by the runtime.
+
+### Current free collection and download sizes
+
+Snapshot verified on 2026-11-22: **25 Normal + 25 Evolved casts**, each with
+desktop and mobile assets, for **100 containers**. All containers are referenced
+by the 25-entry index; there are no orphan or missing containers.
+
+| Assets | Bytes |
+|---|---:|
+| Desktop containers | 123,244,602 |
+| Mobile containers | 46,052,763 |
+| All containers | 169,297,365 |
+| `index.json` | 24,829 |
+| Pack directory including index | 169,322,194 |
+| Largest desktop: Sword Rain Evolved | 3,963,245 |
+| Largest mobile: Thunder Domain Evolved | 1,490,973 |
+
+Bytes are decimal file sizes, not decoded texture memory or complete page loads.
+Every container fits the collection's 4,000,000-byte desktop / 1,500,000-byte mobile
+pack limits. The showcase downloads only its selected skill/tier, not this total.
+
+Cold first loads of the built showcase, measured on the same date over a local
+uncompressed HTTP server, include code, character artwork, index, selected pack
+and HTTP overhead. Desktop viewport was 1440×900; mobile was 390×844 at DPR 3.
+
+| Initial hash | Desktop transfer bytes | Mobile transfer bytes |
+|---|---:|---:|
+| `#hoa-fireball` (default) | 2,209,503 | 1,458,276 |
+| `#hoa-fireball/evolved` | 3,009,282 | 1,595,767 |
+| `#hoa-fire-dragon-crossing` | 3,033,141 | 1,636,751 |
+
+Non-pack overhead was 589,341 bytes in these measurements. The default meets the
+3,000,000-byte desktop / 1,600,000-byte mobile first-load targets, but Fireball
+Evolved exceeds the desktop target and Fire Dragon Crossing exceeds both.
+Container limits do not guarantee whole-page first-load limits. These are local
+measurements, not CDN-compressed transfer sizes or physical-device benchmarks;
+remeasure after asset or application changes.
 
 ## Actor tracks and playback poses
 
@@ -148,5 +206,5 @@ It has the same per-skill preset and budget as the base skill.
 The collection index retains 25 base entries. When available, a base entry has
 `evolved: { files, bytes, desktopBytes, mobileBytes, frameCount }`.
 Here `files` lists both variant containers, `bytes` is the desktop size,
-and the tier byte counts are actual container sizes. Load only the selected
+`frameCount` is the desktop count, and the tier byte counts are actual container sizes. Load only the selected
 variant/tier; use the evolved id when playing an evolved container.
