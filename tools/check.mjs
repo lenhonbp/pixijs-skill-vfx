@@ -80,17 +80,30 @@ try {
     const d = window.__vfxDebug, w = window.demo.vfx;
     let rejected = false;
     try { d.setTier(4); } catch { rejected = true; }
-    const cleared = ['activation-hoa-3', 'evolution-thuy'].every(id => {
-      d.cast(id);
+    const cleared = ['activation-hoa-3', 'evolution-thuy', 'hoa-fireball'].every(id => {
+      d.cast(id, 3);
       d.advance(100);
       w.clear();
       d.advance(2000);
       return !d.stats().particles && !d.stats().updaters;
     });
-    return { rejected, cleared };
+    const spawned = [], spawn = w.spawn.bind(w);
+    w.spawn = o => { const particle = spawn(o); if (particle) spawned.push(particle); return particle; };
+    d.cast('activation-hoa-3');
+    const feet = spawned.find(q => !q.o.groundAligned && q.o.follow).o.follow();
+    feet.z = 90;
+    d.advance(450);
+    const grounded = spawned.filter(q => q.o.layer === 'ground').every(q => q.z === 0);
+    feet.z = 0;
+    w.spawn = spawn;
+    w.clear();
+    return { rejected, cleared, grounded };
   });
-  assert.deepEqual(contracts, { rejected: true, cleared: true });
-  console.log('Activation tier validation and interrupted-effect cleanup: PASS');
+  assert.deepEqual(contracts, { rejected: true, cleared: true, grounded: true });
+  console.log('Activation tier validation, airborne ground projection and interrupted-effect cleanup: PASS');
+  skills.push(...['hoa-fireball', 'tho-fissure', 'thuy-frost-nova'].map(id => ({
+    ...skills.find(s => s.id === id), label: `${id}-tier3`, tier: 3,
+  })));
   await page.close();
   const rows = [];
   for (const skill of skills) {
@@ -98,30 +111,35 @@ try {
     page.on('pageerror', (error) => failures.push(error.message));
     await page.goto(url, { waitUntil: 'domcontentloaded' });
     await page.waitForFunction(() => !!window.__vfxDebug);
-    const result = await page.evaluate(({ id, length }) => {
+    const result = await page.evaluate(({ id, length, tier = 0 }) => {
       const d = window.__vfxDebug, w = window.demo.vfx;
-      let peak = 0;
+      let peak = 0, hits = 0;
       const spawn = w.spawn.bind(w);
-      w.spawn = (...args) => { const p = spawn(...args); peak = Math.max(peak, w.count); return p; };
+      w.spawn = (...args) => {
+        if (args[0].layer === 'top' && args[0].blend === 'normal' && [850, 1100].includes(args[0].life)) hits++;
+        const p = spawn(...args); peak = Math.max(peak, w.count); return p;
+      };
       const runs = [];
       for (let i = 0; i < 3; i++) {
         d.seed(12345);
-        if (i === 0) d.cast(id, 0); else d.repeat(id);
-        for (let left = length + 1500; left > 0; left -= 16) d.advance(Math.min(left, 16));
+        if (i === 0) d.cast(id, tier); else d.repeat(id, tier);
+        if (tier && id === 'tho-fissure') d.moveCaster({ x: 450 });
+        for (let left = length + 1900; left > 0; left -= 16) d.advance(Math.min(left, 16));
         runs.push(d.stats());
       }
-      return { peak, runs };
+      return { peak, runs, hits };
     }, skill);
     await page.close();
     // SkillDef has no ultimate flag: every sample uses the ordinary 150 cap.
     // Future skills explicitly named *-ultimate (or ultimate-*) get 600.
     const budget = /(^|-)ultimate(-|$)/.test(skill.id) ? 600 : 150;
     const issues = [];
+    if (skill.tier && !result.hits) issues.push('no damaging hits exercised');
     const budgetStatus = budgetResult(result.peak, budget, Object.hasOwn(baseline, skill.id) ? baseline[skill.id] : undefined);
     if (budgetStatus.failure) issues.push(budgetStatus.failure);
     if (result.runs.some((r) => r.particles || r.updaters)) issues.push('leftovers');
     if (result.runs.slice(1).some((r, i) => Object.keys(r).some((key) => r[key] > result.runs[i][key]))) issues.push('growth');
-    rows.push({ skill: skill.id, peak: result.peak, budget,
+    rows.push({ skill: skill.label ?? skill.id, peak: result.peak, budget,
       particles: result.runs.map((r) => r.particles).join('/'), updaters: result.runs.map((r) => r.updaters).join('/'),
       pool: result.runs.map((r) => `${r.sprites}:${r.records}`).join('/'), result: [...issues, budgetStatus.warning].filter(Boolean).join(', ') || 'PASS' });
     if (issues.length) failures.push(`${skill.id}: ${issues.join(', ')}`);

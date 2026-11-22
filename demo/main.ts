@@ -4,7 +4,7 @@ import { Application, Container, Sprite, Texture } from 'pixi.js';
 import {
   VfxWorld, createVfxTextures, isPixiV8, textureFromCanvas, rigFromBlender, anchorAtFeet,
   hitFlash, hitSpark, damageNumber, activeHitFlashes, ELEMENTS, Distortion, Bloom, Palette, Vec3, outCubic, lerp, rand, setRng, mulberry32,
-  skillActivation, skillEvolution, activationRelease, ActivationTier, PALETTES,
+  skillActivation, skillEvolution, empoweredHit, empoweredAura, activationRelease, ActivationTier, PALETTES,
 } from '../kit';
 import { SKILLS, SkillDef, Unit, SkillContext } from '../examples/skills';
 
@@ -229,7 +229,8 @@ function whiteTexture() {
     if (i >= 0) summons.splice(i, 1);
     s.destroy();
   };
-  const ctxFor = (): SkillContext => ({
+  const ctxFor = (selected: ActivationTier = 1, palette: Palette = PALETTES.arcane): SkillContext & { tier?: ActivationTier } => ({
+    tier: selected,
     w, tex, caster: hero, target: enemies[0], targets: enemies,
     hurt: (u, amount, o = {}) => {
       const du = u as DemoUnit;
@@ -239,6 +240,7 @@ function whiteTexture() {
         return;
       }
       if (amount === 0) return;
+      if (selected > 1) empoweredHit(w, tex, { at: { ...u.feet, z: (u.feet.z ?? 0) + u.height * 0.55 }, palette, tier: selected });
       const feedback = o.feedback ?? 1;
       hitFlash(w, u.sprite, 110, feedback < 1 ? o.palette?.main ?? 0xffffff : 0xffffff, feedback);
       if (o.palette) hitSpark(w, tex, { x: u.feet.x, y: u.feet.y, z: u.height * 0.55, palette: o.palette, angle: o.angle ?? Math.PI, size: Math.sqrt(feedback) });
@@ -320,8 +322,13 @@ function whiteTexture() {
     renderList();
     if (selected) skillActivation(w, tex, { ...activationOptions(s.element), tier: selected });
     const delay = selected ? activationRelease(selected) : 0;
-    if (delay) w.after(delay, () => s.cast(ctxFor()));
-    else s.cast(ctxFor());
+    if (delay) w.after(delay, () => startSkill(s, selected));
+    else startSkill(s, selected);
+  };
+  const startSkill = (s: SkillDef, selected: ActivationTier | 0) => {
+    const options = activationOptions(s.element);
+    if (selected > 1) empoweredAura(w, tex, { ...options, tier: selected as ActivationTier, duration: s.length });
+    s.cast(ctxFor(selected || 1, options.palette));
   };
 
   const renderInfo = () => {
@@ -483,6 +490,7 @@ function whiteTexture() {
       skills: [...SKILLS.map(({ id, length }) => ({ id, length })), ...flourishes],
       setTier,
       getTier: () => tier,
+      moveCaster: (at: Partial<Vec3>) => Object.assign(hero.feet, at),
       cast: (id: string, selected: ActivationTier | 0 = tier) => {
         stopShowcase();
         resetScene();
@@ -502,13 +510,16 @@ function whiteTexture() {
       seed: (seed: number) => setRng(mulberry32(seed)),
       advance: frame,
       // Repeat without clear(): lifecycle checks must not hide leaks between casts.
-      repeat: (id: string) => {
+      repeat: (id: string, selected: ActivationTier | 0 = 0) => {
         if (flourish(id)) return;
         const skill = SKILLS.find((s) => s.id === id);
         if (!skill) throw new Error(`Unknown skill: ${id}`);
         for (const u of units) { u.feet.x = u.home.x; u.feet.y = u.home.y; u.feet.z = 0; u.sprite.visible = true; u.hp = 1; }
         hero.facing = 1;
-        skill.cast(ctxFor());
+        if (selected) skillActivation(w, tex, { ...activationOptions(skill.element), tier: selected });
+        const delay = selected ? activationRelease(selected) : 0;
+        if (delay) w.after(delay, () => startSkill(skill, selected));
+        else startSkill(skill, selected);
       },
     };
   }

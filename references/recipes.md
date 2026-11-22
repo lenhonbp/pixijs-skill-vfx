@@ -103,10 +103,16 @@ white core, cracks, flash, shake and hit-stop. Each includes the lower tier's la
 Start gameplay immediately at tier 1, or after `activationRelease(tier)` (250/400 ms).
 `duration` controls the tier 3 lingering aura (1500 ms default).
 
-`skillEvolution(w, tex, { at, height, palette, fromTier, toTier })` gathers for
-550 ms, holds 100 ms, bursts into a ray crown, double shockwave and ascending
-sparks, then settles the destination seal by 1600 ms. Any palette is accepted.
+`skillEvolution(w, tex, { at, height, palette, fromTier, toTier })` fractures the old
+seal, lifts its shards into a helix and overhead crown, then stamps the destination
+seal at 950 ms; ascending rune stacks and double shockwaves fade by 1600 ms.
+`empoweredAura(w, tex, { at, height, palette, tier, duration })` sustains body wisps,
+orbiting shards and a grounded seal during gameplay. `empoweredHit(w, tex,
+{ at: chestPosition, palette, tier })` adds a localized crown, rays, floor rings and
+debris on positive damage. Both skip tier 1; no full-screen white flashes are used.
+All palettes are accepted; floor pieces stay at z=0 even during jumps.
 Capture with `npm run capture -- --skills activation-hoa-3,evolution-thuy`.
+Compare evolved gameplay with `npm run capture -- --skills hoa-fireball,tho-fissure --tier 3`.
 
 ## dropShadow (ground blob)
 

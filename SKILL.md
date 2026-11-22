@@ -83,7 +83,11 @@ for tiers 2/3, and include that pre-roll in showcase waits. The tiers accumulate
 ground seals, body wisps/pillars, then inward shards, cracks and top-layer feedback.
 Tier 3's low aura lasts `duration` (default 1500 ms) after release.
 Use `skillEvolution(w, tex, { at, height, palette, fromTier, toTier })` for the
-1600 ms one-shot upgrade: gather, hold, coronation, then the new seal settles.
+1600 ms one-shot upgrade: broken seal shards spiral upward into an overhead crown,
+which stamps the new seal at 950 ms. Stacked ascending runes show the destination tier.
+For gameplay after release, run `empoweredAura` for the skill's length and call
+`empoweredHit` at each positive-damage target's chest. Both are no-ops at tier 1.
+Ground layers ignore caster height; body layers follow jumps. Keep flashes localized.
 All timers/particles use the world clock and `clear()` cancels them.
 
 Read `references/recipes.md` for the recipe catalog and `kit/recipes.ts` for the code. Start from

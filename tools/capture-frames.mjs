@@ -9,16 +9,20 @@ import { chromium } from 'playwright';
 
 const root = resolve(dirname(fileURLToPath(import.meta.url)), '..');
 const times = [0, 100, 200, 350, 500, 700, 1000, 1400, 2000, 2800];
-const options = { out: resolve(homedir(), 'audit/before'), skills: null, seed: 12345 };
+const options = { out: resolve(homedir(), 'audit/before'), skills: null, seed: 12345, tier: 0 };
 const args = process.argv.slice(2);
 for (let i = 0; i < args.length; i++) {
   const arg = args[i];
   if (arg === '--help') {
-    console.log('Usage: node tools/capture-frames.mjs [--out DIR] [--skills id,id] [--seed INTEGER]\nPseudo ids: activation-hoa-1/2/3, activation-thuy-1/2/3, evolution-hoa, evolution-thuy.\nOrdinary skill ids capture the tier-less baseline. Requires: npx playwright install chromium.\nEach skill starts in a fresh seeded page at high quality, with exact 16 ms stepping.');
+    console.log('Usage: node tools/capture-frames.mjs [--out DIR] [--skills id,id] [--seed INTEGER] [--tier 0|1|2|3]\nPseudo ids: activation-hoa-1/2/3, activation-thuy-1/2/3, evolution-hoa, evolution-thuy.\nTier 0 (default) captures the tier-less baseline. Requires: npx playwright install chromium.\nEach skill starts in a fresh seeded page at high quality, with exact 16 ms stepping.');
     process.exit(0);
   }
-  if (!['--out', '--skills', '--seed'].includes(arg) || !args[i + 1]) throw new Error(`Invalid argument: ${arg}`);
+  if (!['--out', '--skills', '--seed', '--tier'].includes(arg) || !args[i + 1]) throw new Error(`Invalid argument: ${arg}`);
   const value = args[++i];
+  if (arg === '--tier') {
+    if (!/^[0-3]$/.test(value)) throw new Error('--tier must be 0, 1, 2 or 3');
+    options.tier = Number(value);
+  }
   if (arg === '--out') options.out = resolve(value.replace(/^~(?=\/|$)/, homedir()));
   if (arg === '--skills') {
     options.skills = [...new Set(value.split(',').map((id) => id.trim()).filter(Boolean))];
@@ -73,11 +77,12 @@ try {
   const sheetPage = await context.newPage();
   for (const [index, skill] of skills.entries()) {
     if (index) await load();
-    await page.evaluate((id) => window.__vfxDebug.cast(id, 0), skill.id);
+    const label = options.tier && !/^(activation|evolution)-/.test(skill.id) ? `${skill.id}-tier${options.tier}` : skill.id;
+    await page.evaluate(({ id, tier }) => window.__vfxDebug.cast(id, tier), { id: skill.id, tier: options.tier });
     let elapsed = 0;
     const frames = [];
     // Include the count checkpoint in the timeline even for very short skills.
-    const countTime = skill.length + 1500;
+    const countTime = skill.length + 1900;
     const checkpoints = [...new Set([...times, countTime])].sort((a, b) => a - b);
     for (const time of checkpoints) {
       const count = await page.evaluate((ms) => {
@@ -108,9 +113,9 @@ try {
         ctx.drawImage(image, x, y + label);
       });
       return canvas.toDataURL('image/png').split(',')[1];
-    }, { frames, id: skill.id });
-    await writeFile(resolve(options.out, `${skill.id}.png`), Buffer.from(png, 'base64'));
-    console.log(`${skill.id}.png: ${counts[skill.id]} particles at ${countTime} ms`);
+    }, { frames, id: label });
+    await writeFile(resolve(options.out, `${label}.png`), Buffer.from(png, 'base64'));
+    console.log(`${label}.png: ${counts[skill.id]} particles at ${countTime} ms`);
   }
   await writeFile(resolve(options.out, 'counts.json'), JSON.stringify(counts, null, 2) + '\n');
   console.log(`Captured ${skills.length} skills in ${options.out}`);

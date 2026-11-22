@@ -38,10 +38,10 @@ function release(w: VfxWorld, tex: VfxTextures, o: Caster, size: number, major: 
   w.spawn({ texture: tex.glow, x: 0, y: 0, z: o.height, follow: o.at, life: 520, zBias: 3,
     scaleX: [0.3 * size, 0.7 * size], scaleY: [o.height / 40, o.height / 22], alpha: [0.5, 0], tint: p.main });
   if (!major) return;
-  w.spawn({ texture: tex.glow, x: 0, y: 0, z: o.height * 1.2, follow: o.at, life: 350,
-    scaleX: [0.13, 0.3], scaleY: o.height / 18, alpha: [0.9, 0], tint: 0xffffff, zBias: 5 });
+  w.spawn({ texture: tex.glow, x: 0, y: 0, z: o.height * 1.2, follow: o.at, life: 300,
+    scaleX: [0.09, 0.16], scaleY: o.height / 25, alpha: [0.45, 0], tint: p.core, zBias: 5 });
   w.spawn({ texture: tex.glow, layer: 'top', x: 0, y: 0, z: o.height, follow: o.at,
-    life: 120, scale: 22, alpha: [0.28, 0], tint: p.core });
+    life: 90, scale: 2.8, alpha: [0.16, 0], tint: p.main });
   w.burst(18, (i, n) => {
     const a = i / n * TAU, speed = rand(120, 240) * size;
     return { texture: tex.shard, x: 0, y: 0, z: o.height * 0.6, follow: o.at, life: rand(380, 650),
@@ -94,30 +94,107 @@ export function skillActivation(w: VfxWorld, tex: VfxTextures, o: Caster & { tie
   });
 }
 
-/** Fantasy: an elemental ascension, pulled tight before a radiant coronation.
+/** Fantasy: the old seal shatters, rising into a crest that stamps the new tier.
  * Palette: any element's main, white-hot core and dark aftermath.
- * Phases: gather 0-550 ms; hold 550-650; release/peak 650-750; settle/fade 750-1600.
- * Layers: ground double shock/seal; body inward shards, crown/pillar/rising sparks; top flash.
- * Sync: evolution releases at 650 ms; the new tier is ready at 1600 ms.
+ * Phases: fracture 0-200 ms; helix 200-650; crest/hold 650-850; stamp 950; fade 950-1600.
+ * Layers: broken ground seal; body shard helix, stacked runes and overhead crown; local top glow.
+ * Sync: evolution stamps at 950 ms; the new tier is ready at 1600 ms.
  */
 export function skillEvolution(w: VfxWorld, tex: VfxTextures, o: Caster & { fromTier: ActivationTier; toTier: ActivationTier }) {
-  gather(w, tex, o, 24, 550, 150 + o.fromTier * 10);
-  sigil(w, tex, o, 75, 650, -1);
-  w.spawn({ texture: tex.glow, x: 0, y: 0, z: o.height * 0.7, follow: o.at, life: 650,
-    scale: [0.1, 1.1], alpha: [0.1, 0.8], tint: o.palette.core });
-  w.after(650, () => {
-    release(w, tex, o, 2, true);
-    sigil(w, tex, o, 55 + o.toTier * 20, 950, 0.35);
-    w.spawn({ texture: tex.ring, layer: 'ground', groundAligned: true, x: 0, y: 0, follow: groundAt(o.at),
-      delay: 100, life: 650, scale: [0.3, 2.2, outCubic], alpha: [0.8, 0], tint: o.palette.core });
-    w.burst(12, (i, n) => ({ texture: tex.streak, x: 0, y: 0, z: o.height * 0.8, follow: o.at,
-      life: 650, rotation: i / n * TAU, scaleX: [0.15, 1.8, outCubic], scaleY: [1.4, 0],
-      alpha: envelope(0.08, 0.8, 0.8), tint: [o.palette.core, o.palette.main], zBias: 5 }));
-    w.burst(22, (i, n) => {
-      const a = i / n * TAU;
-      return { texture: tex.star, x: Math.cos(a) * 65, y: Math.sin(a) * 65 * w.groundSquash,
-        z: 8, follow: o.at, life: 850, vz: rand(80, 170), spin: 2, scale: [0.18, 0],
-        alpha: envelope(0.1, 0.7), tint: [o.palette.core, o.palette.main] };
-    });
+  const p = o.palette;
+  w.spawn({ texture: tex.rune, layer: 'ground', groundAligned: true, x: 0, y: 0,
+    follow: groundAt(o.at), life: 240, scale: [0.3, 0.36], alpha: [0.8, 0], tint: p.main });
+  w.burst(18, (i, n) => {
+    const angle = i / n * TAU;
+    return { texture: tex.shard, x: 0, y: 0, follow: o.at, life: 850,
+      scale: [0.55, 0.18], alpha: envelope(0.07, 0.18, 0.8), tint: [p.main, p.core], zBias: 5,
+      onUpdate: (q, t) => {
+        const a = angle + t * 7, r = (55 + o.fromTier * 8) * (1 - t * t);
+        q.px = Math.cos(a) * r; q.py = Math.sin(a) * r * w.groundSquash;
+        q.pz = 5 + t * o.height * 1.9; q.rotation = a + Math.PI / 2;
+      } };
   });
+  for (let i = 0; i < o.toTier; i++) {
+    w.spawn({ texture: tex.rune, x: 0, y: 0, follow: o.at, delay: 200 + i * 120,
+      life: 1000 - i * 120, groundAligned: true, zBias: 4, spin: i % 2 ? -0.8 : 0.8,
+      scale: [0.22 + i * 0.035, 0.13], alpha: envelope(0.18, 0.5, 0.45), tint: p.main,
+      onUpdate: (q, t) => { q.pz = o.height * (0.3 + i * 0.4 + t * 0.5); } });
+  }
+  const crest = () => ({ ...o.at(), z: (o.at().z ?? 0) + o.height * 1.9 });
+  w.spawn({ texture: tex.star, x: 0, y: 0, follow: crest, delay: 600, life: 350,
+    scale: [0.1, 0.7], alpha: envelope(0.25, 0.1, 0.65), tint: p.core, zBias: 7 });
+  w.burst(9, (i, n) => ({ texture: tex.streak, x: 0, y: 0, follow: o.at, delay: 600, life: 350,
+    rotation: Math.PI + i / (n - 1) * Math.PI, anchorX: 0, scaleX: [0.15, 0.65], scaleY: 0.65,
+    alpha: envelope(0.2, 0.2, 0.65), tint: p.main, zBias: 6,
+    onUpdate: (q, t) => { q.pz = o.height * 1.9 * (t < 0.65 ? 1 : 1 - outCubic((t - 0.65) / 0.35)); } }));
+  w.after(950, () => {
+    sigil(w, tex, o, 85 + o.toTier * 18, 650, 0.2);
+    w.spawn({ texture: tex.glow, layer: 'top', x: 0, y: 0, z: 12, follow: o.at, life: 200,
+      scaleX: [1, 2.4], scaleY: [0.6, 0.2], alpha: [0.24, 0], tint: p.main });
+    for (let i = 0; i < 2; i++) w.spawn({ texture: tex.ring, layer: 'ground', groundAligned: true,
+      x: 0, y: 0, follow: groundAt(o.at), delay: i * 80, life: 500, scale: [0.2, 1.6 + i * 0.35, outCubic],
+      alpha: [0.55, 0], tint: i ? p.main : p.core });
+    w.burst(14, (i, n) => {
+      const a = i / n * TAU;
+      return { texture: tex.star, x: Math.cos(a) * 75, y: Math.sin(a) * 75 * w.groundSquash,
+        z: 4, follow: o.at, life: 550, vz: rand(70, 150), scale: [0.17, 0], tint: [p.core, p.main] };
+    });
+    w.shake(6, 180); w.hitStop(35);
+  });
+}
+
+/** Fantasy: evolved magic blossoms at the damage point, never across the screen.
+ * Palette: elemental main with a brief core edge and dark debris.
+ * Phases: release 0; crown peak 40 ms; sparks/debris fade 80-260 ms.
+ * Layers: grounded shock rings; chest crown/rays and embers in body.
+ * Sync: call for positive damage only; tier 1 is unchanged.
+ */
+export function empoweredHit(w: VfxWorld, tex: VfxTextures, o: { at: Vec3; palette: Palette; tier: ActivationTier }) {
+  if (o.tier === 1) return;
+  const p = o.palette, big = o.tier === 3, s = big ? 1.4 : 0.8;
+  const body = { x: o.at.x, y: o.at.y, z: o.at.z ?? 0 };
+  w.spawn({ ...body, texture: tex.crescent, life: 200, rotation: -Math.PI / 2,
+    scale: [0.12 * s, 0.6 * s, outCubic], alpha: [0.85, 0], tint: p.main, zBias: 8 });
+  w.spawn({ ...body, texture: tex.star, life: 150, scale: [0.5 * s, 0.1], alpha: [0.7, 0], tint: p.core, zBias: 9 });
+  for (let i = 0; i < (big ? 2 : 1); i++) w.spawn({ texture: tex.ring, layer: 'ground', groundAligned: true,
+    x: o.at.x, y: o.at.y, z: 0, delay: i * 45, life: 230, scale: [0.05, (0.45 + i * 0.2) * s, outCubic],
+    alpha: [0.6, 0], tint: p.main });
+  if (big) w.burst(4, (i, n) => ({ ...body, texture: tex.streak, life: 160, rotation: i / n * TAU + 0.4,
+    anchorX: 0, scaleX: [0.2, 0.9], scaleY: [0.8, 0], alpha: [0.75, 0], tint: p.main, zBias: 6 }));
+  w.burst(3, (i, n) => {
+    const a = i / n * TAU;
+    return { ...body, texture: big ? tex.rock : tex.streak, life: 240, rotation: a,
+      vx: Math.cos(a) * 160 * s, vy: Math.sin(a) * 80 * s, vz: 45, gravity: 450,
+      scaleX: [big ? 0.3 : 0.35, 0.05], scaleY: 0.25, alpha: [0.8, 0], tint: big ? [p.main, p.dark] : [p.core, p.main], zBias: 7 };
+  });
+  if (big) w.shake(2, 90);
+}
+
+/** Fantasy: an evolved caster leaks restrained power throughout the skill.
+ * Palette: elemental wisps and shards over a dark floor remnant.
+ * Phases: ease in 120 ms; sustained orbit; final 300 ms fade.
+ * Layers: grounded glow/sigil; licking body tongues and orbiting shards.
+ * Sync: duration is the skill length, beginning at gameplay release.
+ */
+export function empoweredAura(w: VfxWorld, tex: VfxTextures, o: Caster & { tier: ActivationTier; duration: number }) {
+  if (o.tier === 1 || o.duration <= 0) return;
+  const big = o.tier === 3, life = o.duration;
+  const alpha = envelope(Math.min(0.2, 120 / life), Math.min(0.5, 300 / life), big ? 0.38 : 0.22);
+  w.spawn({ texture: big ? tex.rune : tex.glow, layer: 'ground', groundAligned: true,
+    x: 0, y: 0, follow: groundAt(o.at), life, scale: big ? 0.23 : 0.85, alpha, tint: o.palette.main, spin: 0.2 });
+  w.burst(big ? 4 : 3, (i, n) => ({ texture: tex.puff, x: 0, y: 0, follow: o.at, life,
+    scaleX: big ? 0.22 : 0.15, scaleY: big ? 0.7 : 0.45, alpha, tint: o.palette.main,
+    onUpdate: (q) => {
+      const cycle = (q.age / 650 + i / n) % 1, a = i / n * TAU + q.age / 850;
+      q.px = Math.cos(a) * 30; q.py = Math.sin(a) * 30 * w.groundSquash;
+      q.pz = 8 + cycle * o.height * 0.85; q.alphaMul = Math.sin(cycle * Math.PI);
+      q.rotation = Math.sin(a) * 0.4;
+    } }));
+  if (big) w.burst(3, (i, n) => ({ texture: tex.shard, x: 0, y: 0, follow: o.at, life,
+    scale: 0.23, alpha, tint: o.palette.core,
+    onUpdate: (q) => {
+      const a = i / n * TAU + q.age / 500;
+      q.px = Math.cos(a) * 42; q.py = Math.sin(a) * 42 * w.groundSquash;
+      q.pz = o.height * 0.45 + Math.sin(a * 2) * 12; q.rotation = a;
+    } }));
 }
