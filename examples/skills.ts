@@ -7,9 +7,9 @@ import {
   VfxWorld, VfxTextures, Vec3, Palette, WUXING, PHONG, LOI, AnyElementName,
   tornado, windSlash, vortex, windWisps, gustLines, curlDrift,
   slash, hitSpark, hitFlash, projectile, explosion, meteor, lightningChain, healAura, telegraph, shockwave,
-  damageOverTime, stun, shock, freeze, slow, root, shield, statChange, damageNumber,
+  damageOverTime, stun, shock, freeze, slow, root, statChange, damageNumber,
   silence, blind, armorBreak, mark, fear, aura, empower, haste,
-  goldenBell,
+  goldenBell, stoneArmor,
   lightningStrike, staticField,
   dash, blink, leap, beam, coneBreath, chargeUp, summonCircle, spikeLine, spikeRing, swordRain,
   rand, envelope, outCubic, outQuad, lerp, clamp01,
@@ -341,18 +341,12 @@ export const SKILLS: SkillDef[] = [
   },
   {
     id: 'tho-stone-skin', element: 'tho', category: 'buff', en: 'Stone Skin', vi: 'Thạch Giáp Hộ Thể',
-    desc: 'Rock plates form a heavy barrier and raise defense.', uses: ['shield', 'statChange'], length: 2800,
+    desc: 'Rock plates rise and lock onto the body, then crumble into rubble.', uses: ['stoneArmor', 'statChange'], length: 4000,
     cast: ({ w, tex, caster }) => {
-      const f = caster.feet;
-      w.burst(14, () => {
-        const a = rand(0, 6.3), r = rand(50, 80);
-        return { texture: tex.rock, blend: 'normal', x: f.x + Math.cos(a) * r, y: f.y + Math.sin(a) * r * w.groundSquash, z: 0, life: 380, vx: -Math.cos(a) * r * 2.6, vy: -Math.sin(a) * r * w.groundSquash * 2.6, vz: 260, gravity: 900, rotation: rand(0, 6.3), spin: rand(-8, 8), scale: rand(0.25, 0.4), tint: 0x9a8060 };
-      });
-      w.after(360, () => {
-        w.shake(4, 160);
+      const armor = stoneArmor(w, tex, { target: feetOf(caster), height: caster.height, palette: P.tho, duration: 2200 });
+      w.after(650, () => {
         statChange(w, tex, { target: feetOf(caster), height: caster.height, up: true, palette: P.tho, duration: 1100 });
-        const sh = shield(w, tex, { target: feetOf(caster), height: caster.height, palette: P.tho, duration: 2200 });
-        w.after(1200, () => sh.hit(0.3));
+        w.after(1200, () => armor.hit(0.3));
       });
     },
   },

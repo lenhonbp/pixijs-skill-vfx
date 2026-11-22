@@ -30,6 +30,8 @@ export interface VfxTextures {
   spike: Texture;
   /** Faceted rock chunk, lit from the upper left. Size 48. Debris (normal blend). */
   rock: Texture;
+  /** Solid beveled armor slab with cracks. 64x80. Normal blend. */
+  rockPlate: Texture;
   /** Leaf with a mid vein pointing +x. 48x24. Wood/nature. */
   leaf: Texture;
   /** Water droplet, round end at the bottom. 24x36. Water, bleed. */
@@ -377,6 +379,20 @@ export function createVfxTextures(): VfxTextures {
     return textureFromCanvas(c);
   })();
 
+  const rockPlate = (() => {
+    const [c, ctx] = makeCanvas(64, 80);
+    ctx.beginPath(); ctx.moveTo(14, 5); ctx.lineTo(48, 9); ctx.lineTo(60, 29);
+    ctx.lineTo(51, 70); ctx.lineTo(25, 76); ctx.lineTo(5, 55); ctx.lineTo(6, 22); ctx.closePath();
+    const fill = ctx.createLinearGradient(10, 8, 55, 74);
+    fill.addColorStop(0, '#fff0ce'); fill.addColorStop(0.35, '#c8b18b'); fill.addColorStop(1, '#64523d');
+    ctx.fillStyle = fill; ctx.fill(); ctx.lineWidth = 5; ctx.strokeStyle = '#49392b'; ctx.stroke();
+    ctx.beginPath(); ctx.moveTo(9, 24); ctx.lineTo(16, 9); ctx.lineTo(47, 13); ctx.lineTo(53, 25);
+    ctx.lineTo(26, 20); ctx.closePath(); ctx.fillStyle = '#ffe6b6'; ctx.fill();
+    ctx.beginPath(); ctx.moveTo(36, 22); ctx.lineTo(28, 36); ctx.lineTo(35, 46); ctx.lineTo(24, 65);
+    ctx.moveTo(28, 36); ctx.lineTo(14, 39); ctx.moveTo(35, 46); ctx.lineTo(49, 43);
+    ctx.strokeStyle = '#56432f'; ctx.lineWidth = 3; ctx.stroke();
+    return textureFromCanvas(c);
+  })();
   const bell = (() => {
     const [c, ctx] = makeCanvas(256, 320);
     ctx.beginPath();
@@ -454,5 +470,5 @@ export function createVfxTextures(): VfxTextures {
     digits[ch] = textureFromCanvas(c);
   }
 
-  return { glow, dot, ring, disc, streak, beam, star, puff, crescent, shard, blade, spike, rock, leaf, drop, chevron, rune, bubble, tendril, plus, crackedShield, bell, bellCracks, digits };
+  return { glow, dot, ring, disc, streak, beam, star, puff, crescent, shard, blade, spike, rock, rockPlate, leaf, drop, chevron, rune, bubble, tendril, plus, crackedShield, bell, bellCracks, digits };
 }

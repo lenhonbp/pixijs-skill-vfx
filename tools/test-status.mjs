@@ -123,6 +123,43 @@ try {
     check(bellError === 'bell callback' && !broken.alive, 'bell: callback error leaves stopped handle');
     clean(w, 'bell callback error');
     results.push('goldenBell: gather/drop/landing, hits/break, Infinity/stop, finite/zero/default, movement and errors PASS');
+    w = world(); at = { x: 100, y: 200, z: 0 }; breaks = 0;
+    const armor = kit.stoneArmor(w, tex, { target: () => at, duration: Infinity, height: 105, onBreak: () => breaks++ });
+    step(w, 200);
+    check(!w.particles.some((p) => p.o.texture === tex.rockPlate && p.sprite.visible), 'stone: pebble anticipation');
+    step(w, 150);
+    check(w.particles.some((p) => p.o.texture === tex.rockPlate && p.sprite.visible && Math.abs(p.px) > 30), 'stone: plates fly inward');
+    step(w, 400);
+    const plates = w.particles.filter((p) => p.o.texture === tex.rockPlate);
+    check(plates.length === 8 && plates.every((p) => p.o.blend === 'normal'), 'stone: eight solid attached plates');
+    at = { x: 500, y: 350, z: 35 }; step(w, 32);
+    check(plates.every((p) => p.sprite.x === at.x + p.px && p.sprite.y === at.y - at.z - p.pz), 'stone: follows moving airborne unit');
+    const beforeHit = plates[0].sprite.x;
+    armor.hit(); step(w, 16);
+    check(plates[0].sprite.x !== beforeHit && armor.alive, 'stone: hit jolts plates without breaking');
+    armor.break(); armor.break(); armor.hit();
+    check(!armor.alive && breaks === 1, 'stone: break is idempotent');
+    check(w.particles.some((p) => p.o.texture === tex.rockPlate && p.o.gravity > 0), 'stone: falling cracked rubble');
+    clean(w, 'stone break');
+    for (const duration of [0, 600, undefined, Infinity]) {
+      w = world();
+      const handle = kit.stoneArmor(w, tex, { target: () => at, duration });
+      if (duration === Infinity) {
+        step(w, 7000); check(handle.alive && w.count > 0, 'stone: Infinity sustains');
+        handle.stop(); handle.stop(); handle.hit(); handle.break();
+      } else step(w, 5000);
+      clean(w, 'stone duration/stop'); check(!handle.alive, 'stone: duration/stop ends handle');
+    }
+    w = world();
+    const earlyArmor = kit.stoneArmor(w, tex, { target: () => at, duration: Infinity, onBreak: () => breaks++ });
+    earlyArmor.stop(); clean(w, 'stone early stop'); check(breaks === 1, 'stone: stop does not call onBreak');
+    w = world();
+    const badArmor = kit.stoneArmor(w, tex, { target: () => at, onBreak: () => { throw new Error('stone callback'); } });
+    let stoneError;
+    try { badArmor.break(); } catch (e) { stoneError = e.message; }
+    check(stoneError === 'stone callback' && !badArmor.alive, 'stone: callback error leaves handle stopped');
+    clean(w, 'stone callback error');
+    results.push('stoneArmor: assembly, eight plates, movement/hit/break, Infinity/stop, finite/default/zero and errors PASS');
     return results;
   });
   results.forEach((line) => console.log(line));
