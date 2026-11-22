@@ -7,19 +7,19 @@ not a framework to extend with options.
 | Recipe | Layers it builds | Typical use | Key knobs |
 |---|---|---|---|
 | `hitSpark` | small core glow, spinning star, 8 streaks in a cone | every hit, crits (size 1.5+) | `angle` (away from attacker), `size` |
-| `hitFlash` | additive copy of the target's texture fading out | target feedback | `ms`, `color` (red for damage, green for heal) |
+| `hitFlash` | additive copy of the target's texture fading out | target feedback | `ms`, `color` (red for damage, green for heal), `opacity` (default 1) |
 | `slash` | dark smear + main crescent + white edge, all ground-aligned at chest height, sparks off the end | melee swings, dash cuts | `angle` facing, `radius`, `sweep`, `duration`, `clockwise` |
 | `projectile` | glow + core following a path with an arc, ribbon trail + ember stream, ground shadow | fireball, arrow, magic bolt | `speed`, `arcHeight`, `size`, `onHit` |
 | `explosion` | top flash, additive fire puffs, normal-blend smoke, gravity sparks, shockwave, scorch decal, shake + hit-stop | AoE impact, fireball hit | `radius`, `shake`, `hitStopMs`, `smoke` |
 | `shockwave` | two expanding ground rings + screen refraction when `Distortion` is attached | slams, landings, nova | `radius`, `duration` |
-| `telegraph` | pulsing ground ring, faint area, fill that grows over the cast | enemy AoE warnings, cast bars on the ground | `radius`, `duration`, `onDone` |
+| `telegraph` | pulsing ground ring, faint area, fill that grows over the cast | enemy AoE warnings, cast bars on the ground | `radius`, `duration`, `onDone`, `finishAlpha` (0 disables the finish flash) |
 | `meteor` | `telegraph` -> `projectile` from the sky -> big `explosion` | ultimates; shows composition | `radius`, `castMs` |
-| `lightningChain` | jagged beams (glow + core) between points, re-rolled every 65 ms, glows and sparks at each hit | chain lightning, beams, tethers | `points`, `flickers`, `width` |
+| `lightningChain` | jagged beams (glow + core) between points, re-rolled every 65 ms, glows and sparks at each hit | chain lightning, beams, tethers | `points`, `flickers`, `width`, `impactIntensity` (default 1) |
 | `healAura` | ground pad + shrinking rings, vertical column glow, rising swaying motes, some stars | heals, buffs, auras (return handle) | `target` (follow fn), `radius`, `duration` |
 | `damageNumber` | baked outlined digit sprites in `top`, pop + drift | every hit/heal/tick | `value`, `color`, `crit`, `size` |
 | `damageOverTime` | body tint + per-kind ambience (poison bubbles, burn flames/embers, bleed drops with ground splats), tick pulse + number | poison, burn, bleed | `kind`, `duration`, `tickMs`, `damage`, `onTick` |
 | `stun` | stars orbiting over the head, depth-sorted front/back, ring + trail | stun, daze | `duration`, `stars`, `palette` |
-| `freeze` | frost decal, ice crystals growing around the body, cold mist; shatter burst at end | freeze, petrify (rock palette) | `duration`, `onShatter` |
+| `freeze` | frost decal, ice crystals growing around the body, cold mist; shatter burst at end | freeze, petrify (rock palette) | `duration`, `onShatter`, `glowIntensity` (default 1) |
 | `slow` | spinning cold arcs at the feet, sinking chevrons, drips | slow, snare | `duration`, `palette` |
 | `root` | dirt burst, vines growing from the ground and swaying, leaves | root, entangle | `duration`, `palette` |
 | `shield` | rim-lit bubble with pulse, ground ring, crawling glints; `hit(angle)` ripple, `break()` shards | barriers, absorbs, invulnerability | `radius`, `duration`, `onBreak` |
@@ -27,7 +27,7 @@ not a framework to extend with options.
 | `dash` | afterimages of the unit sprite, speed lines, dust | dash, charge | `sprite`, `duration`, `onMove`, `onEnd` |
 | `blink` | implode + light column at `from`, faint trail, column + burst at `to` | teleport, shadow step | `gapMs`, `onVanish`, `onAppear` |
 | `leap` / `slam` | dust, airborne shadow, trail; slam: shockwave, cracks, dust ring, rock debris, shake | jump attacks, ground pound | `arc`, `duration`, `radius`, `onLand` |
-| `beam` | 3 stacked beam sprites re-laid every frame between two moving points, flowing motes, end glows, impact sparks | lasers, water jets, drains | `from`, `to` (functions), `width`, `duration` |
+| `beam` | laser: stacked beams, motes and end glows; water: rolling puffs, droplets, splash spray, foam rings and wet ground glow | lasers, water jets, drains | `from`, `to` (functions), `width`, `duration`, `style: 'laser' \| 'water'`, `impactSparks` |
 | `coneBreath` | puffs fanned along a moving angle, element bits (embers/shards/leaves), lit ground | dragon breath, frost spray, poison spray | `style`, `range`, `spread`, `angle()` |
 | `chargeUp` | streaks converging on a point, growing glow, shrinking rings, release flash | any windup | `duration`, `onDone` |
 | `summonCircle` | two counter-rotating rune circles, rising pillars, spiralling motes, light column + shockwave | summons, portals | `radius`, `duration`, `onSummon` |
@@ -41,6 +41,14 @@ not a framework to extend with options.
 | `ribbonTrail` | rope mesh through the target's recent positions | any fast mover (see advanced-fx.md) | `width`, `segments`, `tint`, `fadeMs` |
 
 ## Making a new skill
+
+`beam` defaults to `style: 'laser'`, preserving the narrow luminous beam. Use
+`beam(w, tex, { from: hand, to: chest, palette, style: 'water', width: 1.1, duration: 1500 })`
+for a wider blue torrent: normal-blended puffs roll along the moving endpoints, droplets
+flow downstream, and spray and expanding foam rings mark the target above a wet ground glow.
+`width` scales the body and spray; `impactSparks: false` disables the water style's target
+spray and foam rings (or the laser style's sparks). Both return the same handle, stop their streams on `stop()`, and
+let finite droplets dissipate naturally.
 
 1. Brief it (fantasy, palette, phases in ms, layers) as described in SKILL.md section 3.
 2. Compose: most skills are `windup` + `travel` + `impact` + `aftermath`, chained with

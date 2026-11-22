@@ -27,8 +27,9 @@ function placeSegment(q: Particle, a: Vec3, b: Vec3, scaleY: number) {
 export function beam(
   w: VfxWorld,
   tex: VfxTextures,
-  o: { from: () => Vec3; to: () => Vec3; palette: Palette; width?: number; duration?: number; impactSparks?: boolean },
+  o: { from: () => Vec3; to: () => Vec3; palette: Palette; width?: number; duration?: number; impactSparks?: boolean; style?: 'laser' | 'water' },
 ): Handle {
+  if (o.style === 'water') return waterBeam(w, tex, o);
   const p = o.palette;
   const wd = o.width ?? 1;
   const g = group(w, o.duration ?? Infinity, undefined, 140);
@@ -74,6 +75,82 @@ export function beam(
         const t = o.to();
         const a = rand(0, TAU), sp = rand(150, 380);
         return { texture: tex.streak, x: t.x, y: t.y, z: t.z ?? 40, life: rand(150, 260), zBias: 5, vx: Math.cos(a) * sp, vy: Math.sin(a) * sp * w.groundSquash * 0.3, vz: Math.sin(a) * sp, gravity: 500, drag: 3, faceVelocity: true, scaleX: [0.4, 0.05], scaleY: 0.4, tint: [p.core, p.main] };
+      },
+    }));
+  }
+  return g;
+}
+
+function waterBeam(
+  w: VfxWorld,
+  tex: VfxTextures,
+  o: { from: () => Vec3; to: () => Vec3; palette: Palette; width?: number; duration?: number; impactSparks?: boolean },
+): Handle {
+  const p = o.palette, wd = o.width ?? 1;
+  const g = group(w, o.duration ?? Infinity, undefined, 180);
+  g.add(w.spawn({
+    texture: tex.beam, blend: 'normal', x: 0, y: 0, anchorX: 0, life: Infinity, tint: p.dark, alpha: 0.55,
+    onUpdate: (q) => placeSegment(q, o.from(), o.to(), 2.6 * wd * outCubic(clamp01(q.age / 180))),
+  }));
+  g.addHandle(w.stream({
+    rate: 95,
+    make: () => {
+      const start = rand(0, 0.85), phase = rand(0, TAU), radius = rand(7, 17) * wd;
+      return {
+        texture: tex.puff, blend: 'normal', x: 0, y: 0, life: 560, zBias: 2,
+        scaleX: rand(0.6, 0.9) * wd, scaleY: rand(0.4, 0.6) * wd,
+        alpha: envelope(0.1, 0.3, 0.65), tint: [lerpColor(p.main, p.core, 0.25), p.main],
+        onUpdate: (q, t) => {
+          const a = o.from(), b = o.to(), u = start + (1 - start) * t;
+          const dx = b.x - a.x, dy = b.y - (b.z ?? 0) - a.y + (a.z ?? 0);
+          const len = Math.hypot(dx, dy) || 1;
+          const wave = Math.sin(phase + t * TAU * 1.5) * radius;
+          q.o.x = lerp(a.x, b.x, u) - dy / len * wave;
+          q.o.y = lerp(a.y, b.y, u);
+          q.o.z = lerp(a.z ?? 0, b.z ?? 0, u) - dx / len * wave;
+          q.rotation = Math.atan2(dy, dx) + Math.sin(phase + t * TAU) * 0.5;
+        },
+      };
+    },
+  }));
+  g.addHandle(w.stream({
+    rate: 35,
+    make: () => {
+      const a = o.from(), b = o.to(), u = rand(0, 0.9), life = 450;
+      return {
+        texture: tex.drop, blend: 'normal', x: lerp(a.x, b.x, u), y: lerp(a.y, b.y, u), z: lerp(a.z ?? 0, b.z ?? 0, u) + rand(-13, 13) * wd,
+        life, vx: (b.x - a.x) * (1 - u) / (life / 1000), vy: (b.y - a.y) * (1 - u) / (life / 1000),
+        vz: ((b.z ?? 0) - (a.z ?? 0)) * (1 - u) / (life / 1000),
+        faceVelocity: true, scale: rand(0.35, 0.55) * wd, alpha: envelope(0.1, 0.2, 0.8), tint: p.core, zBias: 3,
+      };
+    },
+  }));
+  const ground = () => { const t = o.to(); return { x: t.x, y: t.y, z: 0 }; };
+  g.add(w.spawn({ texture: tex.glow, blend: 'normal', layer: 'ground', groundAligned: true, x: 0, y: 0, follow: ground, life: Infinity, scale: 1.8 * wd, alpha: 0.4, tint: p.main }));
+  if (o.impactSparks !== false) {
+    g.addHandle(w.stream({
+      rate: 50,
+      make: () => {
+        const t = o.to(), angle = rand(0, TAU), speed = rand(70, 180) * wd;
+        return {
+          texture: tex.drop, blend: 'normal', x: t.x, y: t.y, z: t.z ?? 40, life: rand(380, 650), zBias: 4,
+          vx: Math.cos(angle) * speed, vy: Math.sin(angle) * speed * w.groundSquash, vz: rand(60, 170), gravity: 650,
+          faceVelocity: true, scale: rand(0.35, 0.6) * wd, alpha: envelope(0.05, 0.4, 0.8), tint: [p.core, p.main],
+        };
+      },
+    }));
+    g.addHandle(w.stream({
+      rate: 6,
+      make: () => {
+        const t = o.to();
+        return { texture: tex.ring, layer: 'ground', groundAligned: true, x: t.x, y: t.y, life: 550, scale: [0.08 * wd, 0.38 * wd, outQuad], alpha: [0.45, 0], tint: p.main };
+      },
+    }));
+    g.addHandle(w.stream({
+      rate: 8,
+      make: () => {
+        const t = o.to();
+        return { texture: tex.ring, blend: 'normal', groundAligned: true, x: t.x, y: t.y, z: t.z ?? 40, zBias: 5, life: 380, scale: [0.05 * wd, 0.22 * wd, outQuad], alpha: [0.8, 0], tint: p.core };
       },
     }));
   }

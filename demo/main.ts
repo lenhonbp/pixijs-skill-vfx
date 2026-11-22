@@ -236,8 +236,9 @@ function whiteTexture() {
         return;
       }
       if (amount === 0) return;
-      hitFlash(w, u.sprite, 110, 0xffffff);
-      if (o.palette) hitSpark(w, tex, { x: u.feet.x, y: u.feet.y, z: u.height * 0.55, palette: o.palette, angle: o.angle ?? Math.PI });
+      const feedback = o.feedback ?? 1;
+      hitFlash(w, u.sprite, 110, feedback < 1 ? o.palette?.main ?? 0xffffff : 0xffffff, feedback);
+      if (o.palette) hitSpark(w, tex, { x: u.feet.x, y: u.feet.y, z: u.height * 0.55, palette: o.palette, angle: o.angle ?? Math.PI, size: Math.sqrt(feedback) });
       damageNumber(w, tex, { x: u.feet.x, y: u.feet.y, z: u.height + 8, value: amount, crit: o.crit, color: o.color ?? (o.crit ? 0xffd04a : 0xffffff) });
       du.hp = Math.max(0.05, du.hp - amount / 1600);
       lastHurt = w.now;
@@ -440,6 +441,25 @@ function whiteTexture() {
     setQuality,
     postfx: { bloom, distortion },
   };
+  if (new URLSearchParams(location.search).has('debug')) {
+    app.ticker.stop();
+    (window as any).__vfxDebug = {
+      skills: SKILLS.map(({ id, length }) => ({ id, length })),
+      cast: (id: string) => {
+        const skill = SKILLS.find((s) => s.id === id);
+        if (!skill) throw new Error(`Unknown skill: ${id}`);
+        stopShowcase();
+        resetScene();
+        clock = 0;
+        lastHurt = 0;
+        cast(skill);
+        for (const u of units) sync(u, clock);
+      },
+      step,
+      render: () => app.renderer.render(app.stage),
+      count: () => w.count,
+    };
+  }
   if (location.hash === '#showcase') runShowcase(0);
 })();
 

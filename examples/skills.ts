@@ -31,7 +31,7 @@ export interface SkillContext {
   /** All enemies (target included). */
   targets: Unit[];
   /** Apply damage (positive) or healing (negative) and show it. */
-  hurt(u: Unit, amount: number, o?: { crit?: boolean; palette?: Palette; angle?: number; color?: number }): void;
+  hurt(u: Unit, amount: number, o?: { crit?: boolean; palette?: Palette; angle?: number; color?: number; feedback?: number }): void;
   /** Put the caster back on its start position after a movement skill. */
   returnHome(): void;
   /** Show/hide a unit (blink). */
@@ -95,7 +95,7 @@ export const SKILLS: SkillDef[] = [
   // ------------------------------------------------------------------ KIM / METAL
   {
     id: 'kim-sword-rain', element: 'kim', category: 'aoe', en: 'Sword Rain', vi: 'Vạn Kiếm Quy Tông',
-    desc: 'A storm of golden blades falls on the area and pins every enemy inside.', uses: ['telegraph', 'swordRain', 'hitFlash'], length: 2200,
+    desc: 'A storm of golden blades falls on the area and pins every enemy inside.', uses: ['chargeUp', 'swordRain'], length: 2200,
     cast: ({ w, tex, caster, target, targets, hurt }) => {
       chargeUp(w, tex, { target: () => hand(caster), palette: P.kim, duration: 450 });
       const c = { x: target.feet.x, y: target.feet.y };
@@ -107,7 +107,7 @@ export const SKILLS: SkillDef[] = [
   },
   {
     id: 'kim-golden-edge', element: 'kim', category: 'attack', en: 'Golden Edge', vi: 'Kim Quang Trảm',
-    desc: 'Dash in, two crossing metal slashes, the target bleeds.', uses: ['dash', 'slash', 'hitSpark', 'damageOverTime(bleed)'], length: 3600,
+    desc: 'Dash in, two crossing metal slashes, the target bleeds.', uses: ['dash', 'slash', 'damageOverTime(bleed)', 'hitFlash'], length: 3600,
     cast: ({ w, tex, caster, target, hurt, returnHome }) => {
       const to = { x: target.feet.x - caster.facing * 70, y: target.feet.y, z: 0 };
       dash(w, tex, {
@@ -149,20 +149,24 @@ export const SKILLS: SkillDef[] = [
   // ------------------------------------------------------------------ MỘC / WOOD
   {
     id: 'moc-vine-bind', element: 'moc', category: 'control', en: 'Vine Bind', vi: 'Triền Đằng Phược',
-    desc: 'A seed bolt bursts into thorned vines that root the target.', uses: ['projectile', 'root', 'hitSpark'], length: 3000,
+    desc: 'A seed bolt bursts into thorned vines that root the target.', uses: ['chargeUp', 'projectile', 'hitSpark', 'root'], length: 3300,
     cast: ({ w, tex, caster, target, hurt }) => {
-      projectile(w, tex, {
-        from: hand(caster), to: chest(target, 0.3), palette: P.moc, speed: 620, arcHeight: 50, size: 0.9,
-        onHit: () => {
-          hurt(target, 42, { palette: P.moc });
-          root(w, tex, { target: feetOf(target), height: target.height, duration: 2300 });
-        },
+      chargeUp(w, tex, {
+        target: () => hand(caster), palette: P.moc, duration: 300,
+        onDone: () => projectile(w, tex, {
+          from: hand(caster), to: chest(target, 0.3), palette: P.moc, speed: 620, arcHeight: 50, size: 0.9,
+          onHit: (at) => {
+            hitSpark(w, tex, { ...at, palette: P.moc });
+            hurt(target, 42, { palette: P.moc });
+            root(w, tex, { target: feetOf(target), height: target.height, duration: 2300 });
+          },
+        }),
       });
     },
   },
   {
     id: 'moc-spring-bloom', element: 'moc', category: 'buff', en: 'Spring Bloom', vi: 'Xuân Hồi Đại Địa',
-    desc: 'Healing petals and a regrowth aura; restores health over time.', uses: ['healAura', 'statChange', 'damageNumber'], length: 2400,
+    desc: 'Healing petals and a regrowth aura; restores health over time.', uses: ['healAura', 'statChange'], length: 2400,
     cast: ({ w, tex, caster, hurt }) => {
       const aura = healAura(w, tex, { target: feetOf(caster), palette: P.moc, radius: 52, duration: 2000 });
       statChange(w, tex, { target: feetOf(caster), height: caster.height, up: true, palette: P.moc, duration: 1200 });
@@ -178,12 +182,13 @@ export const SKILLS: SkillDef[] = [
   },
   {
     id: 'moc-toxic-spores', element: 'moc', category: 'debuff', en: 'Toxic Spores', vi: 'Độc Chướng Vụ',
-    desc: 'A lingering spore cloud poisons every enemy inside.', uses: ['telegraph', 'damageOverTime(poison)'], length: 3800,
-    cast: ({ w, tex, target, targets }) => {
+    desc: 'A lingering spore cloud poisons every enemy inside.', uses: ['chargeUp', 'telegraph', 'damageOverTime(poison)', 'hitFlash', 'curlDrift'], length: 3800,
+    cast: ({ w, tex, caster, target, targets }) => {
       const c = { x: target.feet.x, y: target.feet.y };
       const pal = { core: 0xf0ffd0, main: 0x9cff3a, dark: 0x2f4a05 };
+      chargeUp(w, tex, { target: () => hand(caster), palette: pal, duration: 350 });
       telegraph(w, tex, {
-        ...c, radius: 120, duration: 450, palette: pal,
+        ...c, radius: 120, duration: 450, palette: pal, finishAlpha: 0,
         onDone: () => {
           w.stream({
             rate: 22, duration: 2600,
@@ -205,7 +210,7 @@ export const SKILLS: SkillDef[] = [
   // ------------------------------------------------------------------ THỦY / WATER
   {
     id: 'thuy-frost-nova', element: 'thuy', category: 'control', en: 'Frost Nova', vi: 'Băng Phong Tỏa',
-    desc: 'Ice spikes erupt around the target and freeze it solid, then it shatters.', uses: ['chargeUp', 'spikeRing', 'freeze'], length: 3300,
+    desc: 'Ice spikes erupt around the target and freeze it solid, then it shatters.', uses: ['chargeUp', 'shockwave', 'spikeRing', 'freeze'], length: 3300,
     cast: ({ w, tex, caster, target, hurt }) => {
       chargeUp(w, tex, {
         target: () => hand(caster), palette: P.thuy, duration: 500,
@@ -213,8 +218,8 @@ export const SKILLS: SkillDef[] = [
           const c = target.feet;
           shockwave(w, tex, { x: c.x, y: c.y, radius: 110, palette: P.thuy });
           spikeRing(w, tex, { x: c.x, y: c.y, radius: 70, count: 10, height: 60, ice: true });
-          hurt(target, 58, { palette: P.thuy });
-          freeze(w, tex, { target: feetOf(target), height: target.height, duration: 2200, onShatter: () => hurt(target, 120, { palette: P.thuy, crit: true }) });
+          hurt(target, 58, { palette: P.thuy, feedback: 0.3 });
+          freeze(w, tex, { target: feetOf(target), height: target.height, duration: 2200, glowIntensity: 0.25, onShatter: () => hurt(target, 120, { palette: P.thuy, crit: true, feedback: 0.3 }) });
         },
       });
     },
@@ -226,7 +231,7 @@ export const SKILLS: SkillDef[] = [
       chargeUp(w, tex, {
         target: () => hand(caster), palette: P.thuy, duration: 380,
         onDone: () => {
-          const b = beam(w, tex, { from: () => hand(caster), to: () => chest(target), palette: P.thuy, width: 1.1, duration: 1500 });
+          const b = beam(w, tex, { from: () => hand(caster), to: () => chest(target), palette: P.thuy, width: 1.1, duration: 1500, style: 'water' });
           for (let i = 0; i < 5; i++) w.after(150 + i * 280, () => b.alive && hurt(target, Math.round(rand(20, 28)), { palette: P.thuy, angle: Math.PI * (caster.facing > 0 ? 1 : 0) }));
           w.after(1500, () => slow(w, tex, { target: feetOf(target), height: target.height, duration: 2000 }));
         },
@@ -235,11 +240,14 @@ export const SKILLS: SkillDef[] = [
   },
   {
     id: 'thuy-glacier-path', element: 'thuy', category: 'aoe', en: 'Glacier Path', vi: 'Băng Hà Lộ',
-    desc: 'A line of ice spears races along the ground toward the enemy.', uses: ['spikeLine(ice)', 'slow'], length: 2600,
+    desc: 'A line of ice spears races along the ground toward the enemy.', uses: ['telegraph', 'spikeLine(ice)', 'slow'], length: 2900,
     cast: ({ w, tex, caster, target, targets, hurt }) => {
-      spikeLine(w, tex, {
-        from: caster.feet, angle: angleTo(w, caster, target), count: 9, spacing: 44, height: 70, ice: true,
-        onSpike: (at) => near(at, 34, targets).forEach((u) => { hurt(u, 47, { palette: P.thuy, angle: -Math.PI / 2 }); slow(w, tex, { target: feetOf(u), height: u.height, duration: 1600 }); }),
+      telegraph(w, tex, {
+        ...caster.feet, radius: 42, duration: 300, palette: P.thuy,
+        onDone: () => spikeLine(w, tex, {
+          from: caster.feet, angle: angleTo(w, caster, target), count: 9, spacing: 44, height: 70, ice: true,
+          onSpike: (at) => near(at, 34, targets).forEach((u) => { hurt(u, 47, { palette: P.thuy, angle: -Math.PI / 2, feedback: 0.25 }); slow(w, tex, { target: feetOf(u), height: u.height, duration: 1600 }); }),
+        }),
       });
     },
   },
@@ -247,7 +255,7 @@ export const SKILLS: SkillDef[] = [
   // ------------------------------------------------------------------ HỎA / FIRE
   {
     id: 'hoa-fireball', element: 'hoa', category: 'attack', en: 'Fireball', vi: 'Hỏa Cầu Thuật',
-    desc: 'A charged fireball that explodes and leaves the target burning.', uses: ['chargeUp', 'projectile', 'explosion', 'damageOverTime(burn)'], length: 3600,
+    desc: 'A charged fireball that explodes and leaves the target burning.', uses: ['chargeUp', 'projectile', 'explosion', 'damageOverTime(burn)', 'hitFlash'], length: 3600,
     cast: ({ w, tex, caster, target, targets, hurt }) => {
       chargeUp(w, tex, {
         target: () => hand(caster), palette: P.hoa, duration: 420,
@@ -264,23 +272,29 @@ export const SKILLS: SkillDef[] = [
   },
   {
     id: 'hoa-dragon-breath', element: 'hoa', category: 'channel', en: 'Dragon Breath', vi: 'Long Tức Liệt Diễm',
-    desc: 'A sweeping cone of flame that sets everything in front ablaze.', uses: ['coneBreath(fire)', 'damageOverTime(burn)'], length: 3600,
+    desc: 'A sweeping cone of flame that sets everything in front ablaze.', uses: ['chargeUp', 'coneBreath(fire)', 'damageOverTime(burn)'], length: 3900,
     cast: ({ w, tex, caster, target, targets, hurt }) => {
-      const base = angleTo(w, caster, target);
-      let a = base - 0.25;
-      w.addUpdater(((t) => (dt) => { t += dt; a = base - 0.25 + 0.5 * Math.min(1, t / 1600); return t < 1700; })(0));
-      // Reach a bit past the main target so the flames visibly wash over it.
-      const range = Math.min(640, Math.hypot(target.feet.x - caster.feet.x, (target.feet.y - caster.feet.y) / w.groundSquash) + 140);
-      coneBreath(w, tex, { origin: () => hand(caster), angle: () => a, palette: P.hoa, range, spread: 0.6, duration: 1700, style: 'fire' });
-      const inBreath = (u: Unit) => inCone(w, caster, u, a, range, 0.6 + 0.5);
-      for (let i = 0; i < 4; i++) w.after(300 + i * 360, () => targets.filter(inBreath).forEach((u) => hurt(u, Math.round(rand(24, 32)), { palette: P.hoa })));
-      w.after(1500, () => targets.filter(inBreath).forEach((u) => damageOverTime(w, tex, { target: feetOf(u), height: u.height, kind: 'burn', duration: 1800, tickMs: 600, damage: 9 })));
+      chargeUp(w, tex, {
+        target: () => hand(caster), palette: P.hoa, duration: 300,
+        onDone: () => {
+          const base = angleTo(w, caster, target);
+          let a = base - 0.25;
+          w.addUpdater(((t) => (dt) => { t += dt; a = base - 0.25 + 0.5 * Math.min(1, t / 1600); return t < 1700; })(0));
+          // Reach a bit past the main target so the flames visibly wash over it.
+          const range = Math.min(640, Math.hypot(target.feet.x - caster.feet.x, (target.feet.y - caster.feet.y) / w.groundSquash) + 140);
+          coneBreath(w, tex, { origin: () => hand(caster), angle: () => a, palette: P.hoa, range, spread: 0.6, duration: 1700, style: 'fire' });
+          const inBreath = (u: Unit) => inCone(w, caster, u, a, range, 0.6 + 0.5);
+          for (let i = 0; i < 4; i++) w.after(300 + i * 360, () => targets.filter(inBreath).forEach((u) => hurt(u, Math.round(rand(24, 32)), { palette: P.hoa })));
+          w.after(1500, () => targets.filter(inBreath).forEach((u) => damageOverTime(w, tex, { target: feetOf(u), height: u.height, kind: 'burn', duration: 1800, tickMs: 600, damage: 9 })));
+        },
+      });
     },
   },
   {
     id: 'hoa-heaven-fire', element: 'hoa', category: 'aoe', en: 'Heavenfall Meteor', vi: 'Thiên Hỏa Lưu Tinh',
-    desc: 'Calls a meteor from the sky after a short warning.', uses: ['meteor', 'explosion', 'telegraph'], length: 2600,
-    cast: ({ w, tex, target, targets, hurt }) => {
+    desc: 'Calls a meteor from the sky after a short warning.', uses: ['chargeUp', 'meteor'], length: 2600,
+    cast: ({ w, tex, caster, target, targets, hurt }) => {
+      chargeUp(w, tex, { target: () => hand(caster), palette: P.hoa, duration: 350 });
       const c = { x: target.feet.x, y: target.feet.y };
       meteor(w, tex, { ...c, radius: 125, palette: P.hoa, castMs: 900, onHit: () => near(c, 130, targets).forEach((u) => hurt(u, Math.round(rand(180, 230)), { palette: P.hoa, crit: true, angle: -Math.PI / 2 })) });
     },
@@ -289,21 +303,27 @@ export const SKILLS: SkillDef[] = [
   // ------------------------------------------------------------------ THỔ / EARTH
   {
     id: 'tho-fissure', element: 'tho', category: 'control', en: 'Earth Fissure', vi: 'Địa Liệt Trảm',
-    desc: 'Rock spikes tear through the ground and stun everything they hit.', uses: ['spikeLine', 'stun'], length: 3000,
+    desc: 'Rock spikes tear through the ground and stun everything they hit.', uses: ['telegraph', 'spikeLine', 'stun'], length: 3300,
     cast: ({ w, tex, caster, target, targets, hurt }) => {
       const hitOnce = new Set<Unit>();
-      spikeLine(w, tex, {
-        from: caster.feet, angle: angleTo(w, caster, target), count: 8, spacing: 48, height: 92,
-        onSpike: (at) => near(at, 38, targets).forEach((u) => {
-          hurt(u, 76, { palette: P.tho, angle: -Math.PI / 2 });
-          if (!hitOnce.has(u)) { hitOnce.add(u); stun(w, tex, { target: feetOf(u), height: u.height, duration: 1800 }); }
-        }),
+      telegraph(w, tex, {
+        ...caster.feet, radius: 46, duration: 300, palette: P.tho,
+        onDone: () => {
+          w.shake(2, 100);
+          spikeLine(w, tex, {
+            from: caster.feet, angle: angleTo(w, caster, target), count: 8, spacing: 48, height: 92,
+            onSpike: (at) => near(at, 38, targets).forEach((u) => {
+              hurt(u, 76, { palette: P.tho, angle: -Math.PI / 2 });
+              if (!hitOnce.has(u)) { hitOnce.add(u); stun(w, tex, { target: feetOf(u), height: u.height, duration: 1800 }); }
+            }),
+          });
+        },
       });
     },
   },
   {
     id: 'tho-mountain-leap', element: 'tho', category: 'movement', en: 'Mountain Crash', vi: 'Thái Sơn Áp Đỉnh',
-    desc: 'Leap high and crash down, shattering the ground and stunning nearby enemies.', uses: ['leap', 'slam', 'stun', 'dropShadow'], length: 3000,
+    desc: 'Leap high and crash down, shattering the ground and stunning nearby enemies.', uses: ['leap', 'stun'], length: 3000,
     cast: ({ w, tex, caster, target, targets, hurt, returnHome }) => {
       const to = { x: target.feet.x - caster.facing * 40, y: target.feet.y + 6, z: 0 };
       leap(w, tex, {
@@ -319,7 +339,7 @@ export const SKILLS: SkillDef[] = [
   },
   {
     id: 'tho-stone-skin', element: 'tho', category: 'buff', en: 'Stone Skin', vi: 'Thạch Giáp Hộ Thể',
-    desc: 'Rock plates form a heavy barrier and raise defense.', uses: ['shield', 'statChange', 'debris'], length: 2800,
+    desc: 'Rock plates form a heavy barrier and raise defense.', uses: ['shield', 'statChange'], length: 2800,
     cast: ({ w, tex, caster }) => {
       const f = caster.feet;
       w.burst(14, () => {
@@ -338,22 +358,27 @@ export const SKILLS: SkillDef[] = [
   // ------------------------------------------------------------------ PHONG / WIND (variant element)
   {
     id: 'phong-gale-blade', element: 'phong', category: 'attack', en: 'Gale Blades', vi: 'Phong Nhận Trảm',
-    desc: 'A sweeping slash releases three spinning wind blades that knock enemies back.', uses: ['slash', 'windSlash', 'ribbonTrail', 'gustLines'], length: 2200,
+    desc: 'A sweeping slash releases three spinning wind blades that knock enemies back.', uses: ['chargeUp', 'slash', 'windSlash', 'hitFlash', 'gustLines'], length: 2450,
     cast: ({ w, tex, caster, targets, hurt }) => {
-      const a = caster.facing > 0 ? 0 : Math.PI;
-      slash(w, tex, { ...caster.feet, angle: a, palette: P.phong, radius: 100, sweep: 2.4, duration: 220 });
-      targets.slice(0, 3).forEach((u, i) => w.after(90 + i * 70, () => windSlash(w, tex, {
-        from: hand(caster), to: chest(u, 0.45), palette: P.phong, size: 1.1, speed: 1000,
-        onHit: (at) => {
-          const k = angleTo(w, caster, u);
-          hurt(u, Math.round(rand(48, 62)), { palette: P.phong, angle: k });
-          hitFlash(w, u.sprite, 90, 0xd8fff0);
-          gustLines(w, tex, { ...at, angle: k, palette: P.phong, count: 7, spread: 26 });
-          const home = { ...u.feet };
-          moveUnit(w, u, { x: home.x + Math.cos(k) * 34, y: home.y + Math.sin(k) * 34 * w.groundSquash, z: 0 }, 140);
-          w.after(520, () => moveUnit(w, u, home, 380));
+      chargeUp(w, tex, {
+        target: () => hand(caster), palette: P.phong, duration: 250,
+        onDone: () => {
+          const a = caster.facing > 0 ? 0 : Math.PI;
+          slash(w, tex, { ...caster.feet, angle: a, palette: P.phong, radius: 100, sweep: 2.4, duration: 220 });
+          targets.slice(0, 3).forEach((u, i) => w.after(90 + i * 70, () => windSlash(w, tex, {
+            from: hand(caster), to: chest(u, 0.45), palette: P.phong, size: 1.1, speed: 1000,
+            onHit: (at) => {
+              const k = angleTo(w, caster, u);
+              hurt(u, Math.round(rand(48, 62)), { palette: P.phong, angle: k });
+              hitFlash(w, u.sprite, 90, 0xd8fff0);
+              gustLines(w, tex, { ...at, angle: k, palette: P.phong, count: 7, spread: 26 });
+              const home = { ...u.feet };
+              moveUnit(w, u, { x: home.x + Math.cos(k) * 34, y: home.y + Math.sin(k) * 34 * w.groundSquash, z: 0 }, 140);
+              w.after(520, () => moveUnit(w, u, home, 380));
+            },
+          })));
         },
-      })));
+      });
     },
   },
   {
@@ -384,7 +409,7 @@ export const SKILLS: SkillDef[] = [
   },
   {
     id: 'phong-tornado', element: 'phong', category: 'control', en: 'Dragon Cyclone', vi: 'Long Quyển Phong',
-    desc: 'A roaring tornado travels through the enemies, pulls them in and lifts them off the ground.', uses: ['tornado', 'vortex', 'Distortion.haze', 'curlDrift'], length: 3600,
+    desc: 'A roaring tornado travels through the enemies, pulls them in and lifts them off the ground.', uses: ['chargeUp', 'tornado', 'vortex', 'shockwave'], length: 3600,
     cast: ({ w, tex, caster, target, targets, hurt }) => {
       chargeUp(w, tex, { target: () => hand(caster), palette: P.phong, duration: 380 });
       const start = { x: caster.feet.x + caster.facing * 90, y: caster.feet.y + 10, z: 0 };
@@ -426,7 +451,7 @@ export const SKILLS: SkillDef[] = [
   },
   {
     id: 'phong-tailwind', element: 'phong', category: 'buff', en: 'Tailwind', vi: 'Tật Phong Bộ',
-    desc: 'Wind ribbons spiral around the caster: movement and attack speed up.', uses: ['vortex', 'windWisps', 'ribbonTrail', 'statChange', 'gustLines'], length: 2800,
+    desc: 'Wind ribbons spiral around the caster: movement and attack speed up.', uses: ['vortex', 'windWisps', 'statChange', 'gustLines'], length: 2800,
     cast: ({ w, tex, caster }) => {
       vortex(w, tex, { at: { ...caster.feet }, radius: 90, palette: P.phong, duration: 900, inward: false });
       windWisps(w, tex, { target: () => caster.feet, height: caster.height, radius: 34, palette: P.phong, duration: 2400 });
@@ -438,15 +463,20 @@ export const SKILLS: SkillDef[] = [
   // ------------------------------------------------------------------ NEUTRAL / UTILITY
   {
     id: 'lightning-chain', element: 'neutral', category: 'attack', en: 'Chain Lightning', vi: 'Lôi Đình Liên Kích',
-    desc: 'A bolt jumps between all enemies and briefly stuns them.', uses: ['lightningChain', 'stun'], length: 2400,
+    desc: 'A bolt jumps between all enemies and briefly stuns them.', uses: ['chargeUp', 'lightningChain', 'stun'], length: 2700,
     cast: ({ w, tex, caster, targets, hurt }) => {
-      lightningChain(w, tex, { points: [hand(caster), ...targets.map((u) => chest(u))], palette: P.lightning });
-      targets.forEach((u, i) => w.after(40 + i * 40, () => { hurt(u, 88 - i * 10, { palette: P.lightning, angle: rand(0, 6.3) }); stun(w, tex, { target: feetOf(u), height: u.height, duration: 1200, palette: P.lightning }); }));
+      chargeUp(w, tex, {
+        target: () => hand(caster), palette: P.lightning, duration: 300,
+        onDone: () => {
+          lightningChain(w, tex, { points: [hand(caster), ...targets.map((u) => chest(u))], palette: P.lightning, impactIntensity: 0.2 });
+          targets.forEach((u, i) => w.after(40 + i * 40, () => { hurt(u, 88 - i * 10, { palette: P.lightning, angle: rand(0, 6.3), feedback: 0.2 }); stun(w, tex, { target: feetOf(u), height: u.height, duration: 1200, palette: P.lightning }); }));
+        },
+      });
     },
   },
   {
     id: 'shadow-blink', element: 'neutral', category: 'movement', en: 'Shadow Step', vi: 'Ảnh Bộ',
-    desc: 'Teleport behind the target and strike.', uses: ['blink', 'slash', 'hitSpark'], length: 2200,
+    desc: 'Teleport behind the target and strike.', uses: ['blink', 'slash'], length: 2200,
     cast: ({ w, tex, caster, target, hurt, returnHome, setVisible }) => {
       const to = { x: target.feet.x + caster.facing * 55, y: target.feet.y + 4, z: 0 };
       blink(w, tex, {
@@ -465,15 +495,17 @@ export const SKILLS: SkillDef[] = [
   },
   {
     id: 'curse-weaken', element: 'neutral', category: 'debuff', en: 'Curse of Frailty', vi: 'Suy Nhược Chú',
-    desc: 'A dark sigil lowers the attack and defense of every enemy.', uses: ['telegraph', 'statChange(down)'], length: 2000,
-    cast: ({ w, tex, target, targets }) => {
+    desc: 'A dark sigil lowers the attack and defense of every enemy.', uses: ['chargeUp', 'telegraph', 'statChange(down)'], length: 2000,
+    cast: ({ w, tex, caster, target, targets }) => {
+      chargeUp(w, tex, { target: () => hand(caster), palette: P.shadow, duration: 350 });
       telegraph(w, tex, { x: target.feet.x, y: target.feet.y, radius: 130, duration: 380, palette: P.shadow, onDone: () => targets.forEach((u, i) => w.after(i * 90, () => statChange(w, tex, { target: feetOf(u), height: u.height, up: false, duration: 1500 }))) });
     },
   },
   {
     id: 'summon-spirit', element: 'neutral', category: 'summon', en: 'Summon Guardian', vi: 'Triệu Hồi Hộ Pháp',
-    desc: 'A rune circle opens and calls a guardian spirit to the field.', uses: ['summonCircle'], length: 3200,
+    desc: 'A rune circle opens and calls a guardian spirit to the field.', uses: ['chargeUp', 'summonCircle'], length: 3200,
     cast: ({ w, tex, caster, summon }) => {
+      chargeUp(w, tex, { target: () => hand(caster), palette: P.holy, duration: 350 });
       const at = { x: caster.feet.x + caster.facing * 120, y: caster.feet.y + 40, z: 0 };
       summonCircle(w, tex, { ...at, palette: P.holy, radius: 70, duration: 1200, onSummon: () => summon?.(at, 'neutral') });
     },
