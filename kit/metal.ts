@@ -19,11 +19,12 @@ export function metalSparks(w: VfxWorld, tex: VfxTextures, at: Vec3, p: Palette,
   });
 }
 
-export function swordSalute(w: VfxWorld, tex: VfxTextures, at: () => Vec3, height: number, p: Palette, duration: number, aimAt?: () => Vec3) {
+export function swordSalute(w: VfxWorld, tex: VfxTextures, at: () => Vec3, height: number, p: Palette, duration: number, aimAt?: () => Vec3, hoverHold = 0) {
   if (duration <= 0 || height <= 0) return;
+  const total = duration + hoverHold;
   for (let i = -2; i <= 2; i++) {
     const delay = duration * Math.abs(i) * (i < 0 ? 0.065 : 0.047);
-    const life = duration - delay;
+    const life = total - delay;
     const phase = i * 1.38 + rand(-0.24, 0.24);
     const launchAt = 0.8 + Math.abs(i) * 0.024;
     const scale = height / 273;
@@ -33,24 +34,25 @@ export function swordSalute(w: VfxWorld, tex: VfxTextures, at: () => Vec3, heigh
       const dx = target ? Math.cos(aim) : 0, dy = target ? Math.sin(aim) : 0;
       const riseT = clamp01(t * life / (duration * 0.36));
       const rise = outBack(riseT);
-      const age = (t * life + delay) / duration;
-      const oscillation = age * 9.6 + phase;
+      const elapsed = t * life + delay;
+      const age = (elapsed - Math.min(hoverHold, Math.max(0, elapsed - duration * 0.49))) / duration;
+      const oscillation = elapsed * 2 * Math.PI / 1200 + phase;
       const gather = inOutSine(clamp01((age - 0.62) / 0.19));
       const launch = inQuad(clamp01((age - launchAt) / (1 - launchAt)));
       const float = outCubic(riseT) * (1 - gather * 0.8);
       const spread = i * (0.12 + 0.2 * rise - 0.1 * gather);
-      const lift = 0.16 + rise * (0.95 - Math.abs(i) * 0.075) + Math.sin(oscillation) * 0.11 * float;
+      const lift = 0.16 + rise * (0.95 - Math.abs(i) * 0.075) + Math.sin(oscillation) * 0.05 * float;
       const stagger = gather * (0.085 + i * dx * 0.065);
       const travel = launch * 3.15;
-      const x = origin.x + height * (-dx * 0.23 + spread + Math.cos(oscillation) * 0.046 * float + dx * travel);
+      const x = origin.x + height * (-dx * 0.23 + spread + Math.cos(oscillation) * 0.025 * float + dx * travel);
       const y = origin.y + height * (-0.1 + 0.022 * i + dy * travel);
       const z = (origin.z ?? 0) + height * (lift - stagger + launch * 1.7);
-      const hoverAngle = -Math.PI + i * (0.09 + 0.19 * rise) + Math.sin(oscillation + 0.6) * 0.145 * float;
+      const hoverAngle = -Math.PI + i * (0.09 + 0.19 * rise) + Math.sin(oscillation + 0.6) * 0.055 * float;
       const launchAngle = Math.atan2(dy * 3.15 - 1.7, dx * 3.15) - Math.PI / 2;
       const turn = Math.atan2(Math.sin(launchAngle - hoverAngle), Math.cos(launchAngle - hoverAngle));
-      return { x, y, z, rotation: hoverAngle + turn * gather, roll: 1 - 0.17 * Math.cos(oscillation) * float };
+      return { x, y, z, rotation: hoverAngle + turn * gather, roll: 1 - 0.065 * Math.cos(oscillation) * float };
     };
-    const alpha = envelope(0.18, 0.14, 0.96);
+    const alpha = envelope(duration * 0.18 / life, duration * 0.14 / life, 0.96);
     w.spawn({
       texture: tex.blade, blend: 'normal', x: 0, y: 0, life, delay, scale, alpha,
       onUpdate: (q, t) => {
@@ -74,7 +76,7 @@ export function swordSalute(w: VfxWorld, tex: VfxTextures, at: () => Vec3, heigh
       },
     });
   }
-  w.spawn({ texture: tex.star, x: -height * 0.16, y: 0, z: height * 1.02, follow: at, delay: duration * 0.72, life: duration * 0.23,
+  w.spawn({ texture: tex.star, x: -height * 0.16, y: 0, z: height * 1.02, follow: at, delay: hoverHold + duration * 0.72, life: duration * 0.23,
     scaleX: [0.06, 0.24], scaleY: [0.04, 0.07], alpha: envelope(0.32, 0.68, 0.55), tint: p.core, zBias: 9 });
 }
 

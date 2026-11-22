@@ -119,23 +119,30 @@ try {
     w.spawn = spawn;
     d.step(30);
     const staggered = swords.filter(q => q.sprite.visible).length === 3;
-    d.step(160);
+    d.step(185);
     const positions = swords.map(q => q.sprite.y);
+    const angles = swords.map(q => q.sprite.rotation);
     const hovering = swords.length === 5 && swords.every(q => q.sprite.visible) &&
       shadows.length === 5 && shadows.every(q => q.z === 0 && q.sprite.alpha > 0);
-    d.step(55);
+    d.step(65);
+    const calm = swords.every((q, i) => Math.abs(q.sprite.y - positions[i]) < 2.5 &&
+      Math.abs(q.sprite.rotation - angles[i]) < 0.025);
+    d.step(270);
     const bob = swords.map((q, i) => q.sprite.y - positions[i]);
     const independent = Math.min(...bob) < -2 && Math.max(...bob) > 2;
-    d.step(95);
+    d.step(480);
+    const held = swords.every((q, i) => q.sprite.visible && q.sprite.alpha > 0.9 &&
+      Math.abs(q.sprite.y - positions[i]) < 10 && Math.abs(q.sprite.rotation - angles[i]) < 0.12);
+    d.step(110);
     const aimed = swords.every(q => -Math.sin(q.sprite.rotation) > 0.65);
     const beforeLaunch = swords.map(q => q.sprite.x);
     d.step(55);
     const launched = swords.every((q, i) => q.sprite.x > beforeLaunch[i] + 25);
     w.clear();
-    return { staggered, hovering, independent, aimed, launched };
+    return { staggered, hovering, calm, independent, held, aimed, launched };
   });
-  assert.deepEqual(salute, { staggered: true, hovering: true, independent: true, aimed: true, launched: true });
-  console.log('Sword Rain stagger, independent hover, ground shadows, and aimed launch: PASS');
+  assert.deepEqual(salute, { staggered: true, hovering: true, calm: true, independent: true, held: true, aimed: true, launched: true });
+  console.log('Sword Rain stagger, sustained independent hover, ground shadows, and aimed launch: PASS');
   skills.push(...skills.filter(s => !/^(activation|evolution)-/.test(s.id)).map(skill => ({
     ...skill, label: `${skill.id}-tier3`, tier: 3,
   })));

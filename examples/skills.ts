@@ -109,17 +109,21 @@ const MOUNTAIN_CRASH_TIMING: SkillTiming = {
   windup: 320, hits: [{ t: 640, stop: 80, shake: 12 * (96 * 2.3 / 160), push: 26, skin: 'earth', targets: 'all' }], recovery: 1500,
 };
 
+const SWORD_RAIN_HOVER = 800;
+const SWORD_RAIN_START = 350 + SWORD_RAIN_HOVER;
+const SWORD_RAIN_DURATION = 900;
+
 export const SKILLS: SkillDef[] = [
   // ------------------------------------------------------------------ KIM / METAL
   {
     id: 'kim-sword-rain', element: 'kim', category: 'aoe', en: 'Sword Rain', vi: 'Vạn Kiếm Quy Tông',
-    timing: { windup: 450, hits: Array.from({ length: 16 }, (_, i) => ({ t: 500 + i * 900 / 16, spread: 30, shake: 2.5, skin: 'metal', targets: 'all', optional: true })), recovery: 400 },
-    desc: 'A storm of gold-hilted blades falls on the area and pins every enemy inside.', uses: ['swordSalute', 'swordRain'], length: 2200,
+    timing: { windup: SWORD_RAIN_START + 100, hits: Array.from({ length: 16 }, (_, i) => ({ t: SWORD_RAIN_START + 150 + i * SWORD_RAIN_DURATION / 16, spread: 30, shake: 2.5, skin: 'metal', targets: 'all', optional: true })), recovery: 400 },
+    desc: 'A storm of gold-hilted blades falls on the area and pins every enemy inside.', uses: ['swordSalute', 'swordRain'], length: 2200 + SWORD_RAIN_HOVER,
     cast: ({ w, tex, caster, target, targets, hurt }) => {
-      swordSalute(w, tex, () => chest(caster), caster.height, P.kim, 420, feetOf(target));
+      swordSalute(w, tex, () => chest(caster), caster.height, P.kim, 420, feetOf(target), SWORD_RAIN_HOVER);
       const c = { x: target.feet.x, y: target.feet.y };
-      w.after(350, () => swordRain(w, tex, {
-        ...c, radius: 120, count: 16, duration: 900, height: caster.height, palette: P.kim,
+      w.after(SWORD_RAIN_START, () => swordRain(w, tex, {
+        ...c, radius: 120, count: 16, duration: SWORD_RAIN_DURATION, height: caster.height, palette: P.kim,
         onImpact: (at) => near(at, 40, targets).forEach((u) => hurt(u, Math.round(rand(38, 52)), { feedback: 0 })),
       }));
     },
