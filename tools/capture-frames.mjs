@@ -120,7 +120,8 @@ try {
     await writeFile(resolve(options.out, `${label}.png`), Buffer.from(png, 'base64'));
     console.log(`${label}.png: ${counts[skill.id]} particles at ${countTime} ms`);
   }
-  await writeFile(resolve(options.out, 'counts.json'), JSON.stringify(counts, null, 2) + '\n');
+  const countsFile = options.tier ? `counts-tier${options.tier}.json` : 'counts.json';
+  await writeFile(resolve(options.out, countsFile), JSON.stringify(counts, null, 2) + '\n');
   console.log(`Captured ${skills.length} skills in ${options.out}`);
 } finally {
   if (browser) await browser.close();
