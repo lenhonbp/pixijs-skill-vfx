@@ -27,6 +27,16 @@ in PixiJS v7 and v8**. No art assets: every texture is generated with Canvas 2D 
 
 Keep the folder name `pixijs-skill-vfx` (it must match `name` in `SKILL.md`).
 
+Claude Code plugin install:
+
+```text
+/plugin marketplace add lenhonbp/pixijs-skill-vfx
+/plugin install pixijs-skill-vfx@pixijs-skill-vfx
+```
+
+The plugin manifest explicitly loads `./` as its skill directory: `SKILL.md` stays at
+the repository root, with the kit and references alongside it.
+
 - **Claude Code**: copy the folder to `<your-game-repo>/.claude/skills/pixijs-skill-vfx/`
   (project) or `~/.claude/skills/pixijs-skill-vfx/` (all projects). Claude loads it when you ask
   for skill effects; you can also say "use the pixijs-skill-vfx skill".
@@ -59,11 +69,34 @@ Each output directory contains labeled PNG contact sheets and `counts.json` with
 particle counts at each skill's length + 1500 ms. The default output is `~/audit/before/`;
 `--seed INTEGER` overrides the default seed of 12345.
 
+## Validation and reproducibility
+
+Run `npx tsc -p .`, `npm run build`, then `npm run check` (Chromium required).
+The check casts each skill three times at high quality without clearing between casts;
+at length + 1500 ms it requires zero particles/updaters and no pool-capacity growth.
+Peak counts include delayed particles. The ordinary cap is 150; IDs containing the
+hyphen-delimited word `ultimate` get 600. No current SkillDef has an ultimate flag,
+so all existing samples use 150. Unbaselined overages and peaks more than 5% above baseline fail.
+`tools/check-baseline.json` keeps existing overages visible as WARN; shrink peaks as skills improve and delete entries when they pass budget.
+
+Use `new VfxWorld({ ...layers, seed: 12345 })` or supply `rng: () => number` (takes
+precedence). `random`, `rand`, `randSign` and `pick` share the active RNG; `mulberry32`
+and `setRng` are exported for custom harnesses. This is **process-global, last world
+constructed wins**, not isolated per world; use one active world or explicitly set the
+RNG when switching worlds. Omit both options for normal `Math.random` behavior.
+
+The iteration/choreography approach is inspired by
+[pixelfx](https://github.com/patch-gg/pixelfx) and Hugo Duprez's VFX method;
+no renderer or effect implementation is ported.
+
 ## Layout
 
 | Path | What it is |
 |---|---|
 | `SKILL.md` | Instructions the agent follows |
+| `.claude-plugin/` | Marketplace and plugin manifests; root skill registration |
+| `tools/check.mjs` | Seeded lifecycle, pool growth, particle budget and RNG gate |
+| `tools/capture-frames.mjs` | Seeded contact-sheet captures (`npm run capture`) |
 | `kit/` | Runtime and recipes (copy into your game) |
 | `examples/skills.ts` | 28 sample skills over a small `SkillContext` |
 | `references/extending.md` | Custom elements, recolors, composition, cleanup and status catalog |
