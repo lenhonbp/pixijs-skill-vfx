@@ -1,7 +1,7 @@
 // Copyright (c) 2026 lenhonbp <lenhonbp@gmail.com> — https://github.com/lenhonbp/pixijs-skill-vfx
 // SPDX-License-Identifier: MIT
 import { Container, Graphics, Sprite, Texture } from 'pixi.js';
-import type { CueEvent } from '../../runtime/src/index';
+import type { ActorPose, CueEvent } from '../../runtime/src/index';
 
 function painted(width: number, height: number, draw: (ctx: CanvasRenderingContext2D) => void, density = 2) {
   const canvas = document.createElement('canvas');
@@ -59,7 +59,7 @@ function atmosphere() {
   });
 }
 
-export function createStage(world: Container, from: { x: number; y: number }, to: { x: number; y: number }, art: { body: Texture; staff: Texture; dummy: Texture }) {
+export function createStage(world: Container, from: { x: number; y: number }, to: { x: number; y: number }, art: { head: Texture; torso: Texture; legs: Texture; staff: Texture; dummy: Texture }) {
   world.addChild(atmosphere());
   const glow = painted(180, 180, ctx => {
     const g = ctx.createRadialGradient(90, 90, 0, 90, 90, 90);
@@ -75,43 +75,106 @@ export function createStage(world: Container, from: { x: number; y: number }, to
   };
   const casterShadow = shadow(from), dummyShadow = shadow(to);
   const floorFlash = new Sprite(glow.texture); floorFlash.anchor.set(0.5); floorFlash.position.set(to.x, to.y); floorFlash.width = 300; floorFlash.height = 95; floorFlash.blendMode = 'add'; floorFlash.alpha = 0; world.addChild(floorFlash);
-  const caster = new Container(), staff = new Container(), dummy = new Container();
+  const caster = new Container(), body = new Container(), head = new Container(), legs = new Container(), dummy = new Container();
   caster.position.set(from.x, from.y); dummy.position.set(to.x, to.y);
   const figure = (texture: Texture, parent: Container) => {
     const s = new Sprite(texture); s.anchor.set(0.5, 1); s.width = 80; s.height = 120; parent.addChild(s); return s;
   };
   const hair = new Graphics().moveTo(-9, -89).quadraticCurveTo(-23, -64, -18, -36).quadraticCurveTo(-9, -46, -6, -81).fill(0x30394e);
-  hair.pivot.set(-7, -88); hair.position.set(-7, -88); caster.addChild(hair);
-  const robe = new Graphics().moveTo(-10, -59).quadraticCurveTo(-20, -34, -24, -9).lineTo(-11, -11).quadraticCurveTo(-1, -36, -4, -59).fill(0x476a87).stroke({color:0xc4ac7c,width:0.7});
-  robe.pivot.set(-5, -58); robe.position.set(-5, -58); caster.addChild(robe);
-  figure(art.body, caster); figure(art.staff, staff); caster.addChild(staff);
-  const orb = new Sprite(glow.texture); orb.anchor.set(0.5); orb.position.set(27, -104); orb.width = orb.height = 24; orb.blendMode = 'add'; staff.addChild(orb);
+  hair.pivot.set(-7, -88); hair.position.set(-7, -88); head.addChild(hair);
+  const robe = new Graphics().moveTo(-10, -59).quadraticCurveTo(-20, -34, -24, -9).lineTo(-11, -11).quadraticCurveTo(-1, -36, -4, -59).fill(0x476a87).stroke({ color: 0xc4ac7c, width: 0.7 });
+  robe.pivot.set(-5, -58); robe.position.set(-5, -58); legs.addChild(robe);
+  figure(art.legs, legs); figure(art.torso, body); figure(art.head, head);
+  head.pivot.set(0, -87); head.position.set(0, -87);
+  body.pivot.set(0, -55); body.position.set(0, -55);
+  caster.addChild(legs, body); body.addChild(head);
+  function arm(x: number, back: boolean) {
+    const upper = new Container(), forearm = new Container(), hand = new Container();
+    upper.position.set(x, -72); forearm.position.y = 21; hand.position.y = 20;
+    upper.addChild(new Graphics().moveTo(-5, -2).quadraticCurveTo(-8, 12, -5, 23).lineTo(5, 23).quadraticCurveTo(8, 12, 5, -2).closePath().fill(back ? 0x395472 : 0x608ba3).stroke({ color: 0xb8c5bb, width: 0.7 }));
+    forearm.addChild(new Graphics().roundRect(-4.5, -2, 9, 21, 3).fill(back ? 0x50718b : 0x789dad).stroke({ color: 0xd6b477, width: 0.8 }));
+    forearm.addChild(new Graphics().roundRect(-5, 14, 10, 4, 1).fill(0xc9a66e));
+    hand.addChild(new Graphics().roundRect(-3, -2, 6, 7, 2).fill(0xe3b494).stroke({ color: 0x9e715d, width: 0.6 }));
+    upper.addChild(forearm); forearm.addChild(hand); body.addChild(upper);
+    return { upper, forearm, hand };
+  }
+  const backArm = arm(-10, true), frontArm = arm(10, false);
+  const staff = new Container(); frontArm.hand.addChild(staff);
+  const staffArt = figure(art.staff, staff); staffArt.position.set(-27, 64);
+  const orb = new Sprite(glow.texture); orb.anchor.set(0.5); orb.position.set(0, -40); orb.width = orb.height = 24; orb.blendMode = 'add'; staff.addChild(orb);
   figure(art.dummy, dummy);
   const dummyFlash = figure(art.dummy, dummy); dummyFlash.blendMode = 'add'; dummyFlash.alpha = 0;
   world.addChild(caster, dummy);
   const motes = Array.from({ length: 16 }, (_, i) => {
     const s = new Sprite(glow.texture); s.anchor.set(0.5); s.width = s.height = 3 + i % 3; s.tint = 0xd6b477; s.alpha = 0.2; world.addChild(s); return s;
   });
-  let clock = 0, castAge = Infinity, releaseAge = Infinity, hitAge = Infinity, color = 0x91c9da;
-  function animate(ms: number) {
+  const idle = { rx: 27, ry: -59, lx: -24, ly: -43, lean: 0, crouch: 0, staff: 0.02 };
+  const windups: Record<string, typeof idle> = {
+    projectile: { rx: -14, ry: -72, lx: 5, ly: -65, lean: -0.06, crouch: 1, staff: -0.4 },
+    aoe: { rx: 8, ry: -110, lx: 9, ly: -101, lean: -0.035, crouch: 0, staff: -0.12 },
+    buff: { rx: 27, ry: -59, lx: 0, ly: -66, lean: -0.015, crouch: 0, staff: 0 },
+    debuff: { rx: 23, ry: -63, lx: 28, ly: -70, lean: 0.025, crouch: 0, staff: 0.1 },
+    movement: { rx: 17, ry: -60, lx: -22, ly: -58, lean: 0.15, crouch: 8, staff: -0.3 },
+  };
+  const releases: Record<string, typeof idle> = {
+    projectile: { rx: 45, ry: -65, lx: 15, ly: -62, lean: 0.095, crouch: 0, staff: 0.7 },
+    aoe: { rx: 20, ry: -96, lx: 18, ly: -89, lean: 0.04, crouch: 0, staff: 0.28 },
+    buff: { rx: 27, ry: -59, lx: -38, ly: -65, lean: 0, crouch: 0, staff: 0 },
+    debuff: { rx: 27, ry: -59, lx: 30, ly: -72, lean: 0.05, crouch: 0, staff: 0.06 },
+    movement: { rx: 14, ry: -58, lx: -28, ly: -60, lean: 0.2, crouch: 4, staff: -0.5 },
+  };
+  const pose = { ...idle }, velocity = { ...idle };
+  (Object.keys(velocity) as (keyof typeof idle)[]).forEach(k => { velocity[k] = 0; });
+  let clock = 0, castAge = Infinity, releaseAge = Infinity, hitAge = Infinity, color = 0x91c9da, category = 'projectile';
+  let casterLift = 0, targetLift = 0;
+  function pointArm(a: ReturnType<typeof arm>, x: number, y: number) {
+    const dx = x - a.upper.x, dy = y - a.upper.y, d = Math.max(1, Math.min(40.9, Math.hypot(dx, dy)));
+    const shoulder = Math.atan2(dy, dx) - Math.acos(Math.max(-1, Math.min(1, (21 * 21 + d * d - 20 * 20) / (42 * d))));
+    a.upper.rotation = shoulder - Math.PI / 2;
+    a.forearm.rotation = Math.acos(Math.max(-1, Math.min(1, (d * d - 21 * 21 - 20 * 20) / (2 * 21 * 20))));
+    a.hand.rotation = -a.upper.rotation - a.forearm.rotation;
+  }
+  function actor(node: Container, shadow: Sprite, home: { x: number; y: number }, p: ActorPose | null | undefined, dt: number) {
+    const x = home.x + (p?.x ?? 0), y = home.y + (p?.y ?? 0), lift = Math.max(0, p?.lift ?? 0);
+    node.position.set(x, y - lift); node.scale.x = p?.facing ?? 1;
+    const alpha = p?.visible === false ? 0 : 1;
+    node.alpha += Math.sign(alpha - node.alpha) * Math.min(Math.abs(alpha - node.alpha), dt / 80);
+    shadow.position.set(x, y + 3); shadow.scale.set(90 / shadowTexture.width / (1 + lift / 32), 32 / shadowTexture.height / (1 + lift / 32));
+    shadow.alpha = node.alpha * 0.85 / (1 + lift / 100);
+    return lift;
+  }
+  function animate(ms: number, casterPose?: ActorPose | null, targetPose?: ActorPose | null) {
     const dt = Math.min(ms, 50); clock += dt; castAge += dt; releaseAge += dt; hitAge += dt;
-    const t = clock / 1000, windup = castAge < 1500 && releaseAge === Infinity ? Math.min(1, castAge / 200) : 0;
-    const recoil = Math.exp(-releaseAge / 160), hit = Math.exp(-hitAge / 210), spring = Number.isFinite(hitAge) ? Math.sin(hitAge / 67) * hit : 0;
-    caster.y = from.y - Math.sin(t * 2.1) * 1.4;
-    caster.scale.y = 1 + Math.sin(t * 2.1) * 0.008;
-    caster.rotation = -0.025 * windup + 0.035 * recoil;
+    const t = clock / 1000, windup = releaseAge === Infinity && Number.isFinite(castAge) ? 1 - Math.pow(1 - Math.min(1, castAge / 220), 3) : 0;
+    const recoil = Math.exp(-releaseAge / 330), hit = Math.exp(-hitAge / 210), spring = Number.isFinite(hitAge) ? Math.sin(hitAge / 67) * hit : 0;
+    const wind = windups[category] ?? windups.aoe, release = releases[category] ?? releases.aoe;
+    for (let remaining = dt; remaining > 0;) {
+      const step = Math.min(remaining, 1000 / 120) / 1000; remaining -= step * 1000;
+      for (const key of Object.keys(pose) as (keyof typeof idle)[]) {
+        const goal = idle[key] + (wind[key] - idle[key]) * windup + (release[key] - idle[key]) * recoil;
+        velocity[key] += ((goal - pose[key]) * 260 - velocity[key] * 23) * step;
+        pose[key] += velocity[key] * step;
+      }
+    }
+    casterLift = actor(caster, casterShadow, from, casterPose, dt);
+    targetLift = actor(dummy, dummyShadow, to, targetPose, dt);
+    caster.y -= Math.sin(t * 2.1) * 1.1;
+    legs.scale.y = 1 - pose.crouch / 140; body.y = -55 + pose.crouch; body.rotation = pose.lean;
+    head.rotation = -pose.lean * 0.35 + Math.sin(t * 1.4) * 0.008;
     robe.rotation = Math.sin(t * 1.8) * 0.023; hair.rotation = Math.sin(t * 1.5 + 1) * 0.035;
-    staff.y = -13 * windup + 5 * recoil; staff.rotation = -0.09 * windup + 0.045 * recoil;
-    orb.tint = color; orb.alpha = 0.35 + Math.sin(t * 3) * 0.12 + windup * 0.5 + recoil * 0.6;
-    orb.scale.set((24 + windup * 20 + recoil * 16 + Math.sin(t * 3) * 3) / glow.texture.width);
-    dummy.x = to.x + 10 * spring; dummy.rotation = Math.sin(t * 1.4) * 0.009 + spring * 0.14;
-    dummy.scale.set(1 + hit * 0.075, 1 - hit * 0.07);
+    const staffAngle = pose.staff + (Number.isFinite(releaseAge) ? Math.sin(Math.min(1, releaseAge / 65) * Math.PI) * 0.16 : 0);
+    const reach = Math.min(1, castAge / 180);
+    const grip = wind === windups.aoe && Number.isFinite(castAge) ? releaseAge === Infinity ? reach * reach * (3 - 2 * reach) : Math.exp(-releaseAge / 180) : 0;
+    pointArm(backArm, pose.lx + (pose.rx - Math.sin(staffAngle) * 9 - pose.lx) * grip, pose.ly + (pose.ry + Math.cos(staffAngle) * 9 - pose.ly) * grip);
+    pointArm(frontArm, pose.rx, pose.ry); staff.rotation = staffAngle;
+    orb.tint = color; orb.alpha = 0.28 + Math.sin(t * 3) * 0.08 + windup * 0.35 + recoil * 0.4;
+    orb.scale.set((24 + windup * 9 + recoil * 8) / glow.texture.width);
+    dummy.x += 10 * spring; dummy.rotation = Math.sin(t * 1.4) * 0.009 + spring * 0.14;
+    dummy.scale.x *= 1 + hit * 0.075; dummy.scale.y = 1 - hit * 0.07;
     dummyFlash.tint = hitAge < 65 ? 0xffffff : color; dummyFlash.alpha = Math.exp(-hitAge / 85) * 0.85;
+    floorFlash.position.set(to.x + (targetPose?.x ?? 0), to.y + (targetPose?.y ?? 0));
     floorFlash.tint = color; floorFlash.alpha = Math.exp(-hitAge / 160) * 0.5;
-    casterShadow.x = caster.x; casterShadow.alpha = 0.85 - Math.sin(t * 2.1) * 0.04;
-    casterShadow.scale.x = (90 + Math.sin(t * 2.1) * 2) / shadowTexture.width;
-    dummyShadow.x = to.x + spring * 4; dummyShadow.scale.x = (90 + hit * 5) / shadowTexture.width;
-    motes.forEach((s, i) => { s.x = 90 + (i * 59 + Math.sin(t * 0.2 + i) * 15) % 830; s.y = 180 + (i * 31 - t * (3 + i % 4) + 10000) % 210; s.alpha = 0.08 + (Math.sin(t + i) + 1) * 0.09; });
+    motes.forEach((s, i) => { s.x = 90 + (i * 59 + Math.sin(t * 0.2 + i) * 15) % 830; s.y = 180 + (i * 31 - t * (3 + i % 4) + 10000) % 210; s.alpha = 0.06 + (Math.sin(t + i) + 1) * 0.06; });
   }
   function cue(event: CueEvent, tint: number) {
     color = tint;
@@ -119,6 +182,11 @@ export function createStage(world: Container, from: { x: number; y: number }, to
     if (event.type === 'sound' && ['release', 'buff', 'debuff'].includes(event.id ?? '')) releaseAge = 0;
     if (event.type === 'hit') hitAge = 0;
   }
+  function reset() {
+    castAge = releaseAge = hitAge = Infinity;
+    caster.alpha = dummy.alpha = 1; animate(0);
+  }
   animate(0);
-  return { animate, cue, caster, dummy, orb, floorFlash, get state() { return { clock, castAge, releaseAge, hitAge }; } };
+  return { animate, cue, reset, prepare(value: string) { category = value; }, caster, dummy, casterShadow, dummyShadow, body, head, legs, frontArm, backArm, staff, orb, floorFlash,
+    get state() { return { clock, castAge, releaseAge, hitAge, category, casterLift, targetLift }; } };
 }

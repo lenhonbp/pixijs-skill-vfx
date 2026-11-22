@@ -7,6 +7,7 @@ import { dirname, resolve, extname, sep } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { build } from 'esbuild';
 import { chromium } from 'playwright';
+import { showcaseSmoke } from '../../showcase/test/smoke.mjs';
 
 const root = resolve(dirname(fileURLToPath(import.meta.url)), '../..');
 const dist = resolve(root, 'showcase/dist');
@@ -275,6 +276,7 @@ try {
   await page.evaluate(() => { const event = new Event('pagehide'); Object.defineProperty(event, 'persisted', { value: true }); dispatchEvent(event); });
   if (!(await page.evaluate(() => window.__showcase.vfx.stats().packs))) throw Error('Persisted pagehide destroyed showcase');
   console.log('Showcase bfcache lifecycle: PASS (persisted pagehide keeps player alive)');
+  await showcaseSmoke({ page, browser, url, collection });
   await page.evaluate(async () => {
     const s = window.__showcase; s.select('hoa-fire-dragon-crossing');
     await s.vfx.load('./packs/free/hoa-fire-dragon-crossing.vfxb');
