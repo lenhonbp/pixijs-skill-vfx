@@ -271,6 +271,64 @@ try {
     step(w, 16); check(damage === 1, 'mountain sample: impact damage once');
     step(w, 4000); clean(w, 'mountain sample');
     results.push('mountainCrash: delay/formation/drop, impact callback, crater/rubble, cleanup/stop/errors and 640 ms landing sync PASS');
+    for (const name of ['vineBind', 'root']) {
+      w = world(); at = { x: 100, y: 200, z: 0 };
+      const vines = kit[name](w, tex, { target: () => at, height: 105, duration: Infinity });
+      step(w, 700);
+      const coils = w.particles.filter((p) => p.o.texture === tex.vineSegment);
+      check(coils.length === 72 && coils.every((p) => p.o.blend === 'normal'), `${name}: four solid thorned vines`);
+      check(coils.some((p) => p.o.zBias < 0 && p.sprite.zIndex < at.y) && coils.some((p) => p.o.zBias > 0 && p.sprite.zIndex > at.y), `${name}: behind/in-front body sorting`);
+      check(Math.max(...coils.map((p) => p.pz)) > 105 * 0.75, `${name}: coils reach torso`);
+      const width = Math.max(...coils.map((p) => Math.abs(p.px)));
+      vines.pulse(); step(w, 144);
+      check(Math.max(...coils.map((p) => Math.abs(p.px))) < width * 0.85, `${name}: damage squeeze pulse`);
+      at = { x: 500, y: 350, z: 30 }; step(w, 500);
+      check(coils.every((p) => p.sprite.x === at.x + p.px && p.sprite.y === at.y - at.z + p.py - p.pz), `${name}: moving airborne target`);
+      step(w, 7000); check(vines.alive && w.count > 0, `${name}: Infinity sustains`);
+      vines.stop(); vines.stop(); vines.pulse();
+      step(w, 16);
+      check(coils.every((p) => p.sprite.scale.x < 0.5 && Math.abs(p.sprite.x - at.x) < 30), `${name}: wither fade preserves coil transforms`);
+      clean(w, `${name} Infinity stop`); check(!vines.alive, `${name}: stopped handle`);
+      for (const duration of [0, 900, undefined]) {
+        w = world();
+        const finite = kit[name](w, tex, { target: () => at, duration });
+        if (duration === 900) {
+          step(w, 500);
+          const q = w.particles.find((p) => p.o.texture === tex.vineSegment), green = q.sprite.tint;
+          step(w, 240); check(q.sprite.tint !== green, `${name}: brown wither before expiry`);
+          step(w, 176);
+          check(w.particles.some((p) => p.o.tint === 0x795333 && p.o.life === 750), `${name}: leaf/bark crumble`);
+        }
+        step(w, 4000); clean(w, `${name} finite/default/zero`); check(!finite.alive, `${name}: finite cleanup`);
+      }
+      w = world(); let fail = false;
+      const unsafe = kit[name](w, tex, { target: () => { if (fail) throw new Error('vine target'); return at; }, duration: Infinity });
+      fail = true; let vineError;
+      try { step(w, 16); } catch (e) { vineError = e.message; }
+      check(vineError === 'vine target', `${name}: target errors propagate`);
+      fail = false; unsafe.stop(); clean(w, `${name} target error`);
+    }
+    results.push('vineBind/root: thorned coils, near/far depth, torso height, movement/pulse, wither/crumble, finite/default/zero/Infinity/stop/errors PASS');
+    for (const alpha of [undefined, 0, 0.35]) {
+      w = world(); let hits = 0;
+      kit.projectile(w, tex, { from: { x: 0, y: 0, z: 40 }, to: { x: 100, y: 0, z: 40 },
+        speed: 100, palette: gold, alpha, onHit: () => hits++ });
+      const glow = w.particles.find((p) => p.o.texture === tex.glow && p.o.life === Infinity);
+      check(glow.o.alpha === 0.8 * (alpha ?? 1), 'projectile: alpha default/custom/zero');
+      step(w, 500); check(hits === 0, 'projectile: alpha does not alter travel timing');
+      step(w, 512); check(hits === 1, 'projectile: alpha preserves hit callback');
+      clean(w, 'projectile opacity');
+    }
+    w = world(); let vineDamage = 0;
+    kit.SKILLS.find((s) => s.id === 'moc-vine-bind').cast({ w, tex,
+      caster: { feet: { x: 100, y: 200, z: 0 }, height: 70, facing: 1 },
+      target: { feet: { x: 400, y: 200, z: 0 }, height: 70 },
+      hurt: (_unit, amount, feedback) => { check(amount === 42 && feedback.feedback < 0.2, 'vine sample: damage preserved, subdued feedback'); vineDamage++; },
+    });
+    step(w, 300); check(vineDamage === 0, 'vine sample: windup preserved');
+    step(w, 1000); check(vineDamage === 1 && w.particles.some((p) => p.o.texture === tex.vineSegment), 'vine sample: seed roots on impact');
+    step(w, 4000); clean(w, 'vine sample');
+    results.push('Vine Bind: projectile opacity defaults/options, travel callback, original damage and root-on-impact PASS');
     return results;
   });
   results.forEach((line) => console.log(line));

@@ -8,6 +8,7 @@ import { damageNumber } from './numbers';
 import { group, ms } from './group';
 import { WUXING, LOI } from './elements';
 import { lightningBolt } from './lightning-bolt';
+import { vineBind, type VineBindHandle } from './vine-bind';
 import { clamp01, envelope, inQuad, outBack, outCubic, outQuad, rand, lerpColor } from './ease';
 
 const TAU = Math.PI * 2;
@@ -442,43 +443,9 @@ export function slow(w: VfxWorld, tex: VfxTextures, o: OnUnit & { duration?: num
   return g;
 }
 
-/** Root: vines grow out of the ground and wrap the legs, then wither. */
-export function root(w: VfxWorld, tex: VfxTextures, o: OnUnit & { duration?: number; palette?: Palette }): Handle {
-  const h = o.height ?? 70;
-  const dur = o.duration ?? 2500;
-  const p = o.palette ?? WUXING.moc.palette;
-  const T = o.target;
-  const s = h / 70;
-  const g = group(w, dur, undefined, 250);
-  const at = T();
-  w.burst(10, () => {
-    const a = rand(0, TAU), sp = rand(60, 160);
-    return { texture: tex.rock, blend: 'normal', x: at.x, y: at.y, z: 2, life: 600, vx: Math.cos(a) * sp, vy: Math.sin(a) * sp * w.groundSquash, vz: rand(100, 220), gravity: 900, bounce: 0.25, scale: rand(0.12, 0.22), rotation: rand(0, TAU), spin: rand(-8, 8), tint: 0x7a5a3a };
-  });
-  g.add(w.spawn({ texture: tex.glow, layer: 'ground', groundAligned: true, blend: 'normal', x: 0, y: 0, follow: T, life: dur, scale: 1.0 * s, alpha: ms.env(dur, 120, 300, 0.55), tint: 0x2a1a0a }));
-  g.add(w.spawn({ texture: tex.ring, layer: 'ground', groundAligned: true, x: 0, y: 0, follow: T, life: dur, scale: (26 * s) / M.ringRadius, alpha: ms.env(dur, 120, 300, 0.4), tint: p.main }));
-  const vines = 7;
-  for (let i = 0; i < vines; i++) {
-    const a = (i / vines) * TAU + rand(-0.3, 0.3);
-    const ox = Math.cos(a) * 15 * s, oy = Math.sin(a) * 7 * s;
-    const tall = (h * rand(0.38, 0.6)) / M.tendrilHeight;
-    const delay = i * 30;
-    const phase = rand(0, TAU);
-    const flip = Math.random() < 0.5 ? -1 : 1;
-    g.add(w.spawn({
-      texture: tex.tendril, blend: 'normal', x: ox, y: oy, follow: T, life: dur, delay, anchorY: 1,
-      scaleX: flip * rand(0.45, 0.6) * s,
-      scaleY: (t) => tall * (t * dur < 260 ? outBack((t * dur) / 260) : t * dur > dur - 280 ? Math.max(0, (dur - t * dur) / 280) : 1),
-      tint: lerpColor(p.main, p.dark, rand(0.2, 0.6)),
-      onUpdate: (q) => { q.rotation = (ox / (15 * s)) * -0.25 + Math.sin(phase + q.age * 0.004) * 0.06; },
-    }));
-  }
-  w.after(180, () => {
-    if (!g.alive) return;
-    const f = T();
-    w.burst(8, () => ({ texture: tex.leaf, blend: 'normal', x: f.x, y: f.y, z: h * rand(0.1, 0.4), life: rand(600, 900), vx: rand(-80, 80), vz: rand(60, 160), gravity: 260, drag: 2, rotation: rand(0, TAU), spin: rand(-6, 6), scale: rand(0.3, 0.45) * s, tint: lerpColor(p.main, p.core, rand(0, 0.4)) }));
-  });
-  return g;
+/** Root: thorned vines coil around legs and torso, then wither. */
+export function root(w: VfxWorld, tex: VfxTextures, o: OnUnit & { duration?: number; palette?: Palette }): VineBindHandle {
+  return vineBind(w, tex, o);
 }
 
 // ---------------------------------------------------------------- shields

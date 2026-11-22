@@ -230,29 +230,30 @@ export function dropShadow(w: VfxWorld, tex: VfxTextures, target: () => Vec3, si
 export function projectile(
   w: VfxWorld,
   tex: VfxTextures,
-  o: { from: Vec3; to: Vec3; palette: Palette; speed?: number; arcHeight?: number; size?: number; onHit?: (at: Vec3) => void },
+  o: { from: Vec3; to: Vec3; palette: Palette; speed?: number; arcHeight?: number; size?: number; alpha?: number; onHit?: (at: Vec3) => void },
 ): Handle {
   const fz = o.from.z ?? 40, tz = o.to.z ?? 40;
   const dist = Math.hypot(o.to.x - o.from.x, o.to.y - o.from.y);
   const duration = (dist / (o.speed ?? 650)) * 1000;
   const arc = o.arcHeight ?? dist * 0.12;
   const size = o.size ?? 1;
+  const alpha = o.alpha ?? 1;
   const p = o.palette;
   const pos = { x: o.from.x, y: o.from.y, z: fz };
   let t = 0;
   const follow = () => pos;
   const parts = [
-    w.spawn({ texture: tex.glow, x: 0, y: 0, follow, life: Infinity, scale: 1.3 * size, alpha: 0.8, tint: p.main, zBias: 2 }),
-    w.spawn({ texture: tex.dot, x: 0, y: 0, follow, life: Infinity, scale: 0.75 * size, tint: p.core, zBias: 3 }),
+    w.spawn({ texture: tex.glow, x: 0, y: 0, follow, life: Infinity, scale: 1.3 * size, alpha: 0.8 * alpha, tint: p.main, zBias: 2 }),
+    w.spawn({ texture: tex.dot, x: 0, y: 0, follow, life: Infinity, scale: 0.75 * size, alpha, tint: p.core, zBias: 3 }),
   ];
   parts.push(dropShadow(w, tex, () => pos, size));
   // Continuous ribbon behind the core; particles add sparkle on top.
-  const ribbon = ribbonTrail(w, { target: follow, width: 16 * size, segments: 12, tint: p.main, zBias: 1 });
+  const ribbon = ribbonTrail(w, { target: follow, width: 16 * size, segments: 12, tint: p.main, alpha, zBias: 1 });
   const trail = w.stream({
     rate: 90,
     make: () => ({
       texture: tex.dot, x: pos.x + rand(-4, 4), y: pos.y + rand(-3, 3), z: pos.z + rand(-4, 4), life: rand(250, 420),
-      vz: rand(10, 50), drag: 2, scale: [rand(0.5, 0.8) * size, 0, inQuad], tint: colorRamp(p.core, p.main, p.dark, 0.25),
+      vz: rand(10, 50), drag: 2, scale: [rand(0.5, 0.8) * size, 0, inQuad], alpha, tint: colorRamp(p.core, p.main, p.dark, 0.25),
     }),
   });
   const cleanup = () => {

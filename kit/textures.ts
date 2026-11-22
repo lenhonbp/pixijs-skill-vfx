@@ -50,6 +50,8 @@ export interface VfxTextures {
   bubble: Texture;
   /** Curling vine growing up from the bottom center. 64x128, anchor (0.5, 1). Roots. */
   tendril: Texture;
+  /** Thorned vine stroke with dark border and lit upper edge. 96x48. */
+  vineSegment: Texture;
   /** Plus/cross. Size 48. Heals. */
   plus: Texture;
   /** Split shield outline with a jagged crack. 64x80. Armor break. */
@@ -395,6 +397,18 @@ export function createVfxTextures(): VfxTextures {
     return textureFromCanvas(c);
   })();
 
+  const vineSegment = (() => {
+    const [c, ctx] = makeCanvas(96, 48);
+    ctx.lineCap = 'round';
+    ctx.beginPath(); ctx.moveTo(3, 25); ctx.quadraticCurveTo(48, 20, 93, 25);
+    ctx.strokeStyle = '#24301c'; ctx.lineWidth = 16; ctx.stroke();
+    ctx.strokeStyle = '#adc681'; ctx.lineWidth = 10; ctx.stroke();
+    ctx.beginPath(); ctx.moveTo(5, 21); ctx.quadraticCurveTo(48, 17, 91, 21);
+    ctx.strokeStyle = '#ecf5be'; ctx.lineWidth = 3; ctx.stroke();
+    ctx.beginPath(); ctx.moveTo(35, 23); ctx.lineTo(49, 4); ctx.lineTo(53, 23);
+    ctx.fillStyle = '#a5bb79'; ctx.fill(); ctx.strokeStyle = '#24301c'; ctx.lineWidth = 2; ctx.stroke();
+    return textureFromCanvas(c);
+  })();
   const mountain = (() => {
     const [c, ctx] = makeCanvas(320, 256);
     const face = (points: number[][], color: string) => {
@@ -549,5 +563,5 @@ export function createVfxTextures(): VfxTextures {
     digits[ch] = textureFromCanvas(c);
   }
 
-  return { glow, dot, ring, disc, streak, beam, star, puff, crescent, shard, blade, swordCrack, spike, rock, rockPlate, guardian, mountain, leaf, drop, chevron, rune, bubble, tendril, plus, crackedShield, bell, bellCracks, digits };
+  return { glow, dot, ring, disc, streak, beam, star, puff, crescent, shard, blade, swordCrack, spike, rock, rockPlate, guardian, mountain, leaf, drop, chevron, rune, bubble, tendril, vineSegment, plus, crackedShield, bell, bellCracks, digits };
 }

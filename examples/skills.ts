@@ -151,16 +151,18 @@ export const SKILLS: SkillDef[] = [
   // ------------------------------------------------------------------ MỘC / WOOD
   {
     id: 'moc-vine-bind', element: 'moc', category: 'control', en: 'Vine Bind', vi: 'Triền Đằng Phược',
-    desc: 'A seed bolt bursts into thorned vines that root the target.', uses: ['chargeUp', 'projectile', 'hitSpark', 'root'], length: 3300,
+    desc: 'A seed bolt bursts into thorned vines that root the target.', uses: ['chargeUp', 'projectile', 'root'], length: 3300,
     cast: ({ w, tex, caster, target, hurt }) => {
       chargeUp(w, tex, {
         target: () => hand(caster), palette: P.moc, duration: 300,
         onDone: () => projectile(w, tex, {
-          from: hand(caster), to: chest(target, 0.3), palette: P.moc, speed: 620, arcHeight: 50, size: 0.9,
+          from: hand(caster), to: chest(target, 0.3), palette: { ...P.moc, core: P.moc.main }, speed: 620, arcHeight: 50, size: 0.65, alpha: 0.35,
           onHit: (at) => {
-            hitSpark(w, tex, { ...at, palette: P.moc });
-            hurt(target, 42, { palette: P.moc });
-            root(w, tex, { target: feetOf(target), height: target.height, duration: 2300 });
+            w.spawn({ texture: tex.glow, ...at, life: 160, scale: [0.3, 0.65], alpha: [0.25, 0], tint: P.moc.main });
+            w.spawn({ texture: tex.ring, ...at, life: 220, scale: [0.02, 0.15], alpha: [0.3, 0], tint: P.moc.main });
+            w.spawn({ texture: tex.dot, ...at, life: 100, scale: [0.08, 0], alpha: [0.4, 0], tint: P.moc.core });
+            hurt(target, 42, { palette: P.moc, feedback: 0 });
+            root(w, tex, { target: feetOf(target), height: target.height, duration: 2300, palette: P.moc }).pulse();
           },
         }),
       });

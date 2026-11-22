@@ -9,7 +9,7 @@ not a framework to extend with options.
 | `hitSpark` | small core glow, spinning star, 8 streaks in a cone | every hit, crits (size 1.5+) | `angle` (away from attacker), `size` |
 | `hitFlash` | additive copy of the target's texture fading out | target feedback | `ms`, `color` (red for damage, green for heal), `opacity` (default 1) |
 | `slash` | dark smear + main crescent + white edge, all ground-aligned at chest height, sparks off the end | melee swings, dash cuts | `angle` facing, `radius`, `sweep`, `duration`, `clockwise` |
-| `projectile` | glow + core following a path with an arc, ribbon trail + ember stream, ground shadow | fireball, arrow, magic bolt | `speed`, `arcHeight`, `size`, `onHit` |
+| `projectile` | glow + core following a path with an arc, ribbon trail + ember stream, ground shadow | fireball, arrow, magic bolt | `speed`, `arcHeight`, `size`, `alpha` (glow/core/ribbon/motes multiplier, default 1), `onHit` |
 | `explosion` | top flash, additive fire puffs, normal-blend smoke, gravity sparks, shockwave, scorch decal, shake + hit-stop | AoE impact, fireball hit | `radius`, `shake`, `hitStopMs`, `smoke` |
 | `shockwave` | two expanding ground rings + screen refraction when `Distortion` is attached | slams, landings, nova | `radius`, `duration` |
 | `telegraph` | pulsing ground ring, faint area, fill that grows over the cast | enemy AoE warnings, cast bars on the ground | `radius`, `duration`, `onDone`, `finishAlpha` (0 disables the finish flash) |
@@ -23,7 +23,7 @@ not a framework to extend with options.
 | `stun` | stars orbiting over the head, depth-sorted front/back, ring + trail | stun, daze | `duration`, `stars`, `palette` |
 | `freeze` | frost decal, ice crystals growing around the body, cold mist; shatter burst at end | freeze, petrify (rock palette) | `duration`, `onShatter`, `glowIntensity` (default 1) |
 | `slow` | spinning cold arcs at the feet, sinking chevrons, drips | slow, snare | `duration`, `palette` |
-| `root` | dirt burst, vines growing from the ground and swaying, leaves | root, entangle | `duration`, `palette` |
+| `root` / `vineBind` (`vine-bind.ts`) | four thick outlined, thorned green vines spiral from the ground to 80% of unit height; near/far coils wrap around the body, leaves, brown wither and bark crumble | root, entangle | `target`, `height`, `duration` (default 2500; Infinity until stopped), `palette`; handle: `stop()`, `pulse()` (call alongside each gameplay damage tick to squeeze coils). `root` delegates to `vineBind` |
 | `shield` | rim-lit bubble with pulse, ground ring, crawling glints; `hit(angle)` ripple, `break()` shards | barriers, absorbs, invulnerability | `radius`, `duration`, `onBreak` |
 | `goldenBell` (`bell.ts`) | above-head gather, falling temple bell with hanging loop, dome, engraved translucent body, bands and studs; landing dust/ring, shimmer, sound ripples and gold shards | bell-shaped ward, distinct from a spherical shield | `target`, `height`, `palette`, `duration` (sustain after landing, default 3000; Infinity until stopped), `onBreak`; handle: `hit(angle?)`, `break()`, `stop()` |
 | `stoneArmor` (`stone-armor.ts`) | rising pebbles, eight solid beveled plates snapping onto shoulders, torso, hips and shins; lock-in dust, earthy glow, falling rubble on end | attached rock armor rather than a bubble | `target`, `height`, `palette` (earth default), `duration` (sustain after 650 ms assembly, default 2200; Infinity supported), `onBreak`; handle: `hit(angle?)`, `break()`, `stop()` |
