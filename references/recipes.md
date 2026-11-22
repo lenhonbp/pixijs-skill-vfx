@@ -11,7 +11,8 @@ not a framework to extend with options.
 | `slash` | dark smear + main crescent + white edge, all ground-aligned at chest height, sparks off the end | melee swings, dash cuts | `angle` facing, `radius`, `sweep`, `duration`, `clockwise` |
 | `projectile` | glow + core following a path with an arc, ribbon trail + ember stream, ground shadow | fireball, arrow, magic bolt | `speed`, `arcHeight`, `size`, `alpha` (glow/core/ribbon/motes multiplier, default 1), `onHit` |
 | `explosion` | top flash, additive fire puffs, normal-blend smoke, gravity sparks, shockwave, scorch decal, shake + hit-stop | AoE impact, fireball hit | `radius`, `shake`, `hitStopMs`, `smoke` |
-| `shockwave` | two expanding ground rings + screen refraction when `Distortion` is attached | slams, landings, nova | `radius`, `duration` |
+| `shockwave` | two expanding ground rings + screen refraction when `Distortion` is attached; optional depth-split halves | slams, landings, nova | `radius`, `duration`, `around` (unit feet; opts into split rings) |
+| `floorRing` (`floor-ring.ts`) | far arc in ground, near arc in y-sorted body | rings that encircle a unit | `radius`, `palette`, `around`, `duration`, alpha/scale curves, `texture`, `spin` |
 | `telegraph` | pulsing ground ring, faint area, fill that grows over the cast | enemy AoE warnings, cast bars on the ground | `radius`, `duration`, `onDone`, `finishAlpha` (0 disables the finish flash) |
 | `meteor` | `telegraph` -> `projectile` from the sky -> big `explosion` | ultimates; shows composition | `radius`, `castMs` |
 | `lightningChain` | jagged beams (glow + core) between points, re-rolled every 65 ms, glows and sparks at each hit | chain lightning, beams, tethers | `points`, `flickers`, `width`, `impactIntensity` (default 1) |
@@ -47,6 +48,52 @@ not a framework to extend with options.
 | `windWisps` | three ribbon helices orbiting the unit, curl-noise motes | haste, tailwind, wind aura | `target`, `radius`, `height`, `duration` |
 | `gustLines` | burst of horizontal speed lines along a ground angle | knockback, dash, tailwind | `angle`, `count`, `spread` |
 | `ribbonTrail` | rope mesh through the target's recent positions | any fast mover (see advanced-fx.md) | `width`, `segments`, `tint`, `fadeMs` |
+
+## Floor rings around units
+
+Use `floorRing` rather than a single ground sprite when the unit should stand **inside**
+a ring. The far half (screen y < center) stays in `ground`; the near half is ground-aligned
+in `body` at `center.y + 0.1`. It draws over the center unit's feet but behind a foreground
+unit with a larger ground y. Put characters in the sortable body layer with zIndex = feet.y.
+Do not use the top layer or sort the near half at the front edge of the ellipse.
+
+```ts
+const ring = floorRing(w, tex, {
+  around: () => unit.feet, radius: 32, palette: element.palette,
+  duration: 1200, alpha: [0.7, 0],
+});
+// Or use fixed ground coordinates: { x, y, radius, palette, ... }.
+// ring.stop() cancels both halves; w.clear() also removes their masks.
+```
+
+`around` follows ground x/y and ignores airborne height. With it, optional x/y are offsets
+from the target, not absolute coordinates. `duration` defaults to 380 ms; Infinity lasts
+until stopped. Zero radius/nonpositive duration is an inert handle. Invalid radius,
+duration or texture radius throws; insufficient particle budget draws neither half.
+
+The helper accepts existing `alpha`, `scale`, `scaleX`, `scaleY`, `rotation`, `spin`,
+`blend`, `tint`, `delay` and `onUpdate` particle options. An explicit scale overrides
+`radius / textureRadius`; `textureRadius` defaults to 120 (the standard ring). For runes,
+use `texture: tex.rune, textureRadius: 236`. Both halves use the same full texture with
+complementary, axis-aligned stencil masks, so even rotating, nonuniform runes have no gap
+or doubled-bright seam. `onUpdate` runs per half; keep gameplay side effects outside it.
+
+The handle exposes `far` and `near` particles (nullable when nothing was spawned). For a
+sustained recipe's fade-out, add each to its group with `g.add(ring.far)` and
+`g.add(ring.near)`. Masks follow during the fade and are destroyed when particles die.
+Avoid retaining these pooled particle references after they die. The helper owns mask
+cleanup and does not destroy shared textures.
+
+Shield, aura, regen, haste, empower, healing rings, Golden Bell's lip/slam, staticField,
+summon runes, freeze-shatter and stat-change rings use the split. Stone Armor has no
+separate floor ring; its sample's defense-up statChange ring gets the same treatment.
+`shockwave({ around: targetFeet, ... })` opts into split unit-centered rings; without
+`around`, ordinary area impacts and non-unit rings retain their existing ground layering.
+The War Cry sample is unchanged: its kit-level aura/haste/empower rings are split, while
+its outgoing area shockwave stays ground-only.
+
+`node tools/test-floor-ring.mjs` checks depth, following, cleanup, actual WebGL occlusion
+pixels and integer/subpixel seam equivalence against an unsplit rotating rune.
 
 ## Extended statuses
 

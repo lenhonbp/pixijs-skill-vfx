@@ -3,6 +3,7 @@ import type { VfxTextures } from './textures';
 import { type Palette, hitSpark, shockwave } from './recipes';
 import { lightningBolt } from './lightning-bolt';
 import { group, ms } from './group';
+import { floorRing } from './floor-ring';
 import { random, rand } from './ease';
 import { shiftPalette } from './palette';
 
@@ -40,8 +41,9 @@ export function staticField(w: VfxWorld, tex: VfxTextures,
   const tickMs = 500, g = group(w, o.duration > 0 ? o.duration + tickMs / 2 : 0), r = o.radius, p = shiftPalette(o.palette, { hue: 12, sat: 1.5, light: -0.08 });
   g.add(w.spawn({ texture: tex.glow, layer: 'ground', groundAligned: true,
     x: o.x, y: o.y, life: o.duration, scale: r / 45, alpha: ms.env(o.duration, 150, 250, 0.16), tint: p.main }));
-  g.add(w.spawn({ texture: tex.ring, layer: 'ground', groundAligned: true,
-    x: o.x, y: o.y, life: o.duration, scale: r / 120, alpha: ms.env(o.duration, 150, 250, 0.48), tint: p.main }));
+  const rim = floorRing(w, tex, { x: o.x, y: o.y, radius: r, palette: p,
+    duration: o.duration, alpha: ms.env(o.duration, 150, 250, 0.48) });
+  g.add(rim.far); g.add(rim.near);
   const point = (rim = false) => {
     const a = rand(0, Math.PI * 2), d = (rim ? 1 : Math.sqrt(random())) * r;
     return { x: o.x + Math.cos(a) * d, y: o.y + Math.sin(a) * d * w.groundSquash, z: 3 };

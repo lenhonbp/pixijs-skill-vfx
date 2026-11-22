@@ -4,6 +4,7 @@ import type { OnUnit, ShieldHandle } from './status';
 import type { Palette } from './recipes';
 import { WUXING } from './elements';
 import { group } from './group';
+import { floorRing } from './floor-ring';
 import { clamp01, envelope, inQuad, lerpColor, outQuad, rand } from './ease';
 import { bellFragments } from './metal-surfaces';
 import { metalSparks } from './metal';
@@ -60,8 +61,8 @@ export function goldenBell(w: VfxWorld, tex: VfxTextures,
     landed = true;
     ringAge = 0;
     const at = o.target();
-    w.spawn({ ...at, z: 0, layer: 'ground', groundAligned: true, texture: tex.ring,
-      life: 320, scale: [radius / M.ringRadius, radius * 1.7 / M.ringRadius, outQuad], alpha: [0.42, 0], tint: p.main });
+    floorRing(w, tex, { around: o.target, radius, palette: p, duration: 320,
+      scale: [radius / M.ringRadius, radius * 1.7 / M.ringRadius, outQuad], alpha: [0.42, 0] });
     w.burst(10, () => {
       const a = rand(0, Math.PI * 2);
       return { texture: tex.puff, blend: 'normal', x: at.x + Math.cos(a) * radius * 0.9,
