@@ -2,20 +2,21 @@
   "name": "pixijs-skill-vfx",
   "version": "3.0.0",
   "private": true,
-  "description": "Agent skill and TypeScript kit for code-drawn 2.5D skill VFX in PixiJS v7/v8",
-  "author": { "name": "lenhonbp", "email": "lenhonbp@gmail.com", "url": "https://github.com/lenhonbp" },
+  "description": "MIT atlas runtime and VFX showcase for PixiJS v7/v8",
+  "author": {
+    "name": "lenhonbp",
+    "email": "lenhonbp@gmail.com",
+    "url": "https://github.com/lenhonbp"
+  },
   "license": "MIT",
   "scripts": {
-    "build": "esbuild demo/main.ts --bundle --minify --outfile=demo/demo.js && npm run build:runtime && npm run build:showcase",
+    "build": "npm run build:runtime && npm run build:showcase",
     "build:runtime": "npm --prefix runtime run build",
     "build:showcase": "vite build --config showcase/vite.config.ts",
     "dev:showcase": "vite --config showcase/vite.config.ts",
     "check:runtime": "node runtime/test/smoke.mjs",
-    "dev": "esbuild demo/main.ts --bundle --outfile=demo/demo.js --servedir=demo --watch",
-    "typecheck": "tsc -p . && npm --prefix runtime run typecheck && tsc -p showcase",
-    "capture": "node tools/capture-frames.mjs",
-    "check": "node tools/check.mjs",
-    "check:docs": "node tools/check-docs.mjs"
+    "typecheck": "npm --prefix runtime run typecheck && tsc -p showcase",
+    "check:docs": "node scripts/check-docs.mjs"
   },
   "devDependencies": {
     "vite": "^6.4.1",

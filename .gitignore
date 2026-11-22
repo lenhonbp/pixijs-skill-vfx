@@ -1,7 +1,5 @@
 node_modules/
 runtime/dist/
 showcase/dist/
-demo/demo.js
-_site/
 *.zip
 .DS_Store
