@@ -63,10 +63,9 @@ You only need the packs selected for your game; the showcase loads one skill/tie
 
 Measured on 2026-11-22, the default Fireball cold first load was **2,209,503 bytes
 desktop / 1,458,276 bytes mobile**, including the application, character artwork
-and HTTP overhead on a local uncompressed server. Other initial selections can
-exceed the 3 MB desktop / 1.6 MB mobile first-load targets even though individual
-packs fit their limits. See [download sizes and measurement conditions](docs/pack-format.md#current-free-collection-and-download-sizes)
-for the full breakdown and known over-budget selections. These are not deployed CDN benchmarks.
+and HTTP overhead on a local uncompressed server. See
+[download sizes and measurement conditions](docs/pack-format.md#current-free-collection-and-download-sizes)
+for the full breakdown.
 
 ## Premium Skill Packs — coming soon
 
