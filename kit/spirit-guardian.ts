@@ -7,10 +7,19 @@ import { clamp01, lerp, outCubic, rand } from './ease';
 import { Graphics } from 'pixi.js';
 import { isPixiV8 } from './pixi-compat';
 
+export interface SpiritGuardianOptions extends Vec3 {
+  palette: Palette;
+  height?: number;
+  duration?: number;
+  target?: () => Vec3;
+  strikes?: number;
+  slamRadius?: number;
+  onStrike?: (i: number, at: Vec3) => void;
+  facing?: number;
+}
+
 /** Spectral warrior: levitating approach, articulated halberd combo, rising-mote dissolve. */
-export function spiritGuardian(w: VfxWorld, tex: VfxTextures,
-  o: { x: number; y: number; z?: number; palette: Palette; height?: number; duration?: number;
-    target?: () => Vec3; strikes?: number; slamRadius?: number; onStrike?: (i: number, at: Vec3) => void; facing?: number }): Handle {
+export function spiritGuardian(w: VfxWorld, tex: VfxTextures, o: SpiritGuardianOptions): Handle {
   const h = o.height ?? 100, k = h / 240, count = Math.max(0, Math.floor(o.strikes ?? 3));
   const reveal = 350, advance = 650, cycle = 650, impactPhase = 0.48, dissolve = 450;
   const end = reveal + (o.target ? advance + count * cycle : (o.duration ?? 1200));

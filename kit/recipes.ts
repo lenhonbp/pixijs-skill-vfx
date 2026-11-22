@@ -33,8 +33,14 @@ export const PALETTES = {
 
 const TAU = Math.PI * 2;
 
+export interface ShadowSlashOptions extends Vec3 {
+  facing: number;
+  height: number;
+  palette: Palette;
+}
+
 /** Crossing ink crescents with crisp, short-lived violet-white edges. */
-export function shadowSlash(w: VfxWorld, tex: VfxTextures, o: Vec3 & { facing: number; height: number; palette: Palette }) {
+export function shadowSlash(w: VfxWorld, tex: VfxTextures, o: ShadowSlashOptions): void {
   const edge = o.height * 1.3 / (M.streakLength * Math.sin(0.8));
   for (const angle of [-0.8, 0.8]) {
     const base = { x: o.x, y: o.y, z: (o.z ?? 0) + o.height * 0.55,
@@ -255,11 +261,24 @@ export function dropShadow(w: VfxWorld, tex: VfxTextures, target: () => Vec3, si
   });
 }
 
+export interface ProjectileOptions {
+  from: Vec3;
+  to: Vec3;
+  palette: Palette;
+  speed?: number;
+  arcHeight?: number;
+  size?: number;
+  alpha?: number;
+  /** A rotating rune head and chain links instead of the dot/ember trail. */
+  seal?: boolean;
+  onHit?: (at: Vec3) => void;
+}
+
 /** Homing-free projectile with an arc, glow core, ember trail and ground shadow. */
 export function projectile(
   w: VfxWorld,
   tex: VfxTextures,
-  o: { from: Vec3; to: Vec3; palette: Palette; speed?: number; arcHeight?: number; size?: number; alpha?: number; seal?: boolean; onHit?: (at: Vec3) => void },
+  o: ProjectileOptions,
 ): Handle {
   const fz = o.from.z ?? 40, tz = o.to.z ?? 40;
   const dist = Math.hypot(o.to.x - o.from.x, o.to.y - o.from.y);

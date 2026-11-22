@@ -123,6 +123,7 @@ interface SkillHit {
   stop?: number; shake?: number; push?: number;
   skin?: HitSkinName; targets?: 'primary' | 'all';
   travel?: number; spread?: number; optional?: boolean;
+  effectOnly?: boolean;
 }
 ```
 
@@ -143,6 +144,10 @@ interface SkillHit {
   jitter. `optional` marks an opportunity that can miss in the showcase layout: the sword
   landings, Glacier Path/Fissure spikes, and Cyclone's first capture tick. These
   fields do not create extra damage or change targeting. Actual damage stays in `hurt`.
+- `effectOnly: true` declares a release/status contact with no `hurt` or healing callback.
+  The utilities use it for Seal's traveling seal, Sunder's fractures, War Cry's roar and
+  Frailty's downward binding pulses. Sunder/Frailty default metadata describes the showcase's
+  three targets; the cast rebuilds the stagger for the actual target count (including zero).
 - `stop` is hit-stop ms, `shake` is screen-shake amplitude in px, and `push` is knockback
   distance in px. `skin` selects a hit-reaction style, one of `char`, `ice`, `shock`,
   `holy`, `shadow`, `poison`, `earth`, `metal`, `wind`, `nature`, `red`. Neither `skin` nor
@@ -184,18 +189,27 @@ returns a stoppable handle, does not roll `spread`, and leaves collision checks,
 push and skins to you. Do not apply its feedback a second time around recipes that already
 provide it. Existing recipe-driven flight, random landing and status callbacks remain intact
 in the samples; Spring Bloom uses `onHits`, and Golden Edge reads timings/feedback from its
-shared data. Release/assembly shakes without `hurt` are still recipe-driven, not fake hits.
+shared data. Release/assembly shakes remain recipe-driven; declared `effectOnly` contacts
+are animation opportunities, not additional damage hits.
 
-The catalog describes calls to the game's `hurt`, including Spring Bloom's healing calls.
+The catalog describes calls to the game's `hurt`, including Spring Bloom's healing calls,
+and explicit `effectOnly` status/release contacts.
 Current damage-over-time helpers display their own tick numbers and do not call that game
-callback; their decorative ticks are not additional declared hits. Buffs, nonattacking summons and pure
-debuffs can have empty hit arrays. The attacking guardian sample has contact hits.
+callback; their decorative ticks are not additional declared hits. Buffs, nonattacking summons and pure debuffs
+without a discrete contact may still have empty hit arrays. Use `effectOnly` contacts for
+animation sync, never to infer damage. Sunder's `onImpact` replaces built-in stop/shake;
+Frailty's replaces its default recoil and can return a reaction Handle for owned cleanup.
+Their samples use `hitTimes` to start growth/reticles early enough to meet the declared
+contacts; Shadow Step uses `onHits` after arrival. Guardian damage stays on `onStrike`
+at the actual separate-halberd contact pose, with targeting/skin read from shared timing.
 
 The timing regression casts all 29 samples in the showcase and a closer layout.
 It records `hurt`, hit-stop and shake against nominal windows (spread + 17 ms), validates
 phase/order/length bounds and reports optional misses. It uses 1 ms simulation steps;
 coarse variable frame steps can drift, especially periodically reset tick timers.
 See [verification](#verification-and-reproducibility) for commands.
+`node tools/test-utility.mjs` additionally checks utility visual contacts, callback ownership,
+empty targets, cancellation and errors; `effectOnly` entries do not require a `hurt` call.
 
 ## Element hit skins and rock-back
 
@@ -367,9 +381,11 @@ These are visual helpers, not gameplay state machines: CC must be enforced by yo
 | `statChange` | Buff/debuff | Column and upward/downward chevrons | `up` (required), `duration`, `palette` |
 | `damageOverTime` | Debuff | Poison bubbles / burn embers / bleeding drops and tick numbers | `kind`, `duration`, `tickMs`, `damage` (number or function), `onTick(amount)`, `numbers` |
 | `shock` | Debuff | Crawling body arcs and feet sparks | `duration`, `palette`, `tickMs`, `onTick()` |
-| `silence` | CC/debuff | Violet crossed seal and orbiting chain links above head | `duration`, `palette` |
+| `silence` | CC/debuff | Split opening ground rune, three tightening body chain bands, rotating crossed overhead seal and breaking motes | `duration`, `palette` |
 | `blind` | Debuff | Dark eye band and drifting head mist | `duration`, `palette` |
-| `armorBreak` | Debuff | Cracked shield icon, falling red-brown shards | `duration`, `palette` |
+| `armorBreak` | Debuff | Cracked shield with pulsing crack glow, ballistic fracture shards and crumble fade | `duration`, `palette` |
+| `sunderingMark` | Debuff | Descending/closing reticle, armor fracture and sustained cracked shield | `duration`, `palette`, `onImpact()` (260 ms; replaces default stop/shake) |
+| `frailty` | Debuff | Bright-edged dark bindings, downward pulse, muted chevrons, draining drips, overhead skull and sinking fade | `duration`, `palette`, `sprite?`, `onImpact()` (240 ms; replaces default recoil, optionally returns owned Handle) |
 | `mark` | Debuff | Ground sigil and pulsing rotating target lock | `duration`, `palette` |
 | `fear` | CC/debuff | Upward dark wisps and trembling warning glyph | `duration`, `palette` |
 | `aura` | Buff base | Pulsing ground rune, rising motes, optional column | `duration`, `palette`, `radius`, `intensity` (0..1), `column` |

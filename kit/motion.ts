@@ -20,10 +20,20 @@ export function afterimage(w: VfxWorld, sprite: Sprite, at: Vec3, o: { tint?: nu
   });
 }
 
+export interface ShadowStepOptions {
+  from: Vec3;
+  to: Vec3;
+  palette: Palette;
+  height: number;
+  sprite?: Sprite;
+  windup?: number;
+  travel?: number;
+  onVanish?: () => void;
+  onAppear?: () => void;
+}
+
 /** A ground-hugging smoke passage with a visible gathering phase and violet edges. */
-export function shadowStep(w: VfxWorld, tex: VfxTextures,
-  o: { from: Vec3; to: Vec3; palette: Palette; height: number; sprite?: Sprite;
-    windup?: number; travel?: number; onVanish?: () => void; onAppear?: () => void }): Handle {
+export function shadowStep(w: VfxWorld, tex: VfxTextures, o: ShadowStepOptions): Handle {
   const windup = o.windup ?? 260, travel = o.travel ?? 160, h = o.height, s = h / 96, p = o.palette;
   const g = group(w, windup + travel + 1200, undefined, 200);
   const smoke = (at: Vec3, n: number, rising: boolean) => {

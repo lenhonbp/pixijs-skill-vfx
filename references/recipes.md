@@ -9,7 +9,8 @@ not a framework to extend with options. The [API index](api.md) covers every bar
 | `hitSpark` | small core glow, spinning star, 8 streaks in a cone | every hit, crits (size 1.5+) | `angle` (away from attacker), `size` |
 | `hitFlash` | additive copy of the target's texture fading out | target feedback | `ms`, `color` (red for damage, green for heal), `opacity` (default 1) |
 | `slash` | dark smear + main crescent + white edge, all ground-aligned at chest height, sparks off the end | melee swings, dash cuts | `angle` facing, `radius`, `sweep`, `duration`, `clockwise` |
-| `projectile` | glow + core following a path with an arc, ribbon trail + ember stream, ground shadow | fireball, arrow, magic bolt | `speed`, `arcHeight`, `size`, `alpha` (glow/core/ribbon/motes multiplier, default 1), `onHit` |
+| `projectile` | glow + core following an arc, ribbon + ember trail, ground shadow; `seal: true` substitutes a spinning rune head and chain links | fireball, arrow, sealing rune | `ProjectileOptions`: `speed`, `arcHeight`, `size`, `alpha` (default 1), `seal`, `onHit` |
+| `shadowSlash` | crossed dark ink crescents, violet-white edges, tiny local flash and sparks | shadow melee contact | `ShadowSlashOptions`: position, `facing`, `height`, `palette`; returns void |
 | `explosion` | top flash, additive fire puffs, normal-blend smoke, gravity sparks, shockwave, scorch decal, shake + hit-stop | AoE impact, fireball hit | `radius`, `shake`, `hitStopMs`, `smoke` |
 | `shockwave` | two expanding ground rings + screen refraction when `Distortion` is attached; optional depth-split halves | slams, landings, nova | `radius`, `duration`, `around` (unit feet; opts into split rings) |
 | `floorRing` (`floor-ring.ts`) | far arc in ground, near arc in y-sorted body | rings that encircle a unit | `radius`, `palette`, `around`, `duration`, alpha/scale curves, `texture`, `spin` |
@@ -26,8 +27,14 @@ not a framework to extend with options. The [API index](api.md) covers every bar
 | `beam` | laser: stacked beams, motes and end glows; water: rolling puffs, droplets, splash spray, foam rings and wet ground glow | lasers, water jets, drains | `from`, `to` (functions), `width`, `duration`, `style: 'laser' \| 'water'`, `impactSparks` |
 | `coneBreath` | puffs fanned along a moving angle, element bits (embers/shards/leaves), lit ground | dragon breath, frost spray, poison spray | `style`, `range`, `spread`, `angle()` |
 | `chargeUp` | streaks converging on a point, growing glow, shrinking rings, release flash | any windup | `duration`, `onDone`, `release: { color, size, coreSize, alpha }` (optional; defaults unchanged) |
-| `summonCircle` | two counter-rotating rune circles, rising pillars, spiralling motes, light column + shockwave | summons, portals | `radius`, `duration`, `columnAlpha` (default 1), `onSummon` |
-| `spiritGuardian` (`spirit-guardian.ts`) | spectral warrior levitates about 40 px, glides with wisps/ghosts and altitude-scaled shadow; separate grip-pivoted halberd winds up, cleaves, sweeps and dive-slams with body recoil and blade-tip trails, then dissolves | visible summoned attacker; damage stays in caller | `x`, `y`, `z?`, `palette`, `height?` (default 100), `target?: () => Vec3` (enemy feet, re-read per strike), `strikes?` (default 3), `slamRadius?` (outer shockwave ground radius, default 1.1 × height; match gameplay radius), `onStrike?(i, at)` (zero-based, fires at the contact pose), `facing?` (±1, otherwise derived from target). Without target, composed guardian stays idle and `duration?` remains hold time (default 1200). Reveal 350 ms, glide 650 ms, 650 ms per strike (contact at 48%), dissolve 450 ms; returns stoppable Handle |
+| `sigilCharge` (`status.ts`) | rotating hand rune, contracting ring, optional closing crosshair | visible caster windup | `SigilChargeOptions`: `target`, `palette`, `duration`, `reticle` |
+| `sunderingMark` (`status.ts`) | dropping reticle, armor fracture/cracks, bouncing metal shards and orange sparks, cracked emblem and crumble | armor debuff | `SunderingMarkOptions`: `target`, `height`, `palette`, `duration`, `onImpact` (at 260 ms, replaces default stop/shake) |
+| `hexField` (`status.ts`) | open expanding violet rune, green line glow and curling dark tendrils | area curse release | `HexFieldOptions`: position, positive `radius`, `palette`, `duration` (default 2300); invalid radius throws |
+| `frailty` (`status.ts`) | rising shadow bindings, downward pulse and muted chevrons, sickly drips/skull, sinking fade | weakened status | `FrailtyOptions`: `target`, `height`, `palette`, `duration`, `sprite` (optional recoil), `onImpact` (at 240 ms; replaces recoil, may return an owned reaction Handle) |
+| `battleCry` (`channel.ts`) | braced inward breath, three chest roar arcs, ground shockwave/dust, one flame-and-ember rune | war cry buff | `BattleCryOptions`: `target`, `height`, `facing`, `palette`, `sprite`, `windup` (340), `duration` (2800); reuses attached Distortion |
+| `shadowStep` (`motion.ts`) | dark pools/tendrils with violet edges, curling ground smoke/glints, arrival smoke and afterimages | shadow teleport; slash/damage supplied by caller | `ShadowStepOptions`: `from`, `to`, `palette`, `height`, `sprite`, `windup` (260), `travel` (160), `onVanish`, `onAppear` |
+| `summonCircle` | split gold rune sweep, four lifting glyphs, sparse motes, focused pillar and closing circle | summons, portals | `SummonCircleOptions`: position, `palette`, `radius`, `duration`, `linger` (hold after release, default 700), `columnAlpha` (default 1), `onSummon` |
+| `spiritGuardian` (`spirit-guardian.ts`) | bottom-up masked reveal with rising gold motes/edge; levitating approach and separate grip-pivoted halberd cleave, sweep and dive-slam; upward edge dissolve | visible summoned attacker; damage stays in caller | `SpiritGuardianOptions`: position, `palette`, `height?` (100), `target?: () => Vec3` (feet, re-read per strike), `strikes?` (3), `slamRadius?` (1.1 × height; match gameplay radius), `onStrike?(i, at)` (at contact pose), `facing?` (±1). No target: idle with `duration?` hold (1200). Reveal 350 ms, glide 650 ms, 650 ms per strike (contact at 48%), dissolve 450 ms; returns Handle |
 | `mountainCrash` (`mountain-crash.ts`) | craggy solid mountain forms overhead, slams base-first, cracks the ground, bursts into falling boulders and fading rubble | Mount Tai crushing attacks | `x`, `y`, `radius`, `palette`, `height` (peak height, default 160), `delay` (before formation), `onHit` (once, 320 ms after formation starts); returns Handle. Pair with `leap({ impact: false })` to avoid a duplicate landing slam |
 | `spike` / `spikeLine` / `spikeRing` | lit spikes that rise, hold and sink, crater, debris, dust; `ice` variant | earth fissure, ice path, frost nova | `count`, `spacing`, `height`, `onSpike` |
 | `swordRain` | gold-hilted steel blades accelerate down, dig into cracked ground and settle amid sparks and glints | metal ultimates | `radius`, `count` (gameplay impacts; quality-scaled cosmetic swords add density without extra callbacks), `height` (unit height, default 70; blades about as tall as the unit), `duration`, `palette`, `onImpact` |
@@ -43,7 +50,44 @@ not a framework to extend with options. The [API index](api.md) covers every bar
 | `gustLines` | burst of horizontal speed lines along a ground angle | knockback, dash, tailwind | `angle`, `count`, `spread` |
 | `ribbonTrail` | rope mesh through the target's recent positions | any fast mover (see advanced-fx.md) | `width`, `segments`, `tint`, `fadeMs` |
 
+## Utility composition and timing
+
+All utility functions and option interfaces above are exported through `kit/index.ts`.
+`createVfxTextures()` includes `VfxTextures.skull`: a tintable 64×72 hollow-eyed,
+fractured-jaw glyph used by Frailty. Bake once, reuse it, and destroy with the texture set.
+The seven new recipes are `sigilCharge`, `sunderingMark`, `hexField`, `frailty`,
+`battleCry`, `shadowStep` and `shadowSlash`; seal projectiles, silence/armor fractures,
+summon-circle sweeps and guardian reveal/dissolve extend existing recipes.
+
+The six neutral samples retain a 150-live-particle budget and seeded randomness. Timings
+below are nominal VFX-clock ms (frame rounding/hit-stop can shift rendered frames):
+
+| Sample | Windup/release | Declared contacts |
+|---|---|---|
+| Silencing Seal | 300 ms hand sigil | `300 + hand-to-target distance / 950 × 1000`; projectile `onHit` owns status application |
+| Sundering Mark | 300 ms reticle charge | Fractures at 560, 740, 920 ms for three targets (`hitTimes` schedules each reticle 260 ms early) |
+| War Cry | 340 ms brace | 340 ms roar/shockwave and local shake, no damage |
+| Shadow Step | 260 ms gather, 160 ms passage | Slash at 480 ms, `onHits` damage at 580 ms, relative to actual arrival |
+| Curse of Frailty | 350 ms hand sigil/hex release | Downward binding pulses at 850, 990, 1130 ms (`hitTimes` schedules growth 240 ms early) |
+| Summon Guardian | 1200 ms circle, 200 ms summon delay | Contact-pose callbacks at 2712, 3362, 4012 ms; final slam uses radius-filtered targets |
+
+Seal, Sunder, War Cry and Frailty contacts are `SkillHit.effectOnly`, not damage/healing
+calls. Sunder/Frailty rebuild staggered opportunities for the actual target count; their
+static metadata describes the three-enemy showcase. The existing activation dispatcher
+waits for `activationRelease(tier)`, then gives each cast its own `empoweredWorld`;
+the recipe's own windup follows and delayed callbacks retain that facade.
+Continue using the supplied world rather than adding per-cast postfx
+plugins. War Cry's shockwave uses the demo's already attached Distortion.
+
+`node tools/test-utility.mjs` checks these contacts and callback/cancellation contracts;
+`node tools/test-timing.mjs` checks damage timings and declared stop/shake feedback.
+
 ## Floor rings around units
+
+`FloorRingOptions.sweep?: (t: number) => number` clips both halves with one clockwise
+angular reveal (normalized particle age and reveal fraction 0–1). Use `sweep: t => t`
+to draw a rune, or return a falling fraction to close it. Split occlusion and cleanup
+remain intact; the helper owns and destroys its sweep masks.
 
 Use `floorRing` rather than a single ground sprite when the unit should stand **inside**
 a ring. The far half (screen y < center) stays in `ground`; the near half is ground-aligned

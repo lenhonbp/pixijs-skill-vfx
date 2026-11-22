@@ -75,6 +75,26 @@ See [verification and reproducibility](references/extending.md#verification-and-
 for setup, capture flags, tier-less versus tiered captures, exact checkpoints, RNG,
 particle baselines and focused regression tests. Inspect captures as well as counts.
 
+## Utility samples
+
+The 29 samples include six neutral Utility skills (all use the ordinary 150-particle
+budget, including awakened casts):
+
+| ID | Skill | Choreography |
+|---|---|---|
+| `seal-silence` | Silencing Seal | Hand sigil, chain-tailed rune projectile, tightening body chains and dissolving overhead seal |
+| `sunder-mark` | Sundering Mark | Orange reticle charge, staggered target locks, armor fractures and crumbling shield emblems |
+| `war-cry` | War Cry | Braced inward breath, three roar arcs, local ground refraction and a clean ember aura |
+| `shadow-blink` | Shadow Step | Violet-rimmed dark smoke, low ground passage, afterimages and a crisp crossed slash |
+| `curse-weaken` | Curse of Frailty | Sickly violet-green hex, staggered rising bindings, downward pulses, draining motes and skull glyphs |
+| `summon-spirit` | Summon Guardian | Swept gold rune, bottom-up reveal, floating halberd combo and upward dissolve |
+
+These recipes and their named option types are available from `kit/index.ts`.
+`SkillTiming` includes status contacts as `effectOnly` entries (not extra damage).
+See the [recipe catalog](references/recipes.md#utility-composition-and-timing) for timings
+and reuse; guardian reveal, strikes and dissolve extend through about 5400 ms.
+
+
 The iteration/choreography approach is inspired by
 [pixelfx](https://github.com/patch-gg/pixelfx) and Hugo Duprez's VFX method;
 no renderer or effect implementation is ported.

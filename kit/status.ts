@@ -19,9 +19,15 @@ import { clamp01, envelope, inQuad, outBack, outCubic, outQuad, rand, lerp, lerp
 
 const TAU = Math.PI * 2;
 
+export interface SigilChargeOptions {
+  target: () => Vec3;
+  palette: Palette;
+  duration: number;
+  reticle?: boolean;
+}
+
 /** A hand-sized inscribed casting disc with an optional targeting cross. */
-export function sigilCharge(w: VfxWorld, tex: VfxTextures,
-  o: { target: () => Vec3; palette: Palette; duration: number; reticle?: boolean }) {
+export function sigilCharge(w: VfxWorld, tex: VfxTextures, o: SigilChargeOptions): Handle {
   const g = group(w, o.duration, undefined, 100);
   g.add(w.spawn({ texture: tex.rune, x: 0, y: 0, follow: o.target, life: o.duration,
     scale: [0.025, 0.13, outCubic], spin: 4, alpha: [0.35, 0.95], tint: o.palette.main, zBias: 8 }));
@@ -47,8 +53,13 @@ function statusMotes(w: VfxWorld, tex: VfxTextures, at: Vec3, h: number, p: Pale
   });
 }
 
+export interface SunderingMarkOptions extends SustainedStatusOptions {
+  /** Called at the fracture, 260 ms after the reticle starts. Replaces default stop/shake feedback. */
+  onImpact?: () => void;
+}
+
 /** A descending lock-on reticle followed by a physical armor fracture. */
-export function sunderingMark(w: VfxWorld, tex: VfxTextures, o: SustainedStatusOptions): Handle {
+export function sunderingMark(w: VfxWorld, tex: VfxTextures, o: SunderingMarkOptions): Handle {
   const h = o.height ?? 70, s = h / 70, p = o.palette ?? { core: 0xffd9a0, main: 0xed6541, dark: 0x521b20 };
   const g = group(w, (o.duration ?? 2400) + 260, undefined, 180);
   g.add(w.spawn({ texture: tex.rune, x: 0, y: 0, follow: o.target, z: h * 1.25,
@@ -62,7 +73,8 @@ export function sunderingMark(w: VfxWorld, tex: VfxTextures, o: SustainedStatusO
   g.addHandle(w.after(260, () => {
     const at = o.target();
     statusMotes(w, tex, at, h, p, true, 10);
-    w.hitStop(22); w.shake(1.3, 100);
+    if (o.onImpact) o.onImpact();
+    else { w.hitStop(22); w.shake(1.3, 100); }
     for (let i = 0; i < 5; i++) w.spawn({ texture: tex.swordCrack, ...at, z: h * 0.55,
       life: 240, rotation: i * 2.4, scaleX: [0.85 * s, 0.45 * s], scaleY: [0.5 * s, 0], tint: p.core });
     w.burst(7, () => ({ texture: tex.streak, ...at, z: h * 0.55, life: rand(140, 260),
@@ -102,9 +114,20 @@ export interface OnUnit {
 
 export type SustainedStatusOptions = OnUnit & { duration?: number; palette?: Palette };
 
+export interface HexFieldOptions extends Vec3 {
+  radius: number;
+  palette: Palette;
+  duration?: number;
+}
+
+export interface FrailtyOptions extends SustainedStatusOptions {
+  sprite?: Sprite;
+  /** Called at the downward pulse, 240 ms after growth starts. Replaces default sprite recoil. */
+  onImpact?: () => Handle | void;
+}
+
 /** An expanding, open hex boundary with low curling shadows rather than a filled disc. */
-export function hexField(w: VfxWorld, tex: VfxTextures,
-  o: Vec3 & { radius: number; palette: Palette; duration?: number }): Handle {
+export function hexField(w: VfxWorld, tex: VfxTextures, o: HexFieldOptions): Handle {
   const dur = o.duration ?? 2300, p = o.palette, g = group(w, dur, undefined, 240);
   const ring = floorRing(w, tex, { x: o.x, y: o.y, radius: o.radius, palette: p,
     texture: tex.rune, textureRadius: M.runeRadius, duration: dur, spin: -0.12,
@@ -126,8 +149,7 @@ export function hexField(w: VfxWorld, tex: VfxTextures,
 }
 
 /** Ground-grown bindings, a downward weight pulse and a draining, sickly aftermath. */
-export function frailty(w: VfxWorld, tex: VfxTextures,
-  o: SustainedStatusOptions & { sprite?: Sprite }): Handle {
+export function frailty(w: VfxWorld, tex: VfxTextures, o: FrailtyOptions): Handle {
   const h = o.height ?? 70, s = h / 96, dur = o.duration ?? 1800;
   const p = o.palette ?? { core: 0x9bbb78, main: 0x9471b8, dark: 0x21182d };
   const g = group(w, dur + 450, undefined, 180), life = dur + 400;
@@ -150,7 +172,11 @@ export function frailty(w: VfxWorld, tex: VfxTextures,
     follow: o.target, delay: 240 + i * 130, life: 420, rotation: Math.PI, vz: -h,
     scaleX: 0.34 * s, scaleY: 0.22 * s, tint: p.core, alpha: [0.5, 0] }));
   g.addHandle(w.after(240, () => {
-    if (o.sprite) g.addHandle(rockBack(w, o.sprite, { angle: Math.PI / 2, push: 5 * s, duration: 330 }));
+    if (o.onImpact) {
+      const reaction = o.onImpact();
+      if (reaction) g.addHandle(reaction);
+    }
+    else if (o.sprite) g.addHandle(rockBack(w, o.sprite, { angle: Math.PI / 2, push: 5 * s, duration: 330 }));
     g.add(w.spawn({ texture: tex.ring, x: 0, y: 0, follow: o.target, z: h * 0.75,
       life: 340, vz: -h * 1.8, scaleX: [0.24 * s, 0.35 * s], scaleY: [0.045 * s, 0.02 * s],
       tint: p.main, alpha: [0.8, 0], zBias: 8 }));

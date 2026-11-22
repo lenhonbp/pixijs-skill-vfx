@@ -11,9 +11,18 @@ import { clamp01, envelope, inQuad, lerp, lerpColor, outBack, outCubic, outQuad,
 
 const TAU = Math.PI * 2;
 
+export interface BattleCryOptions {
+  target: () => Vec3;
+  height: number;
+  facing: number;
+  palette: Palette;
+  sprite?: Sprite;
+  windup?: number;
+  duration?: number;
+}
+
 /** Braced breath-in, directional sound fronts, then a single ember-wreathed rune. */
-export function battleCry(w: VfxWorld, tex: VfxTextures,
-  o: { target: () => Vec3; height: number; facing: number; palette: Palette; sprite?: Sprite; windup?: number; duration?: number }): Handle {
+export function battleCry(w: VfxWorld, tex: VfxTextures, o: BattleCryOptions): Handle {
   const windup = o.windup ?? 340, duration = o.duration ?? 2800, h = o.height, s = h / 96, p = o.palette;
   const g = group(w, windup + duration, undefined, 250);
   if (o.sprite) {
@@ -312,8 +321,19 @@ export function chargeUp(w: VfxWorld, tex: VfxTextures, o: { target: () => Vec3;
   return g;
 }
 
+export interface SummonCircleOptions {
+  x: number;
+  y: number;
+  palette: Palette;
+  radius?: number;
+  duration?: number;
+  linger?: number;
+  columnAlpha?: number;
+  onSummon?: () => void;
+}
+
 /** Rune circle on the ground that charges for `duration`, then a pillar of light and onSummon. */
-export function summonCircle(w: VfxWorld, tex: VfxTextures, o: { x: number; y: number; palette: Palette; radius?: number; duration?: number; linger?: number; columnAlpha?: number; onSummon?: () => void }): Handle {
+export function summonCircle(w: VfxWorld, tex: VfxTextures, o: SummonCircleOptions): Handle {
   const p = o.palette;
   const r = o.radius ?? 70;
   const dur = o.duration ?? 1300;

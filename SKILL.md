@@ -119,6 +119,12 @@ for every public name and the [recipe catalog](references/recipes.md) for option
   see [timing and reactions](references/extending.md#skill-timing).
 - Advanced: ribbons, noise, distortion, bloom and quality tiers;
   see [advanced effects](references/advanced-fx.md).
+- Utility: `sigilCharge`, `sunderingMark`, `battleCry`, `shadowStep`, `shadowSlash`,
+  `hexField`, `frailty`, `projectile({ seal: true })`; swept `summonCircle` and bottom-up
+  guardian reveal/upward dissolve. `FloorRingOptions.sweep(t)` preserves split occlusion;
+  `VfxTextures.skull` is a tintable 64×72 weakened glyph. Keep timing, uses and docs in step;
+  status contacts use `SkillHit.effectOnly`, not gameplay damage. See
+  [utility composition](references/recipes.md#utility-composition-and-timing).
 
 Elements: `WUXING` in `elements.ts` gives the five elements (Kim, Mộc, Thủy, Hỏa, Thổ) with
 palette and shape language, plus variants `PHONG` (wind) and `LOI` (lightning); `ELEMENTS` has
