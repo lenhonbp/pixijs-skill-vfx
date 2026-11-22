@@ -1,3 +1,5 @@
+// Copyright (c) 2026 lenhonbp <lenhonbp@gmail.com> — https://github.com/lenhonbp/pixijs-skill-vfx
+// SPDX-License-Identifier: MIT
 import { build } from 'esbuild';
 import { chromium } from 'playwright';
 import { fileURLToPath } from 'node:url';

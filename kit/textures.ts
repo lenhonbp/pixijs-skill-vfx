@@ -1,3 +1,5 @@
+// Copyright (c) 2026 lenhonbp <lenhonbp@gmail.com> — https://github.com/lenhonbp/pixijs-skill-vfx
+// SPDX-License-Identifier: MIT
 // Procedural VFX textures. Everything is drawn white on transparent so `tint`
 // colors it, and baked ONCE at startup (never per frame).
 import type { Texture } from 'pixi.js';

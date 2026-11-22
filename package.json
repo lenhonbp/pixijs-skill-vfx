@@ -3,6 +3,7 @@
   "version": "3.0.0",
   "private": true,
   "description": "Agent skill and TypeScript kit for code-drawn 2.5D skill VFX in PixiJS v7/v8",
+  "author": { "name": "lenhonbp", "email": "lenhonbp@gmail.com", "url": "https://github.com/lenhonbp" },
   "license": "MIT",
   "scripts": {
     "build": "esbuild demo/main.ts --bundle --minify --outfile=demo/demo.js",

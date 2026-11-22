@@ -1,3 +1,5 @@
+// Copyright (c) 2026 lenhonbp <lenhonbp@gmail.com> — https://github.com/lenhonbp/pixijs-skill-vfx
+// SPDX-License-Identifier: MIT
 // Tiny 2.5D VFX runtime: pooled sprites, curves over lifetime, z-height with
 // gravity, ground-plane projection, streams, timers, hit-stop and screen shake.
 //

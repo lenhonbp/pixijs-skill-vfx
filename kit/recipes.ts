@@ -1,3 +1,5 @@
+// Copyright (c) 2026 lenhonbp <lenhonbp@gmail.com> — https://github.com/lenhonbp/pixijs-skill-vfx
+// SPDX-License-Identifier: MIT
 // Ready-made skill effects built only from VfxWorld primitives. Copy one, then
 // tune timing/colors per skill. Every recipe takes ground coords (x, y) + z.
 import { Sprite } from 'pixi.js';

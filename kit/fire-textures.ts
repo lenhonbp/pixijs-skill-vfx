@@ -1,3 +1,5 @@
+// Copyright (c) 2026 lenhonbp <lenhonbp@gmail.com> — https://github.com/lenhonbp/pixijs-skill-vfx
+// SPDX-License-Identifier: MIT
 import type { Texture } from 'pixi.js';
 import { clamp01, lerp, mulberry32 } from './ease';
 import { noise3 } from './noise';

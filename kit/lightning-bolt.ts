@@ -1,3 +1,5 @@
+// Copyright (c) 2026 lenhonbp <lenhonbp@gmail.com> — https://github.com/lenhonbp/pixijs-skill-vfx
+// SPDX-License-Identifier: MIT
 import { BlurFilter, Container, Graphics } from 'pixi.js';
 import type { Handle, Vec3, VfxWorld } from './vfx-world';
 import type { VfxTextures } from './textures';
