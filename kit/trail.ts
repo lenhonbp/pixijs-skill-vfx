@@ -28,14 +28,70 @@ export interface RibbonOptions {
 
 const V8 = isPixiV8();
 
-function makeRope(texture: Texture, points: PIXI.Point[]): PIXI.Container & { autoUpdate?: boolean } {
+type RopeMesh = PIXI.Container & { geometry: { destroy(destroyBuffers?: boolean): void } };
+
+function makeRope(texture: Texture, points: PIXI.Point[]): RopeMesh {
   // Looked up by name: each class only exists in one major version.
   const Rope = (PIXI as Record<string, any>)[V8 ? 'MeshRope' : 'SimpleRope'];
   return V8 ? new Rope({ texture, points, textureScale: 0 }) : new Rope(texture, points, 0);
 }
 
+function destroyRope(rope: RopeMesh) {
+  if (rope.destroyed) return;
+  // v8 Mesh does not dispose its geometry; v7 Mesh releases the geometry it owns.
+  const geometry = rope.geometry;
+  rope.destroy();
+  if (V8) geometry.destroy(true);
+}
+
 export interface RibbonHandle extends Handle {
   readonly rope: PIXI.Container;
+}
+
+/** A tapered ribbon on a moving curve. Samples are in ground coordinates and height. */
+export function flowRibbon(w: VfxWorld, o: {
+  point: (u: number, age: number, out: Vec3) => void;
+  alpha: (age: number) => number;
+  life: number;
+  width: number;
+  tint: number;
+  blend?: BlendName;
+  layer?: 'ground' | 'body';
+}): Handle {
+  const segments = 10;
+  const points = Array.from({ length: segments + 1 }, () => new PIXI.Point());
+  const rope = makeRope(makeRibbonTexture(o.width, true), points);
+  (rope as any).tint = o.tint;
+  (rope as any).blendMode = blend(o.blend ?? 'add');
+  const layer = o.layer ?? 'body';
+  const at: Vec3 = { x: 0, y: 0, z: 0 };
+  let age = 0;
+  const place = () => {
+    rope.alpha = o.alpha(age);
+    rope.visible = rope.alpha > 0;
+    if (!rope.visible) return;
+    for (let i = 0; i <= segments; i++) {
+      o.point(i / segments, age, at);
+      points[i].set(at.x, at.y - (at.z ?? 0));
+      if (layer === 'body' && i === segments / 2) rope.zIndex = at.y;
+    }
+  };
+  place();
+  w.layers[layer].addChild(rope);
+  const dispose = () => {
+    unown();
+    destroyRope(rope);
+  };
+  const unown = w.own(dispose);
+  const update = w.addUpdater((dt) => {
+    age += dt;
+    if (age >= o.life) { dispose(); return false; }
+    place();
+  });
+  return {
+    stop() { update.stop(); dispose(); },
+    get alive() { return update.alive && !rope.destroyed; },
+  };
 }
 
 /** A ribbon that trails behind `target`. Stopping it lets the tail catch up, then removes it. */
@@ -56,7 +112,7 @@ export function ribbonTrail(w: VfxWorld, o: RibbonOptions): RibbonHandle {
   let left = 0;
   const done = () => {
     unown();
-    if (!rope.destroyed) rope.destroy();
+    destroyRope(rope);
   };
   const unown = w.own(done);
   const u = w.addUpdater((dt) => {
@@ -88,14 +144,20 @@ export function ribbonTrail(w: VfxWorld, o: RibbonOptions): RibbonHandle {
 }
 
 const ribbonCache = new Map<number, Texture>();
+const flowCache = new Map<number, Texture>();
 
 /**
  * White ribbon texture `width` px tall, cached per width: transparent tail on the left, tapering
  * to a bright full-width head on the right, with a hot centre line. Tint colours it.
  */
 export function ribbonTexture(width = 16): Texture {
+  return makeRibbonTexture(width, false);
+}
+
+function makeRibbonTexture(width: number, flow: boolean): Texture {
   const h = Math.max(4, Math.round(width));
-  const hit = ribbonCache.get(h);
+  const cache = flow ? flowCache : ribbonCache;
+  const hit = cache.get(h);
   if (hit) return hit;
   const c = document.createElement('canvas');
   c.width = 128;
@@ -104,8 +166,9 @@ export function ribbonTexture(width = 16): Texture {
   const img = ctx.createImageData(128, h);
   for (let x = 0; x < 128; x++) {
     const u = x / 127;
-    const half = (0.15 + 0.85 * Math.pow(u, 0.7)) * 0.5;
-    const a = Math.pow(u, 1.6) * (u > 0.97 ? (1 - u) / 0.03 : 1);
+    const taper = Math.pow(Math.sin(u * Math.PI), 0.7);
+    const half = flow ? 0.5 * (0.22 + 0.78 * taper) : (0.15 + 0.85 * Math.pow(u, 0.7)) * 0.5;
+    const a = flow ? taper : Math.pow(u, 1.6) * (u > 0.97 ? (1 - u) / 0.03 : 1);
     for (let y = 0; y < h; y++) {
       const d = Math.abs((y + 0.5) / h - 0.5);
       const edge = Math.max(0, 1 - d / half);
@@ -117,6 +180,6 @@ export function ribbonTexture(width = 16): Texture {
   }
   ctx.putImageData(img, 0, 0);
   const t = textureFromCanvas(c);
-  ribbonCache.set(h, t);
+  cache.set(h, t);
   return t;
 }

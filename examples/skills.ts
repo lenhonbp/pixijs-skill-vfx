@@ -5,7 +5,7 @@
 import type { Sprite } from 'pixi.js';
 import {
   VfxWorld, VfxTextures, Vec3, Palette, WUXING, PHONG, LOI, AnyElementName,
-  tornado, windSlash, vortex, windWisps, gustLines, curlDrift,
+  tornado, windSlash, windSweep, vortex, windWisps, gustLines, curlDrift,
   slash, hitSpark, hitFlash, projectile, lightningChain, healAura, telegraph, shockwave,
   fireball, fireBreath, fireCharge, fireImpact, fireMeteor,
   damageOverTime, stun, shock, freeze, slow, root, statChange, damageNumber,
@@ -363,20 +363,18 @@ export const SKILLS: SkillDef[] = [
   // ------------------------------------------------------------------ PHONG / WIND (variant element)
   {
     id: 'phong-gale-blade', element: 'phong', category: 'attack', en: 'Gale Blades', vi: 'Phong Nhận Trảm',
-    desc: 'A sweeping slash releases three spinning wind blades that knock enemies back.', uses: ['chargeUp', 'slash', 'windSlash', 'hitFlash', 'gustLines'], length: 2450,
+    desc: 'A sweeping slash releases three banking wind blades that knock enemies back.', uses: ['chargeUp', 'windSweep', 'windSlash', 'gustLines'], length: 2450,
     cast: ({ w, tex, caster, targets, hurt }) => {
       chargeUp(w, tex, {
-        target: () => hand(caster), palette: P.phong, duration: 250,
+        target: () => hand(caster), palette: P.phong, duration: 250, size: 0.65,
         onDone: () => {
           const a = caster.facing > 0 ? 0 : Math.PI;
-          slash(w, tex, { ...caster.feet, angle: a, palette: P.phong, radius: 100, sweep: 2.4, duration: 220 });
+          windSweep(w, { target: feetOf(caster), angle: a - 2, palette: P.phong, radius: 75, duration: 230 });
           targets.slice(0, 3).forEach((u, i) => w.after(90 + i * 70, () => windSlash(w, tex, {
             from: hand(caster), to: chest(u, 0.45), palette: P.phong, size: 1.1, speed: 1000,
-            onHit: (at) => {
+            onHit: () => {
               const k = angleTo(w, caster, u);
-              hurt(u, Math.round(rand(48, 62)), { palette: P.phong, angle: k });
-              hitFlash(w, u.sprite, 90, 0xd8fff0);
-              gustLines(w, tex, { ...at, angle: k, palette: P.phong, count: 7, spread: 26 });
+              hurt(u, Math.round(rand(48, 62)), { palette: P.phong, angle: k, feedback: 0.38 });
               const home = { ...u.feet };
               moveUnit(w, u, { x: home.x + Math.cos(k) * 34, y: home.y + Math.sin(k) * 34 * w.groundSquash, z: 0 }, 140);
               w.after(520, () => moveUnit(w, u, home, 380));
@@ -388,21 +386,21 @@ export const SKILLS: SkillDef[] = [
   },
   {
     id: 'phong-whirlwind', element: 'phong', category: 'aoe', en: 'Whirlwind', vi: 'Toàn Phong Trảm',
-    desc: 'Dash in and spin into a cutting whirlwind that hits everything around three times.', uses: ['dash', 'slash', 'vortex', 'windWisps', 'hitSpark'], length: 3000,
+    desc: 'Dash in and spin into a cutting whirlwind that hits everything around three times.', uses: ['dash', 'windSweep', 'vortex', 'gustLines'], length: 3000,
     cast: ({ w, tex, caster, target, targets, hurt, returnHome }) => {
       const to = { x: target.feet.x - caster.facing * 60, y: target.feet.y + 6, z: 0 };
       dash(w, tex, {
         from: { ...caster.feet }, to, palette: P.phong, sprite: caster.sprite, duration: 170, height: caster.height,
         onMove: (p) => { caster.feet.x = p.x; caster.feet.y = p.y; },
         onEnd: () => {
-          vortex(w, tex, { at: () => caster.feet, radius: 130, palette: P.phong, duration: 1300, inward: false });
-          windWisps(w, tex, { target: () => caster.feet, height: caster.height, radius: 56, palette: P.phong, duration: 1200 });
+          vortex(w, tex, { at: feetOf(caster), radius: 113, palette: P.phong, duration: 1230, inward: false });
           for (let i = 0; i < 3; i++) {
             w.after(i * 300, () => {
-              slash(w, tex, { ...caster.feet, z: 30 + i * 8, angle: i * 2.1, palette: P.phong, radius: 120, sweep: Math.PI * 2, duration: 280 });
+              windSweep(w, { target: feetOf(caster), height: 24 + i * 12, angle: -1.8 + i * 1.9, palette: P.phong, radius: 106 + i * 12, duration: 420 });
               w.after(120, () => near(caster.feet, 150, targets).forEach((u) => {
-                hurt(u, Math.round(rand(34, 46)) + i * 12, { palette: P.phong, crit: i === 2, angle: angleTo(w, caster, u) });
-                hitSpark(w, tex, { ...chest(u, 0.5), palette: P.phong, size: 0.8 });
+                const angle = angleTo(w, caster, u);
+                hurt(u, Math.round(rand(34, 46)) + i * 12, { palette: P.phong, crit: i === 2, angle, feedback: 0.40 });
+                gustLines(w, tex, { ...chest(u, 0.5), angle: angle + 0.55, palette: P.phong, count: 5, spread: 13 });
               }));
               if (i === 2) w.after(130, () => { w.hitStop(60); w.shake(4, 160); });
             });
@@ -414,17 +412,17 @@ export const SKILLS: SkillDef[] = [
   },
   {
     id: 'phong-tornado', element: 'phong', category: 'control', en: 'Dragon Cyclone', vi: 'Long Quyển Phong',
-    desc: 'A roaring tornado travels through the enemies, pulls them in and lifts them off the ground.', uses: ['chargeUp', 'tornado', 'vortex', 'shockwave'], length: 3600,
+    desc: 'A roaring tornado travels through the enemies, pulls them in and lifts them off the ground.', uses: ['chargeUp', 'tornado', 'vortex'], length: 3600,
     cast: ({ w, tex, caster, target, targets, hurt }) => {
-      chargeUp(w, tex, { target: () => hand(caster), palette: P.phong, duration: 380 });
+      chargeUp(w, tex, { target: () => hand(caster), palette: P.phong, duration: 380, size: 0.7 });
       const start = { x: caster.feet.x + caster.facing * 90, y: caster.feet.y + 10, z: 0 };
       const end = { x: target.feet.x + caster.facing * 80, y: target.feet.y, z: 0 };
       const homes = new Map(targets.map((u) => [u, { ...u.feet }]));
       const caught = new Set<Unit>();
       let tick = 0;
       w.after(320, () => {
-        const t = tornado(w, tex, {
-          at: start, to: end, palette: P.phong, height: 210, radius: 58, duration: 2500, leaves: true, tickMs: 60,
+        tornado(w, tex, {
+          at: start, to: end, palette: P.phong, height: 220, radius: 80, duration: 2500, leaves: true, tickMs: 60,
           onTick: (at) => {
             tick++;
             for (const u of targets) {
@@ -432,23 +430,22 @@ export const SKILLS: SkillDef[] = [
               const d = Math.hypot(dx, dy);
               if (d > 170 && !caught.has(u)) continue;
               caught.add(u);
-              // Pull toward the funnel, then orbit and lift: wind carries the body.
-              const k = Math.min(1, 0.16 * (170 / Math.max(d, 30)));
-              u.feet.x += dx * k * 0.5;
-              u.feet.y += dy * k * 0.5 * w.groundSquash;
-              u.feet.z = lerp(u.feet.z, 28 + 10 * Math.sin(w.now / 120 + u.feet.x), 0.15);
-              if (tick % 6 === 0) hurt(u, Math.round(rand(16, 24)), { palette: P.phong, angle: -Math.PI / 2 });
+              const a = Math.atan2(-dy, -dx) + 0.24 * clamp01(1.45 - d / 160);
+              const r = lerp(d, 33, 0.17);
+              u.feet.x = at.x + Math.cos(a) * r;
+              u.feet.y = at.y + Math.sin(a) * r * w.groundSquash;
+              u.feet.z = lerp(u.feet.z, (40 + 10 * Math.sin(a)) * clamp01(1.25 - d / 160), 0.25);
+              if (tick % 6 === 0) hurt(u, Math.round(rand(16, 24)), { palette: P.phong, angle: -Math.PI / 2, feedback: 0.22 });
             }
           },
         });
-        vortex(w, tex, { at: () => t.pos, radius: 120, palette: P.phong, duration: 2500 });
       });
       // Release: everyone drops back to the ground and is pushed home.
       w.after(2850, () => caught.forEach((u) => {
         moveUnit(w, u, { ...u.feet, z: 0 }, 220, (x) => x * x);
         w.after(230, () => {
-          shockwave(w, tex, { x: u.feet.x, y: u.feet.y, radius: 46, palette: P.phong, duration: 300 });
-          hurt(u, Math.round(rand(40, 55)), { palette: P.phong });
+          vortex(w, tex, { at: { ...u.feet }, radius: 40, palette: P.phong, duration: 380, inward: false });
+          hurt(u, Math.round(rand(40, 55)), { palette: P.phong, feedback: 0.44 });
           moveUnit(w, u, homes.get(u)!, 420);
         });
       }));
@@ -456,12 +453,12 @@ export const SKILLS: SkillDef[] = [
   },
   {
     id: 'phong-tailwind', element: 'phong', category: 'buff', en: 'Tailwind', vi: 'Tật Phong Bộ',
-    desc: 'Wind ribbons spiral around the caster: movement and attack speed up.', uses: ['vortex', 'windWisps', 'statChange', 'gustLines'], length: 2800,
+    desc: 'Wind ribbons stream behind the caster: movement and attack speed up.', uses: ['windWisps', 'gustLines'], length: 2800,
     cast: ({ w, tex, caster }) => {
-      vortex(w, tex, { at: { ...caster.feet }, radius: 90, palette: P.phong, duration: 900, inward: false });
-      windWisps(w, tex, { target: () => caster.feet, height: caster.height, radius: 34, palette: P.phong, duration: 2400 });
-      w.after(250, () => statChange(w, tex, { target: feetOf(caster), height: caster.height, up: true, palette: P.phong, duration: 1300 }));
-      for (let i = 0; i < 4; i++) w.after(300 + i * 420, () => gustLines(w, tex, { ...chest(caster, 0.4), x: caster.feet.x - caster.facing * 30, angle: caster.facing > 0 ? 0 : Math.PI, palette: P.phong, count: 5, spread: 30 }));
+      windWisps(w, tex, { target: feetOf(caster), height: caster.height, radius: 40, facing: caster.facing, palette: P.phong, duration: 2400 });
+      for (let i = 0; i < 4; i++) w.after(220 + i * 460, () => {
+        gustLines(w, tex, { ...chest(caster, 0.32), x: caster.feet.x - caster.facing * 18, angle: caster.facing > 0 ? Math.PI : 0, palette: P.phong, count: 5, spread: 19 });
+      });
     },
   },
 
