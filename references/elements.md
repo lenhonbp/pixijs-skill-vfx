@@ -6,7 +6,7 @@ design a new skill, and pick the matching sample in `examples/skills.ts` as a st
 
 | Element | Palette (core / main / dark) | Shapes | Motion | Blend | Signature recipes | Samples |
 |---|---|---|---|---|---|---|
-| Kim / Metal | white / gold / bronze | blades, streaks, star glints, rings | fast in, hard stop, precise | additive glints, normal blades | `swordRain`, `slash`, `shield` | Sword Rain, Golden Edge (+bleed), Golden Bell |
+| Kim / Metal | white / gold / bronze | beveled steel, cutting edges, cast bronze, sparks | fast in, hard stop, precise | normal steel and bronze, additive glints | `swordRain`, `metalSlash`, `goldenBell` | Sword Rain, Golden Edge (+bleed), Golden Bell |
 | Mộc / Wood | pale lime / green / forest | leaves, vines, spores, bubbles | grows, sways, drifts up, withers | normal leaves/vines, additive motes | `root`, `healAura`, `damageOverTime('poison')` | Vine Bind, Spring Bloom, Toxic Spores |
 | Thủy / Water | ice white / sky blue / deep blue | drops, beams, shards, spikes | smooth, flowing; ice snaps and shatters | additive water, normal ice | `beam`, `freeze`, `slow`, `spikeRing({ ice })` | Frost Nova, Tidal Beam, Glacier Path |
 | Hỏa / Fire | cream / orange / ember red | puffs, embers, flashes, scorch | violent burst, rising, long smoky tail | additive fire, normal smoke | `explosion`, `coneBreath`, `meteor`, `damageOverTime('burn')` | Fireball (+burn), Dragon Breath, Heavenfall Meteor |

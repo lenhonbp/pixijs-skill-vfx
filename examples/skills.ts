@@ -11,10 +11,11 @@ import {
   woodCharge, seedFlight, springBloom, toxicSporeCloud,
   damageOverTime, stun, shock, freeze, slow, root, statChange, damageNumber,
   silence, blind, armorBreak, mark, fear, aura, empower, haste,
-  goldenBell, stoneArmor, spiritGuardian, mountainCrash,
+  goldenBell, metalSlash, metalSparks, swordSalute, stoneArmor, spiritGuardian, mountainCrash,
   lightningStrike, staticField,
   dash, blink, leap, beam, chargeUp, summonCircle, spikeLine, spikeRing, swordRain,
   rand, envelope, outCubic, outQuad, lerp, clamp01,
+  frostNova, glacierPath, tidalBeam,
 } from '../kit';
 
 export interface Unit {
@@ -100,19 +101,19 @@ export const SKILLS: SkillDef[] = [
   // ------------------------------------------------------------------ KIM / METAL
   {
     id: 'kim-sword-rain', element: 'kim', category: 'aoe', en: 'Sword Rain', vi: 'Vạn Kiếm Quy Tông',
-    desc: 'A storm of golden blades falls on the area and pins every enemy inside.', uses: ['chargeUp', 'swordRain'], length: 2200,
+    desc: 'A storm of gold-hilted blades falls on the area and pins every enemy inside.', uses: ['swordSalute', 'swordRain'], length: 2200,
     cast: ({ w, tex, caster, target, targets, hurt }) => {
-      chargeUp(w, tex, { target: () => hand(caster), palette: P.kim, duration: 450 });
+      swordSalute(w, tex, () => chest(caster), caster.height, P.kim, 390);
       const c = { x: target.feet.x, y: target.feet.y };
       w.after(350, () => swordRain(w, tex, {
         ...c, radius: 120, count: 16, duration: 900, height: caster.height, palette: P.kim,
-        onImpact: (at) => near(at, 40, targets).forEach((u) => hurt(u, Math.round(rand(38, 52)), { palette: P.kim, angle: -Math.PI / 2 })),
+        onImpact: (at) => near(at, 40, targets).forEach((u) => hurt(u, Math.round(rand(38, 52)), { feedback: 0 })),
       }));
     },
   },
   {
     id: 'kim-golden-edge', element: 'kim', category: 'attack', en: 'Golden Edge', vi: 'Kim Quang Trảm',
-    desc: 'Dash in, two crossing metal slashes, the target bleeds.', uses: ['dash', 'slash', 'damageOverTime(bleed)', 'hitFlash'], length: 3600,
+    desc: 'Dash in, two crossing metal slashes, the target bleeds.', uses: ['dash', 'metalSlash', 'metalSparks', 'damageOverTime(bleed)', 'hitFlash'], length: 3600,
     cast: ({ w, tex, caster, target, hurt, returnHome }) => {
       const to = { x: target.feet.x - caster.facing * 70, y: target.feet.y, z: 0 };
       dash(w, tex, {
@@ -120,12 +121,19 @@ export const SKILLS: SkillDef[] = [
         onMove: (p) => { caster.feet.x = p.x; caster.feet.y = p.y; },
         onEnd: () => {
           const a = caster.facing > 0 ? 0 : Math.PI;
-          slash(w, tex, { ...caster.feet, angle: a - 0.3, palette: P.kim, radius: 95, duration: 170 });
-          w.after(80, () => hurt(target, 64, { palette: P.kim, angle: a }));
+          const cut = () => chest(target, 0.55);
+          metalSlash(w, tex, cut(), { angle: a - 0.53, span: caster.height * 2.1, palette: P.kim });
+          w.after(80, () => {
+            hurt(target, 64, { feedback: 0 });
+            hitFlash(w, target.sprite, 90, P.kim.core, 0.45);
+            metalSparks(w, tex, cut(), P.kim, 10, a - 0.6, 0.84);
+          });
           w.after(190, () => {
-            slash(w, tex, { ...caster.feet, angle: a + 0.35, palette: P.kim, radius: 105, duration: 170, clockwise: false });
+            metalSlash(w, tex, cut(), { angle: a + 0.57, span: caster.height * 2.3, palette: P.kim, reverse: true });
             w.after(80, () => {
-              hurt(target, 131, { palette: P.kim, angle: a, crit: true });
+              hurt(target, 131, { crit: true, feedback: 0 });
+              hitFlash(w, target.sprite, 105, P.kim.core, 0.7);
+              metalSparks(w, tex, cut(), P.kim, 17, a + 0.28);
               w.hitStop(70);
               w.shake(5, 160);
               damageOverTime(w, tex, { target: feetOf(target), height: target.height, kind: 'bleed', duration: 2600, tickMs: 650, damage: () => Math.round(rand(9, 14)), onTick: () => hitFlash(w, target.sprite, 90, 0xff6070) });
@@ -192,28 +200,25 @@ export const SKILLS: SkillDef[] = [
   // ------------------------------------------------------------------ THỦY / WATER
   {
     id: 'thuy-frost-nova', element: 'thuy', category: 'control', en: 'Frost Nova', vi: 'Băng Phong Tỏa',
-    desc: 'Ice spikes erupt around the target and freeze it solid, then it shatters.', uses: ['chargeUp', 'shockwave', 'spikeRing', 'freeze'], length: 3300,
+    desc: 'Ice spikes erupt around the target and freeze it solid, then it shatters.', uses: ['chargeUp', 'frostNova'], length: 3300,
     cast: ({ w, tex, caster, target, hurt }) => {
       chargeUp(w, tex, {
         target: () => hand(caster), palette: P.thuy, duration: 500,
         onDone: () => {
-          const c = target.feet;
-          shockwave(w, tex, { x: c.x, y: c.y, radius: 110, palette: P.thuy });
-          spikeRing(w, tex, { x: c.x, y: c.y, radius: 70, count: 10, height: 60, ice: true });
           hurt(target, 58, { palette: P.thuy, feedback: 0.3 });
-          freeze(w, tex, { target: feetOf(target), height: target.height, duration: 2200, glowIntensity: 0.25, onShatter: () => hurt(target, 120, { palette: P.thuy, crit: true, feedback: 0.3 }) });
+          frostNova(w, tex, { target: feetOf(target), height: target.height, palette: P.thuy, duration: 2200, onShatter: () => hurt(target, 120, { palette: P.thuy, crit: true, feedback: 0.3 }) });
         },
       });
     },
   },
   {
     id: 'thuy-tidal-beam', element: 'thuy', category: 'channel', en: 'Tidal Beam', vi: 'Thủy Long Xạ',
-    desc: 'A channeled torrent that drenches and slows the target.', uses: ['chargeUp', 'beam', 'slow'], length: 3800,
+    desc: 'A channeled water dragon torrent that drenches and slows the target.', uses: ['chargeUp', 'tidalBeam', 'slow'], length: 3800,
     cast: ({ w, tex, caster, target, hurt }) => {
       chargeUp(w, tex, {
         target: () => hand(caster), palette: P.thuy, duration: 380,
         onDone: () => {
-          const b = beam(w, tex, { from: () => hand(caster), to: () => chest(target), palette: P.thuy, width: 1.1, duration: 1500, style: 'water' });
+          const b = tidalBeam(w, tex, { from: () => hand(caster), to: () => chest(target), palette: P.thuy, duration: 1500 });
           for (let i = 0; i < 5; i++) w.after(150 + i * 280, () => b.alive && hurt(target, Math.round(rand(20, 28)), { palette: P.thuy, angle: Math.PI * (caster.facing > 0 ? 1 : 0) }));
           w.after(1500, () => slow(w, tex, { target: feetOf(target), height: target.height, duration: 2000 }));
         },
@@ -222,12 +227,12 @@ export const SKILLS: SkillDef[] = [
   },
   {
     id: 'thuy-glacier-path', element: 'thuy', category: 'aoe', en: 'Glacier Path', vi: 'Băng Hà Lộ',
-    desc: 'A line of ice spears races along the ground toward the enemy.', uses: ['telegraph', 'spikeLine(ice)', 'slow'], length: 2900,
+    desc: 'A jagged glacier ridge fractures the ground toward the enemy.', uses: ['telegraph', 'glacierPath', 'slow'], length: 2900,
     cast: ({ w, tex, caster, target, targets, hurt }) => {
       telegraph(w, tex, {
         ...caster.feet, radius: 42, duration: 300, palette: P.thuy,
-        onDone: () => spikeLine(w, tex, {
-          from: caster.feet, angle: angleTo(w, caster, target), count: 9, spacing: 44, height: 70, ice: true,
+        onDone: () => glacierPath(w, tex, {
+          from: caster.feet, angle: angleTo(w, caster, target), count: 9, spacing: 44, height: 85, palette: P.thuy,
           onSpike: (at) => near(at, 34, targets).forEach((u) => { hurt(u, 47, { palette: P.thuy, angle: -Math.PI / 2, feedback: 0.25 }); slow(w, tex, { target: feetOf(u), height: u.height, duration: 1600 }); }),
         }),
       });
