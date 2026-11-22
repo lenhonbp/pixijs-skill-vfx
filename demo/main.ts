@@ -8,12 +8,12 @@ import {
 import { SKILLS, SkillDef, Unit, SkillContext } from '../examples/skills';
 
 const W = 1120, H = 630;
-const HOTKEYS = '1234567890QWERTYUIOZXCV';
-// Wind skills take Z-V so the earlier 1-0, Q-O shortcuts keep their skills.
-const KEY_ORDER = [...SKILLS.filter((s) => s.element !== 'phong'), ...SKILLS.filter((s) => s.element === 'phong')];
+const HOTKEYS = '1234567890QWERTYUIOZXCVBNMJK';
+const KEY_ORDER = ['kim', 'moc', 'thuy', 'hoa', 'tho', 'phong', 'loi', 'neutral']
+  .flatMap((element) => SKILLS.filter((s) => s.element === element));
 /** Phones and touch tablets: lighter defaults, no hover-only UI. */
 const MOBILE = matchMedia('(pointer: coarse)').matches || innerWidth < 760;
-const ELEMENT_COLORS: Record<string, string> = { kim: '#f3d36b', moc: '#7ee05a', thuy: '#4fc3ff', hoa: '#ff7a2a', tho: '#d9a050', phong: '#8ff0d0', neutral: '#b48cff' };
+const ELEMENT_COLORS: Record<string, string> = { kim: '#f3d36b', moc: '#7ee05a', thuy: '#4fc3ff', hoa: '#ff7a2a', tho: '#d9a050', phong: '#8ff0d0', loi: '#a8b4ff', neutral: '#b48cff' };
 
 async function createApp() {
   const opts = { width: W, height: H, background: 0x14121b, backgroundColor: 0x14121b, antialias: !MOBILE, powerPreference: 'high-performance', resolution: Math.min(MOBILE ? 1.5 : 2, devicePixelRatio), autoDensity: true };
@@ -325,7 +325,7 @@ function whiteTexture() {
   };
 
   const tabs = $('tabs');
-  for (const key of ['all', 'kim', 'moc', 'thuy', 'hoa', 'tho', 'phong', 'neutral']) {
+  for (const key of ['all', 'kim', 'moc', 'thuy', 'hoa', 'tho', 'phong', 'loi', 'neutral']) {
     const b = document.createElement('button');
     b.textContent = key === 'all' ? 'All' : key === 'neutral' ? 'Utility' : ELEMENTS[key as keyof typeof ELEMENTS].vi;
     b.style.setProperty('--c', ELEMENT_COLORS[key] ?? '#ddd');

@@ -1,13 +1,15 @@
-// A complete sample skill set: three skills per Wu Xing element, four Phong (wind) variant skills,
-// and neutral utility skills.
+// 28 sample skills: three per Wu Xing element, four Phong, three Lôi,
+// and six neutral utility skills.
 // Each skill is gameplay-agnostic: it only talks to the game through SkillContext, so you can
 // copy one into your project and replace hurt()/returnHome() with your own systems.
 import type { Sprite } from 'pixi.js';
 import {
-  VfxWorld, VfxTextures, Vec3, Palette, WUXING, PHONG, AnyElementName,
+  VfxWorld, VfxTextures, Vec3, Palette, WUXING, PHONG, LOI, AnyElementName,
   tornado, windSlash, vortex, windWisps, gustLines, curlDrift,
   slash, hitSpark, hitFlash, projectile, explosion, meteor, lightningChain, healAura, telegraph, shockwave,
-  damageOverTime, stun, freeze, slow, root, shield, statChange, damageNumber,
+  damageOverTime, stun, shock, freeze, slow, root, shield, statChange, damageNumber,
+  silence, blind, armorBreak, mark, fear, aura, empower, haste,
+  lightningStrike, staticField,
   dash, blink, leap, beam, coneBreath, chargeUp, summonCircle, spikeLine, spikeRing, swordRain,
   rand, envelope, outCubic, outQuad, lerp, clamp01,
 } from '../kit';
@@ -86,7 +88,7 @@ const moveUnit = (w: VfxWorld, u: Unit, to: Vec3, ms: number, ease = outQuad) =>
 
 const P = {
   kim: WUXING.kim.palette, moc: WUXING.moc.palette, thuy: WUXING.thuy.palette, hoa: WUXING.hoa.palette, tho: WUXING.tho.palette, phong: PHONG.palette,
-  lightning: { core: 0xffffff, main: 0x9ad8ff, dark: 0x3050ff },
+  loi: LOI.palette,
   shadow: { core: 0xf0e0ff, main: 0x9a5cff, dark: 0x240a4a },
   holy: { core: 0xffffff, main: 0xffe29a, dark: 0xb08020 },
 };
@@ -460,16 +462,108 @@ export const SKILLS: SkillDef[] = [
     },
   },
 
-  // ------------------------------------------------------------------ NEUTRAL / UTILITY
+  // ------------------------------------------------------------------ LÔI / LIGHTNING
   {
-    id: 'lightning-chain', element: 'neutral', category: 'attack', en: 'Chain Lightning', vi: 'Lôi Đình Liên Kích',
+    id: 'lightning-chain', element: 'loi', category: 'attack', en: 'Chain Lightning', vi: 'Lôi Đình Liên Kích',
     desc: 'A bolt jumps between all enemies and briefly stuns them.', uses: ['chargeUp', 'lightningChain', 'stun'], length: 2700,
     cast: ({ w, tex, caster, targets, hurt }) => {
       chargeUp(w, tex, {
-        target: () => hand(caster), palette: P.lightning, duration: 300,
+        target: () => hand(caster), palette: P.loi, duration: 300,
         onDone: () => {
-          lightningChain(w, tex, { points: [hand(caster), ...targets.map((u) => chest(u))], palette: P.lightning, impactIntensity: 0.2 });
-          targets.forEach((u, i) => w.after(40 + i * 40, () => { hurt(u, 88 - i * 10, { palette: P.lightning, angle: rand(0, 6.3), feedback: 0.2 }); stun(w, tex, { target: feetOf(u), height: u.height, duration: 1200, palette: P.lightning }); }));
+          lightningChain(w, tex, { points: [hand(caster), ...targets.map((u) => chest(u))], palette: P.loi, impactIntensity: 0.2 });
+          targets.forEach((u, i) => w.after(40 + i * 40, () => { hurt(u, 88 - i * 10, { palette: P.loi, angle: rand(0, 6.3), feedback: 0.2 }); stun(w, tex, { target: feetOf(u), height: u.height, duration: 1200, palette: P.loi }); }));
+        },
+      });
+    },
+  },
+  {
+    id: 'loi-heaven-strike', element: 'loi', category: 'aoe', en: 'Heavenly Thunder', vi: 'Thiên Lôi Giáng',
+    desc: 'A raised charge calls staggered forked sky strikes, stunning and shocking the enemy group.',
+    uses: ['chargeUp', 'telegraph', 'lightningStrike', 'stun', 'shock'], length: 3200,
+    cast: ({ w, tex, caster, target, targets, hurt }) => {
+      chargeUp(w, tex, { target: () => hand(caster), palette: P.loi, duration: 300,
+        release: { color: 0x7954ef, size: 0.65, coreSize: 0.2, alpha: 0.4 }, onDone: () => {
+        const enemies = [target, ...targets.filter((u) => u !== target)];
+        enemies.forEach((u, i) => {
+          const at = { ...u.feet };
+          telegraph(w, tex, { ...at, radius: 36, palette: P.loi, duration: 300 + i * 180, finishAlpha: 0,
+            onDone: () => lightningStrike(w, tex, { ...at, palette: P.loi, radius: 38, onHit: () => {
+              hurt(u, 115, { palette: P.loi, feedback: 0.18 });
+              stun(w, tex, { target: feetOf(u), height: u.height, duration: 650, palette: P.loi });
+              shock(w, tex, { target: feetOf(u), height: u.height, duration: 1200, palette: P.loi });
+            } }),
+          });
+        });
+      } });
+    },
+  },
+  {
+    id: 'loi-thunder-domain', element: 'loi', category: 'control', en: 'Thunder Domain', vi: 'Lôi Vực',
+    desc: 'A violet electric field crackles under the enemy group, dealing periodic damage and shock.',
+    uses: ['chargeUp', 'staticField', 'shock'], length: 3600,
+    cast: ({ w, tex, caster, target, targets, hurt }) => {
+      chargeUp(w, tex, { target: () => hand(caster), palette: P.loi, duration: 300,
+        release: { color: 0x7954ef, size: 0.65, coreSize: 0.2, alpha: 0.4 }, onDone: () => {
+        const center = targets.length ? {
+          x: targets.reduce((sum, u) => sum + u.feet.x, 0) / targets.length,
+          y: targets.reduce((sum, u) => sum + u.feet.y, 0) / targets.length,
+        } : { ...target.feet };
+        const radius = Math.max(120, ...targets.map((u) => Math.hypot(u.feet.x - center.x, (u.feet.y - center.y) / w.groundSquash) + 16));
+        staticField(w, tex, { ...center, radius, palette: P.loi, duration: 2500, onTick: () => {
+          for (const u of targets) if (Math.hypot(u.feet.x - center.x, (u.feet.y - center.y) / w.groundSquash) <= radius) {
+            hurt(u, 24, { palette: P.loi, feedback: 0.1 });
+            shock(w, tex, { target: feetOf(u), height: u.height, palette: P.loi, duration: 450 });
+          }
+        } });
+      } });
+    },
+  },
+  // ------------------------------------------------------------------ NEUTRAL / UTILITY
+  {
+    id: 'seal-silence', element: 'neutral', category: 'debuff', en: 'Silencing Seal', vi: 'Phong Ấn Thuật',
+    desc: 'A sealing rune flies into the target, locking its voice and veiling its eyes.',
+    uses: ['chargeUp', 'projectile', 'hitSpark', 'silence', 'blind'], length: 3800,
+    cast: ({ w, tex, caster, target }) => {
+      chargeUp(w, tex, { target: () => hand(caster), palette: P.shadow, duration: 280,
+        release: { color: P.shadow.main, size: 0.5, coreSize: 0.18, alpha: 0.3 },
+        onDone: () => projectile(w, tex, { from: hand(caster), to: chest(target, 0.8), palette: P.shadow,
+          speed: 950, size: 0.5, onHit: () => {
+            hitSpark(w, tex, { ...chest(target, 0.8), palette: { ...P.shadow, core: P.shadow.main }, size: 0.5 });
+            w.spawn({ texture: tex.rune, ...target.feet, z: 35, life: 340,
+              vz: -100, scale: [0.21, 0.12, outQuad], alpha: envelope(0.1, 0.5, 0.7), tint: P.shadow.main });
+            silence(w, tex, { target: feetOf(target), height: target.height, duration: 2400 });
+            blind(w, tex, { target: feetOf(target), height: target.height, duration: 2400 });
+          },
+        }),
+      });
+    },
+  },
+  {
+    id: 'sunder-mark', element: 'neutral', category: 'debuff', en: 'Sundering Mark', vi: 'Phá Giáp Ấn',
+    desc: 'Staggered curse marks fracture enemy armor and send fearful wisps fleeing upward.',
+    uses: ['chargeUp', 'mark', 'armorBreak', 'fear'], length: 3800,
+    cast: ({ w, tex, caster, targets }) => {
+      chargeUp(w, tex, { target: () => hand(caster), palette: P.shadow, duration: 300,
+        release: { color: P.shadow.main, size: 0.5, coreSize: 0.18, alpha: 0.3 },
+        onDone: () => targets.forEach((u, i) => w.after(i * 150, () => {
+          const at = { target: feetOf(u), height: u.height, duration: 2400 };
+          mark(w, tex, at); armorBreak(w, tex, at); fear(w, tex, at);
+        })),
+      });
+    },
+  },
+  {
+    id: 'war-cry', element: 'neutral', category: 'buff', en: 'War Cry', vi: 'Chiến Hống',
+    desc: 'A rallying shockwave surrounds the caster with a fiery power aura and trailing speed lines.',
+    uses: ['chargeUp', 'shockwave', 'aura', 'empower', 'haste'], length: 4000,
+    cast: ({ w, tex, caster }) => {
+      chargeUp(w, tex, { target: () => hand(caster), palette: P.hoa, duration: 300,
+        release: { color: P.hoa.main, size: 0.6, coreSize: 0.2, alpha: 0.35 },
+        onDone: () => {
+          shockwave(w, tex, { ...caster.feet, radius: 85, palette: P.hoa, duration: 350 });
+          const at = { target: feetOf(caster), height: caster.height, duration: 3000 };
+          aura(w, tex, { ...at, palette: P.hoa, radius: 38, intensity: 0.65 });
+          empower(w, tex, at); haste(w, tex, at);
         },
       });
     },

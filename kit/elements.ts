@@ -5,12 +5,13 @@ import type { VfxWorld } from './vfx-world';
 
 export type ElementName = 'kim' | 'moc' | 'thuy' | 'hoa' | 'tho';
 
-/** Wind (Phong) is a variant element (biến dị) outside the Wu Xing cycle, common in xianxia games. */
-export type VariantElementName = 'phong';
+/** Variant elements (biến dị) outside the Wu Xing cycle. */
+export type VariantElementName = 'phong' | 'loi';
 export type AnyElementName = ElementName | VariantElementName;
+export type ElementId = AnyElementName | (string & {});
 
 export interface Element {
-  name: AnyElementName;
+  name: ElementId;
   /** Display names. */
   vi: string;
   en: string;
@@ -56,8 +57,28 @@ export const PHONG: Element = {
   shapes: 'crescent gusts, spiralling streaks and ribbons, dust and leaves caught in the flow; curl-noise motion, pull/lift; additive and translucent, never solid',
 };
 
-/** All elements, Wu Xing plus variants. */
-export const ELEMENTS: Record<AnyElementName, Element> = { ...WUXING, phong: PHONG };
+/** Lôi (Lightning): instantaneous, forked and violet-white rather than water blue. */
+export const LOI: Element = {
+  name: 'loi', vi: 'Lôi', en: 'Lightning',
+  palette: { core: 0xffffff, main: 0xa8b4ff, dark: 0x3a2a9a }, accent: 0xd8c4ff,
+  shapes: 'jagged forked bolts, instant strikes, crackling arcs that re-roll every frame, white-hot flash then fast fade; zero anticipation travel, all impact; sparks and scorch',
+};
+
+/** Built-in elements, Wu Xing plus variants. Custom elements live in the runtime registry. */
+export const ELEMENTS: Record<AnyElementName, Element> = { ...WUXING, phong: PHONG, loi: LOI };
+
+const registry = new Map<string, Element>(Object.values(ELEMENTS).map((element) => [element.name, element]));
+
+/** Register or replace a runtime element without changing the five-element Wu Xing cycle. */
+export function defineElement(def: Element): Element {
+  registry.set(def.name, def);
+  return def;
+}
+
+/** Unknown names return undefined. */
+export function getElement(name: ElementId): Element | undefined {
+  return registry.get(name);
+}
 
 /** +1 or -1: mirror lit-from-the-left textures (rock, spike, blade) so their lit side faces the sun. */
 export function litFlip(w: VfxWorld): 1 | -1 {

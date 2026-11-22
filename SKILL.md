@@ -98,7 +98,10 @@ Ready recipes (see `references/recipes.md` for what each is made of):
   `shockwave`, `telegraph`, `meteor`, `lightningChain`, `healAura`, `dropShadow`.
 - On-unit status (`status.ts`): `damageOverTime` (poison / burn / bleed with tick numbers),
   `stun`, `freeze` (shatters at the end), `slow`, `root`, `shield` (returns `hit()` / `break()`),
-  `statChange` (buff up / debuff down). All take `target: () => feet` and `height` in px.
+  `statChange`, `shock`, `silence`, `blind`, `armorBreak`, `mark`, `fear`, `aura`, `regen`,
+  `haste`, `empower`. All take `target: () => feet` and `height` in px;
+  see the [status catalog](references/extending.md#status-catalog) for options.
+- Lightning (`thunder.ts`): `lightningStrike` (instant forked sky bolt), `staticField` (ground arcs).
 - Movement (`motion.ts`): `dash` (afterimages), `blink`, `leap` (arc + `slam`), `afterimage`, `slam`.
 - Channeled / cast (`channel.ts`): `beam`, `coneBreath`, `chargeUp`, `summonCircle`.
 - Element shapes (`elemental.ts`): `spike`, `spikeLine`, `spikeRing` (rock or `ice`), `swordRain`.
@@ -111,9 +114,11 @@ Ready recipes (see `references/recipes.md` for what each is made of):
 - Sustained effects return a `Handle` (`stop()`, `alive`); build your own with `group()`.
 
 Elements: `WUXING` in `elements.ts` gives the five elements (Kim, Mộc, Thủy, Hỏa, Thổ) with
-palette and shape language, `PHONG` the wind variant element (`ELEMENTS` has all six); read `references/elements.md` before designing an element skill.
-`examples/skills.ts` has 23 complete skills (3 per element, 4 wind, utility) wired through a small
-`SkillContext`; copy the closest one.
+palette and shape language, plus variants `PHONG` (wind) and `LOI` (lightning); `ELEMENTS` has
+all seven. Read `references/elements.md` before designing an element skill.
+`examples/skills.ts` has 28 complete skills (15 Wu Xing, 4 wind, 3 lightning, 6 utility) wired
+through a small `SkillContext`; copy the closest one. For `defineElement` / `getElement`,
+`paletteFrom` / `shiftPalette`, custom recipes and composition, read [Extending the kit](references/extending.md).
 
 2.5D helpers: `rigFromBlender`, `anchorAtFeet`, `unitPoints(x, y, heightPx)` (feet / knee /
 chest / head / above), `socketPoint(feet, sockets, dir)`, `vfx.shadowPoint(pos)`.
@@ -193,7 +198,8 @@ Inspect the sheets as well as the counts.
   `kit/elements.ts`, `kit/group.ts` - buff/debuff/CC, movement, channeled, element effects.
 - `kit/wind.ts`, `kit/trail.ts`, `kit/noise.ts`, `kit/postfx.ts` - wind recipes, ribbon trails,
   curl noise, distortion and bloom.
-- `examples/skills.ts` - 23 sample skills across the five elements, wind and utility, gameplay-agnostic.
+- `examples/skills.ts` - 28 gameplay-agnostic samples across Wu Xing, wind, lightning and utility.
+- `references/extending.md` - custom elements, recolors, phase template, lifecycle and status catalog.
 - `references/advanced-fx.md` - ribbons, curl noise, distortion, bloom, quality tiers.
 - `references/elements.md` - Wu Xing design language and per-element recipes.
 - `tools/blender_vfx_rig.py` - run in Blender to print camera and sun numbers for `rigFromBlender`.
