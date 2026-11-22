@@ -18,6 +18,19 @@ try {
     const step = (w, ms) => { for (let i = 0; i < ms; i++) w.update(1); };
     const clean = (w) => check(!w.count && !w.stats.updaters, 'particles and updaters cleaned');
     {
+      const w = world(), palette = { core: 0x91c76e, main: 0xa34de0, dark: 0x21182d };
+      const unit = (x, y) => ({ sprite: new Sprite(tex.dot), feet: { x, y }, height: 96, facing: 1 });
+      const caster = unit(330, 410), targets = [unit(790, 405), unit(900, 330), unit(905, 490)];
+      SKILLS.find(s => s.id === 'curse-weaken').cast({ w: kit.empoweredWorld(w, { tier: 3, palette }), tex,
+        caster, target: targets[0], targets, hurt() {}, returnHome() {}, setVisible() {} });
+      step(w, 1400);
+      const rings = w.particles.filter(p => p.o.texture === tex.rune && p.o.groundAligned);
+      check(rings.length === 2 && rings.every(p => p.sprite.x + Math.abs(p.sprite.scale.x) * kit.TEX_METRICS.runeRadius <= 1120),
+        'frailty: tier-three hex lines stay inside demo right edge');
+      w.clear(); clean(w);
+      results.push('frailty: maximum-tier hex footprint stays inside arena PASS');
+    }
+    {
       const w = world(), seen = new Map();
       const cast = () => kit.spiritGuardian(w, tex, { x: 100, y: 200, target: () => ({ x: 300, y: 200 }), palette: { core: 0xffffff, main: 0xffcc66, dark: 0x553311 } });
       let h = cast();

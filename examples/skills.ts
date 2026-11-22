@@ -731,8 +731,8 @@ export const SKILLS: SkillDef[] = [
         const units = targets.length ? targets : [target];
         const center = { x: units.reduce((sum, u) => sum + u.feet.x, 0) / units.length,
           y: units.reduce((sum, u) => sum + u.feet.y, 0) / units.length };
-        const radius = Math.max(90, ...units.map((u) =>
-          Math.hypot(u.feet.x - center.x, (u.feet.y - center.y) / w.groundSquash) + u.height * 0.3));
+        const radius = Math.min(170, Math.max(90, ...units.map((u) =>
+          Math.hypot(u.feet.x - center.x, (u.feet.y - center.y) / w.groundSquash) + u.height * 0.3)));
         hexField(w, tex, { ...center, radius, duration: 2300, palette });
         hitTimes(timing).forEach((impact, i) => w.after(impact - timing.windup - 240, () => {
           const u = targets[i], hit = timing.hits[i];
