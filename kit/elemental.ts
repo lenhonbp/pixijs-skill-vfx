@@ -78,7 +78,7 @@ export function spikeRing(w: VfxWorld, tex: VfxTextures, o: { x: number; y: numb
 export function swordRain(
   w: VfxWorld,
   tex: VfxTextures,
-  o: { x: number; y: number; radius?: number; count?: number; duration?: number; palette?: Palette; onImpact?: (at: Vec3) => void },
+  o: { x: number; y: number; radius?: number; count?: number; duration?: number; height?: number; palette?: Palette; onImpact?: (at: Vec3) => void },
 ) {
   const p = o.palette ?? WUXING.kim.palette;
   const r = o.radius ?? 100;
@@ -88,30 +88,39 @@ export function swordRain(
   w.spawn({ ...g, texture: tex.ring, life: dur + 500, scale: (r * 1.05) / M.ringRadius, alpha: envelope(0.1, 0.8, 0.4), tint: p.main });
   w.spawn({ ...g, texture: tex.glow, life: dur + 500, scale: r / 40, alpha: envelope(0.1, 0.25, 0.4), tint: p.main });
   const fall = 150;
-  for (let i = 0; i < n; i++) {
-    const t0 = (i / n) * dur + rand(-30, 30);
+  const visualCount = Math.ceil(n * 2);
+  for (let i = 0; i < visualCount; i++) {
+    const t0 = ((i % n) / n) * dur + rand(-30, 30);
     const a = rand(0, TAU), d = Math.sqrt(Math.random()) * r * 0.9;
     const x = o.x + Math.cos(a) * d, y = o.y + Math.sin(a) * d * w.groundSquash;
     const tilt = rand(-0.18, 0.18);
-    const k = rand(0.5, 0.65);
+    const length = (o.height ?? 70) * rand(0.6, 0.7), k = length / 160;
     w.after(Math.max(0, t0), () => {
       const z0 = 380;
-      w.spawn({ texture: tex.blade, blend: 'normal', x, y, z: z0, vz: -z0 / (fall / 1000), life: fall, anchorY: 1, rotation: tilt, scale: k, tint: 0xf4f0e6 });
-      w.spawn({ texture: tex.streak, x, y, z: z0 + 45 * k, vz: -z0 / (fall / 1000), life: fall, anchorX: 1, rotation: Math.PI / 2 + tilt, scaleX: 0.5, scaleY: 0.25, alpha: [0.2, 0.6], tint: p.main });
+      w.spawn({ texture: tex.blade, blend: 'normal', x, y, z: z0, vz: -z0 / (fall / 1000), life: fall, anchorY: 1, rotation: tilt, scale: k, tint: p.main });
+      w.spawn({ texture: tex.streak, x: x + Math.sin(tilt) * length, y, z: z0 + Math.cos(tilt) * length,
+        vz: -z0 / (fall / 1000), life: fall, anchorX: 1, rotation: Math.PI / 2 + tilt,
+        scaleX: 0.22, scaleY: 0.2, alpha: [0.15, 0.3], tint: p.main });
     });
     w.after(Math.max(0, t0) + fall, () => {
-      const life = dur - t0 + 600;
-      w.spawn({ texture: tex.blade, blend: 'normal', x, y, z: -6, life, anchorY: 1, rotation: tilt, scale: k, alpha: ms3(life), tint: 0xf4f0e6 });
-      w.spawn({ texture: tex.blade, x, y, z: -6, life: 260, anchorY: 1, rotation: tilt, scale: k, alpha: [0.9, 0, outQuad], tint: p.main, zBias: 1 });
-      w.spawn({ texture: tex.star, x, y, z: 4, life: 200, zBias: 2, rotation: rand(0, TAU), scale: [0.8, 0], tint: p.core });
+      const life = 950;
+      w.spawn({ texture: tex.blade, blend: 'normal', x, y, z: -2, life, anchorY: 1, rotation: tilt, scale: k, alpha: ms3(life), tint: p.main });
+      w.spawn({ texture: tex.star, x, y, z: 4, life: 160, zBias: 2, rotation: rand(0, TAU), scale: [0.18, 0], alpha: [0.5, 0], tint: p.main });
       w.spawn({ texture: tex.ring, layer: 'ground', groundAligned: true, x, y, life: 260, scale: [0.02, 0.12, outCubic], alpha: [0.9, 0], tint: p.main });
-      w.spawn({ texture: tex.glow, layer: 'ground', groundAligned: true, blend: 'normal', x, y, life: life + 200, scale: 0.35, alpha: envelope(0.05, 0.5, 0.4), tint: 0x1a1408 });
-      w.burst(5, () => {
+      w.spawn({ texture: tex.swordCrack, layer: 'ground', groundAligned: true, blend: 'normal', x, y,
+        life, rotation: rand(0, TAU), scale: 0.45, alpha: ms3(life), tint: p.dark });
+      w.spawn({ texture: tex.puff, blend: 'normal', x, y, z: 3, life: 300,
+        scale: [0.08, 0.3], alpha: [0.22, 0], tint: p.dark });
+      w.after(700, () => w.burst(4, () => ({ texture: tex.dot, x: x + rand(-5, 5), y,
+        z: rand(3, length), life: 350, vz: rand(15, 40), scale: [0.08, 0], alpha: [0.5, 0], tint: p.main })));
+      w.burst(3, () => {
         const b = rand(0, TAU), sp = rand(150, 320);
-        return { texture: tex.streak, x, y, z: 4, life: rand(150, 260), vx: Math.cos(b) * sp, vy: Math.sin(b) * sp * w.groundSquash, vz: rand(100, 250), gravity: 900, faceVelocity: true, scaleX: [0.35, 0.05], scaleY: 0.35, tint: [p.core, p.main] };
+        return { texture: tex.streak, x, y, z: 4, life: rand(100, 180), vx: Math.cos(b) * sp, vy: Math.sin(b) * sp * w.groundSquash, vz: rand(60, 120), gravity: 900, killOnGround: true, faceVelocity: true, scaleX: [0.1, 0.02], scaleY: 0.2, alpha: [0.5, 0], tint: p.main };
       });
-      w.shake(2.5, 90);
-      o.onImpact?.({ x, y, z: 0 });
+      if (i < n) {
+        w.shake(2.5, 90);
+        o.onImpact?.({ x, y, z: 0 });
+      }
     });
   }
 }

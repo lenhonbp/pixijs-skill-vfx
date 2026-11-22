@@ -24,8 +24,10 @@ export interface VfxTextures {
   crescent: Texture;
   /** Elongated diamond pointing +x. 64x24. Shards, ice, debris. */
   shard: Texture;
-  /** Sword blade pointing down (+y), lit from the left. 24x128, anchor (0.5, 1) = tip. Sword rain. */
+  /** Full sword pointing down (+y), beveled blade, fuller, guard and grip. 64x160, anchor (0.5, 1) = tip. */
   blade: Texture;
+  /** Short branching ground fracture. 64x32. */
+  swordCrack: Texture;
   /** Rock/ice spike pointing up, lit from the left. 64x128, anchor (0.5, 1) = base. Earth spikes, ice nova. */
   spike: Texture;
   /** Faceted rock chunk, lit from the upper left. Size 48. Debris (normal blend). */
@@ -229,21 +231,31 @@ export function createVfxTextures(): VfxTextures {
   })();
 
   const blade = (() => {
-    const [c, ctx] = makeCanvas(24, 128);
-    const g = ctx.createLinearGradient(4, 0, 20, 0);
-    g.addColorStop(0, 'rgba(255,255,255,1)');
-    g.addColorStop(0.5, 'rgba(235,235,235,1)');
-    g.addColorStop(0.52, 'rgba(150,150,150,1)');
-    g.addColorStop(1, 'rgba(110,110,110,1)');
+    const [c, ctx] = makeCanvas(64, 160);
+    const g = ctx.createLinearGradient(21, 0, 43, 0);
+    g.addColorStop(0, '#fff8db'); g.addColorStop(0.18, '#ffffff');
+    g.addColorStop(0.48, '#dbcda5'); g.addColorStop(0.52, '#8d8060'); g.addColorStop(1, '#c0ad7d');
     ctx.fillStyle = g;
     ctx.beginPath();
-    ctx.moveTo(8, 30); ctx.lineTo(16, 30); ctx.lineTo(15, 112); ctx.lineTo(12, 127); ctx.lineTo(9, 112);
+    ctx.moveTo(21, 45); ctx.lineTo(43, 45); ctx.lineTo(41, 132); ctx.lineTo(32, 159); ctx.lineTo(23, 132);
     ctx.closePath(); ctx.fill();
-    ctx.fillStyle = 'rgba(200,200,200,1)';
-    ctx.fillRect(1, 24, 22, 6); // guard
-    ctx.fillStyle = 'rgba(120,120,120,1)';
-    ctx.fillRect(9, 2, 6, 22); // grip
-    radial(ctx, 12, 4, 5, [[0, 1], [1, 0.8]]);
+    ctx.strokeStyle = '#766346'; ctx.lineWidth = 2; ctx.stroke();
+    ctx.beginPath(); ctx.moveTo(32, 55); ctx.lineTo(32, 132); ctx.stroke();
+    ctx.fillStyle = '#e6d19a'; ctx.strokeStyle = '#75603b';
+    ctx.beginPath(); ctx.moveTo(5, 35); ctx.lineTo(23, 39); ctx.lineTo(32, 35); ctx.lineTo(41, 39);
+    ctx.lineTo(59, 35); ctx.lineTo(56, 48); ctx.lineTo(8, 48); ctx.closePath(); ctx.fill(); ctx.stroke();
+    ctx.fillStyle = '#756044'; ctx.fillRect(26, 12, 12, 24);
+    ctx.strokeStyle = '#d8c492';
+    for (const y of [17, 24, 31]) { ctx.beginPath(); ctx.moveTo(27, y); ctx.lineTo(37, y + 3); ctx.stroke(); }
+    ctx.fillStyle = '#f0ddaa'; ctx.beginPath(); ctx.arc(32, 9, 7, 0, Math.PI * 2); ctx.fill();
+    return textureFromCanvas(c);
+  })();
+  const swordCrack = (() => {
+    const [c, ctx] = makeCanvas(64, 32);
+    ctx.strokeStyle = 'white'; ctx.lineWidth = 3; ctx.lineJoin = 'bevel';
+    ctx.beginPath(); ctx.moveTo(3, 19); ctx.lineTo(18, 14); ctx.lineTo(29, 19);
+    ctx.lineTo(36, 10); ctx.lineTo(60, 13); ctx.moveTo(29, 19); ctx.lineTo(38, 28);
+    ctx.moveTo(36, 10); ctx.lineTo(29, 2); ctx.stroke();
     return textureFromCanvas(c);
   })();
 
@@ -510,5 +522,5 @@ export function createVfxTextures(): VfxTextures {
     digits[ch] = textureFromCanvas(c);
   }
 
-  return { glow, dot, ring, disc, streak, beam, star, puff, crescent, shard, blade, spike, rock, rockPlate, guardian, leaf, drop, chevron, rune, bubble, tendril, plus, crackedShield, bell, bellCracks, digits };
+  return { glow, dot, ring, disc, streak, beam, star, puff, crescent, shard, blade, swordCrack, spike, rock, rockPlate, guardian, leaf, drop, chevron, rune, bubble, tendril, plus, crackedShield, bell, bellCracks, digits };
 }

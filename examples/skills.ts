@@ -103,7 +103,7 @@ export const SKILLS: SkillDef[] = [
       chargeUp(w, tex, { target: () => hand(caster), palette: P.kim, duration: 450 });
       const c = { x: target.feet.x, y: target.feet.y };
       w.after(350, () => swordRain(w, tex, {
-        ...c, radius: 120, count: 16, duration: 900, palette: P.kim,
+        ...c, radius: 120, count: 16, duration: 900, height: caster.height, palette: P.kim,
         onImpact: (at) => near(at, 40, targets).forEach((u) => hurt(u, Math.round(rand(38, 52)), { palette: P.kim, angle: -Math.PI / 2 })),
       }));
     },
