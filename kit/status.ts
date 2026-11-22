@@ -16,6 +16,25 @@ import { clamp01, envelope, inQuad, outBack, outCubic, outQuad, rand, lerpColor 
 
 const TAU = Math.PI * 2;
 
+type DamageTickFeedback = (at: Vec3, height: number, damage: number) => void;
+const damageTickFeedback = new WeakMap<VfxWorld, DamageTickFeedback>();
+
+/** A cast-local world facade; delayed DoT ticks retain this cast's feedback. */
+export function withDamageTickFeedback(w: VfxWorld, feedback: DamageTickFeedback): VfxWorld {
+  const methods = new Map<PropertyKey, unknown>();
+  const scoped = new Proxy(w, {
+    get(target, key) {
+      const value = Reflect.get(target, key, target);
+      if (typeof value !== 'function') return value;
+      if (!methods.has(key)) methods.set(key, value.bind(target));
+      return methods.get(key);
+    },
+    set(target, key, value) { return Reflect.set(target, key, value, target); },
+  });
+  damageTickFeedback.set(scoped, feedback);
+  return scoped;
+}
+
 export interface OnUnit {
   /** Feet of the unit (follows it while it moves). */
   target: () => Vec3;
@@ -253,6 +272,7 @@ export function damageOverTime(
   const dur = o.duration ?? 3000;
   const tick = o.tickMs ?? 600;
   const T = o.target;
+  const feedback = damageTickFeedback.get(w);
   const g = group(w, dur + tick / 2);
   const s = h / 70;
 
@@ -301,6 +321,7 @@ export function damageOverTime(
     const at = T();
     const dmg = typeof o.damage === 'function' ? o.damage() : o.damage ?? 12;
     o.onTick?.(dmg);
+    if (dmg > 0) feedback?.(at, h, dmg);
     w.spawn({ texture: tex.glow, x: 0, y: 0, z: h * 0.55, follow: T, life: 220, zBias: 3, scaleX: [0.9 * s, 1.4 * s, outQuad], scaleY: [1.3 * s, 1.8 * s, outQuad], alpha: [spores ? 0.06 : 0.55, 0, outQuad], tint: spores ? 0x8a8953 : p.main });
     if (o.kind === 'poison' && !spores) {
       w.burst(6, () => ({ texture: tex.dot, x: at.x, y: at.y, z: h * rand(0.3, 0.7), life: rand(300, 500), vx: rand(-90, 90), vz: rand(40, 140), gravity: 300, zBias: 5, scale: [0.3, 0], tint: p.main }));

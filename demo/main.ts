@@ -4,7 +4,7 @@ import { Application, Container, Sprite, Texture } from 'pixi.js';
 import {
   VfxWorld, createVfxTextures, isPixiV8, textureFromCanvas, rigFromBlender, anchorAtFeet,
   hitSkin, rockBack, getElement, hitSpark, damageNumber, activeHitFlashes, ELEMENTS, Distortion, Bloom, Palette, Vec3, outCubic, lerp, rand, setRng, mulberry32,
-  skillActivation, skillEvolution, empoweredHit, empoweredAura, activationRelease, ActivationTier, PALETTES,
+  skillActivation, skillEvolution, empoweredHit, empoweredAura, activationRelease, ActivationTier, PALETTES, withDamageTickFeedback,
 } from '../kit';
 import { SKILLS, SkillDef, Unit, SkillContext } from '../examples/skills';
 
@@ -234,9 +234,18 @@ function whiteTexture() {
     empowering = true;
     try { draw(); } finally { empowering = false; }
   };
+  const castWorld = (selected: ActivationTier, palette: Palette) => {
+    if (selected === 1) return w;
+    const nextTick = new WeakMap<Vec3, number>();
+    return withDamageTickFeedback(w, (at, height) => {
+      if (w.now < (nextTick.get(at) ?? -Infinity)) return;
+      nextTick.set(at, w.now + 120);
+      enhance(() => empoweredHit(w, tex, { at: { ...at, z: (at.z ?? 0) + height * 0.55 }, palette, tier: selected, tick: true }));
+    });
+  };
   const ctxFor = (selected: ActivationTier = 1, palette: Palette = PALETTES.arcane): SkillContext & { tier?: ActivationTier } => ({
     tier: selected,
-    w, tex, caster: hero, target: enemies[0], targets: enemies,
+    w: castWorld(selected, palette), tex, caster: hero, target: enemies[0], targets: enemies,
     hurt: (u, amount, o = {}) => {
       const du = u as DemoUnit;
       const heal = amount < 0;

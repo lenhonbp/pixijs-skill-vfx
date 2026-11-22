@@ -87,6 +87,10 @@ Use `skillEvolution(w, tex, { at, height, palette, fromTier, toTier })` for the
 which stamps the new seal at 950 ms. Stacked ascending runes show the destination tier.
 For gameplay after release, run `empoweredAura` for the skill's length and call
 `empoweredHit` at each positive-damage target's chest. Both are no-ops at tier 1.
+Pass skills a `withDamageTickFeedback(world, (feet, height, damage) => ...)` facade
+to observe their positive DoT ticks, including delayed status effects, without
+changing skill recipes. Capture the cast's tier/palette in that callback; use
+`empoweredHit(..., { ..., tick: true })` and throttle per target for light tick feedback.
 Ground layers ignore caster height; body layers follow jumps. Keep flashes localized.
 All timers/particles use the world clock and `clear()` cancels them.
 

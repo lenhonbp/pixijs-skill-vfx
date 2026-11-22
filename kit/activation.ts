@@ -147,12 +147,19 @@ export function skillEvolution(w: VfxWorld, tex: VfxTextures, o: Caster & { from
  * Palette: elemental main with a brief core edge and dark debris.
  * Phases: release 0; crown peak 40 ms; sparks/debris fade 80-260 ms.
  * Layers: grounded shock rings; chest crown/rays and embers in body.
- * Sync: call for positive damage only; tier 1 is unchanged.
+ * Sync: call for positive damage only; tick uses a small spark, tier 1 is unchanged.
  */
-export function empoweredHit(w: VfxWorld, tex: VfxTextures, o: { at: Vec3; palette: Palette; tier: ActivationTier }) {
+export function empoweredHit(w: VfxWorld, tex: VfxTextures, o: { at: Vec3; palette: Palette; tier: ActivationTier; tick?: boolean }) {
   if (o.tier === 1) return;
   const p = o.palette, big = o.tier === 3, s = big ? 1.4 : 0.8;
   const body = { x: o.at.x, y: o.at.y, z: o.at.z ?? 0 };
+  if (o.tick) {
+    w.spawn({ ...body, texture: tex.star, life: 140, scale: [0.18 * s, 0], alpha: [0.5, 0], tint: p.core, zBias: 8 });
+    w.burst(big ? 2 : 1, (i) => ({ ...body, texture: tex.streak, life: 180,
+      rotation: i * Math.PI + 0.6, vx: (i ? -1 : 1) * 35, vz: 35,
+      scaleX: [0.18 * s, 0], scaleY: 0.25, alpha: [0.55, 0], tint: p.main, zBias: 7 }));
+    return;
+  }
   w.spawn({ ...body, texture: tex.crescent, life: 200, rotation: -Math.PI / 2,
     scale: [0.12 * s, 0.6 * s, outCubic], alpha: [0.85, 0], tint: p.main, zBias: 8 });
   w.spawn({ ...body, texture: tex.star, life: 150, scale: [0.5 * s, 0.1], alpha: [0.7, 0], tint: p.core, zBias: 9 });

@@ -101,7 +101,7 @@ try {
   });
   assert.deepEqual(contracts, { rejected: true, cleared: true, grounded: true });
   console.log('Activation tier validation, airborne ground projection and interrupted-effect cleanup: PASS');
-  skills.push(...['hoa-fireball', 'tho-fissure', 'thuy-frost-nova'].map(id => ({
+  skills.push(...['hoa-fireball', 'tho-fissure', 'thuy-frost-nova', 'moc-toxic-spores'].map(id => ({
     ...skills.find(s => s.id === id), label: `${id}-tier3`, tier: 3,
   })));
   await page.close();
@@ -116,13 +116,14 @@ try {
     await page.waitForFunction(() => !!window.__vfxDebug);
     const result = await page.evaluate(({ id, length, tier = 0 }) => {
       const d = window.__vfxDebug, w = window.demo.vfx;
-      let peak = 0, hits = 0, empoweredPeak = 0;
+      let peak = 0, hits = 0, empoweredPeak = 0, tickSparks = 0;
       const empowered = new Map();
       const spawn = w.spawn.bind(w);
       w.spawn = (...args) => {
         if (args[0].layer === 'top' && args[0].blend === 'normal' && [850, 1100].includes(args[0].life)) hits++;
         const p = spawn(...args);
         if (p && d.isEmpowering()) empowered.set(p, p.o);
+        if (p && d.isEmpowering() && args[0].life === 140) tickSparks++;
         for (const [q, o] of empowered) if (q.dead || q.o !== o) empowered.delete(q);
         empoweredPeak = Math.max(empoweredPeak, empowered.size);
         peak = Math.max(peak, w.count); return p;
@@ -135,7 +136,7 @@ try {
         for (let left = length + 1900; left > 0; left -= 16) d.advance(Math.min(left, 16));
         runs.push(d.stats());
       }
-      return { peak, runs, hits, empoweredPeak };
+      return { peak, runs, hits, empoweredPeak, tickSparks };
     }, skill);
     await page.close();
     // SkillDef has no ultimate flag: every sample uses the ordinary 150 cap.
@@ -143,6 +144,7 @@ try {
     const budget = /(^|-)ultimate(-|$)/.test(skill.id) ? 600 : 150;
     const issues = [];
     if (skill.label && !result.hits) issues.push('no damaging hits exercised');
+    if (skill.label && skill.id === 'moc-toxic-spores' && !result.tickSparks) issues.push('no empowered DoT ticks exercised');
     const budgetStatus = budgetResult(skill.label ? result.empoweredPeak : result.peak, budget,
       !skill.label && Object.hasOwn(baseline, skill.id) ? baseline[skill.id] : undefined);
     if (budgetStatus.failure) issues.push(budgetStatus.failure);
