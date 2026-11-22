@@ -6,6 +6,7 @@ import { dirname, resolve, sep, extname } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { build } from 'esbuild';
 import { chromium } from 'playwright';
+import { checkFireDragon } from './test-fire-dragon.mjs';
 
 const root = resolve(dirname(fileURLToPath(import.meta.url)), '..');
 const failures = [];
@@ -68,6 +69,7 @@ let browser;
 try {
   await new Promise((ok, fail) => { server.once('error', fail); server.listen(0, '127.0.0.1', ok); });
   browser = await chromium.launch({ headless: true });
+  await checkFireDragon(browser);
   const url = `http://127.0.0.1:${server.address().port}/?debug&quality=high&seed=12345`;
   let page = await browser.newPage();
   page.on('pageerror', (error) => failures.push(error.message));

@@ -301,9 +301,17 @@ export const SKILLS: SkillDef[] = [
         origin: () => hand(caster), palette: P.hoa, duration: 280,
         onDone: () => fireDragonCrossing(w, tex, {
           from: hand(caster), toward: target.feet, facing: caster.facing, palette: P.hoa,
-          onCross: (at, angle) => {
+          onCross: ({ x, y, angle, halfLength, radius }) => {
+            const ux = Math.cos(angle), uy = Math.sin(angle);
             for (const u of targets) {
-              if (crossed.has(u) || Math.hypot(u.feet.x - at.x, (u.feet.y - at.y) / w.groundSquash) > 54) continue;
+              if (crossed.has(u)) continue;
+              const dx = u.feet.x - x, feetY = u.feet.y - u.feet.z;
+              const intersects = [0.38, 0.56, 0.76].some((level) => {
+                const dy = feetY - u.height * level - y;
+                const along = Math.max(-halfLength, Math.min(halfLength, dx * ux + dy * uy));
+                return Math.hypot(dx - along * ux, dy - along * uy) <= radius + u.height * 0.12;
+              });
+              if (!intersects) continue;
               crossed.add(u);
               hurt(u, u === target ? 156 : 108, { palette: P.hoa, crit: u === target, angle });
               damageOverTime(w, tex, {

@@ -283,9 +283,18 @@ export function burnFlames(w: VfxWorld, target: () => Vec3, height: number, dura
   return g;
 }
 
-/** A sweeping fire dragon. onCross samples the head's ground path, including at low frame rates. */
+/** A screen-space capsule along a visible piece of the dragon. */
+export interface FireDragonContact {
+  x: number;
+  y: number;
+  angle: number;
+  halfLength: number;
+  radius: number;
+}
+
+/** A sweeping fire dragon. onCross checks its visible head and coils, not the ground trail. */
 export function fireDragonCrossing(w: VfxWorld, tex: VfxTextures, o: {
-  from: Vec3; toward: Vec3; palette: Palette; facing?: number; onCross?: (at: Vec3, angle: number) => void;
+  from: Vec3; toward: Vec3; palette: Palette; facing?: number; onCross?: (contact: FireDragonContact) => void;
 }): Handle {
   const { from, toward, palette: p } = o;
   const dx = toward.x - from.x, dy = (toward.y - from.y) / w.groundSquash;
@@ -316,17 +325,31 @@ export function fireDragonCrossing(w: VfxWorld, tex: VfxTextures, o: {
       anchorY: i === 0 ? 0.58 : 0.63, life: Infinity, scale: size, alpha: 0, blend: 'normal',
       zBias: 10 + (20 - i) * 0.5,
     }));
-    return { at, part, size, delay: i * 14 };
+    return { at, part, size, delay: i * 14, isHead: i === 0 };
   });
+  const pose = (s: number, { size, delay }: typeof pieces[number]) => {
+    const at = point(Math.max(0, s)), next = point(Math.max(0, s) + 1);
+    return {
+      at, angle: Math.atan2(next.y - at.y - (next.z - at.z), next.x - at.x),
+      flip: next.x < at.x, scale: size * (0.95 + 0.05 * Math.sin(s / 19 + delay)),
+      alpha: clamp01(s / 57) * (1 - clamp01((s - reach) / 74)),
+    };
+  };
+  const contact = ({ at, angle, scale, alpha }: ReturnType<typeof pose>, head: boolean) => {
+    if (!o.onCross || alpha < 0.3) return;
+    const offset = head ? 16 * scale : 0;
+    o.onCross({
+      x: at.x + Math.cos(angle) * offset,
+      y: at.y - at.z + Math.sin(angle) * offset,
+      angle, halfLength: scale * (head ? 36 : 23), radius: scale * (head ? 24 : 19),
+    });
+  };
   g.addHandle(w.addUpdater((dt) => {
     distance += speed * dt / 1000;
     const front = Math.min(reach, distance);
-    if (o.onCross) {
-      while (crossAt <= front) {
-        const at = point(crossAt), next = point(crossAt + 1);
-        o.onCross(at, Math.atan2((next.y - at.y) / w.groundSquash, next.x - at.x));
-        crossAt += 11;
-      }
+    while (o.onCross && crossAt < Math.min(distance, reach + 74)) {
+      contact(pose(crossAt, pieces[0]), true);
+      crossAt += 11;
     }
     while (trailAt <= front) {
       const at = point(trailAt), next = point(trailAt + 1);
@@ -342,15 +365,18 @@ export function fireDragonCrossing(w: VfxWorld, tex: VfxTextures, o: {
       });
       trailAt += 31;
     }
-    for (const { at, part, size, delay } of pieces) {
-      if (!part) continue;
-      const s = distance - delay;
-      const pos = point(Math.max(0, s)), next = point(Math.max(0, s) + 1);
-      Object.assign(at, pos);
-      part.rotation = Math.atan2(next.y - pos.y - (next.z - pos.z), next.x - pos.x);
-      part.o.scaleY = next.x < pos.x ? -1 : 1;
-      part.o.scale = size * (0.95 + 0.05 * Math.sin(s / 19 + delay));
-      part.o.alpha = clamp01(s / 57) * (1 - clamp01((s - reach) / 74));
+    for (const piece of pieces) {
+      const { at, part, delay, isHead } = piece;
+      if (!part && !o.onCross) continue;
+      const current = pose(distance - delay, piece);
+      if (part) {
+        Object.assign(at, current.at);
+        part.rotation = current.angle;
+        part.o.scaleY = current.flip ? -1 : 1;
+        part.o.scale = current.scale;
+        part.o.alpha = current.alpha;
+      }
+      contact(current, isHead);
     }
     if (distance >= reach + pieces[pieces.length - 1].delay + 74) g.stop();
   }));
