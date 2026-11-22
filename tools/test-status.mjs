@@ -165,11 +165,11 @@ try {
     const guardian = kit.spiritGuardian(w, tex, { x: 200, y: 300, palette: gold, height: 105 });
     step(w, 160);
     const figure = w.particles.find((p) => p.o.texture === tex.guardian && p.o.blend === 'normal');
-    check(figure && figure.pz < 0 && figure.sprite.alpha > 0 && figure.sprite.alpha < 0.85, 'guardian: fades upward into view');
+    check(figure && figure.sprite.y > 300 && figure.sprite.alpha > 0 && figure.sprite.alpha < 0.85, 'guardian: fades upward into view');
     step(w, 350);
     check(guardian.alive && figure.sprite.alpha === 0.85, 'guardian: normal-blended hold');
-    const bob = figure.pz; step(w, 400);
-    check(figure.pz !== bob && w.particles.some((p) => p.o.texture === tex.dot), 'guardian: bob and rising motes');
+    const bob = figure.sprite.y; step(w, 400);
+    check(figure.sprite.y !== bob && w.particles.some((p) => p.o.texture === tex.dot), 'guardian: bob and rising motes');
     step(w, 800);
     check(guardian.alive && figure.sprite.alpha < 0.85, 'guardian: dissolves after hold');
     clean(w, 'guardian default'); check(!guardian.alive, 'guardian: default ends');
@@ -201,7 +201,7 @@ try {
       },
     });
     step(w, 2100);
-    check(summoned === 1 && w.particles.some((p) => p.o.texture === tex.guardian), 'summon: callback and guardian both occur');
+    check(summoned === 1 && w.particles.some((p) => p.o.texture === tex.guardianBody), 'summon: callback and guardian both occur');
     step(w, summonSkill.length - 2100);
     clean(w, 'summon sample');
     check(guardianHits === 3 && guardianDamage === 369, 'summon: merged guardian keeps two cleaves and heavy slam damage');

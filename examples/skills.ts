@@ -218,7 +218,7 @@ export const SKILLS: SkillDef[] = [
   // ------------------------------------------------------------------ THỦY / WATER
   {
     id: 'thuy-frost-nova', element: 'thuy', category: 'control', en: 'Frost Nova', vi: 'Băng Phong Tỏa',
-    timing: { windup: 500, hits: [{ t: 500, skin: 'ice', push: 6, targets: 'primary' }, { t: 2700, stop: 40, shake: 3, skin: 'ice', push: 12, targets: 'primary' }], recovery: 600 },
+    timing: { windup: 500, hits: [{ t: 500, skin: 'ice', push: 6, targets: 'primary' }, { t: 2700, skin: 'ice', push: 12, targets: 'primary' }], recovery: 600 },
     desc: 'Ice spikes erupt around the target and freeze it solid, then it shatters.', uses: ['chargeUp', 'frostNova'], length: 3300,
     cast: ({ w, tex, caster, target, hurt }) => {
       chargeUp(w, tex, {
@@ -251,7 +251,7 @@ export const SKILLS: SkillDef[] = [
   },
   {
     id: 'thuy-glacier-path', element: 'thuy', category: 'aoe', en: 'Glacier Path', vi: 'Băng Hà Lộ',
-    timing: { windup: 300, hits: Array.from({ length: 9 }, (_, i) => ({ t: 300 + i * 65, shake: 2, skin: 'ice', targets: 'all', optional: true })), recovery: 1600 },
+    timing: { windup: 300, hits: Array.from({ length: 9 }, (_, i) => ({ t: 300 + i * 85, skin: 'ice', targets: 'all', optional: true })), recovery: 1600 },
     desc: 'A jagged glacier ridge fractures the ground toward the enemy.', uses: ['telegraph', 'glacierPath', 'slow'], length: 2900,
     cast: ({ w, tex, caster, target, targets, hurt }) => {
       telegraph(w, tex, {
@@ -631,7 +631,7 @@ export const SKILLS: SkillDef[] = [
   },
   {
     id: 'summon-spirit', element: 'neutral', category: 'summon', en: 'Summon Guardian', vi: 'Triệu Hồi Hộ Pháp',
-    timing: { windup: 1200, hits: [2712, 3362, 4012].map((t, i) => ({ t, stop: i === 2 ? 65 : 28, shake: i === 2 ? 5 : 2, skin: 'holy', targets: i === 2 ? 'all' : 'primary' })), recovery: 1200 },
+    timing: { windup: 1200, hits: [2712, 3362, 4012].map((t, i) => ({ t, stop: i === 2 ? 65 : 35, shake: i === 2 ? 5 : 2, skin: 'holy', targets: i === 2 ? 'all' : 'primary' })), recovery: 1200 },
     desc: 'A spectral guardian flies into battle, swings its halberd twice, then dives into a crushing holy slam.', uses: ['chargeUp', 'summonCircle', 'spiritGuardian', 'afterimage'], length: 5400,
     cast: ({ w, tex, caster, target, targets, hurt, summon }) => {
       chargeUp(w, tex, { target: () => hand(caster), palette: P.holy, duration: 350 });
