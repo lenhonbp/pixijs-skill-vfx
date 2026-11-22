@@ -28,6 +28,15 @@ try {
     check(w.count === count, 'clear and particle reuse do not retain throttle');
     w.clear();
     check(!w.count && !w.stats.updaters, 'facade feedback cleanup');
-    return 'Empowered hit facade throttle, independent targets, expiry and clear PASS';
+    const aura = kit.empoweredAura(w, tex, { at: () => ({ x: 200, y: 300 }), height: 96,
+      tier: 3, element: 'loi', palette: PALETTES.lightning, duration: Infinity, idle: true });
+    const unfiltered = root => !root.filters?.length && root.children.every(unfiltered);
+    for (let t = 0; t < 2000; t += 16) {
+      w.update(16);
+      check(w.layers.ground.children.every(unfiltered), 'idle lightning arcs never allocate blur filters');
+    }
+    aura.stop(); w.clear();
+    check(!w.stats.updaters && !w.layers.ground.children.length, 'filterless arc cleanup');
+    return 'Empowered hit facade throttle/expiry/clear and filterless idle lightning arcs PASS';
   }));
 } finally { await browser.close(); }

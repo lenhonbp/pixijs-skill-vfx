@@ -55,7 +55,7 @@ export function lightningBolt(w: VfxWorld, tex: VfxTextures, a: Vec3, b: Vec3, p
   }
   const root = new Container(), halo = new Graphics(), glow = new Graphics(), core = new Graphics();
   halo.blendMode = glow.blendMode = blend('add');
-  const blur = width >= 1 ? (isPixiV8() ? new BlurFilter({ strength: 2.8, quality: 2 }) : new (BlurFilter as any)(2.8, 2)) : undefined;
+  const blur = width >= 1 && (o.halo ?? 0.11) > 0 ? (isPixiV8() ? new BlurFilter({ strength: 2.8, quality: 2 }) : new (BlurFilter as any)(2.8, 2)) : undefined;
   if (blur) { blur.blendMode = blend('add'); halo.filters = [blur]; }
   root.addChild(halo, glow, core); root.zIndex = Math.max(a.y, b.y) + 6;
   w.layers[o.layer ?? 'body'].addChild(root);
