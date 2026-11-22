@@ -10,6 +10,30 @@ function duration(value: number): number {
   return value;
 }
 
+export function woodCharge(w: VfxWorld, o: { target: () => Vec3; duration?: number; onDone?: () => void }): Handle {
+  const dur = duration(o.duration ?? 300), t = woodTextures(), g = group(w, Infinity, undefined, 65);
+  let age = 0;
+  g.addHandle(w.addUpdater((dt) => {
+    age += dt;
+    if (age >= dur) { g.stop(); o.onDone?.(); }
+  }));
+  g.add(w.spawn({ texture: t.halo, x: 0, y: 0, follow: o.target, life: Infinity, blend: 'add',
+    scale: () => 0.65 + clamp01(age / Math.max(1, dur)) * 0.45, alpha: 0.65, zBias: 6 }));
+  g.add(w.spawn({ texture: t.seed, x: 0, y: 0, follow: o.target, life: Infinity, blend: 'normal',
+    scale: () => 0.3 + clamp01(age / Math.max(1, dur)) * 0.45, rotation: -0.5, spin: 0.6, zBias: 8 }));
+  for (let i = 0; i < 7; i++) {
+    const phase = i / 7 * TAU;
+    g.add(w.spawn({ texture: t.leaves[i % 3], x: 0, y: 0, follow: o.target, life: Infinity, blend: 'normal',
+      scale: 0.2 + i % 3 * 0.035, zBias: 7,
+      onUpdate: (q) => {
+        const u = clamp01(age / Math.max(1, dur)), a = phase + u * 2.2, r = 30 * (1 - u) + 4;
+        q.px = Math.cos(a) * r; q.pz = Math.sin(a) * r * 0.65;
+        q.rotation = a - 0.5; q.o.alpha = 1 - u * 0.55;
+      } }));
+  }
+  return g;
+}
+
 export function seedFlight(w: VfxWorld, o: { from: Vec3; to: Vec3; speed?: number; onHit?: (at: Vec3) => void }): Handle {
   if (!Number.isFinite(o.speed ?? 620) || (o.speed ?? 620) <= 0) throw new RangeError('Seed speed must be positive and finite');
   const t = woodTextures(), pos = { ...o.from }, duration = Math.hypot(o.to.x - o.from.x, o.to.y - o.from.y) / (o.speed ?? 620) * 1000;
@@ -23,9 +47,11 @@ export function seedFlight(w: VfxWorld, o: { from: Vec3; to: Vec3; speed?: numbe
     if (u === 1) { g.stop(); o.onHit?.({ ...pos }); }
   }));
   g.add(w.spawn({ texture: t.seed, x: 0, y: 0, follow: () => pos, life: Infinity,
-    blend: 'normal', scale: 0.47, spin: 1.4, rotation: -0.2, zBias: 5 }));
-  g.addHandle(w.stream({ rate: 8, make: () => ({ texture: pick(t.leaves), ...pos, life: 600,
-    blend: 'normal', scale: [rand(0.1, 0.17), 0.04], alpha: [0.8, 0], vx: rand(-25, 5), vz: -18,
+    blend: 'normal', scale: 0.85, spin: 1.4, rotation: -0.2, zBias: 5 }));
+  g.add(w.spawn({ texture: t.halo, x: 0, y: 0, follow: () => pos, life: Infinity,
+    blend: 'add', scale: 0.85, alpha: 0.55, zBias: 4 }));
+  g.addHandle(w.stream({ rate: 16, make: () => ({ texture: pick(t.leaves), ...pos, life: 380,
+    blend: 'normal', scale: [rand(0.18, 0.28), 0.06], alpha: [0.95, 0], vx: rand(-35, -5), vz: -18,
     rotation: rand(0, TAU), spin: rand(-2, 2) }) }));
   return g;
 }

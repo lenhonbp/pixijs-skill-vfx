@@ -8,7 +8,7 @@ import {
   tornado, windSlash, windSweep, vortex, windWisps, gustLines,
   slash, hitSpark, hitFlash, projectile, lightningChain, telegraph, shockwave,
   fireball, fireBreath, fireCharge, fireImpact, fireMeteor,
-  seedFlight, springBloom, toxicSporeCloud,
+  woodCharge, seedFlight, springBloom, toxicSporeCloud,
   damageOverTime, stun, shock, freeze, slow, root, statChange, damageNumber,
   silence, blind, armorBreak, mark, fear, aura, empower, haste,
   goldenBell, stoneArmor, spiritGuardian, mountainCrash,
@@ -153,15 +153,15 @@ export const SKILLS: SkillDef[] = [
   // ------------------------------------------------------------------ MỘC / WOOD
   {
     id: 'moc-vine-bind', element: 'moc', category: 'control', en: 'Vine Bind', vi: 'Triền Đằng Phược',
-    desc: 'A sprouting seed tears open the soil and grows binding vines.', uses: ['seedFlight', 'root'], length: 3300,
+    desc: 'A sprouting seed tears open the soil and grows binding vines.', uses: ['woodCharge', 'seedFlight', 'root'], length: 3300,
     cast: ({ w, tex, caster, target, hurt }) => {
-      w.after(300, () => seedFlight(w, {
+      woodCharge(w, { target: () => hand(caster), duration: 300, onDone: () => seedFlight(w, {
         from: hand(caster), to: chest(target, 0.3), speed: 620,
         onHit: () => {
           hurt(target, 42, { palette: P.moc, feedback: 0 });
           root(w, tex, { target: feetOf(target), height: target.height, duration: 2300, palette: P.moc }).pulse();
         },
-      }));
+      }) });
     },
   },
   {
@@ -175,9 +175,10 @@ export const SKILLS: SkillDef[] = [
   },
   {
     id: 'moc-toxic-spores', element: 'moc', category: 'debuff', en: 'Toxic Spores', vi: 'Độc Chướng Vụ',
-    desc: 'Mushrooms erupt and breathe a lingering cloud of poisonous spores.', uses: ['toxicSporeCloud', 'damageOverTime(poison)'], length: 4300,
-    cast: ({ w, tex, target, targets }) => {
+    desc: 'Mushrooms erupt and breathe a lingering cloud of poisonous spores.', uses: ['woodCharge', 'toxicSporeCloud', 'damageOverTime(poison)'], length: 4300,
+    cast: ({ w, tex, caster, target, targets }) => {
       const c = { x: target.feet.x, y: target.feet.y };
+      woodCharge(w, { target: () => hand(caster), duration: 350 });
       toxicSporeCloud(w, {
         at: c, radius: 120, duration: 2600,
         onBloom: () => near(c, 125, targets).forEach((u) => damageOverTime(w, tex, {

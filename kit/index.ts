@@ -23,5 +23,5 @@ export * from './trail';
 export * from './postfx';
 export * from './wind';
 export { fireball, fireBreath, fireCharge, fireImpact, fireMeteor } from './fire';
-export { seedFlight, springBloom, toxicSporeCloud } from './wood';
+export { woodCharge, seedFlight, springBloom, toxicSporeCloud } from './wood';
 export { woodTextures } from './wood-textures';

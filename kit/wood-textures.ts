@@ -67,7 +67,7 @@ function cloud(phase: number): Texture {
 
 interface WoodTextures {
   leaves: Texture[]; petals: Texture[]; mushrooms: Texture[]; clouds: Texture[];
-  seed: Texture; stem: Texture; thorn: Texture; grass: Texture; center: Texture; spore: Texture; soil: Texture; moss: Texture; shaft: Texture;
+  seed: Texture; stem: Texture; thorn: Texture; grass: Texture; center: Texture; spore: Texture; soil: Texture; moss: Texture; shaft: Texture; halo: Texture;
 }
 
 let cache: WoodTextures | undefined;
@@ -78,6 +78,11 @@ export function woodTextures(): WoodTextures {
     petals: [petal('#e8a5b6'), petal('#fff3d7'), petal('#efc453')],
     mushrooms: [mushroom('#837644'), mushroom('#886775')],
     clouds: [cloud(0), cloud(2), cloud(4)],
+    halo: draw(96, 96, (c) => {
+      const g = c.createRadialGradient(48, 48, 0, 48, 48, 48);
+      g.addColorStop(0, '#dceabbaa'); g.addColorStop(0.25, '#91b55c66'); g.addColorStop(1, '#658b4400');
+      c.fillStyle = g; c.fillRect(0, 0, 96, 96);
+    }),
     seed: draw(64, 40, (c) => {
       const g = c.createLinearGradient(10, 8, 27, 35);
       g.addColorStop(0, '#c6ad6c'); g.addColorStop(0.4, '#7e663c'); g.addColorStop(1, '#33271f');

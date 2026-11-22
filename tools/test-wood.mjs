@@ -37,7 +37,21 @@ try {
       }
       const w = world(), h = factory(w, 4000); step(w, 700); h.stop(); h.stop(); clean(w); check(!h.alive, 'idempotent wood stop');
     }
-    let w = world(), hits = 0;
+    let w = world(), releases = 0;
+    const charge = kit.woodCharge(w, { target: () => at, duration: 300, onDone: () => releases++ });
+    check(w.particles.some((p) => p.o.texture === wood.seed && p.sprite.alpha > 0), 'caster sprout visible immediately');
+    step(w, 100);
+    check(w.particles.filter((p) => wood.leaves.includes(p.o.texture)).length === 7 && releases === 0, 'leaves gather during caster windup');
+    step(w, 188); check(releases === 0, 'charge preserves windup timing');
+    step(w, 16); check(releases === 1 && !charge.alive, 'charge releases exactly once'); clean(w);
+    w = world(); const stoppedCharge = kit.woodCharge(w, { target: () => at, onDone: () => releases++ });
+    stoppedCharge.stop(); stoppedCharge.stop(); clean(w); check(releases === 1, 'cancelled charge does not release');
+    w = world(); kit.woodCharge(w, { target: () => at, duration: 0, onDone: () => releases++ });
+    clean(w); check(releases === 2, 'zero-duration charge releases once');
+    w = world(); const badCharge = kit.woodCharge(w, { target: () => at, onDone: () => { throw new Error('charge callback'); } });
+    let chargeError; try { step(w, 304); } catch (e) { chargeError = e.message; }
+    check(chargeError === 'charge callback' && !badCharge.alive, 'charge error propagates after stop'); clean(w);
+    w = world(); let hits = 0;
     kit.seedFlight(w, { from: at, to: { ...at, x: 400, z: 35 }, onHit: () => hits++ });
     step(w, 200); check(w.particles.some((p) => p.o.texture === wood.seed && p.o.blend === 'normal'), 'physical seed');
     clean(w); check(hits === 1, 'seed hits once');
@@ -49,6 +63,7 @@ try {
     for (const invoke of [
       (w) => kit.seedFlight(w, { from: at, to: at, speed: 0 }),
       (w) => kit.springBloom(w, { target: () => at, duration: -1 }),
+      (w) => kit.woodCharge(w, { target: () => at, duration: -1 }),
       (w) => kit.toxicSporeCloud(w, { at, duration: NaN }),
     ]) {
       w = world(); let error; try { invoke(w); } catch (e) { error = e; }
@@ -89,7 +104,7 @@ try {
     return [
       'Wood textures: cached, independent of shared leaf PASS',
       'Wood recipes: normal/default/zero duration, stop, finite transforms and cleanup PASS',
-      'Seed: physical sprite, impact/cancellation/zero distance and callback errors PASS',
+      'Charge: visible caster sprout/leaves, timing/cancellation/zero duration/errors; seed: physical flight/impact/cancellation/errors PASS',
       'Wood options: invalid duration/speed rejected PASS',
       'Spores: warning dispatch, cancellation, empty cloud, callback errors; vines: depth/movement/squeeze/wither PASS',
       'Poison: default bubbles unchanged, opt-in grains and final ticks PASS',
