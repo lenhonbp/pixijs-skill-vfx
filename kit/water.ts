@@ -43,12 +43,12 @@ export function frostNova(w: VfxWorld, tex: VfxTextures, o: {
 }) {
   const at={...o.target()}, p=o.palette, dur=Math.max(300,o.duration??2200), radius=o.radius??75;
   frostGround(w,at,radius*1.5,p,dur+850);
+  const g=group(w,dur,()=> { chunks(w,o.target(),p,27); mist(w,tex,o.target(),p,12,42); o.onShatter?.(); },35);
   for(let i=0;i<12;i++) {
     const a=i/12*TAU;
-    w.after(i*14,()=> iceSpire(w,{x:at.x+Math.cos(a)*radius,y:at.y+Math.sin(a)*radius*w.groundSquash},rand(37,72),p,rand(850,1400),Math.cos(a)*.38));
+    g.addHandle(w.after(i*14,()=> iceSpire(w,{x:at.x+Math.cos(a)*radius,y:at.y+Math.sin(a)*radius*w.groundSquash},rand(37,72),p,rand(850,1400),Math.cos(a)*.38)));
   }
   mist(w,tex,at,p,15,radius);
-  const g=group(w,dur,()=> { chunks(w,o.target(),p,27); mist(w,tex,o.target(),p,12,42); o.onShatter?.(); },35);
   for(let i=0;i<5;i++) {
     const a=i/5*TAU;
     g.add(w.spawn({texture: waterTextures().crystals[i%3], x:Math.cos(a)*o.height*.23,y:Math.sin(a)*o.height*.13,
