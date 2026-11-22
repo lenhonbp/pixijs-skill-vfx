@@ -45,7 +45,8 @@ function reaction(w: VfxWorld, sprite: Sprite, active: WeakMap<Sprite, Handle>, 
 /** Replace any previous skin, then ease back to the true pre-reaction tint. */
 export function hitSkin(w: VfxWorld, sprite: Sprite, skin: HitSkinName,
   o: { duration?: number; strength?: number } = {}): Handle {
-  const duration = o.duration ?? 300, strength = o.strength ?? 0.9;
+  const duration = o.duration ?? (skin === 'holy' ? 110 : skin === 'wind' ? 120 : 300);
+  const strength = o.strength ?? (skin === 'holy' ? 0.35 : skin === 'wind' ? 0.40 : 0.9);
   if (!Number.isFinite(duration) || !Number.isFinite(strength)) throw new RangeError('hitSkin options must be finite');
   tints.get(sprite)?.stop();
   if (sprite.destroyed) return reaction(w, sprite, tints, 0, () => {}, () => {});
@@ -60,7 +61,7 @@ export function hitSkin(w: VfxWorld, sprite: Sprite, skin: HitSkinName,
       : skins[skin];
     const fade = skin === 'char' ? clamp01((t - 0.2) / 0.8) : t;
     const a = clamp01(strength) * (1 - outCubic(fade)), k = 1 - a;
-    const gray = k * clamp01(a * 2), keep = k - gray;
+    const gray = skin === 'holy' ? 0 : k * clamp01(a * 2), keep = k - gray;
     const r = gray * 0.2126, g = gray * 0.7152, b = gray * 0.0722;
     filter.matrix = [keep + r, g, b, 0, ((color >> 16) & 255) / 255 * a,
       r, keep + g, b, 0, ((color >> 8) & 255) / 255 * a,

@@ -5,6 +5,8 @@ export type HitSkinName = 'char' | 'ice' | 'shock' | 'holy' | 'shadow' | 'poison
 export interface SkillHit {
   /** VFX-clock ms from cast start, or launch time when travel is set. */
   t: number;
+  /** A status, release or visual contact without a gameplay hurt/heal callback. */
+  effectOnly?: boolean;
   stop?: number;
   shake?: number;
   push?: number;

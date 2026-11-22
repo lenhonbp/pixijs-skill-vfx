@@ -33,6 +33,32 @@ export const PALETTES = {
 
 const TAU = Math.PI * 2;
 
+export interface ShadowSlashOptions extends Vec3 {
+  facing: number;
+  height: number;
+  palette: Palette;
+}
+
+/** Crossing ink crescents with crisp, short-lived violet-white edges. */
+export function shadowSlash(w: VfxWorld, tex: VfxTextures, o: ShadowSlashOptions): void {
+  const edge = o.height * 1.3 / (M.streakLength * Math.sin(0.8));
+  for (const angle of [-0.8, 0.8]) {
+    const base = { x: o.x, y: o.y, z: (o.z ?? 0) + o.height * 0.55,
+      rotation: angle + (o.facing > 0 ? 0 : Math.PI), life: 360, zBias: 8 };
+    w.spawn({ ...base, texture: tex.crescent, blend: 'normal', tint: 0x160b24,
+      scaleX: [0.25, 0.65, outCubic], scaleY: [0.55, 0.3], alpha: [0.85, 0], spin: o.facing * 3 });
+    w.spawn({ ...base, texture: tex.streak, tint: o.palette.main,
+      scaleX: [edge * 0.8, edge, outExpo], scaleY: [0.9, 0.05], alpha: [0.9, 0, inQuad] });
+    w.spawn({ ...base, texture: tex.streak, tint: o.palette.core, life: 280, zBias: 9,
+      scaleX: [edge * 0.8, edge, outExpo], scaleY: [0.22, 0.015], alpha: [0.95, 0, inQuad] });
+  }
+  w.spawn({ texture: tex.glow, x: o.x, y: o.y, z: (o.z ?? 0) + o.height * 0.55,
+    delay: 100, life: 140, scale: [0.35, 0.8, outQuad], alpha: [0.5, 0], tint: o.palette.main, zBias: 7 });
+  w.burst(6, () => ({ texture: tex.streak, x: o.x, y: o.y, z: (o.z ?? 0) + o.height * 0.55,
+    life: rand(150, 280), vx: o.facing * rand(60, 150), vz: rand(-70, 100), drag: 3,
+    faceVelocity: true, scaleX: [0.2, 0], scaleY: 0.2, tint: o.palette.main }));
+}
+
 const recentSparks = new WeakMap<VfxWorld, { x: number; y: number; parts: { p: Particle; options: Particle['o'] }[] }[]>();
 
 /** Small directional impact burst. refresh re-triggers living sparks at the same target instead of stacking bursts. */
@@ -264,11 +290,24 @@ export function dropShadow(w: VfxWorld, tex: VfxTextures, target: () => Vec3, si
   });
 }
 
+export interface ProjectileOptions {
+  from: Vec3;
+  to: Vec3;
+  palette: Palette;
+  speed?: number;
+  arcHeight?: number;
+  size?: number;
+  alpha?: number;
+  /** A rotating rune head and chain links instead of the dot/ember trail. */
+  seal?: boolean;
+  onHit?: (at: Vec3) => void;
+}
+
 /** Homing-free projectile with an arc, glow core, ember trail and ground shadow. */
 export function projectile(
   w: VfxWorld,
   tex: VfxTextures,
-  o: { from: Vec3; to: Vec3; palette: Palette; speed?: number; arcHeight?: number; size?: number; alpha?: number; onHit?: (at: Vec3) => void },
+  o: ProjectileOptions,
 ): Handle {
   const fz = o.from.z ?? 40, tz = o.to.z ?? 40;
   const dist = Math.hypot(o.to.x - o.from.x, o.to.y - o.from.y);
@@ -282,16 +321,16 @@ export function projectile(
   const follow = () => pos;
   const parts = [
     w.spawn({ texture: tex.glow, x: 0, y: 0, follow, life: Infinity, scale: 1.3 * size, alpha: 0.8 * alpha, tint: p.main, zBias: 2 }),
-    w.spawn({ texture: tex.dot, x: 0, y: 0, follow, life: Infinity, scale: 0.75 * size, alpha, tint: p.core, zBias: 3 }),
+    w.spawn({ texture: o.seal ? tex.rune : tex.dot, x: 0, y: 0, follow, life: Infinity, scale: (o.seal ? 0.16 : 0.75) * size, spin: o.seal ? 9 : 0, alpha, tint: p.core, zBias: 3 }),
   ];
   parts.push(dropShadow(w, tex, () => pos, size));
   // Continuous ribbon behind the core; particles add sparkle on top.
   const ribbon = ribbonTrail(w, { target: follow, width: 16 * size, segments: 12, tint: p.main, alpha, zBias: 1 });
   const trail = w.stream({
-    rate: 90,
+    rate: o.seal ? 35 : 90,
     make: () => ({
-      texture: tex.dot, x: pos.x + rand(-4, 4), y: pos.y + rand(-3, 3), z: pos.z + rand(-4, 4), life: rand(250, 420),
-      vz: rand(10, 50), drag: 2, scale: [rand(0.5, 0.8) * size, 0, inQuad], alpha, tint: colorRamp(p.core, p.main, p.dark, 0.25),
+      texture: o.seal ? tex.ring : tex.dot, x: pos.x + rand(-4, 4), y: pos.y + rand(-3, 3), z: pos.z + rand(-4, 4), life: rand(250, 420),
+      vz: rand(10, 50), drag: 2, scale: [rand(o.seal ? 0.045 : 0.5, o.seal ? 0.075 : 0.8) * size, 0, inQuad], alpha, tint: colorRamp(p.core, p.main, p.dark, 0.25),
     }),
   });
   const cleanup = () => {

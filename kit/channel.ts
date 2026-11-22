@@ -1,13 +1,86 @@
 // Channeled and cast-time effects: beams, cone breath, charge-up, summon circles.
 import type { VfxWorld, Vec3, Handle, Particle } from './vfx-world';
+import type { Sprite } from 'pixi.js';
 import { VfxTextures, TEX_METRICS as M } from './textures';
 import { shockwave, type Palette } from './recipes';
 import { floorRing } from './floor-ring';
 import { group, ms } from './group';
 import { Distortion } from './postfx';
+import { burnFlames } from './fire';
 import { clamp01, envelope, inQuad, lerp, lerpColor, outBack, outCubic, outQuad, rand } from './ease';
 
 const TAU = Math.PI * 2;
+
+export interface BattleCryOptions {
+  target: () => Vec3;
+  height: number;
+  facing: number;
+  palette: Palette;
+  sprite?: Sprite;
+  windup?: number;
+  duration?: number;
+}
+
+/** Braced breath-in, directional sound fronts, then a single ember-wreathed rune. */
+export function battleCry(w: VfxWorld, tex: VfxTextures, o: BattleCryOptions): Handle {
+  const windup = o.windup ?? 340, duration = o.duration ?? 2800, h = o.height, s = h / 96, p = o.palette;
+  const g = group(w, windup + duration, undefined, 250);
+  if (o.sprite) {
+    const sprite = o.sprite, sy = sprite.scale.y, rotation = sprite.rotation;
+    let age = 0, bracing = true;
+    const restore = () => {
+      if (bracing && !sprite.destroyed) { sprite.scale.y = sy; sprite.rotation = rotation; }
+      bracing = false;
+    };
+    const unown = w.own(restore);
+    g.addHandle({ stop: () => { restore(); unown(); }, get alive() { return bracing; } });
+    g.addHandle(w.addUpdater((dt) => {
+      age += dt;
+      if (sprite.destroyed || age >= windup + 180) { restore(); unown(); return false; }
+      const brace = age < windup ? outCubic(age / windup) : 1 - outQuad((age - windup) / 180);
+      sprite.scale.y = sy * (1 - brace * 0.09); sprite.rotation = rotation - o.facing * brace * 0.055;
+    }));
+  }
+  g.add(w.spawn({ texture: tex.glow, x: 0, y: 0, follow: o.target, layer: 'ground', groundAligned: true,
+    life: windup + 450, scale: [0.2 * s, 1.1 * s, outCubic], alpha: envelope(0.4, 0.5, 0.4), tint: p.main }));
+  g.add(w.spawn({ texture: tex.glow, x: 0, y: 0, z: h * 0.55, follow: o.target,
+    life: windup, scale: [0.15 * s, 0.65 * s], alpha: [0.05, 0.32], tint: p.main, zBias: 4 }));
+  for (let i = 0; i < 22; i++) {
+    const a = rand(0, TAU), r = rand(35, 75) * s, dust = i % 3 === 0;
+    const x = Math.cos(a) * r, z = Math.sin(a) * r;
+    g.add(w.spawn({ texture: dust ? tex.puff : tex.streak, blend: dust ? 'normal' : 'add',
+      x, y: 0, z: h * 0.55 + z, follow: o.target, life: windup, vx: -x / windup * 1000,
+      vz: -z / windup * 1000, faceVelocity: !dust, scaleX: dust ? 0.12 * s : [0.12 * s, 0.3 * s],
+      scaleY: dust ? 0.18 * s : 0.22 * s, alpha: envelope(0.15, 0.65, dust ? 0.3 : 0.65),
+      tint: dust ? 0x8c5841 : p.main }));
+  }
+  g.addHandle(w.after(windup, () => {
+    const at = o.target();
+    shockwave(w, tex, { ...at, radius: 100 * s, palette: p, duration: 450 });
+    w.shake(3, 180);
+    for (let i = 0; i < 3; i++) g.add(w.spawn({ texture: tex.crescent, ...at, z: h * 0.65,
+      delay: i * 85, life: 430, vx: o.facing * 75 * s, rotation: o.facing > 0 ? 0 : Math.PI,
+      scaleX: [0.15 * s, 0.95 * s, outCubic], scaleY: [0.2 * s, 0.85 * s, outCubic],
+      alpha: [0.6 - i * 0.1, 0], tint: i === 0 ? p.core : p.main, zBias: 8 }));
+    for (let i = 0; i < 12; i++) {
+      const a = i * TAU / 12 + rand(-0.1, 0.1), speed = rand(65, 130) * s;
+      g.add(w.spawn({ texture: tex.puff, blend: 'normal', ...at, z: 3, life: rand(550, 850),
+        vx: Math.cos(a) * speed, vy: Math.sin(a) * speed * w.groundSquash, vz: rand(8, 25), drag: 2,
+        scale: [0.15 * s, 0.5 * s], alpha: envelope(0.1, 0.3, 0.28), tint: 0x98745b, spin: rand(-1, 1) }));
+    }
+    const rune = floorRing(w, tex, { around: o.target, texture: tex.rune, textureRadius: M.runeRadius,
+      radius: 44 * s, palette: p, duration, alpha: ms.env(duration, 180, 500, 0.65), spin: 0.25 });
+    g.add(rune.far); g.add(rune.near);
+    g.add(w.spawn({ texture: tex.glow, x: 0, y: 0, z: h * 0.42, follow: o.target,
+      life: duration, scaleX: 0.6 * s, scaleY: 1.2 * s, alpha: ms.env(duration, 200, 650, 0.15), tint: p.main, zBias: -1 }));
+    g.addHandle(w.stream({ rate: 20, duration: duration - 300, make: () => ({ texture: tex.dot,
+      x: rand(-22, 22) * s, y: rand(-8, 8) * s, z: rand(3, h * 0.35), follow: o.target,
+      life: rand(600, 1000), vz: rand(35, 75) * s, vx: rand(-9, 9) * s,
+      scale: [rand(0.045, 0.09) * s, 0], alpha: envelope(0.1, 0.5, 0.75), tint: [p.core, p.main] }) }));
+    g.addHandle(burnFlames(w, o.target, h * 0.85, duration - 400, p));
+  }));
+  return g;
+}
 
 /** Lay a beam sprite (anchorX 0) between two 3D points; sorted at the nearer end. */
 function placeSegment(q: Particle, a: Vec3, b: Vec3, scaleY: number) {
@@ -248,36 +321,49 @@ export function chargeUp(w: VfxWorld, tex: VfxTextures, o: { target: () => Vec3;
   return g;
 }
 
+export interface SummonCircleOptions {
+  x: number;
+  y: number;
+  palette: Palette;
+  radius?: number;
+  duration?: number;
+  linger?: number;
+  columnAlpha?: number;
+  onSummon?: () => void;
+}
+
 /** Rune circle on the ground that charges for `duration`, then a pillar of light and onSummon. */
-export function summonCircle(w: VfxWorld, tex: VfxTextures, o: { x: number; y: number; palette: Palette; radius?: number; duration?: number; columnAlpha?: number; onSummon?: () => void }): Handle {
+export function summonCircle(w: VfxWorld, tex: VfxTextures, o: SummonCircleOptions): Handle {
   const p = o.palette;
   const r = o.radius ?? 70;
   const dur = o.duration ?? 1300;
   const k = r / M.runeRadius;
   const gnd = { layer: 'ground', groundAligned: true, x: o.x, y: o.y } as const;
-  const total = dur + 700;
-  const g = group(w, total, undefined, 300);
-  const open = (t: number) => outBack(clamp01((t * total) / 320));
-  g.add(w.spawn({ ...gnd, texture: tex.glow, life: total, scale: r / 34, alpha: ms.env(total, 200, 500, 0.45), tint: p.main }));
+  const total = dur + (o.linger ?? 700);
+  const g = group(w, total, undefined, 180);
+  const open = (t: number) => outCubic(clamp01((t * total) / 300)) * (1 - outCubic(clamp01((t * total - total + 450) / 450)));
+  g.add(w.spawn({ ...gnd, texture: tex.glow, life: total, scale: r / 48, alpha: ms.env(total, 300, 500, 0.12), tint: p.main }));
   const outer = floorRing(w, tex, { x: o.x, y: o.y, texture: tex.rune, textureRadius: M.runeRadius,
-    radius: r, palette: p, duration: total, spin: 0.5, scale: (t) => k * open(t), alpha: ms.env(total, 150, 500, 0.95) });
-  const inner = floorRing(w, tex, { x: o.x, y: o.y, texture: tex.rune, textureRadius: M.runeRadius,
-    radius: r * 0.55, palette: p, duration: total, spin: -0.9, rotation: 0.4,
-    scale: (t) => k * 0.55 * open(t), alpha: ms.env(total, 250, 500, 0.7), tint: p.core });
+    radius: r, palette: p, duration: total, spin: 0.12, scale: (t) => k * open(t),
+    sweep: (t) => t * total / (dur * 0.85), alpha: ms.env(total, 160, 500, 0.85) });
+  const inner = floorRing(w, tex, { x: o.x, y: o.y, radius: r * 0.62, palette: p, duration: total,
+    scale: (t) => r * 0.62 / M.ringRadius * open(t),
+    sweep: (t) => (t * total - 160) / (dur * 0.8), alpha: ms.env(total, 280, 500, 0.5) });
   for (const ring of [outer, inner]) { g.add(ring.far); g.add(ring.near); }
-  for (let i = 0; i < 6; i++) {
-    const a = (i / 6) * TAU;
+  for (let i = 0; i < 4; i++) {
+    const a = (i / 4) * TAU;
     g.add(w.spawn({
-      texture: tex.glow, x: o.x + Math.cos(a) * r * 0.88, y: o.y + Math.sin(a) * r * 0.88 * w.groundSquash, z: 30, life: dur, delay: 150 + i * 60, zBias: 2,
-      scaleX: 0.22, scaleY: [0.2, 1.6, outCubic], alpha: envelope(0.2, 0.7, 0.3), tint: p.main,
+      texture: tex.rune, x: o.x, y: o.y, z: 4, life: 900, delay: 250 + i * 150, zBias: 2,
+      scale: [0.028, 0.018], alpha: envelope(0.15, 0.5, 0.7), tint: p.main, spin: 1.5, vz: 55,
+      onUpdate: (q, t) => { q.px = Math.cos(a + t * 1.8) * r * 0.8; q.py = Math.sin(a + t * 1.8) * r * 0.8 * w.groundSquash; },
     }));
   }
   g.addHandle(w.stream({
-    rate: 45, duration: dur,
+    rate: 10, duration: dur,
     make: () => {
       const a0 = rand(0, TAU), spin = 2.5;
       return {
-        texture: tex.dot, x: o.x, y: o.y, z: 2, life: 700, zBias: 3, vz: rand(20, 60), scale: [0.35, 0.1], tint: [p.main, p.core],
+        texture: tex.dot, x: o.x, y: o.y, z: 2, life: 500, zBias: 3, vz: rand(20, 50), scale: [0.075, 0], alpha: [0.65, 0], tint: p.main,
         onUpdate: (q, t) => {
           const rr = r * (1 - outQuad(t)) * 0.95;
           const a = a0 + t * spin;
@@ -288,15 +374,18 @@ export function summonCircle(w: VfxWorld, tex: VfxTextures, o: { x: number; y: n
     },
   }));
   g.addHandle(w.after(dur, () => {
-    const a = o.columnAlpha ?? 1;
-    w.spawn({ texture: tex.glow, x: o.x, y: o.y, z: 90, life: 600, zBias: 8, scaleX: [0.6, 1.4, outCubic], scaleY: [2, 6, outCubic], alpha: [0.9 * a, 0, inQuad], tint: p.main });
-    w.spawn({ texture: tex.glow, x: o.x, y: o.y, z: 90, life: 380, zBias: 9, scaleX: [0.3, 0.5], scaleY: [2, 5], alpha: [a, 0], tint: p.core });
-    shockwave(w, tex, { x: o.x, y: o.y, radius: r * 1.6, palette: p });
-    w.burst(20, () => {
-      const a = rand(0, TAU), sp = rand(100, 260);
-      return { texture: tex.star, x: o.x, y: o.y, z: rand(10, 80), life: rand(400, 700), zBias: 7, vx: Math.cos(a) * sp, vy: Math.sin(a) * sp * w.groundSquash, vz: rand(50, 200), drag: 3, rotation: rand(0, TAU), spin: 4, scale: [0.45, 0], tint: [p.core, p.main] };
+    const a = o.columnAlpha ?? 0.7;
+    g.add(w.spawn({ texture: tex.glow, x: o.x, y: o.y, z: 80, life: 700, zBias: 8,
+      scaleX: [0.18, 0.3, outCubic], scaleY: [0.4, 2.5, outCubic], alpha: envelope(0.1, 0.3, a), tint: p.main }));
+    g.add(w.spawn({ texture: tex.glow, x: o.x, y: o.y, z: 80, life: 500, zBias: 9,
+      scaleX: [0.06, 0.1], scaleY: [0.5, 2.2], alpha: [a * 0.65, 0], tint: p.core }));
+    w.burst(10, () => {
+      const a = rand(0, TAU), sp = rand(15, 45);
+      return { texture: tex.dot, x: o.x, y: o.y, z: rand(4, 30), life: rand(400, 650), zBias: 7,
+        vx: Math.cos(a) * sp, vy: Math.sin(a) * sp * w.groundSquash, vz: rand(60, 140),
+        scale: [0.09, 0], alpha: [0.7, 0], tint: p.main };
     });
-    w.shake(6, 260);
+    w.shake(2, 140);
     o.onSummon?.();
   }));
   return g;

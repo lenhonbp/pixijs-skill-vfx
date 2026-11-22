@@ -15,16 +15,18 @@ export interface NumberOptions extends Vec3 {
   size?: number;
   /** Bake the glyphs into one temporary sprite instead of one particle per glyph. */
   compact?: boolean;
+  /** Lifetime in ms; shorten for preceding hits in a combo to keep the finisher clear. */
+  duration?: number;
 }
 
 // Recent numbers per world, so hits that land together stack instead of overlapping.
-const recent = new WeakMap<VfxWorld, { x: number; y: number; at: number }[]>();
+const recent = new WeakMap<VfxWorld, { x: number; y: number; at: number; until: number }[]>();
 const STACK_MS = 450;
 
-function stackSlot(w: VfxWorld, x: number, y: number) {
-  const list = (recent.get(w) ?? []).filter((r) => w.now - r.at < STACK_MS && w.now >= r.at);
+function stackSlot(w: VfxWorld, x: number, y: number, life: number) {
+  const list = (recent.get(w) ?? []).filter((r) => w.now < r.until && w.now >= r.at);
   const slot = list.filter((r) => Math.abs(r.x - x) < 48 && Math.abs(r.y - y) < 32).length;
-  list.push({ x, y, at: w.now });
+  list.push({ x, y, at: w.now, until: w.now + Math.min(life, STACK_MS) });
   recent.set(w, list);
   return slot;
 }
@@ -34,14 +36,19 @@ export function damageNumber(w: VfxWorld, tex: VfxTextures, o: NumberOptions) {
   if (o.compact && !text) return;
   const h = (o.size ?? 22) * (o.crit ? 1.45 : 1);
   const k = h / M.digitHeight;
-  const adv = 30 * k;
-  const life = o.crit ? 1100 : 850;
-  const slot = stackSlot(w, o.x, o.y);
+  const adv = M.digitWidth * k;
+  const life = o.duration ?? (o.crit ? 1100 : 850);
+  if (!Number.isFinite(life) || life <= 0) throw new RangeError('Damage number duration must be finite and positive');
+  const slot = stackSlot(w, o.x, o.y, life);
   const side = slot === 0 ? 0 : slot % 2 ? 1 : -1;
   const pos = { x: o.x + rand(-4, 4) + side * 18, y: o.y, z: (o.z ?? 70) + 10 + slot * h * 0.95 };
   const drift = rand(-25, 25);
   const pop = o.crit ? 1.6 : 1.25;
   let t = 0;
+  const popScale = () => {
+    const q = t / life;
+    return q < 0.15 ? pop - (pop - 1) * outBack(q / 0.15) : 1;
+  };
   w.addUpdater((dt) => {
     t += dt;
     const u = Math.min(1, t / life);
@@ -56,9 +63,9 @@ export function damageNumber(w: VfxWorld, tex: VfxTextures, o: NumberOptions) {
     });
     if (sources.every(source => source && typeof source.getContext === 'function')) {
       const canvas = document.createElement('canvas');
-      canvas.width = 44 + (text.length - 1) * 30; canvas.height = M.digitHeight;
+      canvas.width = text.length * M.digitWidth; canvas.height = M.digitHeight;
       const ctx = canvas.getContext('2d')!;
-      sources.forEach((source, i) => ctx.drawImage(source, i * 30, 0));
+      sources.forEach((source, i) => ctx.drawImage(source, i * M.digitWidth, 0));
       const texture = textureFromCanvas(canvas);
       const p = w.spawn({ texture, layer: 'top', blend: 'normal', x: 0, y: 0, follow: () => pos,
         life, tint: o.color ?? 0xffffff,
@@ -78,9 +85,16 @@ export function damageNumber(w: VfxWorld, tex: VfxTextures, o: NumberOptions) {
     const g = tex.digits[ch];
     if (!g) return;
     const off = (i - (text.length - 1) / 2) * adv;
+    const glyph = { ...pos };
     w.spawn({
-      texture: g, layer: 'top', blend: 'normal', x: off, y: 0, follow: () => pos, life, tint: o.color ?? 0xffffff,
-      scale: (q) => k * (q < 0.15 ? pop - (pop - 1) * outBack(q / 0.15) : 1),
+      texture: g, layer: 'top', blend: 'normal', x: 0, y: 0, life, tint: o.color ?? 0xffffff,
+      follow: () => {
+        glyph.x = pos.x + off * popScale();
+        glyph.y = pos.y;
+        glyph.z = pos.z;
+        return glyph;
+      },
+      scale: () => k * popScale(),
       alpha: (q) => (q < 0.7 ? 1 : 1 - outQuad((q - 0.7) / 0.3)),
     });
   });

@@ -1,5 +1,7 @@
 // Wind reads through motion: open wisps, swept-up debris and their depth around a target.
+import type { Sprite } from 'pixi.js';
 import { clamp01, envelope, lerp, lerpColor, outCubic, outQuad, rand } from './ease';
+import { afterimage } from './motion';
 import { Distortion } from './postfx';
 import type { Palette } from './recipes';
 import type { VfxTextures } from './textures';
@@ -49,32 +51,32 @@ export function tornado(w: VfxWorld, tex: VfxTextures, o: TornadoOptions): Torna
   let age = 0;
   let tickLeft = 0;
   const env = () => outCubic(clamp01(age / 340)) * clamp01((dur - age) / 460);
-  const radiusAt = (h: number) => R * (0.13 + 0.87 * Math.pow(h, 1.35));
-  const leanAt = (h: number) => R * h * h * (direction * 0.38 + Math.sin(age / 270 + h * 3) * 0.46);
+  const radiusAt = (h: number) => R * (0.16 + 0.84 * Math.pow(h, 1.30));
+  const leanAt = (h: number) => R * h * h * (direction * 0.45 + Math.sin(age / 300 + h * 3) * 0.44);
   const update = w.addUpdater((dt) => {
     age = Math.min(dur, age + dt);
     const t = outQuad(age / dur);
     pos.x = lerp(from.x, to.x, t) + Math.sin(age / 210) * 6;
     pos.y = lerp(from.y, to.y, t) + Math.sin(age / 260) * 4;
     if (o.onTick && (tickLeft -= dt) <= 0) {
-      tickLeft = o.tickMs ?? 250;
+      tickLeft += Math.max(dt, o.tickMs ?? 250);
       o.onTick({ ...pos });
     }
     if (age >= dur) return false;
   });
 
-  const count = Math.max(10, Math.round(27 * w.density));
+  const count = Math.max(14, Math.round(36 * w.density));
   const bands = Array.from({ length: count }, (_, i) => {
     const h0 = (i + 0.5) / count;
     const phase = i * 2.4;
-    const span = rand(1.15, 2.35);
+    const span = rand(1.6, 2.75);
     const r0 = rand(0.86, 1.16);
-    const fog = i % 3 === 0;
-    const opacity = fog ? rand(0.48, 0.74) : rand(0.52, 0.84);
-    const angle = () => phase + age * 0.008 / (0.65 + h0 * 0.48);
+    const fog = i % 2 === 0;
+    const opacity = fog ? rand(0.65, 0.88) : rand(0.64, 0.96);
+    const angle = () => phase + age * 0.010 / (0.62 + h0 * 0.58);
     return flowRibbon(w, {
       life: dur, width: (fog ? rand(28, 45) : rand(5, 11)) * (0.68 + h0 * 0.62),
-      tint: fog ? lerpColor(pal.core, pal.dark, 0.38) : lerpColor(pal.main, pal.core, i % 4 === 0 ? 0.8 : 0.42),
+      tint: fog ? lerpColor(pal.core, pal.dark, 0.50) : lerpColor(pal.main, pal.core, i % 3 === 0 ? 0.8 : 0.42),
       blend: fog ? 'normal' : 'add',
       alpha: () => env() * opacity * (0.64 + Math.sin(angle() - span / 2) * 0.24),
       point: (u, _, out) => {
@@ -87,13 +89,14 @@ export function tornado(w: VfxWorld, tex: VfxTextures, o: TornadoOptions): Torna
     });
   });
   const follow = () => pos;
+  const skirt = vortex(w, tex, { at: follow, radius: R * 1.5, palette: pal, duration: dur });
   const mist = w.stream({
-    rate: 25, duration: Math.max(0, dur - 360), make: () => {
+    rate: 34, duration: Math.max(0, dur - 360), make: () => {
       const h0 = rand(0.06, 0.77), phase = rand(0, TAU), orbit = rand(0.35, 0.88);
       return {
         texture: tex.puff, x: 0, y: 0, follow, life: rand(460, 780), blend: 'normal',
         scaleX: [0.21 + h0 * 0.29, 0.35 + h0 * 0.48], scaleY: rand(0.15, 0.28),
-        tint: lerpColor(DUST, pal.core, rand(0.42, 0.65)), alpha: envelope(0.22, 0.56, 0.30),
+        tint: lerpColor(DUST, pal.core, rand(0.42, 0.65)), alpha: envelope(0.22, 0.56, 0.49),
         onUpdate: (p, t) => {
           const h = h0 + t * 0.19;
           const a = phase + t * 5.6, r = radiusAt(h) * orbit;
@@ -112,7 +115,7 @@ export function tornado(w: VfxWorld, tex: VfxTextures, o: TornadoOptions): Torna
       const life = rand(560, 1050);
       return {
         texture: o.leaves ? tex.leaf : tex.rock, x: 0, y: 0, follow, life, blend: 'normal',
-        scale: o.leaves ? rand(0.21, 0.42) : rand(0.13, 0.24), spin: rand(-10, 10),
+        scale: o.leaves ? rand(0.26, 0.56) : rand(0.13, 0.24), spin: rand(-10, 10),
         tint: o.leaves ? lerpColor(0xbbae79, pal.main, 0.18) : DUST,
         alpha: envelope(0.10, 0.50, 0.82),
         onUpdate: (p, t) => {
@@ -130,14 +133,14 @@ export function tornado(w: VfxWorld, tex: VfxTextures, o: TornadoOptions): Torna
     rate: 32, duration: Math.max(0, dur - 300), make: () => {
       // Ejected dust stays in world space, so the funnel leaves a wake instead of dragging a decal.
       const a = rand(0, TAU);
-      const r = rand(R * 0.20, R * 0.62);
+      const r = rand(R * 0.25, R * 0.90);
       const speed = rand(70, 140);
       return {
         texture: tex.puff, x: pos.x + Math.cos(a) * r, y: pos.y + Math.sin(a) * r * w.groundSquash,
         z: rand(1, 9), life: rand(420, 730), blend: 'normal',
         vx: Math.cos(a + 0.9) * speed, vy: Math.sin(a + 0.9) * speed * w.groundSquash,
-        vz: rand(6, 24), drag: 2.3, scale: [0.21, 0.58, outQuad], tint: DUST,
-        alpha: envelope(0.16, 0.75, 0.45 * env()), spin: rand(-2, 2),
+        vz: rand(6, 24), drag: 2.3, scale: [0.25, 0.80, outQuad], tint: DUST,
+        alpha: envelope(0.16, 0.75, 0.53 * env()), spin: rand(-2, 2),
       };
     },
   });
@@ -149,6 +152,7 @@ export function tornado(w: VfxWorld, tex: VfxTextures, o: TornadoOptions): Torna
     pos,
     stop() {
       update.stop();
+      skirt.stop();
       debris.stop();
       mist.stop();
       dust.stop();
@@ -177,7 +181,7 @@ export function windSlash(
   const edge = (u: number, offset: number, out: Vec3) => {
     const bank = -(Math.sign(cos) || 1) * (0.35 + Math.sin(age / dur * Math.PI * 1.7) * 0.28);
     const wing = u * 47 * size;
-    const bow = (Math.pow(Math.max(0, 1 - u * u), 0.8) * 27 - offset) * size;
+    const bow = (Math.pow(Math.max(0, 1 - u * u), 0.8) * 27 - offset - 27) * size;
     out.x = pos.x + cos * bow - sin * wing * Math.cos(bank);
     out.y = pos.y + (sin * bow + cos * wing * Math.cos(bank)) * squash;
     out.z = pos.z + wing * Math.sin(bank) + Math.sin(u * Math.PI) * 5 * size;
@@ -359,4 +363,85 @@ export function gustLines(w: VfxWorld, tex: VfxTextures, o: Vec3 & { angle: numb
       alpha: envelope(0.10, 0.76, 0.83), tint: lerpColor(o.palette.main, o.palette.core, rand(0, 0.70)),
     };
   });
+}
+
+/** A short, directional pressure front: curved air sheets above a separate layer of blown dust. */
+export function windPressure(w: VfxWorld, tex: VfxTextures, o: {
+  at: Vec3; angle: number; palette: Palette; radius?: number; spread?: number; duration?: number; inward?: boolean;
+}): void {
+  const R = o.radius ?? 88, dur = Math.max(1, o.duration ?? 360), span = o.spread ?? Math.PI * 0.84;
+  const { angle, palette, inward } = o, at = { ...o.at };
+  const sq = w.groundSquash;
+  for (let i = 0; i < 5; i++) {
+    const onFloor = i === 4;
+    const delay = dur * i * 0.038;
+    const fade = envelope(0.13, inward ? 0.17 : 0.75, [1, 0.80, 0.72, 0.58, 0.78][i]);
+    flowRibbon(w, {
+      layer: onFloor ? 'ground' : 'body', blend: i === 2 || onFloor ? 'normal' : 'add',
+      life: dur, width: [13, 8, 34, 6, 23][i],
+      tint: [palette.core, palette.main, lerpColor(palette.dark, palette.core, 0.60), palette.core, DUST][i],
+      alpha: (ms) => fade(clamp01((ms - delay) / (dur - delay))),
+      point: (u, ms, out) => {
+        const t = clamp01((ms - delay) / (dur - delay));
+        const fan = (u - 0.5) * span * (1 - i * 0.10);
+        const a = angle + fan + (i % 3 - 1) * span * 0.13 + t * 0.25;
+        const p = inward ? (1 - t) ** 1.6 : outCubic(t);
+        const r = R * (0.06 + p * (1 - i * 0.09) * (1 - Math.abs(u - 0.5) * 0.40));
+        radial(out, at, sq, a, r, onFloor ? -(at.z ?? 0) + 3 : (i - 1.7) * R * 0.075 + Math.sin(u * Math.PI) * 8);
+      },
+    });
+  }
+  w.burst(13, () => {
+    const a = angle + rand(-span * 0.52, span * 0.52), r = R * rand(0.42, 0.88);
+    const travel = inward ? -1 : 1, life = dur * rand(0.67, 1.1);
+    const vx = Math.cos(a) * r, vy = Math.sin(a) * r * sq;
+    return {
+      texture: tex.puff, blend: 'normal', x: at.x + (inward ? vx : vx * 0.18), y: at.y + (inward ? vy : vy * 0.18),
+      z: rand(2, 12), life, vx: vx * travel * 1000 / life, vy: vy * travel * 1000 / life, vz: rand(9, 25),
+      scale: inward ? [0.5, 0.18] : [0.22, 0.73, outQuad],
+      alpha: envelope(0.13, 0.66, 0.62), tint: DUST, rotation: a, spin: travel,
+    };
+  });
+}
+
+/** A quick ground step with an ankle wake and a longer shoulder slipstream. The caller moves the unit. */
+export function windRush(w: VfxWorld, tex: VfxTextures, o: {
+  from: Vec3; to: Vec3; palette: Palette; duration?: number; height?: number;
+  sprite?: Sprite; onMove: (p: Vec3) => void; onEnd?: () => void;
+}): Handle {
+  const dur = Math.max(1, o.duration ?? 260), H = o.height ?? 80;
+  const from = { ...o.from }, to = { ...o.to }, pos = { ...from, z: from.z ?? 0 };
+  const angle = Math.atan2((to.y - from.y) / w.groundSquash, to.x - from.x);
+  const sign = Math.sign(to.x - from.x) || 1;
+  const points = [{ ...pos, z: (pos.z ?? 0) + 8 }, { ...pos, z: (pos.z ?? 0) + H * 0.62 }];
+  let age = 0, nextTrail = 0;
+  const update = w.addUpdater((dt) => {
+    age += dt;
+    const t = clamp01(age / dur), e = outCubic(t);
+    pos.x = lerp(from.x, to.x, e);
+    pos.y = lerp(from.y, to.y, e);
+    pos.z = t === 1 ? (to.z ?? 0) : lerp(from.z ?? 0, to.z ?? 0, e) + Math.sin(t * Math.PI) * 9;
+    o.onMove(pos);
+    Object.assign(points[0], { x: pos.x - sign * 8, y: pos.y + 6, z: pos.z + 8 });
+    Object.assign(points[1], { x: pos.x - sign * 23, y: pos.y - 6, z: pos.z + H * (0.55 + 0.14 * Math.sin(t * Math.PI)) });
+    if (age >= nextTrail && t < 0.78) {
+      nextTrail = age + 45;
+      if (o.sprite) afterimage(w, o.sprite, pos, { tint: o.palette.main, life: 220, alpha: 0.48 });
+      gustLines(w, tex, { ...pos, z: pos.z + H * 0.36, angle: angle + Math.PI, palette: o.palette, count: 3, spread: 19 });
+    }
+    if (t >= 1) {
+      wake.forEach((h) => h.stop());
+      o.onEnd?.();
+      return false;
+    }
+  });
+  const wake = points.map((p, i) => ribbonTrail(w, {
+    target: () => p, width: i ? 17 : 10, tint: i ? o.palette.core : o.palette.main,
+    alpha: i ? 0.91 : 0.73, segments: 16, fadeMs: 230,
+  }));
+  windPressure(w, tex, { at: from, angle: angle + Math.PI, palette: o.palette, radius: 62, duration: 410 });
+  return {
+    stop() { update.stop(); wake.forEach((h) => h.stop()); },
+    get alive() { return update.alive; },
+  };
 }

@@ -4,16 +4,16 @@
 // copy one into your project and replace hurt()/returnHome() with your own systems.
 import type { Sprite } from 'pixi.js';
 import {
-  VfxWorld, VfxTextures, Vec3, Palette, WUXING, PHONG, LOI, AnyElementName, SkillTiming, HitSkinName, onHits,
-  tornado, windSlash, windSweep, vortex, windWisps, gustLines,
-  slash, hitSpark, hitFlash, hitSkin, projectile, lightningChain, telegraph, shockwave,
+  VfxWorld, VfxTextures, Vec3, Palette, WUXING, PHONG, LOI, AnyElementName, SkillTiming, HitSkinName, onHits, hitTimes, rockBack,
+  tornado, windSlash, windSweep, vortex, windWisps, windPressure, windRush,
+  slash, shadowSlash, hitSpark, hitFlash, hitSkin, projectile, lightningChain, telegraph, shockwave,
   fireball, fireBreath, fireCharge, fireDragonCrossing, fireImpact, fireMeteor,
   woodCharge, seedFlight, springBloom, toxicSporeCloud,
   damageOverTime, stun, shock, freeze, slow, root, statChange, damageNumber,
-  silence, blind, armorBreak, mark, fear, aura, empower, haste,
+  silence, blind, armorBreak, mark, fear, aura, empower, haste, sigilCharge, sunderingMark, hexField, frailty,
   goldenBell, metalSlash, metalSparks, swordSalute, stoneArmor, spiritGuardian, mountainCrash,
   lightningStrike, staticField, lightningCharge, lightningWarning, lightningStun, stormCloud,
-  dash, blink, leap, beam, chargeUp, summonCircle, spikeLine, spikeRing, swordRain,
+  dash, blink, shadowStep, battleCry, leap, beam, chargeUp, summonCircle, spikeLine, spikeRing, swordRain,
   rand, envelope, outCubic, outQuad, lerp, clamp01,
   frostNova, glacierPath, tidalBeam,
 } from '../kit';
@@ -37,7 +37,7 @@ export interface SkillContext {
   /** All enemies (target included). */
   targets: Unit[];
   /** Apply damage (positive) or healing (negative) and show it. */
-  hurt(u: Unit, amount: number, o?: { crit?: boolean; palette?: Palette; angle?: number; color?: number; feedback?: number; skin?: HitSkinName; push?: number }): void;
+  hurt(u: Unit, amount: number, o?: { crit?: boolean; palette?: Palette; angle?: number; color?: number; feedback?: number; skin?: HitSkinName; push?: number; numberDuration?: number }): void;
   /** Put the caster back on its start position after a movement skill. */
   returnHome(): void;
   /** Show/hide a unit (blink). */
@@ -112,6 +112,25 @@ const MOUNTAIN_CRASH_TIMING: SkillTiming = {
 const SWORD_RAIN_HOVER = 800;
 const SWORD_RAIN_START = 350 + SWORD_RAIN_HOVER;
 const SWORD_RAIN_DURATION = 900;
+
+const SEAL_TIMING: SkillTiming = {
+  windup: 300, hits: [{ t: 300, travel: 950, effectOnly: true, skin: 'shadow', targets: 'primary' }], recovery: 2800,
+};
+const sunderTiming = (count = 3): SkillTiming => ({
+  windup: 300, hits: Array.from({ length: count }, (_, i) => ({ t: 560 + i * 180,
+    effectOnly: true, stop: 22, shake: 1.3, skin: 'metal', targets: 'all' })), recovery: 2700,
+});
+const SHADOW_STEP_TIMING: SkillTiming = {
+  windup: 260, hits: [{ t: 580, skin: 'shadow', targets: 'primary' }], recovery: 800,
+};
+const frailtyTiming = (count = 3): SkillTiming => ({
+  windup: 350, hits: Array.from({ length: count }, (_, i) => ({ t: 850 + i * 140,
+    effectOnly: true, push: 5, skin: 'poison', targets: 'all' })), recovery: 2000,
+});
+const SUMMON_TIMING: SkillTiming = {
+  windup: 1200, hits: [2712, 3362, 4012].map((t, i) => ({ t, stop: i === 2 ? 65 : 35,
+    shake: i === 2 ? 5 : 2, skin: 'holy', targets: i === 2 ? 'all' : 'primary' })), recovery: 1200,
+};
 
 export const SKILLS: SkillDef[] = [
   // ------------------------------------------------------------------ KIM / METAL
@@ -414,106 +433,141 @@ export const SKILLS: SkillDef[] = [
   // ------------------------------------------------------------------ PHONG / WIND (variant element)
   {
     id: 'phong-gale-blade', element: 'phong', category: 'attack', en: 'Gale Blades', vi: 'Phong Nhận Trảm',
-    timing: { windup: 250, hits: Array.from({ length: 3 }, (_, i) => ({ t: 340 + i * 70, travel: 1000, push: 34, skin: 'wind', targets: 'all' })), recovery: 900 },
-    desc: 'A sweeping slash releases three banking wind blades that knock enemies back.', uses: ['chargeUp', 'windSweep', 'windSlash', 'gustLines'], length: 2450,
+    timing: { windup: 280, hits: Array.from({ length: 3 }, (_, i) => ({ t: 280 + i * 65, travel: 1450, stop: i === 0 ? 36 : 0, shake: i === 0 ? 4 : 0, push: 55, skin: 'wind', targets: 'all' })), recovery: 1000 },
+    desc: 'Draw air into the blade, then fan three banking gusts that throw enemies backward.', uses: ['windPressure', 'windSweep', 'windSlash'], length: 2050,
     cast: ({ w, tex, caster, targets, hurt }) => {
-      chargeUp(w, tex, {
-        target: () => hand(caster), palette: P.phong, duration: 250, size: 0.65,
-        onDone: () => {
-          const a = caster.facing > 0 ? 0 : Math.PI;
-          windSweep(w, { target: feetOf(caster), angle: a - 2, palette: P.phong, radius: 75, duration: 230 });
-          targets.slice(0, 3).forEach((u, i) => w.after(90 + i * 70, () => windSlash(w, tex, {
-            from: hand(caster), to: chest(u, 0.45), palette: P.phong, size: 1.1, speed: 1000,
+      const a = caster.facing > 0 ? 0 : Math.PI;
+      windPressure(w, tex, { at: hand(caster), angle: a, radius: 126, palette: P.phong, inward: true, duration: 280 });
+      w.after(280, () => {
+        windSweep(w, { target: feetOf(caster), angle: a - 2, palette: P.phong, radius: 94, duration: 245 });
+        targets.slice(0, 3).forEach((u, i) => {
+          const launch = () => windSlash(w, tex, {
+            from: hand(caster), to: chest(u, 0.52), palette: P.phong, size: i === 0 ? 1.75 : 1.45, speed: 1450,
             onHit: () => {
               const k = angleTo(w, caster, u);
-              hurt(u, Math.round(rand(48, 62)), { palette: P.phong, angle: k, push: 34, feedback: 0.38 });
               const home = { ...u.feet };
-              moveUnit(w, u, { x: home.x + Math.cos(k) * 34, y: home.y + Math.sin(k) * 34 * w.groundSquash, z: 0 }, 140);
-              w.after(520, () => moveUnit(w, u, home, 380));
+              windPressure(w, tex, { at: chest(u, 0.50), angle: k, radius: i === 0 ? 105 : 78, palette: P.phong });
+              if (i === 0) { w.hitStop(36); w.shake(4, 150); }
+              hurt(u, Math.round(rand(48, 62)), { angle: k, push: 9, skin: 'wind' });
+              const x = home.x + Math.cos(k) * 55, y = home.y + Math.sin(k) * 55 * w.groundSquash;
+              moveUnit(w, u, { x, y, z: 16 }, 120);
+              w.after(140, () => moveUnit(w, u, { x, y, z: 0 }, 150, (t) => t * t));
+              w.after(490, () => moveUnit(w, u, home, 360));
             },
-          })));
-        },
+          });
+          if (i === 0) launch();
+          else w.after(i * 65, launch);
+        });
       });
     },
   },
   {
     id: 'phong-whirlwind', element: 'phong', category: 'aoe', en: 'Whirlwind', vi: 'Toàn Phong Trảm',
-    timing: { windup: 170, hits: [{ t: 290, skin: 'wind', targets: 'all' }, { t: 590, skin: 'wind', targets: 'all' }, { t: 890, stop: 60, shake: 4, skin: 'wind', targets: 'all' }], recovery: 1300 },
-    desc: 'Dash in and spin into a cutting whirlwind that hits everything around three times.', uses: ['dash', 'windSweep', 'vortex', 'gustLines'], length: 3000,
+    timing: { windup: 380, hits: [{ t: 448, push: 0, skin: 'wind', targets: 'all' }, { t: 678, push: 0, skin: 'wind', targets: 'all' }, { t: 1008, stop: 65, shake: 7, push: 44, skin: 'wind', targets: 'all' }], recovery: 1450 },
+    desc: 'Rush into the group, cut twice, then blow nearby enemies outward with the last spin.', uses: ['windPressure', 'windRush', 'windSweep', 'vortex'], length: 2650,
     cast: ({ w, tex, caster, target, targets, hurt, returnHome }) => {
-      const to = { x: target.feet.x - caster.facing * 60, y: target.feet.y + 6, z: 0 };
-      dash(w, tex, {
-        from: { ...caster.feet }, to, palette: P.phong, sprite: caster.sprite, duration: 170, height: caster.height,
-        onMove: (p) => { caster.feet.x = p.x; caster.feet.y = p.y; },
+      const a = caster.facing > 0 ? 0 : Math.PI;
+      const to = { x: target.feet.x + caster.facing * 25, y: target.feet.y + 6, z: 0 };
+      windPressure(w, tex, { at: chest(caster, 0.3), angle: a + Math.PI, radius: 94, palette: P.phong, inward: true, duration: 200 });
+      w.after(180, () => windRush(w, tex, {
+        from: caster.feet, to, palette: P.phong, sprite: caster.sprite, duration: 200, height: caster.height,
+        onMove: (p) => Object.assign(caster.feet, p),
         onEnd: () => {
-          vortex(w, tex, { at: feetOf(caster), radius: 113, palette: P.phong, duration: 1230, inward: false });
-          for (let i = 0; i < 3; i++) {
-            w.after(i * 300, () => {
-              windSweep(w, { target: feetOf(caster), height: 24 + i * 12, angle: -1.8 + i * 1.9, palette: P.phong, radius: 106 + i * 12, duration: 420 });
-              w.after(120, () => near(caster.feet, 150, targets).forEach((u) => {
+          vortex(w, tex, { at: feetOf(caster), radius: 144, palette: P.phong, duration: 750, inward: false });
+          const spin = (i: number) => {
+            const finish = i === 2;
+            windSweep(w, { target: feetOf(caster), height: 26 + i * 13, angle: a - 1.8 + i * 1.75, palette: P.phong, radius: [138, 164, 205][i], duration: finish ? 540 : 275 });
+            if (finish) windSweep(w, { target: feetOf(caster), height: 18, angle: a + Math.PI, palette: P.phong, radius: 182, duration: 465 });
+            w.after(68, () => {
+              const victims = near(caster.feet, 183, targets);
+              if (finish && victims.length) { w.hitStop(65); w.shake(7, 210); }
+              victims.forEach((u) => {
                 const angle = angleTo(w, caster, u);
-                hurt(u, Math.round(rand(34, 46)) + i * 12, { palette: P.phong, crit: i === 2, angle, feedback: 0.40 });
-                gustLines(w, tex, { ...chest(u, 0.5), angle: angle + 0.55, palette: P.phong, count: 5, spread: 13 });
-              }));
-              if (i === 2) w.after(130, () => { w.hitStop(60); w.shake(4, 160); });
+                hurt(u, Math.round(rand(34, 46)) + i * 12, { skin: 'wind', crit: finish, angle, numberDuration: finish ? undefined : 200 });
+                if (!finish) return;
+                const home = { ...u.feet };
+                windPressure(w, tex, { at: chest(u, 0.42), angle, radius: 94, palette: P.phong, duration: 390 });
+                moveUnit(w, u, { x: home.x + Math.cos(angle) * 44, y: home.y + Math.sin(angle) * 44 * w.groundSquash, z: 0 }, 180);
+                w.after(460, () => moveUnit(w, u, home, 340));
+              });
             });
-          }
-          w.after(1300, returnHome);
+          };
+          spin(0);
+          w.after(230, () => spin(1));
+          w.after(560, () => spin(2));
+          w.after(1120, returnHome);
         },
-      });
+      }));
     },
   },
   {
     id: 'phong-tornado', element: 'phong', category: 'control', en: 'Dragon Cyclone', vi: 'Long Quyển Phong',
-    timing: { windup: 320, hits: [...Array.from({ length: 7 }, (_, i) => ({ t: 620 + i * 360, skin: 'wind' as const, push: 0, targets: 'all' as const, optional: i === 0 })), { t: 3080, skin: 'wind', targets: 'all' }], recovery: 420 },
-    desc: 'A roaring tornado travels through the enemies, pulls them in and lifts them off the ground.', uses: ['chargeUp', 'tornado', 'vortex'], length: 3600,
+    timing: { windup: 340, hits: [...Array.from({ length: 7 }, (_, i) => ({ t: 640 + i * 360, skin: 'wind' as const, push: 0, targets: 'all' as const, optional: i === 0 })), { t: 3070, stop: 52, shake: 7, skin: 'wind', targets: 'all' }], recovery: 630 },
+    desc: 'Rake up dust and leaves, carry enemies around the funnel, then slam them back into the ground.', uses: ['windPressure', 'vortex', 'tornado'], length: 3800,
     cast: ({ w, tex, caster, target, targets, hurt }) => {
-      chargeUp(w, tex, { target: () => hand(caster), palette: P.phong, duration: 380, size: 0.7 });
+      const direction = caster.facing > 0 ? 0 : Math.PI;
       const start = { x: caster.feet.x + caster.facing * 90, y: caster.feet.y + 10, z: 0 };
-      const end = { x: target.feet.x + caster.facing * 80, y: target.feet.y, z: 0 };
+      const end = { x: target.feet.x + caster.facing * 115, y: target.feet.y, z: 0 };
+      windPressure(w, tex, { at: hand(caster), angle: direction, palette: P.phong, duration: 340, radius: 145, inward: true });
+      vortex(w, tex, { at: start, radius: 115, palette: P.phong, duration: 530 });
       const homes = new Map(targets.map((u) => [u, { ...u.feet }]));
+      const lanes = new Map(targets.map((u, i) => [u, i % 3]));
       const caught = new Set<Unit>();
       let tick = 0;
-      w.after(320, () => {
+      w.after(340, () => {
         tornado(w, tex, {
-          at: start, to: end, palette: P.phong, height: 220, radius: 80, duration: 2500, leaves: true, tickMs: 60,
+          at: start, to: end, palette: P.phong, height: 260, radius: 116, duration: 2480, leaves: true, tickMs: 60,
           onTick: (at) => {
             tick++;
             for (const u of targets) {
               const dx = at.x - u.feet.x, dy = (at.y - u.feet.y) / w.groundSquash;
               const d = Math.hypot(dx, dy);
-              if (d > 170 && !caught.has(u)) continue;
+              if (d > 205 && !caught.has(u)) continue;
               caught.add(u);
-              const a = Math.atan2(-dy, -dx) + 0.24 * clamp01(1.45 - d / 160);
-              const r = lerp(d, 33, 0.17);
+              const lane = lanes.get(u) ?? 0;
+              const a = Math.atan2(-dy, -dx) + (0.32 + lane * 0.045) * clamp01(1.52 - d / 177);
+              const r = lerp(d, 42 + lane * 15, 0.21);
               u.feet.x = at.x + Math.cos(a) * r;
               u.feet.y = at.y + Math.sin(a) * r * w.groundSquash;
-              u.feet.z = lerp(u.feet.z, (40 + 10 * Math.sin(a)) * clamp01(1.25 - d / 160), 0.25);
-              if (tick % 6 === 0) hurt(u, Math.round(rand(16, 24)), { palette: P.phong, push: 0, angle: -Math.PI / 2, feedback: 0.22 });
+              u.feet.z = lerp(u.feet.z, (70 + lane * 29 + 26 * Math.sin(a)) * clamp01(1.45 - d / 183), 0.28);
+              if (tick % 6 === 0) hurt(u, Math.round(rand(16, 24)), { skin: 'wind', push: 0 });
             }
           },
         });
       });
-      // Release: everyone drops back to the ground and is pushed home.
-      w.after(2850, () => caught.forEach((u) => {
-        moveUnit(w, u, { ...u.feet, z: 0 }, 220, (x) => x * x);
-        w.after(230, () => {
-          vortex(w, tex, { at: { ...u.feet }, radius: 40, palette: P.phong, duration: 380, inward: false });
-          hurt(u, Math.round(rand(40, 55)), { palette: P.phong, feedback: 0.44 });
-          moveUnit(w, u, homes.get(u)!, 420);
-        });
+      w.after(2820, () => caught.forEach((u) => {
+        const dx = u.feet.x - end.x, dy = u.feet.y - end.y;
+        moveUnit(w, u, { x: u.feet.x + dx * 0.38, y: u.feet.y + dy * 0.38, z: 0 }, 230, (x) => x * x);
       }));
+      w.after(3070, () => {
+        if (caught.size) { w.hitStop(52); w.shake(7, 240); }
+        caught.forEach((u) => {
+          const angle = Math.atan2((u.feet.y - end.y) / w.groundSquash, u.feet.x - end.x);
+          windPressure(w, tex, { at: { ...u.feet, z: 13 }, angle, radius: 104, palette: P.phong, duration: 420 });
+          hurt(u, Math.round(rand(40, 55)), { crit: true, skin: 'wind', angle });
+          w.after(210, () => moveUnit(w, u, homes.get(u)!, 420));
+        });
+      });
     },
   },
   {
     id: 'phong-tailwind', element: 'phong', category: 'buff', en: 'Tailwind', vi: 'Tật Phong Bộ',
-    timing: { windup: 250, hits: [], recovery: 2550 },
-    desc: 'Wind ribbons stream behind the caster: movement and attack speed up.', uses: ['windWisps', 'gustLines'], length: 2800,
+    timing: { windup: 250, hits: [], recovery: 2250 },
+    desc: 'Catch a tailwind, then demonstrate the haste with three quick steps trailing ribbons and dust.', uses: ['windPressure', 'windRush', 'windWisps'], length: 2500,
     cast: ({ w, tex, caster }) => {
-      windWisps(w, tex, { target: feetOf(caster), height: caster.height, radius: 40, facing: caster.facing, palette: P.phong, duration: 2400 });
-      for (let i = 0; i < 4; i++) w.after(220 + i * 460, () => {
-        gustLines(w, tex, { ...chest(caster, 0.32), x: caster.feet.x - caster.facing * 18, angle: caster.facing > 0 ? Math.PI : 0, palette: P.phong, count: 5, spread: 19 });
+      const home = { ...caster.feet }, facing = caster.facing;
+      windPressure(w, tex, { at: chest(caster, 0.37), angle: facing > 0 ? Math.PI : 0, radius: 118, palette: P.phong, duration: 250, inward: true });
+      const step = (x: number, y: number, duration: number) => windRush(w, tex, {
+        from: caster.feet, to: { x: home.x + x * facing, y: home.y + y * w.groundSquash, z: home.z },
+        palette: P.phong, height: caster.height, sprite: caster.sprite, duration,
+        onMove: (p) => Object.assign(caster.feet, p),
       });
+      w.after(250, () => {
+        windWisps(w, tex, { target: feetOf(caster), height: caster.height, radius: 45, facing, palette: P.phong, duration: 1820 });
+        step(192, -70, 270);
+      });
+      w.after(680, () => step(352, 58, 270));
+      w.after(1250, () => step(0, 0, 350));
     },
   },
 
@@ -590,18 +644,19 @@ export const SKILLS: SkillDef[] = [
   // ------------------------------------------------------------------ NEUTRAL / UTILITY
   {
     id: 'seal-silence', element: 'neutral', category: 'debuff', en: 'Silencing Seal', vi: 'Phong Ấn Thuật',
-    timing: { windup: 280, hits: [], recovery: 3520 },
+    timing: SEAL_TIMING,
     desc: 'A sealing rune flies into the target, locking its voice and veiling its eyes.',
-    uses: ['chargeUp', 'projectile', 'hitSpark', 'silence', 'blind'], length: 3800,
+    uses: ['sigilCharge', 'chargeUp', 'projectile(seal)', 'hitSpark', 'silence', 'blind'], length: 3800,
     cast: ({ w, tex, caster, target }) => {
-      chargeUp(w, tex, { target: () => hand(caster), palette: P.shadow, duration: 280,
+      sigilCharge(w, tex, { target: () => hand(caster), palette: P.shadow, duration: SEAL_TIMING.windup });
+      chargeUp(w, tex, { target: () => hand(caster), palette: P.shadow, duration: SEAL_TIMING.windup,
         release: { color: P.shadow.main, size: 0.5, coreSize: 0.18, alpha: 0.3 },
         onDone: () => projectile(w, tex, { from: hand(caster), to: chest(target, 0.8), palette: P.shadow,
-          speed: 950, size: 0.5, onHit: () => {
+          speed: SEAL_TIMING.hits[0].travel, size: 0.85, seal: true, onHit: () => {
             hitSpark(w, tex, { ...chest(target, 0.8), palette: { ...P.shadow, core: P.shadow.main }, size: 0.5 });
             w.spawn({ texture: tex.rune, ...target.feet, z: 35, life: 340,
               vz: -100, scale: [0.21, 0.12, outQuad], alpha: envelope(0.1, 0.5, 0.7), tint: P.shadow.main });
-            silence(w, tex, { target: feetOf(target), height: target.height, duration: 2400 });
+            silence(w, tex, { target: feetOf(target), height: target.height, duration: 2400, palette: P.shadow });
             blind(w, tex, { target: feetOf(target), height: target.height, duration: 2400 });
           },
         }),
@@ -610,51 +665,48 @@ export const SKILLS: SkillDef[] = [
   },
   {
     id: 'sunder-mark', element: 'neutral', category: 'debuff', en: 'Sundering Mark', vi: 'Phá Giáp Ấn',
-    timing: { windup: 300, hits: [], recovery: 3500 },
-    desc: 'Staggered curse marks fracture enemy armor and send fearful wisps fleeing upward.',
-    uses: ['chargeUp', 'mark', 'armorBreak', 'fear'], length: 3800,
+    timing: sunderTiming(),
+    desc: 'Descending reticles lock onto enemies, shattering their armor into glowing fragments.',
+    uses: ['sigilCharge', 'chargeUp', 'sunderingMark'], length: 3800,
     cast: ({ w, tex, caster, targets }) => {
-      chargeUp(w, tex, { target: () => hand(caster), palette: P.shadow, duration: 300,
-        release: { color: P.shadow.main, size: 0.5, coreSize: 0.18, alpha: 0.3 },
-        onDone: () => targets.forEach((u, i) => w.after(i * 150, () => {
-          const at = { target: feetOf(u), height: u.height, duration: 2400 };
-          mark(w, tex, at); armorBreak(w, tex, at); fear(w, tex, at);
-        })),
+      const timing = sunderTiming(targets.length);
+      const palette = { core: 0xffd59a, main: 0xf36b38, dark: 0x542027 };
+      sigilCharge(w, tex, { target: () => hand(caster), palette, duration: timing.windup, reticle: true });
+      chargeUp(w, tex, { target: () => hand(caster), palette, duration: timing.windup,
+        release: { color: palette.main, size: 0.5, coreSize: 0.18, alpha: 0.3 },
       });
+      hitTimes(timing).forEach((impact, i) => w.after(impact - 260, () => {
+        const u = targets[i], hit = timing.hits[i];
+        sunderingMark(w, tex, { target: feetOf(u), height: u.height, duration: 2200, palette,
+          onImpact: () => { w.hitStop(hit.stop!); w.shake(hit.shake!, 100); } });
+      }));
     },
   },
   {
     id: 'war-cry', element: 'neutral', category: 'buff', en: 'War Cry', vi: 'Chiến Hống',
-    timing: { windup: 300, hits: [], recovery: 3700 },
-    desc: 'A rallying shockwave surrounds the caster with a fiery power aura and trailing speed lines.',
-    uses: ['chargeUp', 'shockwave', 'aura', 'empower', 'haste'], length: 4000,
+    timing: { windup: 340, hits: [{ t: 340, effectOnly: true, shake: 3 }], recovery: 3660 },
+    desc: 'Brace, unleash a fiery roar, and rally within an ember-wreathed battle rune.',
+    uses: ['battleCry'], length: 4000,
     cast: ({ w, tex, caster }) => {
-      chargeUp(w, tex, { target: () => hand(caster), palette: P.hoa, duration: 300,
-        release: { color: P.hoa.main, size: 0.6, coreSize: 0.2, alpha: 0.35 },
-        onDone: () => {
-          shockwave(w, tex, { ...caster.feet, radius: 85, palette: P.hoa, duration: 350 });
-          const at = { target: feetOf(caster), height: caster.height, duration: 3000 };
-          aura(w, tex, { ...at, palette: P.hoa, radius: 38, intensity: 0.65 });
-          empower(w, tex, at); haste(w, tex, at);
-        },
-      });
+      battleCry(w, tex, { target: feetOf(caster), height: caster.height, facing: caster.facing,
+        palette: P.hoa, sprite: caster.sprite, windup: 340, duration: 2800 });
     },
   },
   {
     id: 'shadow-blink', element: 'neutral', category: 'movement', en: 'Shadow Step', vi: 'Ảnh Bộ',
-    timing: { windup: 180, hits: [{ t: 340, skin: 'shadow', targets: 'primary' }], recovery: 800 },
-    desc: 'Teleport behind the target and strike.', uses: ['blink', 'slash'], length: 2200,
+    timing: SHADOW_STEP_TIMING,
+    desc: 'Dissolve into creeping shadows, reform behind the target, and carve a violet cross.', uses: ['shadowStep', 'shadowSlash'], length: 2200,
     cast: ({ w, tex, caster, target, hurt, returnHome, setVisible }) => {
       const to = { x: target.feet.x + caster.facing * 55, y: target.feet.y + 4, z: 0 };
-      blink(w, tex, {
-        from: { ...caster.feet }, to, palette: P.shadow, height: caster.height,
+      shadowStep(w, tex, {
+        from: { ...caster.feet }, to, palette: P.shadow, height: caster.height, sprite: caster.sprite,
         onVanish: () => setVisible(caster, false),
         onAppear: () => {
           caster.feet.x = to.x; caster.feet.y = to.y; caster.facing *= -1; setVisible(caster, true);
-          w.after(90, () => {
-            slash(w, tex, { ...caster.feet, angle: caster.facing > 0 ? 0 : Math.PI, palette: P.shadow, radius: 90 });
-            w.after(70, () => hurt(target, 154, { palette: P.shadow, skin: 'shadow', crit: true, angle: caster.facing > 0 ? 0 : Math.PI }));
-          });
+          w.after(60, () => shadowSlash(w, tex, { ...target.feet, facing: caster.facing, height: target.height, palette: P.shadow }));
+          onHits(w, { ...SHADOW_STEP_TIMING, hits: SHADOW_STEP_TIMING.hits.map((hit) => ({ ...hit, t: hit.t - 420 })) },
+            (hit) => hurt(target, 154, { palette: { ...P.shadow, core: P.shadow.main }, feedback: 0.18,
+              skin: hit.skin, crit: true, angle: caster.facing > 0 ? 0 : Math.PI }));
           w.after(800, () => { caster.facing *= -1; returnHome(); });
         },
       });
@@ -662,31 +714,56 @@ export const SKILLS: SkillDef[] = [
   },
   {
     id: 'curse-weaken', element: 'neutral', category: 'debuff', en: 'Curse of Frailty', vi: 'Suy Nhược Chú',
-    timing: { windup: 350, hits: [], recovery: 1650 },
-    desc: 'A dark sigil lowers the attack and defense of every enemy.', uses: ['chargeUp', 'telegraph', 'statChange(down)'], length: 2000,
+    timing: frailtyTiming(),
+    desc: 'A spreading hex binds and weighs down enemies, leaving a sickly, draining curse.',
+    uses: ['sigilCharge', 'hexField', 'frailty', 'rockBack'], length: 3200,
     cast: ({ w, tex, caster, target, targets }) => {
-      chargeUp(w, tex, { target: () => hand(caster), palette: P.shadow, duration: 350 });
-      telegraph(w, tex, { x: target.feet.x, y: target.feet.y, radius: 130, duration: 380, palette: P.shadow, onDone: () => targets.forEach((u, i) => w.after(i * 90, () => statChange(w, tex, { target: feetOf(u), height: u.height, up: false, duration: 1500 }))) });
+      const timing = frailtyTiming(targets.length);
+      const palette = { core: 0x91c76e, main: 0xa34de0, dark: 0x21182d };
+      sigilCharge(w, tex, { target: () => hand(caster), palette, duration: timing.windup });
+      w.stream({ rate: 35, duration: 300, make: () => {
+        const at = hand(caster), a = rand(0, Math.PI * 2), r = rand(18, 34);
+        return { texture: tex.dot, ...at, life: 250, tint: rand(0, 1) < 0.5 ? palette.main : palette.core,
+          scale: [0.08, 0], alpha: [0.7, 0],
+          onUpdate: (q, t) => { q.px = Math.cos(a) * r * (1 - t); q.pz = Math.sin(a) * r * (1 - t); } };
+      } });
+      w.after(timing.windup, () => {
+        const units = targets.length ? targets : [target];
+        const center = { x: units.reduce((sum, u) => sum + u.feet.x, 0) / units.length,
+          y: units.reduce((sum, u) => sum + u.feet.y, 0) / units.length };
+        const radius = Math.min(170, Math.max(90, ...units.map((u) =>
+          Math.hypot(u.feet.x - center.x, (u.feet.y - center.y) / w.groundSquash) + u.height * 0.3)));
+        hexField(w, tex, { ...center, radius, duration: 2300, palette });
+        hitTimes(timing).forEach((impact, i) => w.after(impact - timing.windup - 240, () => {
+          const u = targets[i], hit = timing.hits[i];
+          frailty(w, tex, { target: feetOf(u), height: u.height, duration: 1700, palette,
+            onImpact: () => rockBack(w, u.sprite, { angle: Math.PI / 2, push: hit.push! * u.height / 96, duration: 330 }) });
+        }));
+      });
     },
   },
   {
     id: 'summon-spirit', element: 'neutral', category: 'summon', en: 'Summon Guardian', vi: 'Triệu Hồi Hộ Pháp',
-    timing: { windup: 1200, hits: [2712, 3362, 4012].map((t, i) => ({ t, stop: i === 2 ? 65 : 35, shake: i === 2 ? 5 : 2, skin: 'holy', targets: i === 2 ? 'all' : 'primary' })), recovery: 1200 },
-    desc: 'A spectral guardian flies into battle, swings its halberd twice, then dives into a crushing holy slam.', uses: ['chargeUp', 'summonCircle', 'spiritGuardian', 'afterimage'], length: 5400,
+    timing: SUMMON_TIMING,
+    desc: 'A gold rune summons a spectral guardian to fly into battle, cleave, sweep, then dive-slam and dissolve upward.',
+    uses: ['chargeUp', 'summonCircle', 'spiritGuardian'], length: 5400,
     cast: ({ w, tex, caster, target, targets, hurt, summon }) => {
       chargeUp(w, tex, { target: () => hand(caster), palette: P.holy, duration: 350 });
       const at = { x: caster.feet.x + caster.facing * 120, y: caster.feet.y + 40, z: 0 };
       const slamRadius = caster.height * 2.4;
-      summonCircle(w, tex, { ...at, palette: P.holy, radius: 70, duration: 1200, columnAlpha: 0.2,
+      const gold = { core: 0xffeab4, main: 0xf4b93f, dark: 0xb08020 };
+      summonCircle(w, tex, { ...at, palette: gold, radius: 70, duration: SUMMON_TIMING.windup, linger: 3900, columnAlpha: 0.7,
         onSummon: () => {
           summon?.(at, 'neutral', true);
           w.after(200, () => spiritGuardian(w, tex, { ...at, palette: P.holy, height: caster.height * 1.4,
-            target: feetOf(target), strikes: 3, slamRadius,
+            target: feetOf(target), strikes: SUMMON_TIMING.hits.length, slamRadius,
             onStrike: (i, impact) => {
               const angle = Math.atan2((impact.y - at.y) / w.groundSquash, impact.x - at.x);
-              const victims = i === 2 ? targets.filter((u) =>
+              const hit = SUMMON_TIMING.hits[i];
+              const victims = hit.targets === 'all' ? targets.filter((u) =>
                 Math.hypot(u.feet.x - impact.x, (u.feet.y - impact.y) / w.groundSquash) <= slamRadius) : [target];
-              victims.forEach((u) => hurt(u, i === 2 ? 185 : 92, { palette: P.holy, angle, crit: i === 2 }));
+              victims.forEach((u) => hurt(u, i === 2 ? 185 : 92, { palette: { ...P.holy, core: P.holy.main },
+                angle, skin: hit.skin, crit: i === 2, feedback: i === 2 ? 0.16 : 0.25 }));
             },
           }));
         },

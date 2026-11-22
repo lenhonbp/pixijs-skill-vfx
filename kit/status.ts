@@ -12,9 +12,79 @@ import { vineBind, type VineBindHandle } from './vine-bind';
 import { burnFlames } from './fire';
 import { clingingSpores } from './wood';
 import { floorRing, type FloorRingOptions } from './floor-ring';
-import { clamp01, envelope, inQuad, outBack, outCubic, outQuad, rand, lerpColor } from './ease';
+import { curlDrift } from './noise';
+import { rockBack } from './hit-reaction';
+import type { Sprite } from 'pixi.js';
+import { clamp01, envelope, inQuad, outBack, outCubic, outQuad, rand, lerp, lerpColor } from './ease';
 
 const TAU = Math.PI * 2;
+
+export interface SigilChargeOptions {
+  target: () => Vec3;
+  palette: Palette;
+  duration: number;
+  reticle?: boolean;
+}
+
+/** A hand-sized inscribed casting disc with an optional targeting cross. */
+export function sigilCharge(w: VfxWorld, tex: VfxTextures, o: SigilChargeOptions): Handle {
+  const g = group(w, o.duration, undefined, 100);
+  g.add(w.spawn({ texture: tex.rune, x: 0, y: 0, follow: o.target, life: o.duration,
+    scale: [0.025, 0.13, outCubic], spin: 4, alpha: [0.35, 0.95], tint: o.palette.main, zBias: 8 }));
+  g.add(w.spawn({ texture: tex.ring, x: 0, y: 0, follow: o.target, life: o.duration,
+    scale: [0.04, 0.27, outCubic], alpha: [0.2, 0.65], tint: o.palette.core, zBias: 7 }));
+  if (o.reticle) for (let i = 0; i < 4; i++) g.add(w.spawn({ texture: tex.beam,
+    x: 0, y: 0, follow: o.target, life: o.duration, rotation: i * TAU / 4,
+    scaleX: 0.16, scaleY: 0.12, tint: o.palette.core, zBias: 9,
+    onUpdate: (q) => { const r = 28 - 12 * outCubic(clamp01(q.age / o.duration));
+      q.px = Math.cos(i * TAU / 4) * r; q.pz = Math.sin(i * TAU / 4) * r; } }));
+  return g;
+}
+
+function statusMotes(w: VfxWorld, tex: VfxTextures, at: Vec3, h: number, p: Palette, shards = false, count = 12) {
+  let index = 0;
+  w.burst(count, () => {
+    const a = (index++ + rand(-0.2, 0.2)) * TAU / count, speed = rand(45, 110);
+    return { texture: shards ? tex.shard : tex.dot, x: at.x, y: at.y, z: (at.z ?? 0) + rand(0.25, 0.9) * h,
+      life: rand(450, 750), vx: Math.cos(a) * speed, vy: Math.sin(a) * speed * w.groundSquash,
+      vz: rand(25, 95), gravity: shards ? 280 : 0, bounce: shards ? 0.3 : 0,
+      blend: shards ? 'normal' as const : 'add' as const, spin: rand(-6, 6), rotation: a,
+      scale: [rand(0.09, 0.18), 0], alpha: [0.8, 0], tint: shards ? p.main : p.core };
+  });
+}
+
+export interface SunderingMarkOptions extends SustainedStatusOptions {
+  /** Called at the fracture, 260 ms after the reticle starts. Replaces default stop/shake feedback. */
+  onImpact?: () => void;
+}
+
+/** A descending lock-on reticle followed by a physical armor fracture. */
+export function sunderingMark(w: VfxWorld, tex: VfxTextures, o: SunderingMarkOptions): Handle {
+  const h = o.height ?? 70, s = h / 70, p = o.palette ?? { core: 0xffd9a0, main: 0xed6541, dark: 0x521b20 };
+  const g = group(w, (o.duration ?? 2400) + 260, undefined, 180);
+  g.add(w.spawn({ texture: tex.rune, x: 0, y: 0, follow: o.target, z: h * 1.25,
+    life: 320, vz: -h * 2, spin: -7, scale: [0.19 * s, 0.07 * s, outCubic],
+    alpha: envelope(0.08, 0.7, 0.9), tint: p.main, zBias: 16 }));
+  for (let i = 0; i < 4; i++) g.add(w.spawn({ texture: tex.beam, x: 0, y: 0, follow: o.target,
+    z: h * 0.55, life: 260, scaleX: 0.22 * s, scaleY: 0.16 * s, tint: p.core, zBias: 17,
+    onUpdate: (q) => { const a = i * TAU / 4 + (1 - clamp01(q.age / 260)) * 0.7;
+      const r = lerp(48, 15, outCubic(clamp01(q.age / 260))) * s;
+      q.px = Math.cos(a) * r; q.pz = Math.sin(a) * r; q.rotation = -a; } }));
+  g.addHandle(w.after(260, () => {
+    const at = o.target();
+    statusMotes(w, tex, at, h, p, true, 10);
+    if (o.onImpact) o.onImpact();
+    else { w.hitStop(22); w.shake(1.3, 100); }
+    for (let i = 0; i < 5; i++) w.spawn({ texture: tex.swordCrack, ...at, z: h * 0.55,
+      life: 240, rotation: i * 2.4, scaleX: [0.85 * s, 0.45 * s], scaleY: [0.5 * s, 0], tint: p.core });
+    w.burst(7, () => ({ texture: tex.streak, ...at, z: h * 0.55, life: rand(140, 260),
+      vx: rand(-150, 150), vz: rand(-100, 160), faceVelocity: true,
+      scaleX: [0.25, 0], scaleY: 0.3, tint: p.core }));
+    g.addHandle(mark(w, tex, { ...o, palette: p }));
+    g.addHandle(armorBreak(w, tex, { ...o, palette: p }));
+  }));
+  return g;
+}
 
 type DamageTickFeedback = (at: Vec3, height: number, damage: number) => void;
 const damageTickFeedback = new WeakMap<VfxWorld, DamageTickFeedback>();
@@ -44,6 +114,87 @@ export interface OnUnit {
 
 export type SustainedStatusOptions = OnUnit & { duration?: number; palette?: Palette };
 
+export interface HexFieldOptions extends Vec3 {
+  radius: number;
+  palette: Palette;
+  duration?: number;
+}
+
+export interface FrailtyOptions extends SustainedStatusOptions {
+  sprite?: Sprite;
+  /** Called at the downward pulse, 240 ms after growth starts. Replaces default sprite recoil. */
+  onImpact?: () => Handle | void;
+}
+
+/** An expanding, open hex boundary with low curling shadows rather than a filled disc. */
+export function hexField(w: VfxWorld, tex: VfxTextures, o: HexFieldOptions): Handle {
+  const dur = o.duration ?? 2300, p = o.palette, g = group(w, dur, undefined, 240);
+  const ring = floorRing(w, tex, { x: o.x, y: o.y, radius: o.radius, palette: p,
+    texture: tex.rune, textureRadius: M.runeRadius, duration: dur, spin: -0.12,
+    scale: (t) => o.radius / M.runeRadius * outCubic(clamp01(t * dur / 360)),
+    alpha: ms.env(dur, 260, 500, 0.7), tint: p.main });
+  g.add(ring.far); g.add(ring.near);
+  g.add(w.spawn({ texture: tex.glow, x: o.x, y: o.y, layer: 'ground', groundAligned: true,
+    life: dur, scaleX: o.radius / 56, scaleY: o.radius / 56,
+    alpha: ms.env(dur, 360, 500, 0.16), tint: p.core }));
+  for (let i = 0; i < 8; i++) {
+    const a = i * TAU / 8, x = o.x + Math.cos(a) * o.radius * 0.85;
+    const y = o.y + Math.sin(a) * o.radius * w.groundSquash * 0.85;
+    for (const edge of [false, true]) g.add(w.spawn({ texture: tex.tendril, x, y, anchorY: 1,
+      life: dur, delay: i * 18, blend: edge ? 'add' : 'normal', tint: edge ? p.main : p.dark,
+      scaleX: edge ? 0.2 : 0.38, scaleY: [0.05, 0.62, outCubic], rotation: Math.cos(a) * 0.3,
+      alpha: ms.env(dur, 450, 500, edge ? 0.4 : 0.8), onUpdate: curlDrift(9, 65, 0.5) }));
+  }
+  return g;
+}
+
+/** Ground-grown bindings, a downward weight pulse and a draining, sickly aftermath. */
+export function frailty(w: VfxWorld, tex: VfxTextures, o: FrailtyOptions): Handle {
+  const h = o.height ?? 70, s = h / 96, dur = o.duration ?? 1800;
+  const p = o.palette ?? { core: 0x9bbb78, main: 0x9471b8, dark: 0x21182d };
+  const g = group(w, dur + 450, undefined, 180), life = dur + 400;
+  const drift = curlDrift(7, 45, 0.65);
+  for (let i = 0; i < 4; i++) {
+    const side = i % 2 ? 1 : -1, x = side * (12 + Math.floor(i / 2) * 9) * s;
+    for (const edge of [false, true]) g.add(w.spawn({ texture: tex.tendril, x, y: 0, follow: o.target,
+      life, anchorY: 1, scaleX: side * (edge ? 0.38 : 0.54) * s, rotation: -side * 0.28,
+      scaleY: 0,
+      blend: edge ? 'add' : 'normal', tint: edge ? i < 2 ? p.core : p.main : p.dark,
+      alpha: ms.env(life, 170, 380, edge ? 0.8 : 0.95), zBias: i < 2 ? 5 : -1,
+      onUpdate: (q, t, dt) => {
+        drift(q, t, dt);
+        const sink = clamp01((q.age - dur) / 400);
+        q.sprite.scale.y = 0.85 * s * outCubic(clamp01(q.age / 300)) * (1 - sink);
+        q.pz = -h * 0.65 * sink;
+      } }));
+  }
+  g.add(w.spawn({ texture: tex.glow, x: 0, y: 0, z: h * 0.4, follow: o.target,
+    life, scaleX: 0.65 * s, scaleY: 1.2 * s, tint: p.core, alpha: ms.env(life, 250, 600, 0.18) }));
+  g.add(w.spawn({ texture: tex.skull, x: 0, y: 0, z: h + 34 * s, follow: o.target,
+    life, scale: 0.4 * s, tint: p.core, alpha: ms.env(life, 360, 500, 0.55), zBias: 10,
+    onUpdate: (q) => { q.pz = -q.age / life * 7 * s; q.sprite.rotation = Math.sin(q.age * 0.002) * 0.07; } }));
+  for (let i = 0; i < 2; i++) g.add(w.spawn({ texture: tex.chevron, x: 0, y: 0, z: h * 0.8,
+    follow: o.target, delay: 240 + i * 130, life: 420, rotation: Math.PI, vz: -h,
+    scaleX: 0.34 * s, scaleY: 0.22 * s, tint: p.core, alpha: [0.5, 0] }));
+  g.addHandle(w.after(240, () => {
+    if (o.onImpact) {
+      const reaction = o.onImpact();
+      if (reaction) g.addHandle(reaction);
+    }
+    else if (o.sprite) g.addHandle(rockBack(w, o.sprite, { angle: Math.PI / 2, push: 5 * s, duration: 330 }));
+    g.add(w.spawn({ texture: tex.ring, x: 0, y: 0, follow: o.target, z: h * 0.75,
+      life: 340, vz: -h * 1.8, scaleX: [0.24 * s, 0.35 * s], scaleY: [0.045 * s, 0.02 * s],
+      tint: p.main, alpha: [0.8, 0], zBias: 8 }));
+  }));
+  g.addHandle(w.stream({ rate: 7, duration: dur - 200, make: () => {
+    const at = o.target();
+    return { texture: tex.drop, x: at.x + rand(-20, 20) * s, y: at.y, z: h * rand(0.45, 0.95),
+      life: rand(450, 650), vz: -rand(35, 60) * s, gravity: 35, scale: [rand(0.13, 0.22) * s, 0],
+      tint: rand(0, 1) < 0.5 ? p.core : p.main, alpha: envelope(0.1, 0.3, 0.55), onUpdate: curlDrift(8, 50, 0.5) };
+  } }));
+  return g;
+}
+
 function sustained(w: VfxWorld, o: SustainedStatusOptions, duration: number) {
   const h = o.height ?? 70, s = h / 70, dur = o.duration ?? duration;
   const g = group(w, dur, undefined, 180);
@@ -62,16 +213,38 @@ function sustained(w: VfxWorld, o: SustainedStatusOptions, duration: number) {
 
 /** Crossed sealing rune above the head, enclosed by an orbiting chain of links. */
 export function silence(w: VfxWorld, tex: VfxTextures, o: SustainedStatusOptions): Handle {
-  const { g, h, s, attach } = sustained(w, o, 2200);
+  const { g, h, s, dur, attach, floor } = sustained(w, o, 2200);
   const p = o.palette ?? { core: 0xeadbff, main: 0xa77de8, dark: 0x40225e };
-  attach({ texture: tex.glow, z: h + 22 * s, scale: 0.65 * s, alpha: 0.22, tint: p.main, zBias: 9 });
-  attach({ texture: tex.rune, z: h + 22 * s, scale: 0.085 * s, alpha: 0.8, tint: p.main, spin: 0.7, zBias: 10 });
-  for (const angle of [-Math.PI / 4, Math.PI / 4]) attach({ texture: tex.beam, z: h + 22 * s,
-    rotation: angle, scaleX: 0.55 * s, scaleY: 0.17 * s, alpha: 0.8, tint: p.main, zBias: 11 });
-  for (let i = 0; i < 6; i++) attach({ texture: tex.ring, z: h + 22 * s,
-    scaleX: 0.033 * s, scaleY: 0.021 * s, alpha: 0.7, tint: p.main, zBias: 9,
-    onUpdate: (q) => { const a = i * TAU / 6 + q.age * 0.0015; q.px = Math.cos(a) * 27 * s; q.pz = Math.sin(a) * 16 * s; q.rotation = a; },
-  });
+  const opening = floorRing(w, tex, { around: o.target, texture: tex.rune, textureRadius: M.runeRadius,
+    radius: 48 * s, palette: p, duration: 600, scale: [0.035 * s, 0.2 * s, outCubic], alpha: [0.85, 0], spin: -1.5 });
+  g.add(opening.far); g.add(opening.near);
+  floor(tex, { texture: tex.sealGlyph, textureRadius: 58, radius: 37 * s, palette: p, alpha: 0.28, spin: -0.3,
+    tint: p.main, scale: 37 * s / 58 * 1.1 });
+  floor(tex, { texture: tex.sealGlyph, textureRadius: 58, radius: 37 * s, palette: p, alpha: 0.8, spin: -0.3, tint: p.main });
+  for (let band = 0; band < 3; band++) {
+    attach({ texture: tex.glow, z: h * (0.25 + band * 0.22), scaleX: 0.7 * s, scaleY: 0.12 * s,
+      alpha: 0.22, tint: p.main, zBias: 7 });
+    attach({ texture: tex.ring, z: h * (0.25 + band * 0.22), scaleX: 0.19 * s, scaleY: 0.055 * s,
+      alpha: 0.65, tint: p.main, zBias: 8,
+      onUpdate: (q) => { q.sprite.scale.x *= 1 + 1.5 * (1 - outCubic(clamp01(q.age / 300))); } });
+    for (let i = 0; i < 8; i++) attach({ texture: tex.chainLink, scaleX: 0.24 * s, scaleY: 0.22 * s,
+      alpha: 0.85, tint: i % 2 ? p.main : p.core, zBias: 9,
+      onUpdate: (q) => { const a = i * TAU / 8 + band * 0.3 + q.age * 0.0003;
+        const r = lerp(52, 22, outCubic(clamp01(q.age / 300))) * s;
+        q.px = Math.cos(a) * r; q.pz = h * (0.25 + band * 0.22) + Math.sin(a) * 6 * s;
+        q.py = Math.sin(a) * 5 * s; q.rotation = -a; } });
+  }
+  g.addHandle(w.after(dur - 120, () => statusMotes(w, tex, o.target(), h, p)));
+  attach({ texture: tex.glow, z: h + 30 * s, scale: 0.85 * s, alpha: 0.3, tint: p.main, zBias: 9 });
+  for (const core of [false, true]) attach({ texture: tex.sealGlyph, z: h + 30 * s,
+    scale: h * 0.6 / 116 * (core ? 1 : 1.12), alpha: core ? 0.95 : 0.38,
+    tint: core ? p.core : p.main, spin: 0.25, zBias: core ? 11 : 10,
+    onUpdate: (q) => {
+      const pulse = 1 + 0.045 * Math.sin(q.age * 0.003);
+      q.sprite.scale.set(h * 0.6 / 116 * (core ? 1 : 1.12) * pulse *
+        (1 - 0.8 * clamp01((q.age - dur + 220) / 220)));
+      q.sprite.alpha *= 0.88 + 0.12 * Math.sin(q.age * 0.003);
+    } });
   return g;
 }
 
@@ -80,11 +253,11 @@ export function blind(w: VfxWorld, tex: VfxTextures, o: SustainedStatusOptions):
   const { g, h, s, dur, attach } = sustained(w, o, 2200);
   const p = o.palette ?? { core: 0x665278, main: 0x302439, dark: 0x0c0716 };
   attach({ texture: tex.puff, blend: 'normal', z: h * 0.85, scaleX: 0.55 * s, scaleY: 0.19 * s,
-    alpha: 0.96, tint: p.dark, zBias: 15 });
-  g.addHandle(w.stream({ rate: 12, duration: dur, make: () => ({ texture: tex.puff, blend: 'normal',
+    alpha: 0.32, tint: p.dark, zBias: 15 });
+  g.addHandle(w.stream({ rate: 5, duration: dur, make: () => ({ texture: tex.puff, blend: 'normal',
     x: rand(-19, 19) * s, y: 0, z: h * rand(0.76, 0.96), follow: o.target, life: 1100,
     vx: rand(-7, 7) * s, vz: rand(2, 8) * s, scale: [0.1 * s, 0.2 * s],
-    alpha: envelope(0.15, 0.5, 0.65), tint: p.main, zBias: 14,
+    alpha: envelope(0.15, 0.5, 0.2), tint: p.main, zBias: 14,
   }) }));
   return g;
 }
@@ -93,10 +266,13 @@ export function blind(w: VfxWorld, tex: VfxTextures, o: SustainedStatusOptions):
 export function armorBreak(w: VfxWorld, tex: VfxTextures, o: SustainedStatusOptions): Handle {
   const { g, h, s, dur, attach } = sustained(w, o, 2500);
   const p = o.palette ?? { core: 0xffb18a, main: 0xc45b46, dark: 0x54251d };
+  attach({ texture: tex.crackedShield, z: h + 25 * s, scale: 0.52 * s, tint: p.core, zBias: 11,
+    alpha: 0.35, onUpdate: (q) => { q.sprite.alpha *= 0.55 + 0.45 * Math.sin(q.age * 0.008); } });
+  g.addHandle(w.after(dur - 100, () => statusMotes(w, tex, { ...o.target(), z: (o.target().z ?? 0) + h * 0.6 }, h * 0.4, p, true, 6)));
   attach({ texture: tex.crackedShield, blend: 'normal', z: h + 25 * s, scale: 0.5 * s, alpha: 0.95,
     tint: p.main, zBias: 12, onUpdate: (q) => { q.pz = Math.sin(q.age * 0.004) * 2 * s; } });
   attach({ texture: tex.glow, z: h * 0.5, scaleX: 0.45 * s, scaleY: 0.75 * s, alpha: 0.1, tint: p.main });
-  g.addHandle(w.stream({ rate: 6, duration: dur, make: () => ({ texture: tex.shard, blend: 'normal',
+  g.addHandle(w.stream({ rate: 2, duration: dur, make: () => ({ texture: tex.shard, blend: 'normal',
     x: rand(-11, 11) * s, y: 0, z: h + 14 * s, follow: o.target, life: 700,
     vx: rand(-15, 15) * s, vz: -20 * s, gravity: 180 * s, spin: rand(-4, 4), rotation: rand(0, TAU),
     scale: [0.16 * s, 0.06 * s], alpha: [0.8, 0], tint: [p.main, p.dark], zBias: 13,
