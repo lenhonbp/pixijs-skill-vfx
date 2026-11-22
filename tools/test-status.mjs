@@ -84,13 +84,13 @@ try {
     step(w, 200);
     check(!w.particles.some((p) => p.o.texture === tex.bell && p.sprite.visible), 'bell: anticipation before drop');
     step(w, 150);
-    check(w.particles.some((p) => p.o.texture === tex.bell && p.pz > 0), 'bell: drops from above');
+    check(w.particles.some((p) => p.o.texture === tex.bell && p.sprite.visible && p.sprite.y < at.y), 'bell: drops from above');
     step(w, 250);
     const shell = w.particles.find((p) => p.o.texture === tex.bell);
     check(shell && shell.pz === 0 && shell.o.blend === 'normal', 'bell: landed translucent silhouette');
     at = { x: 500, y: 350, z: 20 };
     step(w, 32);
-    check(shell.sprite.x === at.x && shell.sprite.y === at.y - at.z, 'bell: follows feet and airborne height');
+    check(Math.abs(shell.sprite.x - at.x) <= 5 * 105 / 70 && shell.sprite.y === at.y - at.z, 'bell: follows feet and airborne height while ringing');
     bell.hit(); step(w, 32);
     check(Math.abs(shell.sprite.x - at.x) > 0.1, 'bell: rings with horizontal wobble');
     check(w.particles.some((p) => p.o.texture === tex.ring && p.o.zBias === 32), 'bell: concentric sound ripples');
@@ -165,11 +165,11 @@ try {
     const guardian = kit.spiritGuardian(w, tex, { x: 200, y: 300, palette: gold, height: 105 });
     step(w, 160);
     const figure = w.particles.find((p) => p.o.texture === tex.guardian && p.o.blend === 'normal');
-    check(figure && figure.pz < 0 && figure.sprite.alpha > 0 && figure.sprite.alpha < 0.85, 'guardian: fades upward into view');
+    check(figure && figure.sprite.y > 300 && figure.sprite.alpha > 0 && figure.sprite.alpha < 0.85, 'guardian: fades upward into view');
     step(w, 350);
     check(guardian.alive && figure.sprite.alpha === 0.85, 'guardian: normal-blended hold');
-    const bob = figure.pz; step(w, 400);
-    check(figure.pz !== bob && w.particles.some((p) => p.o.texture === tex.dot), 'guardian: bob and rising motes');
+    const bob = figure.sprite.y; step(w, 400);
+    check(figure.sprite.y !== bob && w.particles.some((p) => p.o.texture === tex.dot), 'guardian: bob and rising motes');
     step(w, 800);
     check(guardian.alive && figure.sprite.alpha < 0.85, 'guardian: dissolves after hold');
     clean(w, 'guardian default'); check(!guardian.alive, 'guardian: default ends');
@@ -189,17 +189,73 @@ try {
       check(column.o.alpha[0] === 0.9 * (columnAlpha ?? 1), 'summon: default/custom/zero column opacity');
       clean(w, 'summon column');
     }
-    w = world(); let summoned = 0;
-    kit.SKILLS.find((s) => s.id === 'summon-spirit').cast({ w, tex,
+    w = world(); let summoned = 0, guardianHits = 0, guardianDamage = 0;
+    const guardianTarget = { feet: { x: 400, y: 240, z: 0 }, height: 70, facing: -1 };
+    const summonSkill = kit.SKILLS.find((s) => s.id === 'summon-spirit');
+    summonSkill.cast({ w, tex,
       caster: { feet: { x: 100, y: 200, z: 0 }, height: 70, facing: 1 },
+      target: guardianTarget, targets: [guardianTarget],
+      hurt: (_u, amount) => { guardianHits++; guardianDamage += amount; },
       summon: (at, element, visualized) => {
         check(at.x === 220 && at.y === 240 && element === 'neutral' && visualized, 'summon: gameplay callback preserved'); summoned++;
       },
     });
     step(w, 2100);
-    check(summoned === 1 && w.particles.some((p) => p.o.texture === tex.guardian), 'summon: callback and guardian both occur');
+    check(summoned === 1 && w.particles.some((p) => p.o.texture === tex.guardianBody), 'summon: callback and guardian both occur');
+    step(w, summonSkill.length - 2100);
     clean(w, 'summon sample');
+    check(guardianHits === 3 && guardianDamage === 369, 'summon: merged guardian keeps two cleaves and heavy slam damage');
     results.push('spiritGuardian: materialize/hold/bob/dissolve, finite/zero/Infinity/stop, column options and summon callback PASS');
+    w = world();
+    kit.spike(w, tex, { x: 100, y: 200, palette: kit.WUXING.thuy.palette, height: 70, ice: true });
+    check(w.count === 6, 'ice spike: solid spike, glow, shadow, two shards and one mist puff');
+    const iceBits = w.particles.filter((p) => p.o.texture === tex.shard);
+    check(iceBits.length === 2 && iceBits.every((p) => p.o.blend === 'normal' && p.o.life <= 440 && p.o.scale >= 0.25),
+      'ice spike: larger, short-lived solid shards');
+    const mist = w.particles.find((p) => p.o.texture === tex.puff);
+    check(mist.o.life === 350 && mist.o.scale[1] === 1.15, 'ice spike: one broad, brief mist shape');
+    step(w, 120);
+    const spear = w.particles.find((p) => p.o.texture === tex.spike);
+    check(spear.o.blend === 'normal' && spear.o.anchorY === 1 &&
+      Math.abs(spear.sprite.scale.y * kit.TEX_METRICS.spikeHeight - 70) < 0.001, 'ice spike: full solid silhouette retained');
+    clean(w, 'ice spike');
+    w = world();
+    kit.spike(w, tex, { x: 0, y: 0, palette: kit.WUXING.tho.palette });
+    check(w.count === 11 && w.particles.filter((p) => p.o.texture === tex.rock).length === 5 &&
+      w.particles.filter((p) => p.o.texture === tex.puff).length === 3 &&
+      w.particles.some((p) => p.o.texture === tex.rockSpike && p.o.blend === 'normal') &&
+      w.particles.some((p) => p.o.texture === tex.fissure), 'earth spike: merged solid rock, fissure, five debris and three dust puffs preserved');
+    clean(w, 'earth spike');
+    const icePeaks = [];
+    for (const seed of [0, 1, 12345]) {
+      w = world(); kit.setRng(kit.mulberry32(seed));
+      let peak = 0, eruptions = [];
+      const spawn = w.spawn.bind(w);
+      w.spawn = (o) => { const particle = spawn(o); peak = Math.max(peak, w.count); return particle; };
+      kit.spikeLine(w, tex, { from: { x: 0, y: 0 }, angle: 0, count: 9, height: 70, spacing: 44,
+        ice: true, onSpike: (at, i) => eruptions.push({ at, i, t: w.now }) });
+      clean(w, 'ice path');
+      check(peak <= 150, 'ice path: nine full triple-spike eruptions within particle budget');
+      check(eruptions.length === 9 && eruptions.every(({ at, i, t }, j) =>
+        i === j && at.x === (i + 1) * 44 && at.y === 0 && Math.abs(t - i * 65) <= 16), 'ice path: damage locations and cadence retained');
+      icePeaks.push(peak);
+    }
+    w = world();
+    kit.spikeRing(w, tex, { x: 0, y: 0, count: 10, ice: true });
+    step(w, 120);
+    check(w.particles.filter((p) => p.o.texture === tex.spike).length === 10, 'nova: all ten solid spikes retained');
+    clean(w, 'ice ring');
+    w = world();
+    kit.spikeRing(w, tex, { x: 0, y: 0, count: 0, ice: true });
+    kit.spikeLine(w, tex, { from: { x: 0, y: 0 }, angle: 0, count: 0, ice: true });
+    check(!w.count && !w.updaters.length, 'ice line/ring: empty counts are inert');
+    kit.spikeLine(w, tex, { from: { x: 0, y: 0 }, angle: 0, count: 1, ice: true,
+      onSpike: () => { throw new Error('ice callback'); } });
+    let iceError;
+    try { step(w, 16); } catch (e) { iceError = e.message; }
+    check(iceError === 'ice callback', 'ice path: callback errors propagate');
+    w.clear(); clean(w, 'ice callback error');
+    results.push(`Ice spikes: full silhouettes, larger debris, unchanged earth, nova count, path cadence, empty/errors/cleanup; seeded path peaks ${icePeaks.join('/')} <=150 PASS`);
     const random = Math.random;
     Math.random = () => 0.5;
     try {
@@ -208,20 +264,22 @@ try {
         palette: gold, onImpact: () => impacts++ });
       step(w, 32);
       const falling = w.particles.filter((p) => p.o.texture === tex.blade);
-      check(falling.length === 2 && falling.every((p) => p.o.blend === 'normal' && p.o.tint === gold.main), 'swords: double visual density, solid palette');
-      check(falling.every((p) => p.o.scale * 160 >= 60 && p.o.scale * 160 <= 70), 'swords: height-scaled full blades');
+      check(falling.length === 2 && falling.every((p) => p.o.blend === 'normal' && p.sprite.tint === 0xffffff) &&
+        w.particles.some((p) => p.o.texture === tex.ring && p.o.tint === gold.main), 'swords: merged dense metal blades, palette ground ring');
+      check(falling.every((p) => p.o.scale * 160 >= 88 && p.o.scale * 160 <= 114), 'swords: merged height-scaled full blades');
       for (let i = 0; i < 7; i++) {
         step(w, 16);
         check(w.particles.filter((p) => p.o.texture === tex.streak && p.o.life === 150)
-          .every((p) => p.o.scaleX * 128 < 30 && p.sprite.y < p.o.y), 'swords: short trails stay above ground');
+          .every((p) => p.sprite.scale.x * 128 < 100 && p.sprite.y < p.o.y), 'swords: blade-length trails stay above ground');
       }
       check(impacts === 0, 'swords: no early damage');
       step(w, 16); check(impacts === 1, 'swords: original 150 ms first impact');
       step(w, 208); check(impacts === 2, 'swords: original staggered second impact');
       step(w, 208); check(impacts === 3, 'swords: original third impact');
-      check(w.particles.some((p) => p.o.texture === tex.blade && p.o.life === 950 && p.sprite.alpha === 1), 'swords: planted hold');
+      check(w.particles.some((p) => p.o.texture === tex.blade && p.o.life >= 760 && p.o.life <= 930 && p.o.z === -5 && p.sprite.alpha === 1), 'swords: merged planted hold');
       check(w.particles.some((p) => p.o.texture === tex.swordCrack), 'swords: ground cracks');
-      step(w, 350); check(w.particles.some((p) => p.o.texture === tex.dot), 'swords: gold dissolve motes');
+      step(w, 350); check(w.particles.some((p) => p.o.texture === tex.star) &&
+        w.particles.some((p) => p.o.texture === tex.blade && p.o.z === -5 && p.sprite.alpha < 1), 'swords: merged metal glints and planted fade');
       clean(w, 'sword rain'); check(impacts === 3, 'swords: cosmetic swords never deal extra damage');
       w = world();
       kit.swordRain(w, tex, { x: 0, y: 0, count: 0, onImpact: () => { throw new Error('empty rain'); } });
@@ -246,7 +304,9 @@ try {
     check(peak.o.scaleX * 320 > 220 && peak.o.scaleY * 256 === 160, 'mountain: wider than crater, giant height');
     step(w, 160); check(crashes === 0, 'mountain: no early hit');
     step(w, 16); check(crashes === 1 && peak.pz === 0, 'mountain: impact and callback synchronized');
-    check(w.particles.some((p) => p.o.texture === tex.swordCrack) && w.particles.some((p) => p.o.texture === tex.rock && p.o.gravity > 0), 'mountain: crater and falling rubble');
+    check(w.particles.filter((p) => p.o.texture === tex.fissure && p.o.blend === 'normal' && p.o.groundAligned).length === 7 &&
+      w.particles.some((p) => p.o.texture === tex.rock && p.o.gravity > 0), 'mountain: merged radial fissure crater and falling rubble');
+    step(w, 1000);
     clean(w, 'mountain default'); check(!mountain.alive && crashes === 1, 'mountain: completes exactly once');
     w = world();
     const cancelledPeak = kit.mountainCrash(w, tex, { x: 0, y: 0, radius: 60, height: 100, palette: gold,
