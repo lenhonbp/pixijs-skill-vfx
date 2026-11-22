@@ -8,6 +8,7 @@ import { Distortion } from './postfx';
 import { ribbonTrail } from './trail';
 import { lightningBolt } from './lightning-bolt';
 import { floorRing } from './floor-ring';
+import { group } from './group';
 import { random, colorRamp, envelope, inQuad, outCubic, outExpo, outQuad, rand, lerp, lerpColor } from './ease';
 
 export interface Palette {
@@ -304,22 +305,31 @@ export function meteor(w: VfxWorld, tex: VfxTextures, o: { x: number; y: number;
   });
 }
 
-/** Chain lightning through `points` (caster first). Re-rolls the bolt a few times for flicker. */
-export function lightningChain(w: VfxWorld, tex: VfxTextures, o: { points: Vec3[]; palette: Palette; flickers?: number; width?: number; impactIntensity?: number }) {
+/** Sequential branched channels with a faint trailing crackle, without endpoint starbursts. */
+export function lightningChain(w: VfxWorld, tex: VfxTextures, o: { points: Vec3[]; palette: Palette; flickers?: number; width?: number; impactIntensity?: number; hopMs?: number }) {
   const p = o.palette;
   const width = o.width ?? 1;
-  const flickers = o.flickers ?? 4;
+  const flickers = o.flickers ?? 3;
   const impact = o.impactIntensity ?? 1;
   const points = o.points.map((q) => ({ x: q.x, y: q.y, z: q.z }));
-  const bolt = () => {
-    for (let i = 0; i < points.length - 1; i++) lightningBolt(w, tex, points[i], points[i + 1], p, { width });
-  };
-  for (let f = 0; f < flickers; f++) w.after(f * 65, bolt);
-  o.points.forEach((q, i) => {
-    w.spawn({ texture: tex.glow, x: q.x, y: q.y, z: q.z ?? 40, life: flickers * 65 + 80, scale: (i === 0 ? 1.2 : 1.8) * Math.sqrt(impact), alpha: (t) => impact * (1 - t) * (0.6 + 0.4 * random()), tint: p.main, zBias: 3 });
-    if (i > 0) w.after(20 + i * 30, () => hitSpark(w, tex, { x: q.x, y: q.y, z: q.z ?? 40, angle: rand(0, TAU), palette: p, size: Math.sqrt(impact) }));
-  });
-  w.shake(4, 200);
+  const life = Math.min(250, 120 + Math.max(0, flickers) * 40), hop = o.hopMs ?? 40;
+  const g = group(w, Math.max(0, points.length - 2) * hop + life + 140);
+  for (let i = 0; i < points.length - 1; i++) {
+    if (flickers <= 0) break;
+    g.addHandle(w.after(i * hop, () => g.addHandle(lightningBolt(w, tex, points[i], points[i + 1], p,
+      { width: width * 1.65, life, branches: 3, restrikes: Math.max(0, Math.ceil(flickers) - 1) }))));
+    const q = points[i + 1];
+    if (impact > 0) g.addHandle(w.after(i * hop + 40, () => {
+      g.add(w.spawn({ texture: tex.glow, ...q, z: q.z ?? 40, life: 90, scale: [0.25 * Math.sqrt(impact), 0],
+        alpha: [0.35 * impact, 0], tint: p.main, zBias: 3 }));
+      w.burst(2, () => ({ texture: tex.streak, ...q, z: q.z ?? 40, life: 120,
+        vx: rand(-60, 60), vz: rand(-30, 60), faceVelocity: true, scaleX: [0.08, 0], scaleY: 0.08, alpha: [0.5 * impact, 0], tint: p.main }));
+    }));
+    g.addHandle(w.after(i * hop + life - 30, () => g.addHandle(lightningBolt(w, tex, points[i], q, p,
+      { width: width * 0.3, life: 130, alpha: 0.12, coreAlpha: 0.2, halo: 0.03, branches: 0 }))));
+  }
+  if (points.length > 1) w.shake(4, 200);
+  return g;
 }
 
 /** Healing / buff aura around a (possibly moving) target. Returns a handle; it also ends after `duration`. */

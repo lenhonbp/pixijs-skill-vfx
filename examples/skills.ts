@@ -6,13 +6,13 @@ import type { Sprite } from 'pixi.js';
 import {
   VfxWorld, VfxTextures, Vec3, Palette, WUXING, PHONG, LOI, AnyElementName, SkillTiming, HitSkinName, onHits,
   tornado, windSlash, windSweep, vortex, windWisps, gustLines,
-  slash, hitSpark, hitFlash, projectile, lightningChain, telegraph, shockwave,
+  slash, hitSpark, hitFlash, hitSkin, projectile, lightningChain, telegraph, shockwave,
   fireball, fireBreath, fireCharge, fireImpact, fireMeteor,
   woodCharge, seedFlight, springBloom, toxicSporeCloud,
   damageOverTime, stun, shock, freeze, slow, root, statChange, damageNumber,
   silence, blind, armorBreak, mark, fear, aura, empower, haste,
   goldenBell, metalSlash, metalSparks, swordSalute, stoneArmor, spiritGuardian, mountainCrash,
-  lightningStrike, staticField,
+  lightningStrike, staticField, lightningCharge, lightningWarning, lightningStun, stormCloud,
   dash, blink, leap, beam, chargeUp, summonCircle, spikeLine, spikeRing, swordRain,
   rand, envelope, outCubic, outQuad, lerp, clamp01,
   frostNova, glacierPath, tidalBeam,
@@ -483,13 +483,17 @@ export const SKILLS: SkillDef[] = [
   {
     id: 'lightning-chain', element: 'loi', category: 'attack', en: 'Chain Lightning', vi: 'Lôi Đình Liên Kích',
     timing: { windup: 300, hits: Array.from({ length: 3 }, (_, i) => ({ t: 340 + i * 40, skin: 'shock', targets: 'all' })), recovery: 1200 },
-    desc: 'A bolt jumps between all enemies and briefly stuns them.', uses: ['chargeUp', 'lightningChain', 'stun'], length: 2700,
+    desc: 'A bolt jumps between all enemies and briefly stuns them.', uses: ['lightningCharge', 'lightningChain', 'lightningStun'], length: 2700,
     cast: ({ w, tex, caster, targets, hurt }) => {
-      chargeUp(w, tex, {
+      lightningCharge(w, tex, {
         target: () => hand(caster), palette: P.loi, duration: 300,
         onDone: () => {
           lightningChain(w, tex, { points: [hand(caster), ...targets.map((u) => chest(u))], palette: P.loi, impactIntensity: 0.2 });
-          targets.forEach((u, i) => w.after(40 + i * 40, () => { hurt(u, 88 - i * 10, { palette: P.loi, angle: rand(0, 6.3), feedback: 0.2 }); stun(w, tex, { target: feetOf(u), height: u.height, duration: 1200, palette: P.loi }); }));
+          targets.forEach((u, i) => w.after(40 + i * 40, () => {
+            hurt(u, 88 - i * 10, { skin: 'shock', angle: rand(0, 6.3), feedback: 0 });
+            hitSkin(w, u.sprite, 'shock', { strength: 0.32, duration: 220 });
+            lightningStun(w, tex, { target: feetOf(u), height: u.height, duration: 1200, palette: P.loi });
+          }));
         },
       });
     },
@@ -498,17 +502,18 @@ export const SKILLS: SkillDef[] = [
     id: 'loi-heaven-strike', element: 'loi', category: 'aoe', en: 'Heavenly Thunder', vi: 'Thiên Lôi Giáng',
     timing: { windup: 300, hits: Array.from({ length: 3 }, (_, i) => ({ t: 600 + i * 180, stop: 25, shake: 4, skin: 'shock', targets: 'all' })), recovery: 1200 },
     desc: 'A raised charge calls staggered forked sky strikes, stunning and shocking the enemy group.',
-    uses: ['chargeUp', 'telegraph', 'lightningStrike', 'stun', 'shock'], length: 3200,
+    uses: ['lightningCharge', 'stormCloud', 'lightningWarning', 'lightningStrike', 'lightningStun', 'shock'], length: 3200,
     cast: ({ w, tex, caster, target, targets, hurt }) => {
-      chargeUp(w, tex, { target: () => hand(caster), palette: P.loi, duration: 300,
-        release: { color: 0x7954ef, size: 0.65, coreSize: 0.2, alpha: 0.4 }, onDone: () => {
+      const cloud = stormCloud(w, tex, { x: target.feet.x + 35, y: target.feet.y, palette: P.loi, width: 350, height: 270, duration: 1800 });
+      lightningCharge(w, tex, { target: () => hand(caster), palette: P.loi, duration: 300, onDone: () => {
         const enemies = [target, ...targets.filter((u) => u !== target)];
         enemies.forEach((u, i) => {
           const at = { ...u.feet };
-          telegraph(w, tex, { ...at, radius: 36, palette: P.loi, duration: 300 + i * 180, finishAlpha: 0,
-            onDone: () => lightningStrike(w, tex, { ...at, palette: P.loi, radius: 38, onHit: () => {
-              hurt(u, 115, { palette: P.loi, feedback: 0.18 });
-              stun(w, tex, { target: feetOf(u), height: u.height, duration: 650, palette: P.loi });
+          lightningWarning(w, tex, { ...at, radius: 36, palette: P.loi, duration: 300 + i * 180,
+            onDone: () => lightningStrike(w, tex, { ...at, palette: P.loi, radius: 38, cloud, onHit: () => {
+              hurt(u, 115, { skin: 'shock', feedback: 0 });
+              hitSkin(w, u.sprite, 'shock', { strength: 0.32, duration: 220 });
+              lightningStun(w, tex, { target: feetOf(u), height: u.height, duration: 650, palette: P.loi });
               shock(w, tex, { target: feetOf(u), height: u.height, duration: 1200, palette: P.loi });
             } }),
           });
@@ -520,18 +525,22 @@ export const SKILLS: SkillDef[] = [
     id: 'loi-thunder-domain', element: 'loi', category: 'control', en: 'Thunder Domain', vi: 'Lôi Vực',
     timing: { windup: 300, hits: Array.from({ length: 5 }, (_, i) => ({ t: 800 + i * 500, skin: 'shock', push: 0, targets: 'all' })), recovery: 450 },
     desc: 'A violet electric field crackles under the enemy group, dealing periodic damage and shock.',
-    uses: ['chargeUp', 'staticField', 'shock'], length: 3600,
+    uses: ['lightningCharge', 'stormCloud', 'staticField', 'shock'], length: 3600,
     cast: ({ w, tex, caster, target, targets, hurt }) => {
-      chargeUp(w, tex, { target: () => hand(caster), palette: P.loi, duration: 300,
-        release: { color: 0x7954ef, size: 0.65, coreSize: 0.2, alpha: 0.4 }, onDone: () => {
+      const cloudAt = targets.length ? { x: targets.reduce((s, u) => s + u.feet.x, 0) / targets.length,
+        y: targets.reduce((s, u) => s + u.feet.y, 0) / targets.length } : target.feet;
+      const cloud = stormCloud(w, tex, { ...cloudAt, palette: P.loi, width: 400, height: 270, duration: 3100 });
+      lightningCharge(w, tex, { target: () => hand(caster), palette: P.loi, duration: 300, onDone: () => {
         const center = targets.length ? {
           x: targets.reduce((sum, u) => sum + u.feet.x, 0) / targets.length,
           y: targets.reduce((sum, u) => sum + u.feet.y, 0) / targets.length,
         } : { ...target.feet };
         const radius = Math.max(120, ...targets.map((u) => Math.hypot(u.feet.x - center.x, (u.feet.y - center.y) / w.groundSquash) + 16));
-        staticField(w, tex, { ...center, radius, palette: P.loi, duration: 2500, onTick: () => {
+        staticField(w, tex, { ...center, radius, palette: P.loi, duration: 2500, cloud,
+          targets: () => targets.filter((u) => Math.hypot(u.feet.x - center.x, (u.feet.y - center.y) / w.groundSquash) <= radius).map((u) => u.feet), onTick: () => {
           for (const u of targets) if (Math.hypot(u.feet.x - center.x, (u.feet.y - center.y) / w.groundSquash) <= radius) {
-            hurt(u, 24, { palette: P.loi, feedback: 0.1, push: 0 });
+            hurt(u, 24, { skin: 'shock', feedback: 0, push: 0 });
+            hitSkin(w, u.sprite, 'shock', { strength: 0.28, duration: 180 });
             shock(w, tex, { target: feetOf(u), height: u.height, palette: P.loi, duration: 450 });
           }
         } });
