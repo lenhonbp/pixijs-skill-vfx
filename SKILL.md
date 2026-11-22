@@ -116,7 +116,7 @@ Ready recipes (see `references/recipes.md` for what each is made of):
 Elements: `WUXING` in `elements.ts` gives the five elements (Kim, Mộc, Thủy, Hỏa, Thổ) with
 palette and shape language, plus variants `PHONG` (wind) and `LOI` (lightning); `ELEMENTS` has
 all seven. Read `references/elements.md` before designing an element skill.
-`examples/skills.ts` has 28 complete skills (15 Wu Xing, 4 wind, 3 lightning, 6 utility) wired
+`examples/skills.ts` has 29 complete skills (16 Wu Xing, 4 wind, 3 lightning, 6 utility) wired
 through a small `SkillContext`; copy the closest one. For `defineElement` / `getElement`,
 `paletteFrom` / `shiftPalette`, custom recipes and composition, read [Extending the kit](references/extending.md).
 
@@ -214,7 +214,7 @@ Inspect the sheets as well as the counts.
   `kit/elements.ts`, `kit/group.ts` - buff/debuff/CC, movement, channeled, element effects.
 - `kit/wind.ts`, `kit/trail.ts`, `kit/noise.ts`, `kit/postfx.ts` - wind recipes, ribbon trails,
   curl noise, distortion and bloom.
-- `examples/skills.ts` - 28 gameplay-agnostic samples across Wu Xing, wind, lightning and utility.
+- `examples/skills.ts` - 29 gameplay-agnostic samples across Wu Xing, wind, lightning and utility.
 - `references/extending.md` - custom elements, recolors, phase template, lifecycle and status catalog.
 - `references/advanced-fx.md` - ribbons, curl noise, distortion, bloom, quality tiers.
 - `references/elements.md` - Wu Xing design language and per-element recipes.

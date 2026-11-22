@@ -23,7 +23,7 @@ export * from './noise';
 export * from './trail';
 export * from './postfx';
 export * from './wind';
-export { fireball, fireBreath, fireCharge, fireImpact, fireMeteor } from './fire';
+export { fireball, fireBreath, fireCharge, fireDragonCrossing, fireImpact, fireMeteor } from './fire';
 export { woodCharge, seedFlight, springBloom, toxicSporeCloud } from './wood';
 export { woodTextures } from './wood-textures';
 export { frostNova, glacierPath, tidalBeam } from './water';

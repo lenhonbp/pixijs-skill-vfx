@@ -8,7 +8,7 @@ import {
 import { SKILLS, SkillDef, Unit, SkillContext } from '../examples/skills';
 
 const W = 1120, H = 630;
-const HOTKEYS = '1234567890QWERTYUIOZXCVBNMJK';
+const HOTKEYS = '1234567890QWFERTYUIOZXCVBNMJK';
 const KEY_ORDER = ['kim', 'moc', 'thuy', 'hoa', 'tho', 'phong', 'loi', 'neutral']
   .flatMap((element) => SKILLS.filter((s) => s.element === element));
 /** Phones and touch tablets: lighter defaults, no hover-only UI. */
