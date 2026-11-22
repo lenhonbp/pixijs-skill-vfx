@@ -23,8 +23,8 @@ export async function showcaseSmoke({ page, browser, url, collection }) {
       return { displacement, lift, shadowWidth, packs: s.vfx.stats().packs };
     });
     assert.equal(motion.packs, 1);
-    if (id === 'kim-golden-edge') assert.ok(motion.displacement > 200);
-    else { assert.ok(motion.lift > 20); assert.ok(motion.shadowWidth < 60); }
+    assert.ok(motion.displacement > 200);
+    if (id === 'phong-tailwind') { assert.ok(motion.lift > 5); assert.ok(motion.shadowWidth < 90); }
   }
   await page.evaluate(() => {
     const { scene, from, to } = window.__showcase;

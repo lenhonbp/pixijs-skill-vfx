@@ -15,12 +15,12 @@
       },
       {
         "name": "kim-sword-rain.m.vfxb",
-        "bytes": 874145
+        "bytes": 1173916
       }
     ],
     "bytes": 2422961,
     "desktopBytes": 2422961,
-    "mobileBytes": 874145,
+    "mobileBytes": 1173916,
     "desktopScales": {
       "glow-back": 0.75,
       "base": 1,
@@ -28,7 +28,7 @@
     },
     "mobileScales": {
       "glow-back": 0.36,
-      "base": 0.6,
+      "base": 0.75,
       "glow": 0.36
     }
   },
@@ -44,20 +44,20 @@
     "files": [
       {
         "name": "kim-golden-edge.vfxb",
-        "bytes": 1870919
+        "bytes": 2869158
       },
       {
         "name": "kim-golden-edge.m.vfxb",
         "bytes": 676882
       }
     ],
-    "bytes": 1870919,
-    "desktopBytes": 1870919,
+    "bytes": 2869158,
+    "desktopBytes": 2869158,
     "mobileBytes": 676882,
     "desktopScales": {
-      "glow-back": 0.75,
-      "base": 1.5,
-      "glow": 0.75
+      "glow-back": 1,
+      "base": 2,
+      "glow": 1
     },
     "mobileScales": {
       "glow-back": 0.5,
@@ -106,24 +106,24 @@
     },
     "element": "moc",
     "category": "control",
-    "frameCount": 117,
+    "frameCount": 233,
     "files": [
       {
         "name": "moc-vine-bind.vfxb",
-        "bytes": 589262
+        "bytes": 1718031
       },
       {
         "name": "moc-vine-bind.m.vfxb",
-        "bytes": 187275
+        "bytes": 361688
       }
     ],
-    "bytes": 589262,
-    "desktopBytes": 589262,
-    "mobileBytes": 187275,
+    "bytes": 1718031,
+    "desktopBytes": 1718031,
+    "mobileBytes": 361688,
     "desktopScales": {
-      "glow-back": 0.75,
-      "base": 1.5,
-      "glow": 0.75
+      "glow-back": 1,
+      "base": 2,
+      "glow": 1
     },
     "mobileScales": {
       "glow-back": 0.5,
@@ -139,20 +139,20 @@
     },
     "element": "moc",
     "category": "buff",
-    "frameCount": 90,
+    "frameCount": 178,
     "files": [
       {
         "name": "moc-spring-bloom.vfxb",
-        "bytes": 1014038
+        "bytes": 2023010
       },
       {
         "name": "moc-spring-bloom.m.vfxb",
-        "bytes": 334563
+        "bytes": 658642
       }
     ],
-    "bytes": 1014038,
-    "desktopBytes": 1014038,
-    "mobileBytes": 334563,
+    "bytes": 2023010,
+    "desktopBytes": 2023010,
+    "mobileBytes": 658642,
     "desktopScales": {
       "glow-back": 0.75,
       "base": 1.5,
@@ -209,23 +209,23 @@
     "files": [
       {
         "name": "thuy-frost-nova.vfxb",
-        "bytes": 2315250
+        "bytes": 3228481
       },
       {
         "name": "thuy-frost-nova.m.vfxb",
-        "bytes": 1148434
+        "bytes": 1279751
       }
     ],
-    "bytes": 2315250,
-    "desktopBytes": 2315250,
-    "mobileBytes": 1148434,
+    "bytes": 3228481,
+    "desktopBytes": 3228481,
+    "mobileBytes": 1279751,
     "desktopScales": {
       "glow-back": 0.75,
-      "base": 1
+      "base": 1.25
     },
     "mobileScales": {
       "glow-back": 0.5,
-      "base": 0.7
+      "base": 0.75
     }
   },
   {
@@ -240,24 +240,24 @@
     "files": [
       {
         "name": "thuy-glacier-path.vfxb",
-        "bytes": 2328234
+        "bytes": 3300689
       },
       {
         "name": "thuy-glacier-path.m.vfxb",
-        "bytes": 1186601
+        "bytes": 1292974
       }
     ],
-    "bytes": 2328234,
-    "desktopBytes": 2328234,
-    "mobileBytes": 1186601,
+    "bytes": 3300689,
+    "desktopBytes": 3300689,
+    "mobileBytes": 1292974,
     "desktopScales": {
       "glow-back": 0.75,
-      "base": 1,
+      "base": 1.25,
       "glow": 0.75
     },
     "mobileScales": {
       "glow-back": 0.5,
-      "base": 0.7,
+      "base": 0.75,
       "glow": 0.5
     }
   },
@@ -343,12 +343,12 @@
       },
       {
         "name": "hoa-heaven-fire.m.vfxb",
-        "bytes": 1011503
+        "bytes": 1270983
       }
     ],
     "bytes": 2679181,
     "desktopBytes": 2679181,
-    "mobileBytes": 1011503,
+    "mobileBytes": 1270983,
     "desktopScales": {
       "glow-back": 0.75,
       "base": 1,
@@ -356,7 +356,7 @@
     },
     "mobileScales": {
       "glow-back": 0.36,
-      "base": 0.6,
+      "base": 0.7,
       "glow": 0.36
     }
   },
@@ -434,20 +434,20 @@
     },
     "element": "tho",
     "category": "buff",
-    "frameCount": 121,
+    "frameCount": 241,
     "files": [
       {
         "name": "tho-stone-skin.vfxb",
-        "bytes": 1359287
+        "bytes": 2686668
       },
       {
         "name": "tho-stone-skin.m.vfxb",
-        "bytes": 453217
+        "bytes": 885324
       }
     ],
-    "bytes": 1359287,
-    "desktopBytes": 1359287,
-    "mobileBytes": 453217,
+    "bytes": 2686668,
+    "desktopBytes": 2686668,
+    "mobileBytes": 885324,
     "desktopScales": {
       "run-0": 1.5,
       "run-1": 0.75,
@@ -475,20 +475,20 @@
     "files": [
       {
         "name": "phong-gale-blade.vfxb",
-        "bytes": 579953
+        "bytes": 912241
       },
       {
         "name": "phong-gale-blade.m.vfxb",
         "bytes": 168231
       }
     ],
-    "bytes": 579953,
-    "desktopBytes": 579953,
+    "bytes": 912241,
+    "desktopBytes": 912241,
     "mobileBytes": 168231,
     "desktopScales": {
-      "glow-back": 0.75,
-      "base": 1.5,
-      "glow": 0.75
+      "glow-back": 1,
+      "base": 2,
+      "glow": 1
     },
     "mobileScales": {
       "glow-back": 0.5,
@@ -508,20 +508,20 @@
     "files": [
       {
         "name": "phong-whirlwind.vfxb",
-        "bytes": 1308295
+        "bytes": 2111024
       },
       {
         "name": "phong-whirlwind.m.vfxb",
         "bytes": 413775
       }
     ],
-    "bytes": 1308295,
-    "desktopBytes": 1308295,
+    "bytes": 2111024,
+    "desktopBytes": 2111024,
     "mobileBytes": 413775,
     "desktopScales": {
-      "glow-back": 0.75,
-      "base": 1.5,
-      "glow": 0.75
+      "glow-back": 1,
+      "base": 2,
+      "glow": 1
     },
     "mobileScales": {
       "glow-back": 0.5,
@@ -574,20 +574,20 @@
     "files": [
       {
         "name": "phong-tailwind.vfxb",
-        "bytes": 1170867
+        "bytes": 1826478
       },
       {
         "name": "phong-tailwind.m.vfxb",
         "bytes": 350755
       }
     ],
-    "bytes": 1170867,
-    "desktopBytes": 1170867,
+    "bytes": 1826478,
+    "desktopBytes": 1826478,
     "mobileBytes": 350755,
     "desktopScales": {
-      "glow-back": 0.75,
-      "base": 1.5,
-      "glow": 0.75
+      "glow-back": 1,
+      "base": 2,
+      "glow": 1
     },
     "mobileScales": {
       "glow-back": 0.5,
@@ -603,24 +603,24 @@
     },
     "element": "loi",
     "category": "attack",
-    "frameCount": 82,
+    "frameCount": 163,
     "files": [
       {
         "name": "lightning-chain.vfxb",
-        "bytes": 125649
+        "bytes": 356501
       },
       {
         "name": "lightning-chain.m.vfxb",
-        "bytes": 54005
+        "bytes": 104223
       }
     ],
-    "bytes": 125649,
-    "desktopBytes": 125649,
-    "mobileBytes": 54005,
+    "bytes": 356501,
+    "desktopBytes": 356501,
+    "mobileBytes": 104223,
     "desktopScales": {
-      "glow-back": 0.75,
-      "base": 1.5,
-      "glow": 0.75
+      "glow-back": 1,
+      "base": 2,
+      "glow": 1
     },
     "mobileScales": {
       "glow-back": 0.5,
@@ -636,20 +636,20 @@
     },
     "element": "loi",
     "category": "aoe",
-    "frameCount": 97,
+    "frameCount": 193,
     "files": [
       {
         "name": "loi-heaven-strike.vfxb",
-        "bytes": 1285490
+        "bytes": 2463485
       },
       {
         "name": "loi-heaven-strike.m.vfxb",
-        "bytes": 413647
+        "bytes": 761927
       }
     ],
-    "bytes": 1285490,
-    "desktopBytes": 1285490,
-    "mobileBytes": 413647,
+    "bytes": 2463485,
+    "desktopBytes": 2463485,
+    "mobileBytes": 761927,
     "desktopScales": {
       "glow-back": 0.75,
       "base": 1.5,
@@ -702,20 +702,20 @@
     },
     "element": "neutral",
     "category": "debuff",
-    "frameCount": 119,
+    "frameCount": 237,
     "files": [
       {
         "name": "seal-silence.vfxb",
-        "bytes": 1028679
+        "bytes": 2040293
       },
       {
         "name": "seal-silence.m.vfxb",
-        "bytes": 418452
+        "bytes": 817549
       }
     ],
-    "bytes": 1028679,
-    "desktopBytes": 1028679,
-    "mobileBytes": 418452,
+    "bytes": 2040293,
+    "desktopBytes": 2040293,
+    "mobileBytes": 817549,
     "desktopScales": {
       "glow-back": 1.25,
       "base": 1.5,
@@ -735,23 +735,23 @@
     },
     "element": "neutral",
     "category": "debuff",
-    "frameCount": 115,
+    "frameCount": 229,
     "files": [
       {
         "name": "sunder-mark.vfxb",
-        "bytes": 447076
+        "bytes": 1063843
       },
       {
         "name": "sunder-mark.m.vfxb",
-        "bytes": 166973
+        "bytes": 331773
       }
     ],
-    "bytes": 447076,
-    "desktopBytes": 447076,
-    "mobileBytes": 166973,
+    "bytes": 1063843,
+    "desktopBytes": 1063843,
+    "mobileBytes": 331773,
     "desktopScales": {
       "glow-back": 1.25,
-      "base": 1.5,
+      "base": 2,
       "glow": 1.25
     },
     "mobileScales": {
@@ -768,20 +768,20 @@
     },
     "element": "neutral",
     "category": "buff",
-    "frameCount": 121,
+    "frameCount": 241,
     "files": [
       {
         "name": "war-cry.vfxb",
-        "bytes": 1044973
+        "bytes": 2088569
       },
       {
         "name": "war-cry.m.vfxb",
-        "bytes": 396413
+        "bytes": 784032
       }
     ],
-    "bytes": 1044973,
-    "desktopBytes": 1044973,
-    "mobileBytes": 396413,
+    "bytes": 2088569,
+    "desktopBytes": 2088569,
+    "mobileBytes": 784032,
     "desktopScales": {
       "glow-back": 1.25,
       "base": 1.5,
@@ -801,20 +801,20 @@
     },
     "element": "neutral",
     "category": "debuff",
-    "frameCount": 97,
+    "frameCount": 193,
     "files": [
       {
         "name": "curse-weaken.vfxb",
-        "bytes": 1341351
+        "bytes": 2652340
       },
       {
         "name": "curse-weaken.m.vfxb",
-        "bytes": 478171
+        "bytes": 950302
       }
     ],
-    "bytes": 1341351,
-    "desktopBytes": 1341351,
-    "mobileBytes": 478171,
+    "bytes": 2652340,
+    "desktopBytes": 2652340,
+    "mobileBytes": 950302,
     "desktopScales": {
       "glow-back": 1.25,
       "base": 1.5,

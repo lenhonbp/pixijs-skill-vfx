@@ -55,13 +55,14 @@ implementation is included. The runtime and showcase remain MIT.
 
 ## Collection size and loading
 
-The 25 Normal and 25 Evolved casts ship as **100 desktop/mobile containers**:
-123,244,602 bytes desktop + 46,052,763 bytes mobile = **169,297,365 bytes**.
-Including the 24,829-byte index, `showcase/public/packs/free/` totals 169,322,194 bytes.
-You only need the packs selected for your game; the showcase loads one skill/tier at a time.
+The 25 skills ship as **50 desktop/mobile containers**:
+57,462,676 bytes desktop + 20,832,436 bytes mobile = **78,295,112 bytes**.
+Including the 15,944-byte index, `showcase/public/packs/free/` totals 78,311,056 bytes.
+You only need the packs selected for your game; the showcase loads one skill at a time.
+18 desktop and 15 mobile packs play at 60 FPS; the rest play at 30 FPS.
 
-Measured on 2026-11-22, the default Fireball cold first load was **2,209,503 bytes
-desktop / 1,458,276 bytes mobile**, including the application, character artwork
+Measured on 2026-11-22, the default Fireball cold first load was **2,195,377 bytes
+desktop / 1,444,150 bytes mobile**, including the application, character artwork
 and HTTP overhead on a local uncompressed server. See
 [download sizes and measurement conditions](docs/pack-format.md#current-free-collection-and-download-sizes)
 for the full breakdown.
