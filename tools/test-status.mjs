@@ -235,6 +235,42 @@ try {
       w.clear();
     } finally { Math.random = random; }
     results.push('swordRain: full blades, palette/height, dense visuals, unchanged impact timing/count, short trails, planted/dissolve, empty/zero/errors PASS');
+    w = world(); let crashes = 0;
+    const mountain = kit.mountainCrash(w, tex, { x: 100, y: 200, radius: 110, palette: gold, delay: 160,
+      onHit: () => crashes++ });
+    step(w, 144);
+    check(!w.particles.some((p) => p.o.texture === tex.mountain && p.sprite.visible), 'mountain: respects formation delay');
+    step(w, 160);
+    const peak = w.particles.find((p) => p.o.texture === tex.mountain);
+    check(peak && peak.o.blend === 'normal' && peak.pz > 0 && peak.sprite.alpha === 1, 'mountain: solid peak forms overhead');
+    check(peak.o.scaleX * 320 > 220 && peak.o.scaleY * 256 === 160, 'mountain: wider than crater, giant height');
+    step(w, 160); check(crashes === 0, 'mountain: no early hit');
+    step(w, 16); check(crashes === 1 && peak.pz === 0, 'mountain: impact and callback synchronized');
+    check(w.particles.some((p) => p.o.texture === tex.swordCrack) && w.particles.some((p) => p.o.texture === tex.rock && p.o.gravity > 0), 'mountain: crater and falling rubble');
+    clean(w, 'mountain default'); check(!mountain.alive && crashes === 1, 'mountain: completes exactly once');
+    w = world();
+    const cancelledPeak = kit.mountainCrash(w, tex, { x: 0, y: 0, radius: 60, height: 100, palette: gold,
+      delay: 200, onHit: () => crashes++ });
+    cancelledPeak.stop(); cancelledPeak.stop(); clean(w, 'mountain early stop');
+    check(crashes === 1 && !cancelledPeak.alive, 'mountain: stop cancels hit');
+    w = world();
+    const brokenPeak = kit.mountainCrash(w, tex, { x: 0, y: 0, radius: 60, palette: gold,
+      onHit: () => { throw new Error('mountain callback'); } });
+    let mountainError;
+    try { step(w, 320); } catch (e) { mountainError = e.message; }
+    check(mountainError === 'mountain callback', 'mountain: callback errors propagate');
+    brokenPeak.stop(); clean(w, 'mountain callback error');
+    w = world(); let damage = 0;
+    const jumper = { feet: { x: 100, y: 200, z: 0 }, height: 70, facing: 1 };
+    const victim = { feet: { x: 400, y: 200, z: 0 }, height: 70 };
+    kit.SKILLS.find((s) => s.id === 'tho-mountain-leap').cast({ w, tex, caster: jumper,
+      target: victim, targets: [victim], returnHome: () => {}, hurt: () => {
+        check(jumper.feet.z === 0 && w.now === 640, 'mountain sample: damage on caster landing'); damage++;
+      } });
+    step(w, 624); check(damage === 0, 'mountain sample: no damage before landing');
+    step(w, 16); check(damage === 1, 'mountain sample: impact damage once');
+    step(w, 4000); clean(w, 'mountain sample');
+    results.push('mountainCrash: delay/formation/drop, impact callback, crater/rubble, cleanup/stop/errors and 640 ms landing sync PASS');
     return results;
   });
   results.forEach((line) => console.log(line));

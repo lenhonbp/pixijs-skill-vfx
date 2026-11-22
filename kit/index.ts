@@ -13,6 +13,7 @@ export * from './status';
 export * from './bell';
 export * from './stone-armor';
 export * from './spirit-guardian';
+export * from './mountain-crash';
 export * from './motion';
 export * from './channel';
 export * from './elemental';

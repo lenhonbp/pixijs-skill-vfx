@@ -109,7 +109,7 @@ export function blink(
 export function leap(
   w: VfxWorld,
   tex: VfxTextures,
-  o: { from: Vec3; to: Vec3; palette: Palette; arc?: number; duration?: number; height?: number; radius?: number; onMove?: (p: Vec3) => void; onLand?: (at: Vec3) => void },
+  o: { from: Vec3; to: Vec3; palette: Palette; arc?: number; duration?: number; height?: number; radius?: number; impact?: boolean; onMove?: (p: Vec3) => void; onLand?: (at: Vec3) => void },
 ): Handle {
   const dur = o.duration ?? 620;
   const arc = o.arc ?? 150;
@@ -135,7 +135,7 @@ export function leap(
     trail.stop();
     shadow?.kill();
     pos.z = 0;
-    slam(w, tex, { x: pos.x, y: pos.y, radius: r, palette: p });
+    if (o.impact !== false) slam(w, tex, { x: pos.x, y: pos.y, radius: r, palette: p });
     o.onLand?.({ ...pos });
     return false;
   });
@@ -174,4 +174,3 @@ export function slam(w: VfxWorld, tex: VfxTextures, o: { x: number; y: number; r
 function ms2(peak: number) {
   return (t: number) => (t < 0.03 ? (peak * t) / 0.03 : t > 0.6 ? (peak * (1 - t)) / 0.4 : peak);
 }
-

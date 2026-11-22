@@ -36,6 +36,8 @@ export interface VfxTextures {
   rockPlate: Texture;
   /** Spectral armored halberd guardian, feet at (88, 244). 192x256. */
   guardian: Texture;
+  /** Craggy mountain with lit ridges and dark ravines. 320x256, base anchor (0.5,1). */
+  mountain: Texture;
   /** Leaf with a mid vein pointing +x. 48x24. Wood/nature. */
   leaf: Texture;
   /** Water droplet, round end at the bottom. 24x36. Water, bleed. */
@@ -393,6 +395,31 @@ export function createVfxTextures(): VfxTextures {
     return textureFromCanvas(c);
   })();
 
+  const mountain = (() => {
+    const [c, ctx] = makeCanvas(320, 256);
+    const face = (points: number[][], color: string) => {
+      ctx.beginPath(); points.forEach(([x, y], i) => i ? ctx.lineTo(x, y) : ctx.moveTo(x, y));
+      ctx.closePath(); ctx.fillStyle = color; ctx.fill();
+    };
+    face([[4,248],[31,190],[49,181],[67,115],[87,127],[114,74],[129,80],[159,5],[186,65],
+      [202,58],[221,111],[241,94],[267,158],[286,173],[316,248]], '#79664b');
+    face([[4,248],[67,115],[87,127],[114,74],[129,80],[159,5],[144,108],[104,156],[83,222]], '#dfc79a');
+    face([[159,5],[186,65],[202,58],[221,111],[211,187],[181,245],[143,244],[158,145],[144,108]], '#9d865f');
+    face([[241,94],[267,158],[286,173],[316,248],[220,247],[225,174]], '#b49b71');
+    face([[159,5],[144,108],[125,136],[143,129],[122,185],[160,148],[173,97]], '#544a38');
+    face([[67,115],[83,162],[56,205],[87,188],[71,233],[112,245],[32,248]], '#a68a60');
+    face([[202,58],[210,124],[195,147],[214,137],[198,215],[235,174],[221,111]], '#4c4232');
+    face([[241,94],[225,174],[244,162],[236,205],[267,230],[253,162]], '#e3cb9d');
+    ctx.strokeStyle = '#f5dfb5'; ctx.lineWidth = 3; ctx.lineJoin = 'bevel';
+    for (const line of [[[16,232],[52,190],[67,115]],[[92,140],[114,74],[129,80],[159,5]],[[144,108],[158,145],[145,209]],[[267,158],[286,173],[304,222]]]) {
+      ctx.beginPath(); line.forEach(([x,y], i) => i ? ctx.lineTo(x,y) : ctx.moveTo(x,y)); ctx.stroke();
+    }
+    ctx.strokeStyle = '#5b4b36'; ctx.lineWidth = 3;
+    for (const line of [[[104,156],[100,177],[119,185],[105,217]],[[174,175],[181,189],[169,211],[178,233]],[[269,200],[280,217],[273,239]]]) {
+      ctx.beginPath(); line.forEach(([x,y], i) => i ? ctx.lineTo(x,y) : ctx.moveTo(x,y)); ctx.stroke();
+    }
+    return textureFromCanvas(c);
+  })();
   const guardian = (() => {
     const [c, ctx] = makeCanvas(192, 256);
     ctx.lineJoin = 'round';
@@ -522,5 +549,5 @@ export function createVfxTextures(): VfxTextures {
     digits[ch] = textureFromCanvas(c);
   }
 
-  return { glow, dot, ring, disc, streak, beam, star, puff, crescent, shard, blade, swordCrack, spike, rock, rockPlate, guardian, leaf, drop, chevron, rune, bubble, tendril, plus, crackedShield, bell, bellCracks, digits };
+  return { glow, dot, ring, disc, streak, beam, star, puff, crescent, shard, blade, swordCrack, spike, rock, rockPlate, guardian, mountain, leaf, drop, chevron, rune, bubble, tendril, plus, crackedShield, bell, bellCracks, digits };
 }

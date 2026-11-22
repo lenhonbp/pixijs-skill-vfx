@@ -9,7 +9,7 @@ import {
   slash, hitSpark, hitFlash, projectile, explosion, meteor, lightningChain, healAura, telegraph, shockwave,
   damageOverTime, stun, shock, freeze, slow, root, statChange, damageNumber,
   silence, blind, armorBreak, mark, fear, aura, empower, haste,
-  goldenBell, stoneArmor, spiritGuardian,
+  goldenBell, stoneArmor, spiritGuardian, mountainCrash,
   lightningStrike, staticField,
   dash, blink, leap, beam, coneBreath, chargeUp, summonCircle, spikeLine, spikeRing, swordRain,
   rand, envelope, outCubic, outQuad, lerp, clamp01,
@@ -325,17 +325,22 @@ export const SKILLS: SkillDef[] = [
   },
   {
     id: 'tho-mountain-leap', element: 'tho', category: 'movement', en: 'Mountain Crash', vi: 'Thái Sơn Áp Đỉnh',
-    desc: 'Leap high and crash down, shattering the ground and stunning nearby enemies.', uses: ['leap', 'stun'], length: 3000,
+    desc: 'A giant craggy mountain forms overhead and crushes the ground as the caster lands.', uses: ['leap', 'mountainCrash', 'stun'], length: 3300,
     cast: ({ w, tex, caster, target, targets, hurt, returnHome }) => {
       const to = { x: target.feet.x - caster.facing * 40, y: target.feet.y + 6, z: 0 };
       leap(w, tex, {
-        from: { ...caster.feet }, to, palette: P.tho, arc: 190, duration: 640, radius: 110, height: caster.height,
+        from: { ...caster.feet }, to, palette: P.tho, arc: 190, duration: 640, radius: 110, height: caster.height, impact: false,
         onMove: (p) => { caster.feet.x = p.x; caster.feet.y = p.y; caster.feet.z = p.z ?? 0; },
-        onLand: (at) => {
+        onLand: () => {
           caster.feet.z = 0;
-          near(at, 130, targets).forEach((u) => { hurt(u, 168, { palette: P.tho, crit: u === target, angle: -Math.PI / 2 }); stun(w, tex, { target: feetOf(u), height: u.height, duration: 1500 }); });
           w.after(900, returnHome);
         },
+      });
+      mountainCrash(w, tex, { ...to, radius: 110, height: caster.height * 2.3, palette: P.tho, delay: 320,
+        onHit: () => near(to, 130, targets).forEach((u) => {
+          hurt(u, 168, { palette: P.tho, crit: u === target, angle: -Math.PI / 2 });
+          stun(w, tex, { target: feetOf(u), height: u.height, duration: 1500 });
+        }),
       });
     },
   },
