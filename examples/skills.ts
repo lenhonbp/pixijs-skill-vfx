@@ -5,15 +5,16 @@
 import type { Sprite } from 'pixi.js';
 import {
   VfxWorld, VfxTextures, Vec3, Palette, WUXING, PHONG, LOI, AnyElementName,
-  tornado, windSlash, windSweep, vortex, windWisps, gustLines, curlDrift,
-  slash, hitSpark, hitFlash, projectile, lightningChain, healAura, telegraph, shockwave,
+  tornado, windSlash, windSweep, vortex, windWisps, gustLines,
+  slash, hitSpark, hitFlash, projectile, lightningChain, telegraph, shockwave,
   fireball, fireBreath, fireCharge, fireImpact, fireMeteor,
+  woodCharge, seedFlight, springBloom, toxicSporeCloud,
   damageOverTime, stun, shock, freeze, slow, root, statChange, damageNumber,
   silence, blind, armorBreak, mark, fear, aura, empower, haste,
   goldenBell, metalSlash, metalSparks, swordSalute, stoneArmor, spiritGuardian, mountainCrash,
   lightningStrike, staticField,
   dash, blink, leap, beam, chargeUp, summonCircle, spikeLine, spikeRing, swordRain,
-  random, rand, envelope, outCubic, outQuad, lerp, clamp01,
+  rand, envelope, outCubic, outQuad, lerp, clamp01,
   frostNova, glacierPath, tidalBeam,
 } from '../kit';
 
@@ -160,62 +161,38 @@ export const SKILLS: SkillDef[] = [
   // ------------------------------------------------------------------ MỘC / WOOD
   {
     id: 'moc-vine-bind', element: 'moc', category: 'control', en: 'Vine Bind', vi: 'Triền Đằng Phược',
-    desc: 'A seed bolt bursts into thorned vines that root the target.', uses: ['chargeUp', 'projectile', 'root'], length: 3300,
+    desc: 'A sprouting seed tears open the soil and grows binding vines.', uses: ['woodCharge', 'seedFlight', 'root'], length: 3300,
     cast: ({ w, tex, caster, target, hurt }) => {
-      chargeUp(w, tex, {
-        target: () => hand(caster), palette: P.moc, duration: 300,
-        onDone: () => projectile(w, tex, {
-          from: hand(caster), to: chest(target, 0.3), palette: { ...P.moc, core: P.moc.main }, speed: 620, arcHeight: 50, size: 0.65, alpha: 0.35,
-          onHit: (at) => {
-            w.spawn({ texture: tex.glow, ...at, life: 160, scale: [0.3, 0.65], alpha: [0.25, 0], tint: P.moc.main });
-            w.spawn({ texture: tex.ring, ...at, life: 220, scale: [0.02, 0.15], alpha: [0.3, 0], tint: P.moc.main });
-            w.spawn({ texture: tex.dot, ...at, life: 100, scale: [0.08, 0], alpha: [0.4, 0], tint: P.moc.core });
-            hurt(target, 42, { palette: P.moc, feedback: 0 });
-            root(w, tex, { target: feetOf(target), height: target.height, duration: 2300, palette: P.moc }).pulse();
-          },
-        }),
-      });
+      woodCharge(w, { target: () => hand(caster), duration: 300, onDone: () => seedFlight(w, {
+        from: hand(caster), to: chest(target, 0.3), speed: 620,
+        onHit: () => {
+          hurt(target, 42, { palette: P.moc, feedback: 0 });
+          root(w, tex, { target: feetOf(target), height: target.height, duration: 2300, palette: P.moc }).pulse();
+        },
+      }) });
     },
   },
   {
     id: 'moc-spring-bloom', element: 'moc', category: 'buff', en: 'Spring Bloom', vi: 'Xuân Hồi Đại Địa',
-    desc: 'Healing petals and a regrowth aura; restores health over time.', uses: ['healAura', 'statChange'], length: 2400,
+    desc: 'Grass sprouts and flowers unfold in a warm healing breeze.', uses: ['springBloom', 'statChange'], length: 2900,
     cast: ({ w, tex, caster, hurt }) => {
-      const aura = healAura(w, tex, { target: feetOf(caster), palette: P.moc, radius: 52, duration: 2000 });
+      const aura = springBloom(w, { target: feetOf(caster), radius: 58, duration: 2000 });
       statChange(w, tex, { target: feetOf(caster), height: caster.height, up: true, palette: P.moc, duration: 1200 });
-      w.stream({
-        rate: 16, duration: 1800,
-        make: () => ({
-          texture: tex.leaf, blend: 'normal', x: caster.feet.x + rand(-60, 60), y: caster.feet.y + rand(-20, 20), z: rand(110, 150), life: 1300,
-          vx: rand(-20, 20), vz: -70, rotation: rand(0, 6.3), spin: rand(-3, 3), scale: rand(0.3, 0.45), alpha: envelope(0.15, 0.8, 0.8), tint: random() < 0.3 ? WUXING.moc.accent : P.moc.main,
-        }),
-      });
       for (let i = 0; i < 4; i++) w.after(300 + i * 420, () => { if (aura.alive) hurt(caster, -Math.round(rand(55, 75))); });
     },
   },
   {
     id: 'moc-toxic-spores', element: 'moc', category: 'debuff', en: 'Toxic Spores', vi: 'Độc Chướng Vụ',
-    desc: 'A lingering spore cloud poisons every enemy inside.', uses: ['chargeUp', 'telegraph', 'damageOverTime(poison)', 'hitFlash', 'curlDrift'], length: 3800,
+    desc: 'Mushrooms erupt and breathe a lingering cloud of poisonous spores.', uses: ['woodCharge', 'toxicSporeCloud', 'damageOverTime(poison)'], length: 4300,
     cast: ({ w, tex, caster, target, targets }) => {
       const c = { x: target.feet.x, y: target.feet.y };
-      const pal = { core: 0xf0ffd0, main: 0x9cff3a, dark: 0x2f4a05 };
-      chargeUp(w, tex, { target: () => hand(caster), palette: pal, duration: 350 });
-      telegraph(w, tex, {
-        ...c, radius: 120, duration: 450, palette: pal, finishAlpha: 0,
-        onDone: () => {
-          w.stream({
-            rate: 22, duration: 2600,
-            make: () => {
-              const a = rand(0, 6.3), d = Math.sqrt(random()) * 115;
-              return {
-                texture: tex.puff, blend: 'normal', layer: 'body', x: c.x + Math.cos(a) * d, y: c.y + Math.sin(a) * d * w.groundSquash, z: rand(0, 25), life: rand(1200, 1700),
-                vz: rand(8, 20), vx: rand(-10, 10), rotation: rand(0, 6.3), spin: rand(-0.5, 0.5), scale: [0.6, rand(1.3, 1.8), outCubic], alpha: envelope(0.3, 0.22, 0.5), tint: [0x7ac83a, 0x3a5a1a], onUpdate: curlDrift(22, 80),
-              };
-            },
-          });
-          w.spawn({ texture: tex.glow, layer: 'ground', groundAligned: true, ...c, life: 2800, scale: 3.1, alpha: envelope(0.1, 0.35, 0.3), tint: pal.main });
-          near(c, 125, targets).forEach((u) => damageOverTime(w, tex, { target: feetOf(u), height: u.height, kind: 'poison', duration: 2800, tickMs: 560, damage: () => Math.round(rand(14, 19)), onTick: () => hitFlash(w, u.sprite, 90, 0xa0ff60) }));
-        },
+      woodCharge(w, { target: () => hand(caster), duration: 350 });
+      toxicSporeCloud(w, {
+        at: c, radius: 120, duration: 2600,
+        onBloom: () => near(c, 125, targets).forEach((u) => damageOverTime(w, tex, {
+          target: feetOf(u), height: u.height, kind: 'poison', poisonVisual: 'spores', duration: 2800, tickMs: 560,
+          damage: () => Math.round(rand(14, 19)), onTick: () => hitFlash(w, u.sprite, 90, 0x93996c),
+        })),
       });
     },
   },

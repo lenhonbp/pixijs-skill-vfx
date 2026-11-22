@@ -10,6 +10,7 @@ import { WUXING, LOI } from './elements';
 import { lightningBolt } from './lightning-bolt';
 import { vineBind, type VineBindHandle } from './vine-bind';
 import { burnFlames } from './fire';
+import { clingingSpores } from './wood';
 import { clamp01, envelope, inQuad, outBack, outCubic, outQuad, rand, lerpColor } from './ease';
 
 const TAU = Math.PI * 2;
@@ -238,7 +239,7 @@ export const DOT_STYLE: Record<DotKind, { palette: Palette; number: number }> = 
 export function damageOverTime(
   w: VfxWorld,
   tex: VfxTextures,
-  o: OnUnit & { kind: DotKind; duration?: number; tickMs?: number; damage?: number | (() => number); numbers?: boolean; onTick?: (dmg: number) => void },
+  o: OnUnit & { kind: DotKind; duration?: number; tickMs?: number; damage?: number | (() => number); numbers?: boolean; onTick?: (dmg: number) => void; poisonVisual?: 'spores' },
 ): Handle {
   const { palette: p, number: numColor } = DOT_STYLE[o.kind];
   const h = o.height ?? 70;
@@ -249,8 +250,11 @@ export function damageOverTime(
   const s = h / 70;
 
   // sickly / hot / wounded tint over the body
-  g.add(w.spawn({ texture: tex.glow, x: 0, y: 0, z: h * 0.5, follow: T, life: dur, zBias: 2, scaleX: 0.9 * s, scaleY: 1.3 * s, alpha: ms.env(dur, 200, 300, o.kind === 'bleed' ? 0.12 : 0.22), tint: p.main }));
-  if (o.kind === 'poison') {
+  const spores = o.kind === 'poison' && o.poisonVisual === 'spores';
+  g.add(w.spawn({ texture: tex.glow, x: 0, y: 0, z: h * 0.5, follow: T, life: dur, zBias: 2, scaleX: 0.9 * s, scaleY: 1.3 * s, alpha: ms.env(dur, 200, 300, spores ? 0.07 : o.kind === 'bleed' ? 0.12 : 0.22), tint: spores ? 0x8a8953 : p.main }));
+  if (spores) {
+    g.addHandle(clingingSpores(w, T, h, dur));
+  } else if (o.kind === 'poison') {
     g.add(w.spawn({ texture: tex.glow, layer: 'ground', groundAligned: true, x: 0, y: 0, follow: T, life: dur, scale: 1.1 * s, alpha: ms.env(dur, 250, 300, 0.4), tint: p.main }));
     g.addHandle(w.stream({
       rate: 14, duration: dur,
@@ -290,12 +294,12 @@ export function damageOverTime(
     const at = T();
     const dmg = typeof o.damage === 'function' ? o.damage() : o.damage ?? 12;
     o.onTick?.(dmg);
-    w.spawn({ texture: tex.glow, x: 0, y: 0, z: h * 0.55, follow: T, life: 220, zBias: 3, scaleX: [0.9 * s, 1.4 * s, outQuad], scaleY: [1.3 * s, 1.8 * s, outQuad], alpha: [0.55, 0, outQuad], tint: p.main });
-    if (o.kind === 'poison') {
+    w.spawn({ texture: tex.glow, x: 0, y: 0, z: h * 0.55, follow: T, life: 220, zBias: 3, scaleX: [0.9 * s, 1.4 * s, outQuad], scaleY: [1.3 * s, 1.8 * s, outQuad], alpha: [spores ? 0.06 : 0.55, 0, outQuad], tint: spores ? 0x8a8953 : p.main });
+    if (o.kind === 'poison' && !spores) {
       w.burst(6, () => ({ texture: tex.dot, x: at.x, y: at.y, z: h * rand(0.3, 0.7), life: rand(300, 500), vx: rand(-90, 90), vz: rand(40, 140), gravity: 300, zBias: 5, scale: [0.3, 0], tint: p.main }));
     } else if (o.kind === 'burn') {
       w.spawn({ texture: tex.glow, x: 0, y: 0, z: h * 0.4, follow: T, life: 180, zBias: 4, scale: [0.6 * s, 1.1 * s], alpha: [0.8, 0], tint: p.core });
-    } else {
+    } else if (o.kind === 'bleed') {
       const side = n % 2 ? 1 : -1;
       w.burst(5, () => drop(w, tex, at, h, p, s, side * rand(60, 140), rand(40, 120)));
       w.spawn({ texture: tex.streak, x: at.x, y: at.y, z: h * 0.55, life: 160, zBias: 6, rotation: side * 0.6, scaleX: [0.6 * s, 0.9 * s], scaleY: 0.45, alpha: [1, 0], tint: p.core });
