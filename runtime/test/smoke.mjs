@@ -8,6 +8,7 @@ import { fileURLToPath } from 'node:url';
 import { build } from 'esbuild';
 import { chromium } from 'playwright';
 import { showcaseSmoke } from '../../showcase/test/smoke.mjs';
+import { catalogSmoke } from '../../showcase/test/catalog-smoke.mjs';
 
 const root = resolve(dirname(fileURLToPath(import.meta.url)), '../..');
 const dist = resolve(root, 'showcase/dist');
@@ -210,9 +211,14 @@ const v7Bundle = await build({
   stdin: { contents: `import { Application, Container } from 'pixi.js'; import { VfxPlayer } from './runtime/src/index'; const app = new Application({width:1000,height:580}); document.body.appendChild(app.view); const vfx = await VfxPlayer.create(app); window.__v7 = {app,vfx,Container,VfxPlayer};`, resolveDir: root },
   bundle: true, format: 'esm', write: false, alias: { 'pixi.js': 'pixi7' },
 });
+const catalogFixtureBundle = await build({
+  entryPoints: [resolve(root, 'showcase/test/catalog-fixture.ts')], bundle: true, format: 'esm', write: false,
+});
 const server = createServer(async (req, res) => {
   try {
     const path = decodeURIComponent(new URL(req.url, 'http://localhost').pathname);
+    if (path === '/catalog-fixture.html') { res.setHeader('Content-Type', 'text/html'); res.end('<link rel="icon" href="data:,"><script type="module" src="/catalog-fixture.js"></script>'); return; }
+    if (path === '/catalog-fixture.js') { res.setHeader('Content-Type', 'text/javascript'); res.end(catalogFixtureBundle.outputFiles[0].contents); return; }
     if (path === '/v7.html') { res.setHeader('Content-Type', 'text/html'); res.end('<link rel="icon" href="data:,"><script type="module" src="/v7.js"></script>'); return; }
     if (path === '/v7.js') { res.setHeader('Content-Type', 'text/javascript'); res.end(v7Bundle.outputFiles[0].contents); return; }
     if (path === '/feedback.vfxb' || path === '/invalid.vfxb') { res.end(path === '/feedback.vfxb' ? fixture(feedback, new Map()) : Buffer.from('invalid')); return; }
@@ -316,6 +322,7 @@ try {
   if (!(await page.evaluate(() => window.__showcase.vfx.stats().packs))) throw Error('Persisted pagehide destroyed showcase');
   console.log('Showcase bfcache lifecycle: PASS (persisted pagehide keeps player alive)');
   await showcaseSmoke({ page, browser, url, collection });
+  await catalogSmoke({ page, browser, url, collection });
   await page.evaluate(async () => {
     const s = window.__showcase; s.select('hoa-fire-dragon-crossing');
     await s.vfx.load('./packs/free/hoa-fire-dragon-crossing.vfxb');
