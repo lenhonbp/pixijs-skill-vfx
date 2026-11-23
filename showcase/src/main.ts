@@ -6,7 +6,9 @@ import { VfxPlayer, packDirection } from '../../runtime/src/index';
 import type { Playback, CueEvent } from '../../runtime/src/index';
 import './style.css';
 import { createStage } from './stage';
-import details from './skill-details';
+import { resolveCatalog } from './catalog';
+import type { CatalogProduct } from './catalog';
+import { createCatalogView } from './catalog-view';
 import { zip } from './zip';
 function canvas(w: number, h: number): [HTMLCanvasElement, CanvasRenderingContext2D] {
   const c = document.createElement('canvas');
@@ -141,22 +143,55 @@ function dummyTexture() {
 
 interface Variant { bytes: number; desktopBytes?: number; mobileBytes?: number }
 interface Entry extends Variant { id: string; name: { en: string; vi: string }; element: string; category: string; directions?: Record<string, Variant> }
-const descriptions: Record<string, { description: string }> = details;
 const base = import.meta.env.BASE_URL;
 document.querySelector<HTMLDivElement>('#app')!.innerHTML = `
-<header><a class="brand" href="#">L<span>✦</span> / LENHON <small>VFX LIBRARY</small></a><nav><a href="#library">Free collection</a><a href="#premium">Premium packs ↗</a><a href="https://github.com/lenhonbp/pixijs-skill-vfx">GitHub ↗</a></nav></header>
-<main><section class="intro"><div><p class="eyebrow">BUILT FOR PIXIJS 7 + 8 · ZERO RUNTIME DEPENDENCIES</p><h1>A little magic.<br><em>A lot of impact.</em></h1><p class="lede">Game-ready 2.5D effects. Pick a spell, see it in motion,<br> and make it yours in two lines of code.</p></div><div class="intro-note"><span class="star">✳</span><strong>Runtime is free forever (MIT)</strong><p>Commercial use welcome.<br>Just keep the MIT copyright and license notice.</p><a href="https://github.com/lenhonbp/pixijs-skill-vfx/tree/main/runtime">Explore the runtime ↗</a></div></section>
-<section id="library" class="library"><aside><div class="section-heading"><h2>Free collection</h2><span>25 SKILLS</span></div><label class="sr-only" for="search">Search effects</label><input id="search" placeholder="Search a spell…" type="search" autocomplete="off"><div id="filters" aria-label="Element filters"></div><div id="list" class="skill-list" aria-label="Effects"></div></aside>
-<div class="viewer"><div class="arena-header"><div><p class="eyebrow" id="category">LIVE PREVIEW</p><h2><span id="selected-name">Loading collection…</span><span id="selected-vi"></span></h2></div><button id="browse" class="browse">All skills ↓</button></div><div class="stage-wrap"><div id="stage" data-bg="stage" aria-label="Effect preview arena"><div class="arena-tip">Click the floor to cast · SPACE to replay</div></div><div class="stage-tools"><div class="aim-toolbar" id="aim" role="group" aria-label="Cast direction"></div><div class="stage-toolbar" role="group" aria-label="Preview background"><button data-bg="stage" title="Painted stage">Stage</button><button data-bg="dark" title="Dark #0e1118">Dark</button><button data-bg="light" title="Light">Light</button><button data-bg="checker" title="Transparent checkerboard: inspect additive glow and alpha">Alpha</button></div></div></div><div class="controls"><button id="replay" class="primary">↻ Replay</button><label><input id="loop" type="checkbox"> Loop</label><label><input id="sound" type="checkbox"> Sound</label><label><input id="shake" type="checkbox" checked> Shake</label><span id="status" role="status" aria-live="polite">Loading…</span></div><div class="actions"><button id="download-kit" class="kit">Download kit (.zip) <span></span></button><button id="copy-url">Copy asset URL</button><button id="copy">Copy code</button></div></div>
-<div class="details"><p id="description" class="effect-description"></p><div class="integration"><div class="section-heading"><h3>From preview to your game</h3><span>npm i @lenhonbp/pixijs-vfx-runtime</span></div><pre><code id="snippet"></code></pre><div class="downloads" aria-label="Download the selected pack"><a id="download-desktop" download>Desktop pack <span></span></a><a id="download-mobile" download>Mobile pack <span></span></a></div><p>One tiny runtime. One self-contained pack. That’s it. <a href="https://github.com/lenhonbp/pixijs-skill-vfx/blob/main/runtime/README.md">Read the docs ↗</a><a href="https://github.com/lenhonbp/pixijs-skill-vfx/tree/main/skills/lenhon-vfx">Agent skill ↗</a></p></div></div></section>
-<section id="premium"><div class="premium-heading"><div><p class="eyebrow">THE NEXT CHAPTER</p><h2>More worlds. More wonder.</h2></div><p>Handcrafted collections for your next adventure.<br><span>Premium art. The same free runtime.</span></p></div><div class="premium-grid"><article style="--accent:#d6b477"><span class="pack-symbol">劍</span><p class="eyebrow">01 / MARTIAL LEGENDS</p><h3>Kiếm Hiệp</h3><p>Sword auras, flying blades and the spirit of a wandering hero.</p><div><a href="#gumroad-link-tbd">Gumroad ↗</a><a href="#itch-link-tbd">itch.io ↗</a><span>COMING SOON</span></div></article><article style="--accent:#7dbaa9"><span class="pack-symbol">五</span><p class="eyebrow">02 / FIVE ELEMENTS</p><h3>Ngũ Hành</h3><p>Metal, wood, water, fire and earth. Five forces in perfect motion.</p><div><a href="#gumroad-link-tbd">Gumroad ↗</a><a href="#itch-link-tbd">itch.io ↗</a><span>COMING SOON</span></div></article><article style="--accent:#b69ed4"><span class="pack-symbol">冥</span><p class="eyebrow">03 / FINAL ENCOUNTERS</p><h3>Ultimate Boss</h3><p>Arena-shaking ultimates for battles players will remember.</p><div><a href="#gumroad-link-tbd">Gumroad ↗</a><a href="#itch-link-tbd">itch.io ↗</a><span>COMING SOON</span></div></article></div></section>
-<footer><span>© 2026 lenhonbp · <a href="https://opensource.org/license/mit">MIT license</a> · <a href="https://github.com/lenhonbp/pixijs-skill-vfx">GitHub repository</a> · <a href="https://github.com/lenhonbp/pixijs-skill-vfx/issues">Report an issue</a> · <a href="mailto:lenhon.vfx@gmail.com">lenhon.vfx@gmail.com</a></span><span>Character artwork (c) 2026 lenhonbp; excluded from the MIT licence.</span></footer></main>`;
+<header><a class="brand" href="#">L<span>✦</span> / LENHON <small>VFX LIBRARY</small></a><nav><a href="#library">Browse VFX</a><a href="#premium">Premium collections ↗</a><a href="https://github.com/lenhonbp/pixijs-skill-vfx">GitHub ↗</a></nav></header>
+<main>
+  <section class="intro"><div><p class="eyebrow">BUILT FOR PIXIJS 7 + 8 · ZERO RUNTIME DEPENDENCIES</p><h1>A little magic.<br><em>A lot of impact.</em></h1><p class="lede">Game-ready 2.5D effects. Find your next spell,<br> try the free effects and explore Premium collections.</p></div><div class="intro-note"><span class="star">✳</span><strong>Runtime is free forever (MIT)</strong><p>Free effects, ready to use.<br>Discover each collection below.</p><a href="https://github.com/lenhonbp/pixijs-skill-vfx/tree/main/runtime">Explore the runtime ↗</a></div></section>
+  <section id="library" class="library">
+    <aside>
+      <div class="section-heading"><h2>VFX catalog</h2><span id="catalog-count" aria-live="polite">Loading…</span></div>
+      <div id="catalog-access" role="group" aria-label="Product access"></div>
+      <label class="sr-only" for="collection-filter">Collection</label><select id="collection-filter" aria-label="Collection"></select>
+      <label class="sr-only" for="search">Search effects and collections</label><input id="search" placeholder="Search effects or collections…" type="search" autocomplete="off">
+      <div id="filters" role="group" aria-label="Element filters"></div>
+      <div id="list" class="skill-list" aria-label="Products"></div>
+    </aside>
+    <div class="viewer">
+      <div class="arena-header"><div><p class="eyebrow" id="category">LIVE PREVIEW</p><h2><span id="selected-name">Loading collection…</span><span id="selected-vi"></span><span id="product-badge" class="product-badge"></span></h2></div><button id="browse" class="browse">Browse ↓</button></div>
+      <div class="stage-wrap">
+        <div id="stage" data-bg="stage" aria-label="Effect preview arena"><div class="arena-tip">Click the floor to cast · SPACE to replay</div></div>
+        <div class="stage-tools"><div class="aim-toolbar" id="aim" role="group" aria-label="Cast direction"></div><div class="stage-toolbar" role="group" aria-label="Preview background"><button data-bg="stage" title="Painted stage">Stage</button><button data-bg="dark" title="Dark #0e1118">Dark</button><button data-bg="light" title="Light">Light</button><button data-bg="checker" title="Transparent checkerboard: inspect additive glow and alpha">Alpha</button></div></div>
+      </div>
+      <div class="controls"><button id="replay" class="primary">↻ Replay</button><label><input id="loop" type="checkbox"> Loop</label><label><input id="sound" type="checkbox"> Sound</label><label><input id="shake" type="checkbox" checked> Shake</label><span id="status" role="status" aria-live="polite">Loading…</span></div>
+      <div class="actions"><button id="download-kit" class="kit">Download kit (.zip) <span></span></button><button id="copy-url">Copy asset URL</button><button id="copy">Copy code</button></div>
+      <div id="premium-preview" class="premium-preview" hidden></div>
+      <div id="premium-actions" class="premium-actions" hidden>
+        <p id="coming-soon"><strong>Coming soon</strong><span>Pack contents, pricing and purchase links will be announced at launch.</span></p>
+        <div id="purchase-links" class="purchase-links"></div><p id="purchase-note" hidden>Checkout and full pack delivery are handled by the store.</p>
+      </div>
+    </div>
+    <div class="details">
+      <p id="description" class="effect-description"></p>
+      <section class="product-info" aria-label="Product details">
+        <div class="product-meta"><span id="product-collection"></span><span id="product-status" class="release-status"></span></div>
+        <div class="product-specs"><div><h3 id="product-includes-title">In the download kit</h3><ul id="product-includes"></ul></div><div><h3>Compatibility</h3><ul id="product-compatibility"></ul></div></div>
+        <p id="product-license" class="product-license"></p>
+      </section>
+      <div id="integration" class="integration"><div class="section-heading"><h3>From preview to your game</h3><span>npm i @lenhonbp/pixijs-vfx-runtime</span></div><pre><code id="snippet"></code></pre><div class="downloads" aria-label="Download the selected pack"><a id="download-desktop" download>Desktop pack <span></span></a><a id="download-mobile" download>Mobile pack <span></span></a></div><p>One tiny runtime. One self-contained pack. That’s it. <a href="https://github.com/lenhonbp/pixijs-skill-vfx/blob/main/runtime/README.md">Read the docs ↗</a><a href="https://github.com/lenhonbp/pixijs-skill-vfx/tree/main/skills/lenhon-vfx">Agent skill ↗</a></p></div>
+    </div>
+  </section>
+  <section id="premium"><div class="premium-heading"><div><p class="eyebrow">PREMIUM COLLECTIONS</p><h2>More worlds. More wonder.</h2></div><p>Explore the Premium collections.<br><span>See each collection for previews, contents and release status.</span></p></div><div id="premium-grid" class="premium-grid"></div></section>
+  <footer><span>© 2026 lenhonbp · <a href="https://opensource.org/license/mit">Runtime: MIT license</a> · <a href="https://github.com/lenhonbp/pixijs-skill-vfx">GitHub repository</a> · <a href="https://github.com/lenhonbp/pixijs-skill-vfx/issues">Report an issue</a> · <a href="mailto:lenhon.vfx@gmail.com">lenhon.vfx@gmail.com</a></span><span>Character artwork (c) 2026 lenhonbp; excluded from the MIT licence.</span></footer>
+</main>`;
 const el = <T extends HTMLElement>(id: string) => document.getElementById(id) as T;
 const app = new Application();
 await app.init({ width: 1000, height: 580, backgroundColor: 0x0e1118, antialias: true, resolution: Math.min(devicePixelRatio, 2) * el('stage').clientWidth / 1000, autoDensity: true });
 el('stage').prepend(app.canvas);
 const resize = new ResizeObserver(() => {
-  app.renderer.resolution = Math.min(devicePixelRatio, 2) * el('stage').clientWidth / 1000;
+  const width = el('stage').clientWidth;
+  if (!width) return; // A Premium product hides the live stage.
+  app.renderer.resolution = Math.min(devicePixelRatio, 2) * width / 1000;
   app.renderer.resize(1000, 580);
   app.canvas.style.width = app.canvas.style.height = '100%';
 });
@@ -180,11 +215,18 @@ try {
 const vfx = await VfxPlayer.create(app, { shake: { target: world }, hitstop: true });
 const response = await fetch(`${base}packs/free/index.json`); if (!response.ok) throw Error('Collection index unavailable');
 const packs: Entry[] = await response.json();
-let selected = packs.find(p => p.id === 'hoa-fireball')!, current: Playback | undefined, filter = 'all', request = 0;
+const products = resolveCatalog(packs);
+let selected = packs.find(p => p.id === 'hoa-fireball')!, current: Playback | undefined, request = 0;
+let activeProduct = products.find(p => p.tier === 'free' && p.packId === selected.id)!;
 function readHash() {
-  const pack = packs.find(p => p.id === location.hash.slice(1).split('/')[0]);
-  if (!pack) return false;
-  selected = pack; return true;
+  const parts = location.hash.slice(1).split('/');
+  const product = parts[0] === 'product'
+    ? products.find(p => p.tier === 'premium' && p.id === parts[1])
+    : products.find(p => p.tier === 'free' && p.packId === parts[0]);
+  if (!product) return false;
+  activeProduct = product;
+  if (product.tier === 'free') selected = packs.find(p => p.id === product.packId)!;
+  return true;
 }
 readHash();
 const selectedId = () => selected.id;
@@ -202,12 +244,20 @@ const bakedDirections = (p: Entry) => [0, ...Object.keys(p.directions ?? {}).map
 const castDirection = () => packDirection(from, to, SQUASH, bakedDirections(selected)).direction;
 const fileOf = (id: string, direction: number, mobile: boolean) => `${id}${direction ? '@' + direction : ''}${mobile ? '.m' : ''}.vfxb`;
 const variantOf = (p: Entry, direction: number): Variant => (direction ? p.directions?.[direction] : undefined) ?? p;
-async function loadSelected(id: string) {
+async function loadSelected(id: string, token: number) {
   const direction = castDirection();
   resident.add(id);
-  if (!vfx.directions(id).includes(direction)) await vfx.load(packUrl(id, direction));
-  if (id !== selectedId()) { vfx.unload(id); resident.delete(id); return false; }
-  return true;
+  if (!vfx.directions(id).includes(direction)) {
+    try { await vfx.load(packUrl(id, direction)); }
+    catch (error) {
+      if (token !== request || activeProduct.tier !== 'free' || id !== selectedId()) return false;
+      // Returning to a pack can join the request cancelled when its preview was left.
+      if (!(error instanceof Error) || error.message !== `VFX load cancelled: ${id}`) throw error;
+      await vfx.load(packUrl(id, direction));
+    }
+  }
+  if (activeProduct.tier !== 'free' || id !== selectedId()) { vfx.unload(id); resident.delete(id); return false; }
+  return token === request;
 }
 let audio: AudioContext | undefined;
 async function enableAudio() { audio ??= new AudioContext(); await audio.resume(); }
@@ -217,35 +267,35 @@ const packUrl = (id: string, direction = 0) => `${base}packs/free/${fileOf(id, d
 const labels: Record<string, string> = { all: 'All', kim: 'Metal', moc: 'Wood', thuy: 'Water', hoa: 'Fire', tho: 'Earth', phong: 'Wind', loi: 'Thunder', neutral: 'Utility' };
 const native: Record<string, string> = { kim: 'Kim', moc: 'Mộc', thuy: 'Thủy', hoa: 'Hỏa', tho: 'Thổ', phong: 'Phong', loi: 'Lôi', neutral: 'Tiện ích' };
 const icons: Record<string, string> = { kim: '✧', moc: '❋', thuy: '❄', hoa: '♨', tho: '◈', phong: '≋', loi: 'ϟ', neutral: '⌘' };
-function renderList() {
-  el('filters').replaceChildren(...Object.entries(labels).map(([key, name]) => {
-    const button = document.createElement('button'); button.textContent = name; button.className = filter === key ? 'active' : ''; button.setAttribute('aria-pressed', String(filter === key));
-    button.onclick = () => { filter = key; renderList(); }; return button;
-  }));
-  const query = el<HTMLInputElement>('search').value.toLocaleLowerCase();
-  const visible = packs.filter(p => (filter === 'all' || p.element === filter) && `${p.name.en} ${p.name.vi}`.toLocaleLowerCase().includes(query));
-  const item = (p: Entry) => {
-    const button = document.createElement('button'); button.className = `skill ${p.id === selected.id ? 'selected' : ''}`; button.style.setProperty('--element', colors[p.element]);
-    button.innerHTML = `<span class="skill-icon">${icons[p.element]}</span><span><strong></strong><small></small></span><span class="arrow">↗</span>`;
-    button.querySelector('strong')!.textContent = p.name.en; button.querySelector('small')!.textContent = p.name.vi;
-    button.setAttribute('aria-pressed', String(p.id === selected.id)); button.onclick = () => { selected = p; renderSelection(); void cast(); }; return button;
-  };
-  el('list').replaceChildren(...Object.keys(native).flatMap(element => {
-    const group = visible.filter(p => p.element === element);
-    if (!group.length) return [];
-    const heading = document.createElement('p'); heading.className = 'group'; heading.style.setProperty('--element', colors[element]);
-    heading.innerHTML = `<span></span><small>${group.length}</small>`; heading.querySelector('span')!.textContent = `${labels[element]} · ${native[element]}`;
-    return [heading, ...group.map(item)];
-  }));
-  if (!visible.length) el('list').textContent = 'No effects found. Try another name.';
+const catalogView = createCatalogView(products, { colors, labels, native, icons }, product => showProduct(product));
+function renderList() { catalogView.renderList(activeProduct); }
+function showProduct(product: CatalogProduct, play = true) {
+  ++request;
+  current?.stop(); current = undefined; scene.reset(); loading(false);
+  activeProduct = product;
+  if (product.tier === 'free') {
+    selected = packs.find(p => p.id === product.packId)!;
+    renderSelection();
+    if (play) { app.start(); void cast(); }
+  } else {
+    unloadOthers(''); app.stop(); renderSelection();
+  }
 }
 function renderSelection() {
-  const id = selectedId(), info = descriptions[selected.id];
-  el('selected-name').textContent = selected.name.en;
-  el('selected-vi').textContent = selected.name.vi;
-  el('description').textContent = info?.description ?? '';
-  const hash = '#' + selected.id;
-  if (location.hash !== hash) history[location.hash.slice(1).split('/')[0] === selected.id ? 'replaceState' : 'pushState'](null, '', hash);
+  catalogView.renderProduct(activeProduct);
+  el('selected-name').textContent = activeProduct.name.en;
+  el('selected-vi').textContent = activeProduct.name.vi === activeProduct.name.en ? '' : activeProduct.name.vi;
+  el('description').textContent = activeProduct.description;
+  const hash = activeProduct.tier === 'free' ? '#' + selected.id : '#product/' + activeProduct.id;
+  const legacyFreeHash = activeProduct.tier === 'free' && location.hash.startsWith('#' + selected.id + '/');
+  if (location.hash !== hash) history[legacyFreeHash ? 'replaceState' : 'pushState'](null, '', hash);
+  if (activeProduct.tier === 'premium') {
+    el('category').textContent = 'PREMIUM / COLLECTION';
+    el('snippet').textContent = '';
+    for (const tier of ['desktop', 'mobile']) el('download-' + tier).removeAttribute('href');
+    renderList(); return;
+  }
+  const id = selectedId();
   el('category').textContent = `LIVE PREVIEW / ${labels[selected.element].toUpperCase()} · ${native[selected.element].toUpperCase()} / ${selected.category.toUpperCase()}`;
   el('snippet').textContent = selected.directions
     ? `// Load the bake nearest the cast's ground direction (0, ±45, ±90; left casts mirror)\nconst { direction } = packDirection(caster, target, groundSquash);\nawait vfx.load(\`packs/free/${id}\${direction ? '@' + direction : ''}.vfxb\`);\nvfx.play('${id}', { from: caster, to: target, groundSquash });`
@@ -263,12 +313,13 @@ function renderSelection() {
   renderList();
 }
 async function cast() {
+  if (activeProduct.tier !== 'free') return;
   const token = ++request, id = selectedId();
   current?.stop(); current = undefined; scene.reset(); loading(true); unloadOthers(id);
   try {
     if (el<HTMLInputElement>('sound').checked) await enableAudio();
     if (token !== request) return;
-    if (!await loadSelected(id) || token !== request) return;
+    if (!await loadSelected(id, token) || token !== request) return;
     loading(false);
     const movement = ['kim-golden-edge', 'phong-whirlwind', 'phong-tailwind'].includes(selected.id);
     const manifest = vfx.getManifest(id)!;
@@ -293,7 +344,7 @@ vfx.on('cue', (cue: CueEvent) => {
   oscillator.connect(gain).connect(audio.destination); oscillator.start(); oscillator.stop(now + 0.23); oscillator.onended = () => { oscillator.disconnect(); gain.disconnect(); };
 });
 app.ticker.add((ticker: any) => scene.animate(ticker.deltaMS, current?.pose('caster'), current?.pose('target'), current?.elapsedMs));
-window.addEventListener('hashchange', () => { if (readHash()) { renderSelection(); void cast(); } });
+window.addEventListener('hashchange', () => { if (readHash()) showProduct(activeProduct); });
 el('replay').onclick = () => void cast();
 el('stage').onclick = event => { if (!(event.target as HTMLElement).closest('.aim-toolbar, .stage-toolbar')) void cast(); };
 const aims: [number, string, string][] = [[-135, '↖', 'up-left'], [-90, '↑', 'up'], [-45, '↗', 'up-right'], [180, '←', 'left'], [0, '→', 'right'], [135, '↙', 'down-left'], [90, '↓', 'down'], [45, '↘', 'down-right']];
@@ -323,9 +374,10 @@ async function copy(id: string, text: string) {
   try { await navigator.clipboard.writeText(text); flash(id, 'Copied ✓'); } catch { flash(id, 'Copy failed'); }
 }
 const assetUrl = (file: string) => new URL(`${base}packs/free/${file}`, location.href).href;
-el('copy').onclick = () => copy('copy', el('snippet').textContent!);
-el('copy-url').onclick = () => copy('copy-url', assetUrl(fileOf(selectedId(), castDirection(), false)));
+el('copy').onclick = () => { if (activeProduct.tier === 'free') void copy('copy', el('snippet').textContent!); };
+el('copy-url').onclick = () => { if (activeProduct.tier === 'free') void copy('copy-url', assetUrl(fileOf(selectedId(), castDirection(), false))); };
 el('download-kit').onclick = async () => {
+  if (activeProduct.tier !== 'free') return;
   const pack = selected, id = pack.id, button = el<HTMLButtonElement>('download-kit');
   if (button.getAttribute('aria-busy') === 'true') return;
   button.setAttribute('aria-busy', 'true');
@@ -398,16 +450,22 @@ document.querySelector<HTMLElement>('.stage-toolbar')!.onclick = event => {
 let savedBackground: string | null = null;
 try { savedBackground = localStorage.getItem('lenhon-vfx-bg'); } catch {}
 setBackground(savedBackground ?? 'stage');
-window.addEventListener('keydown', event => { if (event.code === 'Space' && !['INPUT', 'BUTTON', 'TEXTAREA', 'A'].includes((event.target as HTMLElement).tagName)) { event.preventDefault(); void cast(); } });
+window.addEventListener('keydown', event => { if (event.code === 'Space' && !['INPUT', 'BUTTON', 'TEXTAREA', 'A', 'SELECT', 'VIDEO'].includes((event.target as HTMLElement).tagName)) { event.preventDefault(); void cast(); } });
 renderSelection();
-loading(true);
-const initialId = selectedId(), initialToken = ++request;
-try {
-  if (await loadSelected(initialId) && initialToken === request) { loading(false); el('status').textContent = 'Ready · ' + sizeLabel(); }
-} catch {
-  if (initialToken === request) { loading(false); el('status').textContent = 'Pack download failed. Tap Replay to retry.'; }
-}
-(window as any).__showcase = { vfx, app, packs, from, to, world, scene, animate: scene.animate, cast, setBackground, get current() { return current; }, audioState: () => audio?.state, select(id: string) { selected = packs.find(p => p.id === id)!; renderSelection(); } };
+if (activeProduct.tier === 'free') {
+  loading(true);
+  const initialId = selectedId(), initialToken = ++request;
+  try {
+    if (await loadSelected(initialId, initialToken) && initialToken === request) { loading(false); el('status').textContent = 'Ready · ' + sizeLabel(); }
+  } catch {
+    if (initialToken === request) { loading(false); el('status').textContent = 'Pack download failed. Tap Replay to retry.'; }
+  }
+} else app.stop();
+(window as any).__showcase = { vfx, app, packs, products, from, to, world, scene, animate: scene.animate, cast, setBackground, get current() { return current; }, audioState: () => audio?.state, select(id: string) {
+  const product = products.find(p => p.id === id);
+  if (!product) throw new Error('Unknown catalog product: ' + id);
+  showProduct(product, false);
+} };
 window.addEventListener('pagehide', event => {
   if (event.persisted) return;
   resize.disconnect(); vfx.destroy(); void audio?.close(); app.destroy(true, { children: true });

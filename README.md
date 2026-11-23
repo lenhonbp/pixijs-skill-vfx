@@ -95,11 +95,20 @@ for the full breakdown.
 
 The runtime stays free; optional art collections will expand your library:
 
-| Collection | Theme | Stores (placeholder links; coming soon) |
+| Collection | Theme | Availability |
 |---|---|---|
-| **Kiếm Hiệp** | Martial legends, sword auras and flying blades | [Gumroad](#gumroad-link-tbd) · [itch.io](#itch-link-tbd) |
-| **Ngũ Hành** | Metal, wood, water, fire and earth | [Gumroad](#gumroad-link-tbd) · [itch.io](#itch-link-tbd) |
-| **Ultimate Boss** | Arena-shaking final encounters | [Gumroad](#gumroad-link-tbd) · [itch.io](#itch-link-tbd) |
+| **Kiếm Hiệp** | Martial legends, sword auras and flying blades | Coming soon |
+| **Ngũ Hành** | Metal, wood, water, fire and earth | Coming soon |
+| **Ultimate Boss** | Arena-shaking final encounters | Coming soon |
+
+The showcase catalog distinguishes Free effects from Premium collections and
+shows each product's contents, compatibility and release status. Free effects keep
+their live previews, all cast directions and downloads. Premium collections get
+video previews and itch.io/Gumroad purchase links when released. The current three
+collections are coming soon, with no prices or checkout links announced.
+
+See [storefront catalog maintenance](docs/storefront-catalog.md) for product data,
+release requirements and the boundary between public previews and paid delivery.
 
 ## Run the showcase locally
 
@@ -109,6 +118,7 @@ npm run dev:showcase
 # Production: npm run build
 # Browser smoke (build first): npm run check:runtime
 # Types: npm run typecheck
+# Catalog: npm run check:catalog
 ```
 
 GitHub Pages deploys the Vite showcase.
