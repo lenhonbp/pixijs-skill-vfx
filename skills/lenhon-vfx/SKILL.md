@@ -1,6 +1,6 @@
 ---
 name: lenhon-vfx
-description: Add Lenhon's free pre-baked 2.5D skill effects (fireball, sword rain, frost nova, chain lightning, tornado, buffs, debuffs and more) to a PixiJS v7 or v8 game with the MIT @lenhon/pixijs-vfx-runtime. Use when the user wants spell, skill, hit or combat VFX in a PixiJS project, or asks to wire up a Lenhon `.vfxb` pack.
+description: Add Lenhon's free pre-baked 2.5D skill effects (fireball, sword rain, frost nova, chain lightning, tornado, buffs, debuffs and more) to a PixiJS v7 or v8 game with the MIT @lenhonbp/pixijs-vfx-runtime. Use when the user wants spell, skill, hit or combat VFX in a PixiJS project, or asks to wire up a Lenhon `.vfxb` pack.
 license: MIT
 ---
 
@@ -18,7 +18,7 @@ https://lenhonbp.github.io/pixijs-skill-vfx/ before choosing.
    Vite, Next.js and CRA; otherwise wherever the game serves files from).
 2. **Install the runtime.**
    ```sh
-   npm install @lenhon/pixijs-vfx-runtime
+   npm install @lenhonbp/pixijs-vfx-runtime
    ```
    `pixi.js` is a peer dependency; do not add a second copy.
 3. **Download the chosen packs** with the bundled script (Node 18+). It reads
@@ -42,7 +42,7 @@ https://lenhonbp.github.io/pixijs-skill-vfx/ before choosing.
 
 ```ts
 import { Application } from 'pixi.js';
-import { VfxPlayer } from '@lenhon/pixijs-vfx-runtime';
+import { VfxPlayer } from '@lenhonbp/pixijs-vfx-runtime';
 
 const app = new Application();
 await app.init({ width: 1280, height: 720 }); // Pixi v7: new Application({ ... })

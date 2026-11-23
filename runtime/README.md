@@ -1,4 +1,4 @@
-# @lenhon/pixijs-vfx-runtime
+# @lenhonbp/pixijs-vfx-runtime
 
 Free forever, MIT. A small, zero-runtime-dependency atlas player for PixiJS **7 and 8**.
 Commercial use welcome; keep the MIT copyright and license notice in copies of the runtime.
@@ -7,7 +7,7 @@ It plays baked effects; it does not import or require the procedural kit.
 ## Install
 
 ```sh
-npm install @lenhon/pixijs-vfx-runtime pixi.js
+npm install @lenhonbp/pixijs-vfx-runtime pixi.js
 ```
 
 To try unreleased changes, build this directory with `npm run build` and install
@@ -21,7 +21,7 @@ Pixi default). A transparent WebGL canvas can accumulate opaque alpha in the
 additive region when composited over HTML; put the game background inside Pixi.
 
 ```ts
-import { VfxPlayer } from '@lenhon/pixijs-vfx-runtime';
+import { VfxPlayer } from '@lenhonbp/pixijs-vfx-runtime';
 
 const vfx = await VfxPlayer.create(app, { packs: ['packs/free/hoa-fireball.vfxb'] });
 vfx.play('hoa-fireball', { from: caster, to: target });
