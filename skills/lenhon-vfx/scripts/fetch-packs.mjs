@@ -36,6 +36,7 @@ const files = wanted.flatMap(p => p.files).filter(f => opts.tier === 'both' || f
 const out = resolve(opts.out);
 await mkdir(out, { recursive: true });
 for (const file of files) {
+  if (!/^[a-z0-9-]+(?:\.m)?\.vfxb$/.test(file.name) || !Number.isSafeInteger(file.bytes)) throw Error(`Refusing unexpected index entry ${JSON.stringify(file.name)}`);
   const res = await fetch(source + file.name);
   if (!res.ok) throw Error(`${file.name}: HTTP ${res.status}`);
   const bytes = new Uint8Array(await res.arrayBuffer());
