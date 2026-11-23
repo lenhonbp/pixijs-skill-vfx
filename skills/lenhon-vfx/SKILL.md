@@ -94,6 +94,8 @@ directions the scene can cast in under the same id; `play` picks the nearest one
 for the real caster–target ground angle and corrects the rest. `packDirection(from, to)`
 returns which file a cast needs. Self buffs ship only `<id>.vfxb`. Check
 `directions` in the public `index.json` for which files a skill has.
+`fetch-packs.mjs` downloads every baked direction of a requested id by default;
+append `@<dir>` (e.g. `hoa-fireball@90`) to fetch one direction only.
 `vfx.getManifest(id)` returns duration and cues for syncing animations;
 `vfx.stats()` reports active plays, pooled sprites and loaded packs.
 

@@ -68,9 +68,10 @@ handles rectangle textures, blend constants and ticker differences internally.
   frame textures are prepared on load, not on play.
 - `update(dtMs)`: explicit deterministic stepping in real milliseconds, useful
   with a stopped application ticker for tests. Do not also auto-tick the same time.
-- `getManifest(id)` returns a detached metadata snapshot, or `undefined` for an
-  unloaded ID. Use its cues and duration to synchronize a character clip without
-  downloading the pack again.
+- `getManifest(id)` returns a detached metadata snapshot of the loaded base bake,
+  or `undefined` for an unloaded ID. `handle.manifest` returns the manifest of the
+  direction bake that play actually picked. Use its cues and duration to
+  synchronize a character clip without downloading the pack again.
 - `handle.elapsedMs` is the read-only playback clock: it honors speed and hitstop,
   wraps on loops, and returns zero after stop or completion.
 

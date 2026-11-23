@@ -16,7 +16,7 @@ export interface PlayerOptions {
   packs?: string[]; loadKey?: string; shake?: { target: Container }; hitstop?: boolean;
 }
 export interface ActorPose { x: number; y: number; lift: number; visible: boolean; facing: number }
-export interface Playback { stop(): void; finished: Promise<void>; readonly elapsedMs: number; pose(name: ActorName): ActorPose | null }
+export interface Playback { stop(): void; finished: Promise<void>; readonly elapsedMs: number; readonly manifest: Manifest; pose(name: ActorName): ActorPose | null }
 export type CueEvent = Cue & { packId: string; handle: Playback };
 interface Pack { manifest: Manifest; sheets: Texture[]; frames: (Texture | null)[][] }
 /** Ground-plane directions (degrees) the free packs are baked in; left-facing casts mirror them. */
@@ -34,7 +34,7 @@ export function packDirection(from: Point, to: Point, groundSquash = 0.6, availa
   return { direction, mirror: dx < 0 };
 }
 interface Active {
-  pack: Pack; options: PlayOptions; matrix: [number, number, number, number]; root: Container; sprites: Sprite[]; time: number; cue: number; freeze: number;
+  pack: Pack; options: PlayOptions; legacy: boolean; matrix: [number, number, number, number]; root: Container; sprites: Sprite[]; time: number; cue: number; freeze: number;
   handle: Playback; resolve(): void;
 }
 const MAX_LOOP_CYCLES_PER_UPDATE = 32;
@@ -118,7 +118,7 @@ export class VfxPlayer {
     if (this.dead) throw Error('VfxPlayer is destroyed');
     if (!this.families.get(id)?.length) throw Error(`Pack not loaded: ${id}`);
     if (!options?.from || !Number.isFinite(options.from.x) || !Number.isFinite(options.from.y) || (options.to && (!Number.isFinite(options.to.x) || !Number.isFinite(options.to.y))) || (options.speed !== undefined && (!Number.isFinite(options.speed) || options.speed <= 0))) throw Error('Invalid playback options');
-    const { pack, matrix } = this.aim(id, options);
+    const { pack, legacy } = this.aim(id, options);
     const root = this.roots.pop() ?? new Container();
     root.zIndex = options.zIndex ?? 0;
     const sprites = pack.manifest.layers.map(layer => {
@@ -140,10 +140,10 @@ export class VfxPlayer {
       }
       const frame = Math.min(pack.manifest.frameCount - 1, a.time * pack.manifest.fps / 1000);
       const i = Math.floor(frame), t = frame - i, f = track.frames[i], next = track.frames[Math.min(i + 1, track.frames.length - 1)];
-      const lerp = (k: number) => f[k] + (next[k] - f[k]) * t, x = lerp(0), y = lerp(1), [ma, mb, mc, md] = matrix;
+      const lerp = (k: number) => f[k] + (next[k] - f[k]) * t, x = lerp(0), y = lerp(1), [ma, mb, mc, md] = a.matrix;
       return { x: ma * x + mc * y, y: mb * x + md * y, lift: lerp(2), visible: !!(f[3] & 1), facing: (f[3] & 2 ? -1 : 1) * Math.sign(ma || 1) };
     };
-    const a: Active = { pack, options, matrix, root, sprites, time: 0, cue: 0, freeze: 0, resolve, handle: { finished, pose, get elapsedMs() { return player.active.has(a) ? a.time : 0; }, stop: () => this.finish(a) } };
+    const a: Active = { pack, options, legacy, matrix: [1, 0, 0, 1], root, sprites, time: 0, cue: 0, freeze: 0, resolve, handle: { finished, pose, get manifest() { return structuredClone(pack.manifest); }, get elapsedMs() { return player.active.has(a) ? a.time : 0; }, stop: () => this.finish(a) } };
     this.active.add(a); this.draw(a); this.emitCues(a);
     return a.handle;
   }
@@ -153,29 +153,42 @@ export class VfxPlayer {
   /** Baked directions loaded for a pack id, in degrees. */
   directions(id: string): number[] { return (this.families.get(id) ?? []).map(p => p.manifest.direction ?? 0); }
   /**
-   * Picks the loaded bake nearest the cast's ground direction and the root transform that lands its
-   * baked target on `to`: x mirrored for left casts, then the smallest linear correction for the
-   * remaining angle and distance. Packs without a bake direction keep the 1.0 left/right mirror.
+   * Picks the loaded bake nearest the cast's ground direction. Packs without a bake direction
+   * (all 1.0 packs) are "legacy": they keep the left/right mirror from 1.0.
    */
-  private aim(id: string, o: PlayOptions): { pack: Pack; matrix: [number, number, number, number] } {
+  private aim(id: string, o: PlayOptions): { pack: Pack; legacy: boolean } {
     const list = this.families.get(id)!, to = o.to ?? o.from, base = list.find(p => !p.manifest.direction) ?? list[0];
-    const legacy = base.manifest.direction === undefined && list.length === 1;
-    if (legacy) {
-      const m = base.manifest, mirror = to.x < o.from.x ? -1 : 1, span = Math.abs(m.target.x - m.origin.x);
-      const fit = o.fitDistance && span > 0 ? Math.abs(to.x - o.from.x) / span : 1;
-      return { pack: base, matrix: [mirror * fit, 0, 0, 1] };
-    }
+    if (base.manifest.direction === undefined && list.length === 1) return { pack: base, legacy: true };
     const squash = o.groundSquash ?? base.manifest.groundSquash ?? 0.6;
-    const { direction, mirror } = packDirection(o.from, to, squash, list.map(p => p.manifest.direction ?? 0));
-    const pack = list.find(p => (p.manifest.direction ?? 0) === direction)!, m = pack.manifest, s = mirror ? -1 : 1;
+    const { direction } = packDirection(o.from, to, squash, list.map(p => p.manifest.direction ?? 0));
+    return { pack: list.find(p => (p.manifest.direction ?? 0) === direction)!, legacy: false };
+  }
+  /**
+   * Root transform landing the pack's baked target on `to` right now: x mirrored for left casts,
+   * then the smallest linear correction for the remaining angle and distance. Past ~70 degrees of
+   * correction the shear degenerates, so the bake is rotated and scaled onto the cast instead.
+   * Recomputed per draw so live endpoints keep tracking; legacy packs keep the 1.0 per-frame mirror.
+   */
+  private matrix(a: Active): [number, number, number, number] {
+    const m = a.pack.manifest, o = a.options, to = o.to ?? o.from;
+    if (a.legacy) {
+      const mirror = to.x < o.from.x ? -1 : 1, span = Math.abs(m.target.x - m.origin.x);
+      const fit = o.fitDistance && span > 0 ? Math.abs(to.x - o.from.x) / span : 1;
+      return [mirror * fit, 0, 0, 1];
+    }
+    const squash = o.groundSquash ?? m.groundSquash ?? 0.6, s = to.x < o.from.x ? -1 : 1;
     const tx = m.target.x - m.origin.x, ty = m.target.y - m.origin.y, t2 = tx * tx + ty * ty;
     let dx = s * (to.x - o.from.x), dy = to.y - o.from.y;
     const ground = (x: number, y: number) => Math.hypot(x, y / squash), dLen = ground(dx, dy);
-    if (t2 === 0 || dLen < 1e-6) return { pack, matrix: [s, 0, 0, 1] };
+    if (t2 === 0 || dLen < 1e-6) return [s, 0, 0, 1];
     if (!o.fitDistance) { const k = ground(tx, ty) / dLen; dx *= k; dy *= k; }
+    const dot = dx * tx + dy * ty;
+    if (dot <= 0.3 * Math.sqrt((dx * dx + dy * dy) * t2)) {
+      const p = dot / t2, q = (dx * ty - dy * tx) / t2;
+      return [s * p, s * q, -q, p];
+    }
     const ex = (dx - tx) / t2, ey = (dy - ty) / t2;
-    const m00 = 1 + ex * tx, m01 = ex * ty, m10 = ey * tx, m11 = 1 + ey * ty;
-    return { pack, matrix: [s * m00, m10, s * m01, m11] };
+    return [s * (1 + ex * tx), ey * tx, s * ex * ty, 1 + ey * ty];
   }
   getManifest(id: string): Manifest | undefined {
     const manifest = (this.packs.get(id) ?? this.families.get(id)?.[0])?.manifest;
@@ -183,6 +196,7 @@ export class VfxPlayer {
   }
   private draw(a: Active) {
     const m = a.pack.manifest, o = a.options, to = o.to ?? o.from, anchor = m.anchor === 'target' ? to : o.from;
+    a.matrix = this.matrix(a);
     setMatrix(a.root, ...a.matrix, anchor.x, anchor.y);
     const index = Math.min(m.frameCount - 1, Math.floor(a.time * m.fps / 1000));
     a.sprites.forEach((s, li) => {
