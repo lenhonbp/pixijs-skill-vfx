@@ -19,9 +19,33 @@ const vfx = await VfxPlayer.create(app, { packs: ['packs/free/hoa-fireball.vfxb'
 vfx.play('hoa-fireball', { from: caster, to: target });
 ```
 
-The runtime package is prepared for publishing; use [local installation](runtime/README.md#install)
-until the npm release is available. Copy the packs you need from
-`showcase/public/packs/free/` to your app's public directory.
+```sh
+npm install @lenhon/pixijs-vfx-runtime
+```
+
+Get packs from the showcase's **Desktop pack / Mobile pack** buttons, from
+`showcase/public/packs/free/`, or with the agent skill's fetch script below, and
+serve them from your app's public directory.
+
+## Use it from an AI coding agent
+
+[`skills/lenhon-vfx`](skills/lenhon-vfx/SKILL.md) is an agent skill (Claude Code,
+Codex and other `SKILL.md`-compatible agents) that wires the free packs into an
+existing PixiJS project: it installs the runtime, downloads the chosen packs and
+writes the integration. It plays baked effects only; it does not author new ones.
+
+```sh
+npx skills add lenhonbp/pixijs-skill-vfx   # or copy skills/lenhon-vfx into your agent's skills folder
+```
+
+Then ask your agent, for example: *"add Lenhon's fireball and chain lightning to
+my PixiJS game, played from the hero to the enemy"*. The bundled script also works
+on its own:
+
+```sh
+node skills/lenhon-vfx/scripts/fetch-packs.mjs --list
+node skills/lenhon-vfx/scripts/fetch-packs.mjs hoa-fireball --out public/vfx
+```
 
 ## Built for your game
 
@@ -41,7 +65,7 @@ until the npm release is available. Copy the packs you need from
   680 ms source clip, time-warped to align its 270 ms release with each effect.
   The drawn caster is retained only if the character sheet fails to load.
 - **English + Vietnamese** names, searchable collection, shareable skill links,
-  and copyable integration snippets.
+  copyable integration snippets and per-skill desktop/mobile pack downloads.
 
 Only baked assets are distributed: no procedural authoring factory or baker
 implementation is included. The runtime and showcase remain MIT.

@@ -112,6 +112,16 @@ export async function showcaseSmoke({ page, browser, url, collection }) {
     await linkPage.locator('.skill').filter({ hasText: 'Golden Edge' }).click();
     await linkPage.waitForFunction(() => location.hash === '#kim-golden-edge' && document.getElementById('status').textContent.startsWith('Playing'));
     assert.equal(await linkPage.evaluate(() => window.__showcase.vfx.stats().packs), 1);
+    const downloads = await linkPage.evaluate(() => ['desktop', 'mobile'].map(tier => {
+      const link = document.getElementById('download-' + tier);
+      return { path: new URL(link.href).pathname, file: link.download, label: link.textContent };
+    }));
+    assert.deepEqual(downloads.map(d => [d.path, d.file]), [
+      ['/collection/packs/free/kim-golden-edge.vfxb', 'kim-golden-edge.vfxb'],
+      ['/collection/packs/free/kim-golden-edge.m.vfxb', 'kim-golden-edge.m.vfxb'],
+    ]);
+    assert.ok(downloads.every(d => /· [\d.]+ (KB|MB)$/.test(d.label)));
+    for (const d of downloads) assert.equal((await linkPage.request.get(url + d.path)).status(), 200);
     await linkPage.waitForFunction(() => {
       const top = document.getElementById('library').getBoundingClientRect().top;
       return top >= 0 && top <= 40;
@@ -143,5 +153,5 @@ export async function showcaseSmoke({ page, browser, url, collection }) {
     await fallback.waitForFunction(() => document.getElementById('status').textContent.startsWith('Playing'));
     assert.equal(await fallback.evaluate(() => window.__showcase.vfx.stats().packs), 1);
   } finally { await fallback.close(); }
-  console.log('Showcase links: PASS (selected-only mobile load, metadata/snippet/hash/history, legacy tier links, one resident pack, size indicator, load failure/retry, character sheet failure fallback)');
+  console.log('Showcase links: PASS (selected-only mobile load, metadata/snippet/downloads/hash/history, legacy tier links, one resident pack, size indicator, load failure/retry, character sheet failure fallback)');
 }

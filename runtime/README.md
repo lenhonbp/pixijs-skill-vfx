@@ -10,9 +10,11 @@ It plays baked effects; it does not import or require the procedural kit.
 npm install @lenhon/pixijs-vfx-runtime pixi.js
 ```
 
-The package is prepared for publishing at version 1.0.0; until it is published,
-build this directory with `npm run build` and install it locally with
-`npm install /path/to/pixijs-skill-vfx/runtime`. Install dev tools from the repository root first.
+To try unreleased changes, build this directory with `npm run build` and install
+it locally with `npm install /path/to/pixijs-skill-vfx/runtime`. Install dev tools
+from the repository root first. Packs can be downloaded per skill from the
+[showcase](https://lenhonbp.github.io/pixijs-skill-vfx/) or with the
+[agent skill's fetch script](https://github.com/lenhonbp/pixijs-skill-vfx/blob/main/skills/lenhon-vfx/SKILL.md).
 Serve packs over HTTP(S); cross-origin sheets must permit CORS.
 For black-backed additive atlases, use an opaque application background (the
 Pixi default). A transparent WebGL canvas can accumulate opaque alpha in the
@@ -88,6 +90,13 @@ Toggle either at runtime; the underlying cue still fires for game-owned feedback
 Do not drive gameplay damage from the pre-baked cues without your own authority checks.
 The showcase maps sound hints to small synthesized WebAudio tones.
 
+## Publishing
+
+Pushing a `runtime-v<version>` tag that matches `version` in this `package.json`
+runs `.github/workflows/publish-runtime.yml`, which typechecks, builds and
+publishes with npm provenance. It needs an `NPM_TOKEN` repository secret with
+publish rights to the `@lenhon` scope.
+
 ## Development
 
 From the repository root: `npm run typecheck`, `npm run build`, then
@@ -100,7 +109,7 @@ The showcase loads only its index and initially selected pack, then lazily loads
 on selection and unloads the previous pack. It does not prefetch. Canvas backing
 resolution follows the displayed width with DPR capped at 2, including on phones.
 
-See [pack-format.md](../docs/pack-format.md). Scrambling is an anti-scrape
+See [pack-format.md](https://github.com/lenhonbp/pixijs-skill-vfx/blob/main/docs/pack-format.md). Scrambling is an anti-scrape
 deterrent, **not DRM or encryption**. MIT code and free packs may be used commercially.
 
 ## Actor tracks and playback poses
