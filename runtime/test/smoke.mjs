@@ -200,7 +200,7 @@ const server = createServer(async (req, res) => {
     const relative = path.startsWith('/format-examples/') ? path.slice('/format-examples'.length) : local;
     const file = resolve(folder, '.' + (relative.endsWith('/') ? relative + 'index.html' : relative));
     if (!file.startsWith(folder + sep)) { res.writeHead(403).end(); return; }
-    res.setHeader('Content-Type', { '.html': 'text/html', '.js': 'text/javascript', '.css': 'text/css', '.json': 'application/json', '.webp': 'image/webp' }[extname(file)] ?? 'application/octet-stream');
+    res.setHeader('Content-Type', { '.html': 'text/html', '.js': 'text/javascript', '.css': 'text/css', '.json': 'application/json', '.webp': 'image/webp', '.png': 'image/png', '.jpg': 'image/jpeg', '.svg': 'image/svg+xml' }[extname(file)] ?? 'application/octet-stream');
     res.end(await readFile(file));
   } catch { res.writeHead(404).end(); }
 });
@@ -274,9 +274,9 @@ try {
     await vfx.load('./packs/free/hoa-fireball.vfxb');
   });
   console.log('Layer scale + stage: PASS (v8 mixed scales, legacy fallback validation, invalid scales, windup/release/hit/settle)');
-  await page.getByRole('button', { name: 'Thủy', exact: true }).click();
+  await page.getByRole('button', { name: 'Water', exact: true }).click();
   assert.equal(await page.locator('.skill').count(), 2);
-  await page.getByRole('button', { name: 'All elements', exact: true }).click();
+  await page.getByRole('button', { name: 'All', exact: true }).click();
   await page.locator('#search').fill('fireball'); assert.equal(await page.locator('.skill').count(), 1);
   await page.locator('#search').fill('');
   await page.locator('#loop').check(); await page.locator('#sound').check();

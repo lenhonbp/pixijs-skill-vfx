@@ -60,7 +60,7 @@ function atmosphere() {
 }
 
 export function createStage(world: Container, from: { x: number; y: number }, to: { x: number; y: number }, art: { head: Texture; torso: Texture; legs: Texture; staff: Texture; dummy: Texture }) {
-  world.addChild(atmosphere());
+  const backdrop = atmosphere(); world.addChild(backdrop);
   const glow = painted(180, 180, ctx => {
     const g = ctx.createRadialGradient(90, 90, 0, 90, 90, 90);
     g.addColorStop(0, '#ffffffff'); g.addColorStop(0.15, '#ffffff90'); g.addColorStop(0.5, '#ffffff20'); g.addColorStop(1, '#ffffff00');
@@ -208,7 +208,7 @@ export function createStage(world: Container, from: { x: number; y: number }, to
     caster.alpha = dummy.alpha = 1; animate(0);
   }
   animate(0);
-  return { animate, cue, reset, setCaster, prepare(value: string, timing?: { release: number; duration: number }) {
+  return { animate, cue, reset, setCaster, backdrop, prepare(value: string, timing?: { release: number; duration: number }) {
     category = value;
     clipRelease = timing?.release ?? 270;
     clipEnd = Math.min(timing?.duration ?? 680, clipRelease + 410);
