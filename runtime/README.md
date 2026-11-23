@@ -94,8 +94,11 @@ The showcase maps sound hints to small synthesized WebAudio tones.
 
 Pushing a `runtime-v<version>` tag that matches `version` in this `package.json`
 runs `.github/workflows/publish-runtime.yml`, which typechecks, builds and
-publishes with npm provenance. It needs an `NPM_TOKEN` repository secret with
-publish rights to the `@lenhon` scope.
+publishes through npm trusted publishing (OIDC, with provenance); no npm token
+is stored in the repository. One-time setup: a maintainer publishes the first
+version from their own machine (`npm run build && npm publish` here, confirming
+their 2FA), then adds this repository and workflow file as the package's
+Trusted Publisher in its npm settings.
 
 ## Development
 
