@@ -14,13 +14,13 @@ with a responsive, interactive showcase. Commercial use welcome.
 ## Quick start
 
 ```ts
-import { VfxPlayer } from '@lenhon/pixijs-vfx-runtime';
+import { VfxPlayer } from '@lenhonbp/pixijs-vfx-runtime';
 const vfx = await VfxPlayer.create(app, { packs: ['packs/free/hoa-fireball.vfxb'] });
 vfx.play('hoa-fireball', { from: caster, to: target });
 ```
 
 ```sh
-npm install @lenhon/pixijs-vfx-runtime
+npm install @lenhonbp/pixijs-vfx-runtime
 ```
 
 Get packs from the showcase's **Desktop pack / Mobile pack** buttons, from
