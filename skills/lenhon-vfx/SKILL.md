@@ -82,7 +82,20 @@ await handle.finished;
 
 Other `play` options: `speed` (default 1), `loop` (repeat until `handle.stop()`),
 `zIndex` (needs `parent.sortableChildren = true`), `fitDistance` (stretch the baked horizontal distance to the real caster–target
-gap). Effects mirror automatically when the target is left of the caster.
+gap), `groundSquash` (your camera's ground y / screen y; default from the pack).
+Effects mirror automatically when the target is left of the caster.
+
+### Any direction (3D / 2.5D)
+
+Directional packs come as a family: `<id>.vfxb` (cast right), `<id>@45.vfxb`
+(down-right), `<id>@90.vfxb` (down), `<id>@-45.vfxb` (up-right), `<id>@-90.vfxb`
+(up); mobile adds `.m` before `.vfxb`. Left-hand casts mirror these. Load the
+directions the scene can cast in under the same id; `play` picks the nearest one
+for the real caster–target ground angle and corrects the rest. `packDirection(from, to)`
+returns which file a cast needs. Self buffs ship only `<id>.vfxb`. Check
+`directions` in the public `index.json` for which files a skill has.
+`fetch-packs.mjs` downloads every baked direction of a requested id by default;
+append `@<dir>` (e.g. `hoa-fireball@90`) to fetch one direction only.
 `vfx.getManifest(id)` returns duration and cues for syncing animations;
 `vfx.stats()` reports active plays, pooled sprites and loaded packs.
 

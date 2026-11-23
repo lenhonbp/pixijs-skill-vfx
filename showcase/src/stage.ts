@@ -156,7 +156,9 @@ export function createStage(world: Container, from: { x: number; y: number }, to
   }
   function actor(node: Container, shadow: Sprite, home: { x: number; y: number }, p: ActorPose | null | undefined, dt: number) {
     const x = home.x + (p?.x ?? 0), y = home.y + (p?.y ?? 0), lift = Math.max(0, p?.lift ?? 0);
-    node.position.set(x, y - lift); node.scale.x = p?.facing ?? 1;
+    // Without an actor track, each side faces the other (caster right, dummy left at the default aim).
+    const facing = home === from ? (to.x < from.x - 1 ? -1 : 1) : (from.x > to.x + 1 ? -1 : 1);
+    node.position.set(x, y - lift); node.scale.x = p?.facing ?? facing;
     const alpha = p?.visible === false ? 0 : 1;
     node.alpha += Math.sign(alpha - node.alpha) * Math.min(Math.abs(alpha - node.alpha), dt / 80);
     shadow.position.set(x, y + 3); shadow.scale.set(90 / shadowTexture.width / (1 + lift / 32), 32 / shadowTexture.height / (1 + lift / 32));
@@ -208,7 +210,14 @@ export function createStage(world: Container, from: { x: number; y: number }, to
     caster.alpha = dummy.alpha = 1; animate(0);
   }
   animate(0);
-  return { animate, cue, reset, setCaster, backdrop, prepare(value: string, timing?: { release: number; duration: number }) {
+  /** Re-reads `from`/`to` after the aim changes; the nearer unit (larger ground y) draws in front. */
+  function layout() {
+    const back = from.y <= to.y ? caster : dummy, front = back === caster ? dummy : caster;
+    world.setChildIndex(back, Math.min(world.getChildIndex(caster), world.getChildIndex(dummy)));
+    world.setChildIndex(front, Math.max(world.getChildIndex(caster), world.getChildIndex(dummy)));
+    reset();
+  }
+  return { animate, cue, reset, layout, setCaster, backdrop, prepare(value: string, timing?: { release: number; duration: number }) {
     category = value;
     clipRelease = timing?.release ?? 270;
     clipEnd = Math.min(timing?.duration ?? 680, clipRelease + 410);

@@ -9,6 +9,10 @@ export interface Manifest {
   format: 'lenhon-vfx'; version: 1; id: string; name: { en: string; vi: string };
   element: string; category: string; fps: number; frameCount: number; durationMs: number; scale: number;
   origin: { x: number; y: number }; target: { x: number; y: number }; anchor: 'caster' | 'target';
+  /** Ground-plane bake direction in degrees (0 = right, 90 = toward the camera). Absent on packs that look the same in every direction. */
+  direction?: number;
+  /** Camera squash (ground y / screen y) the pack was baked with. */
+  groundSquash?: number;
   layers: { name: string; blend: 'normal' | 'add'; scale?: number; sheets: string[]; frames: Frame[] }[];
   cues: Cue[];
   actors?: Partial<Record<ActorName, ActorTrack>>;
@@ -20,6 +24,8 @@ export function validate(value: unknown): Manifest {
     !Number.isFinite(m.fps) || m.fps <= 0 || !Number.isInteger(m.frameCount) || m.frameCount < 1 ||
     !Number.isFinite(m.durationMs) || m.durationMs <= 0 || !Number.isFinite(m.scale) || m.scale <= 0 ||
     !point(m.origin) || !point(m.target) || !['caster', 'target'].includes(m.anchor) || !Array.isArray(m.layers) || !m.layers.length || !Array.isArray(m.cues)) throw Error('Invalid lenhon-vfx manifest');
+  if (m.direction !== undefined && (!Number.isFinite(m.direction) || m.direction < -90 || m.direction > 90)) throw Error('Invalid VFX direction');
+  if (m.groundSquash !== undefined && (!Number.isFinite(m.groundSquash) || m.groundSquash <= 0 || m.groundSquash > 1)) throw Error('Invalid VFX ground squash');
   for (const l of m.layers) {
     if (l.scale !== undefined && (!Number.isFinite(l.scale) || l.scale <= 0)) throw Error('Invalid VFX layer scale');
     if (!['normal', 'add'].includes(l.blend) || !Array.isArray(l.sheets) || !l.sheets.every(s => typeof s === 'string' && s.length) || !Array.isArray(l.frames) || l.frames.length !== m.frameCount) throw Error('Invalid VFX layer');

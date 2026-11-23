@@ -2,23 +2,39 @@
 // SPDX-License-Identifier: MIT
 import { Container, Sprite, Texture } from 'pixi.js';
 import type { Application } from 'pixi.js';
-import { frameTexture, setBlend, v8 } from './compat.js';
+import { frameTexture, setBlend, setMatrix, v8 } from './compat.js';
 import { readContainer, validate } from './format.js';
 import type { ActorName, Cue, Manifest } from './format.js';
 export type { ActorName, ActorFrame, ActorTrack, Cue, Manifest, Frame } from './format.js';
 export interface Point { x: number; y: number }
 export interface PlayOptions {
   from: Point; to?: Point; parent?: Container; zIndex?: number; speed?: number; fitDistance?: boolean; loop?: boolean;
+  /** Your camera's ground squash (ground y / screen y). Defaults to the pack's bake value. */
+  groundSquash?: number;
 }
 export interface PlayerOptions {
   packs?: string[]; loadKey?: string; shake?: { target: Container }; hitstop?: boolean;
 }
 export interface ActorPose { x: number; y: number; lift: number; visible: boolean; facing: number }
-export interface Playback { stop(): void; finished: Promise<void>; readonly elapsedMs: number; pose(name: ActorName): ActorPose | null }
+export interface Playback { stop(): void; finished: Promise<void>; readonly elapsedMs: number; readonly manifest: Manifest; pose(name: ActorName): ActorPose | null }
 export type CueEvent = Cue & { packId: string; handle: Playback };
 interface Pack { manifest: Manifest; sheets: Texture[]; frames: (Texture | null)[][] }
+/** Ground-plane directions (degrees) the free packs are baked in; left-facing casts mirror them. */
+export const PACK_DIRECTIONS = [0, 45, 90, -45, -90] as const;
+const keyOf = (m: Manifest) => m.direction ? `${m.id}@${m.direction}` : m.id;
+/**
+ * Nearest baked direction for a cast from `from` to `to`, and whether it plays mirrored.
+ * Load `<id>@<direction>.vfxb` (or `<id>.vfxb` for 0) before playing, if the pack ships directions.
+ */
+export function packDirection(from: Point, to: Point, groundSquash = 0.6, available: readonly number[] = PACK_DIRECTIONS): { direction: number; mirror: boolean } {
+  const dx = to.x - from.x, dy = (to.y - from.y) / groundSquash;
+  if (Math.hypot(dx, dy) < 1e-6) return { direction: available.includes(0) ? 0 : available[0], mirror: false };
+  const angle = Math.atan2(dy, Math.abs(dx)) * 180 / Math.PI;
+  const direction = available.reduce((best, d) => Math.abs(d - angle) < Math.abs(best - angle) ? d : best, available[0]);
+  return { direction, mirror: dx < 0 };
+}
 interface Active {
-  pack: Pack; options: PlayOptions; root: Container; sprites: Sprite[]; time: number; cue: number; freeze: number;
+  pack: Pack; options: PlayOptions; legacy: boolean; matrix: [number, number, number, number]; root: Container; sprites: Sprite[]; time: number; cue: number; freeze: number;
   handle: Playback; resolve(): void;
 }
 const MAX_LOOP_CYCLES_PER_UPDATE = 32;
@@ -26,6 +42,7 @@ export class VfxPlayer {
   shakeEnabled: boolean;
   hitstopEnabled: boolean;
   private packs = new Map<string, Pack>();
+  private families = new Map<string, Pack[]>();
   private active = new Set<Active>();
   private sprites: Sprite[] = [];
   private roots: Container[] = [];
@@ -64,8 +81,9 @@ export class VfxPlayer {
     const manifest = decoded?.manifest ?? validate(await response.json());
     manifest.cues = manifest.cues.slice().sort((a, b) => a.t - b.t);
     if (this.dead) throw Error('VfxPlayer is destroyed');
+    const key = keyOf(manifest);
     if ((this.cancelledLoads.get(manifest.id) ?? 0) >= request) throw Error(`VFX load cancelled: ${manifest.id}`);
-    if (this.packs.has(manifest.id)) return;
+    if (this.packs.has(key)) return;
     const textures = new Map<string, Texture>(), frames: (Texture | null)[][] = [];
     try {
       for (const name of new Set(manifest.layers.flatMap(l => l.sheets))) {
@@ -90,14 +108,17 @@ export class VfxPlayer {
       }
       if (this.dead) throw Error('VfxPlayer is destroyed');
       if ((this.cancelledLoads.get(manifest.id) ?? 0) >= request) throw Error(`VFX load cancelled: ${manifest.id}`);
-      if (this.packs.has(manifest.id)) { frames.flat().forEach(t => t?.destroy()); textures.forEach(t => t.destroy(true)); return; }
-      this.packs.set(manifest.id, { manifest, sheets: [...textures.values()], frames });
+      if (this.packs.has(key)) { frames.flat().forEach(t => t?.destroy()); textures.forEach(t => t.destroy(true)); return; }
+      const pack = { manifest, sheets: [...textures.values()], frames };
+      this.packs.set(key, pack);
+      this.families.set(manifest.id, [...(this.families.get(manifest.id) ?? []), pack]);
     } catch (error) { frames.flat().forEach(t => t?.destroy()); textures.forEach(t => t.destroy(true)); throw error; }
   }
   play(id: string, options: PlayOptions): Playback {
     if (this.dead) throw Error('VfxPlayer is destroyed');
-    const pack = this.packs.get(id); if (!pack) throw Error(`Pack not loaded: ${id}`);
+    if (!this.families.get(id)?.length) throw Error(`Pack not loaded: ${id}`);
     if (!options?.from || !Number.isFinite(options.from.x) || !Number.isFinite(options.from.y) || (options.to && (!Number.isFinite(options.to.x) || !Number.isFinite(options.to.y))) || (options.speed !== undefined && (!Number.isFinite(options.speed) || options.speed <= 0))) throw Error('Invalid playback options');
+    const { pack, legacy } = this.aim(id, options);
     const root = this.roots.pop() ?? new Container();
     root.zIndex = options.zIndex ?? 0;
     const sprites = pack.manifest.layers.map(layer => {
@@ -119,29 +140,64 @@ export class VfxPlayer {
       }
       const frame = Math.min(pack.manifest.frameCount - 1, a.time * pack.manifest.fps / 1000);
       const i = Math.floor(frame), t = frame - i, f = track.frames[i], next = track.frames[Math.min(i + 1, track.frames.length - 1)];
-      const to = options.to ?? options.from, direction = to.x < options.from.x ? -1 : 1;
-      const span = Math.abs(pack.manifest.target.x - pack.manifest.origin.x);
-      const fit = options.fitDistance && span > 0 ? Math.abs(to.x - options.from.x) / span : 1;
-      const lerp = (k: number) => f[k] + (next[k] - f[k]) * t;
-      return { x: lerp(0) * direction * fit, y: lerp(1), lift: lerp(2), visible: !!(f[3] & 1), facing: (f[3] & 2 ? -1 : 1) * direction };
+      const lerp = (k: number) => f[k] + (next[k] - f[k]) * t, x = lerp(0), y = lerp(1), [ma, mb, mc, md] = a.matrix;
+      return { x: ma * x + mc * y, y: mb * x + md * y, lift: lerp(2), visible: !!(f[3] & 1), facing: (f[3] & 2 ? -1 : 1) * Math.sign(ma || 1) };
     };
-    const a: Active = { pack, options, root, sprites, time: 0, cue: 0, freeze: 0, resolve, handle: { finished, pose, get elapsedMs() { return player.active.has(a) ? a.time : 0; }, stop: () => this.finish(a) } };
+    const a: Active = { pack, options, legacy, matrix: [1, 0, 0, 1], root, sprites, time: 0, cue: 0, freeze: 0, resolve, handle: { finished, pose, get manifest() { return structuredClone(pack.manifest); }, get elapsedMs() { return player.active.has(a) ? a.time : 0; }, stop: () => this.finish(a) } };
     this.active.add(a); this.draw(a); this.emitCues(a);
     return a.handle;
   }
   on(type: 'cue', listener: (event: CueEvent) => void): this { if (type === 'cue') this.listeners.add(listener); return this; }
   off(type: 'cue', listener: (event: CueEvent) => void): this { if (type === 'cue') this.listeners.delete(listener); return this; }
   stats() { return { active: this.active.size, pooled: this.sprites.length, packs: this.packs.size }; }
+  /** Baked directions loaded for a pack id, in degrees. */
+  directions(id: string): number[] { return (this.families.get(id) ?? []).map(p => p.manifest.direction ?? 0); }
+  /**
+   * Picks the loaded bake nearest the cast's ground direction. Packs without a bake direction
+   * (all 1.0 packs) are "legacy": they keep the left/right mirror from 1.0.
+   */
+  private aim(id: string, o: PlayOptions): { pack: Pack; legacy: boolean } {
+    const list = this.families.get(id)!, to = o.to ?? o.from, base = list.find(p => !p.manifest.direction) ?? list[0];
+    if (base.manifest.direction === undefined && list.length === 1) return { pack: base, legacy: true };
+    const squash = o.groundSquash ?? base.manifest.groundSquash ?? 0.6;
+    const { direction } = packDirection(o.from, to, squash, list.map(p => p.manifest.direction ?? 0));
+    return { pack: list.find(p => (p.manifest.direction ?? 0) === direction)!, legacy: false };
+  }
+  /**
+   * Root transform landing the pack's baked target on `to` right now: x mirrored for left casts,
+   * then the smallest linear correction for the remaining angle and distance. Past ~70 degrees of
+   * correction the shear degenerates, so the bake is rotated and scaled onto the cast instead.
+   * Recomputed per draw so live endpoints keep tracking; legacy packs keep the 1.0 per-frame mirror.
+   */
+  private matrix(a: Active): [number, number, number, number] {
+    const m = a.pack.manifest, o = a.options, to = o.to ?? o.from;
+    if (a.legacy) {
+      const mirror = to.x < o.from.x ? -1 : 1, span = Math.abs(m.target.x - m.origin.x);
+      const fit = o.fitDistance && span > 0 ? Math.abs(to.x - o.from.x) / span : 1;
+      return [mirror * fit, 0, 0, 1];
+    }
+    const squash = o.groundSquash ?? m.groundSquash ?? 0.6, s = to.x < o.from.x ? -1 : 1;
+    const tx = m.target.x - m.origin.x, ty = m.target.y - m.origin.y, t2 = tx * tx + ty * ty;
+    let dx = s * (to.x - o.from.x), dy = to.y - o.from.y;
+    const ground = (x: number, y: number) => Math.hypot(x, y / squash), dLen = ground(dx, dy);
+    if (t2 === 0 || dLen < 1e-6) return [s, 0, 0, 1];
+    if (!o.fitDistance) { const k = ground(tx, ty) / dLen; dx *= k; dy *= k; }
+    const dot = dx * tx + dy * ty;
+    if (dot <= 0.3 * Math.sqrt((dx * dx + dy * dy) * t2)) {
+      const p = dot / t2, q = (dx * ty - dy * tx) / t2;
+      return [s * p, s * q, -q, p];
+    }
+    const ex = (dx - tx) / t2, ey = (dy - ty) / t2;
+    return [s * (1 + ex * tx), ey * tx, s * ex * ty, 1 + ey * ty];
+  }
   getManifest(id: string): Manifest | undefined {
-    const manifest = this.packs.get(id)?.manifest;
+    const manifest = (this.packs.get(id) ?? this.families.get(id)?.[0])?.manifest;
     return manifest ? structuredClone(manifest) : undefined;
   }
   private draw(a: Active) {
     const m = a.pack.manifest, o = a.options, to = o.to ?? o.from, anchor = m.anchor === 'target' ? to : o.from;
-    const direction = to.x < o.from.x ? -1 : 1;
-    const distance = Math.abs(to.x - o.from.x);
-    const fit = o.fitDistance && Math.abs(m.target.x - m.origin.x) > 0 ? distance / Math.abs(m.target.x - m.origin.x) : 1;
-    a.root.position.set(anchor.x, anchor.y); a.root.scale.set(direction * fit, 1);
+    a.matrix = this.matrix(a);
+    setMatrix(a.root, ...a.matrix, anchor.x, anchor.y);
     const index = Math.min(m.frameCount - 1, Math.floor(a.time * m.fps / 1000));
     a.sprites.forEach((s, li) => {
       const f = m.layers[li].frames[index], t = a.pack.frames[li][index];
@@ -204,15 +260,20 @@ export class VfxPlayer {
     this.roots.push(a.root); a.resolve();
   }
   unload(id: string) {
-    this.cancelledLoads.set(id, this.requestSerial);
-    const pack = this.packs.get(id); if (!pack) return;
-    for (const a of this.active) if (a.pack === pack) this.finish(a);
-    pack.frames.flat().forEach(t => t?.destroy()); pack.sheets.forEach(t => t.destroy(true)); this.packs.delete(id);
+    const at = id.indexOf('@'), family = at < 0 ? id : id.slice(0, at);
+    if (at < 0) this.cancelledLoads.set(family, this.requestSerial);
+    const doomed = at < 0 ? this.families.get(id) ?? [] : [this.packs.get(id)].filter((p): p is Pack => !!p);
+    for (const pack of doomed) {
+      for (const a of this.active) if (a.pack === pack) this.finish(a);
+      pack.frames.flat().forEach(t => t?.destroy()); pack.sheets.forEach(t => t.destroy(true)); this.packs.delete(keyOf(pack.manifest));
+    }
+    const rest = (this.families.get(family) ?? []).filter(p => !doomed.includes(p));
+    if (rest.length) this.families.set(family, rest); else this.families.delete(family);
   }
   destroy() {
     if (this.dead) return;
     this.dead = true; this.app.ticker.remove(this.tick);
-    for (const id of this.packs.keys()) this.unload(id);
+    for (const id of [...this.families.keys()]) this.unload(id);
     this.shakeEnabled = false; this.updateShake(0);
     this.sprites.forEach(s => s.destroy()); this.roots.forEach(r => r.destroy());
     this.sprites = []; this.roots = []; this.listeners.clear();

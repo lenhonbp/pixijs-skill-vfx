@@ -29,14 +29,23 @@ if (list) {
   process.exit(0);
 }
 if (!all && !ids.length) { console.error(usage); process.exit(2); }
-const unknown = ids.filter(id => !collection.some(p => p.id === id));
+const wanted = [], unknown = [], missing = [];
+for (const arg of all ? collection.map(p => p.id) : ids) {
+  const at = arg.lastIndexOf('@'), id = at < 0 ? arg : arg.slice(0, at), dir = at < 0 ? null : arg.slice(at + 1);
+  const entry = collection.find(p => p.id === id);
+  if (!entry) { unknown.push(arg); continue; }
+  if (dir === null) { wanted.push(entry); continue; }
+  const variant = dir === '0' ? { files: entry.files } : entry.directions?.[dir];
+  if (!variant) { missing.push(arg); continue; }
+  wanted.push({ ...entry, files: variant.files, directions: undefined });
+}
 if (unknown.length) { console.error(`Unknown pack id: ${unknown.join(', ')}. Run with --list.`); process.exit(2); }
-const wanted = all ? collection : collection.filter(p => ids.includes(p.id));
-const files = wanted.flatMap(p => p.files).filter(f => opts.tier === 'both' || f.name.endsWith('.m.vfxb') === (opts.tier === 'mobile'));
+if (missing.length) { console.error(`Pack has no direction bake: ${missing.join(', ')}. Directional ids look like hoa-fireball@90.`); process.exit(2); }
+const files = wanted.flatMap(p => [...p.files, ...Object.values(p.directions ?? {}).flatMap(d => d.files)]).filter(f => opts.tier === 'both' || f.name.endsWith('.m.vfxb') === (opts.tier === 'mobile'));
 const out = resolve(opts.out);
 await mkdir(out, { recursive: true });
 for (const file of files) {
-  if (!/^[a-z0-9-]+(?:\.m)?\.vfxb$/.test(file.name) || !Number.isSafeInteger(file.bytes)) throw Error(`Refusing unexpected index entry ${JSON.stringify(file.name)}`);
+  if (!/^[a-z0-9-]+(?:@-?\d+)?(?:\.m)?\.vfxb$/.test(file.name) || !Number.isSafeInteger(file.bytes)) throw Error(`Refusing unexpected index entry ${JSON.stringify(file.name)}`);
   const res = await fetch(source + file.name);
   if (!res.ok) throw Error(`${file.name}: HTTP ${res.status}`);
   const bytes = new Uint8Array(await res.arrayBuffer());
