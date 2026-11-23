@@ -1,0 +1,274 @@
+{
+  "version": 1,
+  "collections": [
+    {
+      "id": "free-collection",
+      "name": "Free collection",
+      "description": "Ready-to-play 2.5D skill effects for your game.",
+      "accent": "#d6b477",
+      "symbol": "✦"
+    },
+    {
+      "id": "kiem-hiep",
+      "name": "Kiếm Hiệp",
+      "description": "Sword auras, flying blades and the spirit of a wandering hero.",
+      "accent": "#d6b477",
+      "symbol": "劍"
+    },
+    {
+      "id": "ngu-hanh",
+      "name": "Ngũ Hành",
+      "description": "Metal, wood, water, fire and earth. Five forces in perfect motion.",
+      "accent": "#7dbaa9",
+      "symbol": "五"
+    },
+    {
+      "id": "ultimate-boss",
+      "name": "Ultimate Boss",
+      "description": "Arena-shaking ultimates for battles players will remember.",
+      "accent": "#b69ed4",
+      "symbol": "冥"
+    }
+  ],
+  "products": [
+    {
+      "id": "kim-sword-rain",
+      "packId": "kim-sword-rain",
+      "collectionId": "free-collection",
+      "tier": "free",
+      "status": "available",
+      "description": "A storm of gold-hilted blades falls on the area and pins every enemy inside."
+    },
+    {
+      "id": "kim-golden-edge",
+      "packId": "kim-golden-edge",
+      "collectionId": "free-collection",
+      "tier": "free",
+      "status": "available",
+      "description": "Dash in, two crossing metal slashes, the target bleeds."
+    },
+    {
+      "id": "kim-golden-bell",
+      "packId": "kim-golden-bell",
+      "collectionId": "free-collection",
+      "tier": "free",
+      "status": "available",
+      "description": "A golden temple bell descends, rings under two hits, then shatters on the third."
+    },
+    {
+      "id": "moc-vine-bind",
+      "packId": "moc-vine-bind",
+      "collectionId": "free-collection",
+      "tier": "free",
+      "status": "available",
+      "description": "A sprouting seed tears open the soil and grows binding vines."
+    },
+    {
+      "id": "moc-spring-bloom",
+      "packId": "moc-spring-bloom",
+      "collectionId": "free-collection",
+      "tier": "free",
+      "status": "available",
+      "description": "Grass sprouts and flowers unfold in a warm healing breeze."
+    },
+    {
+      "id": "moc-toxic-spores",
+      "packId": "moc-toxic-spores",
+      "collectionId": "free-collection",
+      "tier": "free",
+      "status": "available",
+      "description": "Mushrooms erupt and breathe a lingering cloud of poisonous spores."
+    },
+    {
+      "id": "thuy-frost-nova",
+      "packId": "thuy-frost-nova",
+      "collectionId": "free-collection",
+      "tier": "free",
+      "status": "available",
+      "description": "Ice spikes erupt around the target and freeze it solid, then it shatters."
+    },
+    {
+      "id": "thuy-glacier-path",
+      "packId": "thuy-glacier-path",
+      "collectionId": "free-collection",
+      "tier": "free",
+      "status": "available",
+      "description": "A jagged glacier ridge fractures the ground toward the enemy."
+    },
+    {
+      "id": "hoa-fireball",
+      "packId": "hoa-fireball",
+      "collectionId": "free-collection",
+      "tier": "free",
+      "status": "available",
+      "description": "A charged fireball that explodes and leaves the target burning."
+    },
+    {
+      "id": "hoa-dragon-breath",
+      "packId": "hoa-dragon-breath",
+      "collectionId": "free-collection",
+      "tier": "free",
+      "status": "available",
+      "description": "A sweeping cone of flame that sets everything in front ablaze."
+    },
+    {
+      "id": "hoa-heaven-fire",
+      "packId": "hoa-heaven-fire",
+      "collectionId": "free-collection",
+      "tier": "free",
+      "status": "available",
+      "description": "Calls a meteor from the sky after a short warning."
+    },
+    {
+      "id": "hoa-fire-dragon-crossing",
+      "packId": "hoa-fire-dragon-crossing",
+      "collectionId": "free-collection",
+      "tier": "free",
+      "status": "available",
+      "description": "A serpentine fire dragon sweeps across the field, scorching its path and burning the enemies it crosses."
+    },
+    {
+      "id": "tho-fissure",
+      "packId": "tho-fissure",
+      "collectionId": "free-collection",
+      "tier": "free",
+      "status": "available",
+      "description": "Rock spikes tear through the ground and stun everything they hit."
+    },
+    {
+      "id": "tho-stone-skin",
+      "packId": "tho-stone-skin",
+      "collectionId": "free-collection",
+      "tier": "free",
+      "status": "available",
+      "description": "Rock plates rise and lock onto the body, then crumble into rubble."
+    },
+    {
+      "id": "phong-gale-blade",
+      "packId": "phong-gale-blade",
+      "collectionId": "free-collection",
+      "tier": "free",
+      "status": "available",
+      "description": "Draw air into the blade, then fan three banking gusts that throw enemies backward."
+    },
+    {
+      "id": "phong-whirlwind",
+      "packId": "phong-whirlwind",
+      "collectionId": "free-collection",
+      "tier": "free",
+      "status": "available",
+      "description": "Rush into the group, cut twice, then blow nearby enemies outward with the last spin."
+    },
+    {
+      "id": "phong-tornado",
+      "packId": "phong-tornado",
+      "collectionId": "free-collection",
+      "tier": "free",
+      "status": "available",
+      "description": "Rake up dust and leaves, carry enemies around the funnel, then slam them back into the ground."
+    },
+    {
+      "id": "phong-tailwind",
+      "packId": "phong-tailwind",
+      "collectionId": "free-collection",
+      "tier": "free",
+      "status": "available",
+      "description": "Catch a tailwind, then demonstrate the haste with three quick steps trailing ribbons and dust."
+    },
+    {
+      "id": "lightning-chain",
+      "packId": "lightning-chain",
+      "collectionId": "free-collection",
+      "tier": "free",
+      "status": "available",
+      "description": "A bolt jumps between all enemies and briefly stuns them."
+    },
+    {
+      "id": "loi-heaven-strike",
+      "packId": "loi-heaven-strike",
+      "collectionId": "free-collection",
+      "tier": "free",
+      "status": "available",
+      "description": "A raised charge calls staggered forked sky strikes, stunning and shocking the enemy group."
+    },
+    {
+      "id": "loi-thunder-domain",
+      "packId": "loi-thunder-domain",
+      "collectionId": "free-collection",
+      "tier": "free",
+      "status": "available",
+      "description": "A violet electric field crackles under the enemy group, dealing periodic damage and shock."
+    },
+    {
+      "id": "seal-silence",
+      "packId": "seal-silence",
+      "collectionId": "free-collection",
+      "tier": "free",
+      "status": "available",
+      "description": "A sealing rune flies into the target, locking its voice and veiling its eyes."
+    },
+    {
+      "id": "sunder-mark",
+      "packId": "sunder-mark",
+      "collectionId": "free-collection",
+      "tier": "free",
+      "status": "available",
+      "description": "Descending reticles lock onto enemies, shattering their armor into glowing fragments."
+    },
+    {
+      "id": "war-cry",
+      "packId": "war-cry",
+      "collectionId": "free-collection",
+      "tier": "free",
+      "status": "available",
+      "description": "Brace, unleash a fiery roar, and rally within an ember-wreathed battle rune."
+    },
+    {
+      "id": "curse-weaken",
+      "packId": "curse-weaken",
+      "collectionId": "free-collection",
+      "tier": "free",
+      "status": "available",
+      "description": "A spreading hex binds and weighs down enemies, leaving a sickly, draining curse."
+    },
+    {
+      "id": "kiem-hiep",
+      "collectionId": "kiem-hiep",
+      "tier": "premium",
+      "status": "coming-soon",
+      "name": {
+        "en": "Kiếm Hiệp",
+        "vi": "Kiếm Hiệp"
+      },
+      "description": "Sword auras, flying blades and the spirit of a wandering hero.",
+      "includes": [],
+      "compatibility": []
+    },
+    {
+      "id": "ngu-hanh",
+      "collectionId": "ngu-hanh",
+      "tier": "premium",
+      "status": "coming-soon",
+      "name": {
+        "en": "Ngũ Hành",
+        "vi": "Ngũ Hành"
+      },
+      "description": "Metal, wood, water, fire and earth. Five forces in perfect motion.",
+      "includes": [],
+      "compatibility": []
+    },
+    {
+      "id": "ultimate-boss",
+      "collectionId": "ultimate-boss",
+      "tier": "premium",
+      "status": "coming-soon",
+      "name": {
+        "en": "Ultimate Boss",
+        "vi": "Ultimate Boss"
+      },
+      "description": "Arena-shaking ultimates for battles players will remember.",
+      "includes": [],
+      "compatibility": []
+    }
+  ]
+}
