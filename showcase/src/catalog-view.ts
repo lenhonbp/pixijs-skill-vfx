@@ -1,5 +1,5 @@
 // Copyright (c) 2026 lenhonbp <lenhonbp@gmail.com> — MIT
-import { collections, filterProducts, getProductAction } from './catalog';
+import { filterProducts, getProductAction } from './catalog';
 import type { CatalogProduct } from './catalog';
 
 interface Theme {
@@ -11,14 +11,46 @@ function text<K extends keyof HTMLElementTagNameMap>(tag: K, value: string, clas
   const node = document.createElement(tag); node.textContent = value; node.className = className; return node;
 }
 
+const elementPaths: Record<string, string[]> = {
+  kim: ['M15 3l6 6-9 9-6-6z', 'M4 14l6 6', 'M3 21l4-4'],
+  moc: ['M20 4C8 3 3 8 5 15c2 7 14 6 15-11Z', 'M4 21l11-11'],
+  thuy: ['M12 2v20M3.3 7l17.4 10M3.3 17 20.7 7', 'M9 4l3 3 3-3M9 20l3-3 3 3'],
+  hoa: ['M13 3c1 5-5 5-3 10 2-1 3-3 3-5 5 5 7 8 4 12-3 4-11 2-11-3 0-4 4-7 7-14Z'],
+  tho: ['M12 3 22 12 12 21 2 12Z', 'M12 7 17.5 12 12 17 6.5 12Z'],
+  phong: ['M3 8h12c5 0 5-6 1-6', 'M2 12h17c4 0 4 6 0 6', 'M5 16h6c4 0 4 6 0 6'],
+  loi: ['M14 2 5 14h6l-1 8 9-12h-6Z'],
+  neutral: ['M12 3 20 7v5c0 5-8 9-8 9S4 17 4 12V7Z', 'M8 12h8M12 8v8'],
+};
+function lineIcon(paths: string[], size = 24) {
+  const svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
+  svg.setAttribute('viewBox', '0 0 24 24'); svg.setAttribute('width', String(size)); svg.setAttribute('height', String(size));
+  svg.setAttribute('fill', 'none'); svg.setAttribute('stroke', 'currentColor'); svg.setAttribute('stroke-width', '1.5');
+  svg.setAttribute('stroke-linecap', 'round'); svg.setAttribute('stroke-linejoin', 'round');
+  svg.setAttribute('aria-hidden', 'true'); svg.setAttribute('focusable', 'false');
+  for (const d of paths) {
+    const path = document.createElementNS('http://www.w3.org/2000/svg', 'path'); path.setAttribute('d', d); svg.append(path);
+  }
+  return svg;
+}
+function scrollToPreview() {
+  document.querySelector<HTMLElement>('.viewer')!.scrollIntoView({
+    behavior: matchMedia('(prefers-reduced-motion: reduce)').matches ? 'auto' : 'smooth', block: 'start',
+  });
+}
+
 /** Product presentation is independent of the pack loader and PixiJS world. */
 export function createCatalogView(products: CatalogProduct[], theme: Theme, select: (product: CatalogProduct) => void) {
   let active = products[0], access: 'all' | 'free' | 'premium' = 'all', element = 'all';
+  const hasPremium = products.some(product => product.tier === 'premium');
+  const collections = [...new Map(products.map(product => [product.collectionId, product.collection])).values()];
   const collectionSelect = el<HTMLSelectElement>('collection-filter');
   collectionSelect.replaceChildren(new Option('All collections', 'all'), ...collections.map(c => new Option(c.name, c.id)));
+  collectionSelect.hidden = collections.length < 2;
+  collectionSelect.labels?.forEach(label => { label.hidden = collectionSelect.hidden; });
   collectionSelect.onchange = () => renderList(active);
   el('search').oninput = () => renderList(active);
 
+  el('catalog-access').hidden = !hasPremium;
   el('catalog-access').replaceChildren(...(['all', 'free', 'premium'] as const).map(value => {
     const label = value[0].toUpperCase() + value.slice(1), button = text('button', label);
     button.type = 'button'; button.dataset.access = value; button.setAttribute('aria-label', `${label} products`);
@@ -38,10 +70,13 @@ export function createCatalogView(products: CatalogProduct[], theme: Theme, sele
     button.setAttribute('aria-pressed', String(product.id === active.id));
     const name = text('span', '', 'product-name');
     name.append(text('strong', product.name.en), text('small', free ? product.name.vi : product.status === 'available' ? 'Premium collection' : 'Premium · Coming soon'));
-    button.append(text('span', free ? theme.icons[product.element] : '✧', 'skill-icon'), name, text('span', '↗', 'arrow'));
+    const icon = text('span', '', 'skill-icon'), arrow = text('span', '', 'arrow');
+    icon.append(lineIcon(elementPaths[product.element] ?? ['M12 3 15 9l6 3-6 3-3 6-3-6-6-3 6-3Z']));
+    arrow.append(lineIcon(['M6 12h12M13 7l5 5-5 5'], 16));
+    button.append(icon, name, arrow);
     button.onclick = () => {
       select(product);
-      if (!free && matchMedia('(max-width:720px)').matches) el('library').scrollIntoView({ behavior: 'smooth', block: 'start' });
+      if (matchMedia('(max-width:720px)').matches) scrollToPreview();
     }; return button;
   }
   function heading(label: string, count: number, color: string) {
@@ -63,8 +98,19 @@ export function createCatalogView(products: CatalogProduct[], theme: Theme, sele
     });
     if (premium.length) nodes.push(heading('Premium collections', premium.length, '#d6b477'), ...premium.map(productButton));
     el('list').replaceChildren(...nodes);
-    if (!visible.length) el('list').append(text('p', 'No matching products. Try another name or filter.', 'catalog-empty'));
-    el('catalog-count').textContent = `${free.length} FREE · ${premium.length} PREMIUM`;
+    if (!visible.length) {
+      const empty = text('div', '', 'catalog-empty');
+      const reset = text('button', 'Reset filters', 'catalog-reset'); reset.type = 'button';
+      reset.onclick = () => {
+        el<HTMLInputElement>('search').value = ''; access = 'all'; element = 'all'; collectionSelect.value = 'all';
+        renderList(active); el('search').focus({ preventScroll: true });
+      };
+      empty.append(text('strong', hasPremium ? 'No products found.' : 'No effects found.'),
+        text('p', 'Try another name or reset the filters.'), reset);
+      el('list').append(empty);
+    }
+    el('catalog-count').textContent = hasPremium ? `${free.length} FREE · ${premium.length} PREMIUM`
+      : visible.length === products.length ? `${visible.length} effects · All free` : `${visible.length} of ${products.length} effects`;
   }
 
   function renderProduct(product: CatalogProduct) {
@@ -120,7 +166,7 @@ export function createCatalogView(products: CatalogProduct[], theme: Theme, sele
     const card = document.createElement('article'); card.style.setProperty('--accent', product.collection.accent);
     const mark = text('span', product.collection.symbol, 'pack-symbol'); mark.setAttribute('aria-hidden', 'true');
     const link = text('a', 'View collection →'); link.href = `#product/${product.id}`; link.dataset.productId = product.id;
-    link.onclick = event => { event.preventDefault(); select(product); el('library').scrollIntoView({ behavior: 'smooth', block: 'start' }); };
+    link.onclick = event => { event.preventDefault(); select(product); scrollToPreview(); };
     const actions = text('div', ''); actions.append(link, text('span', product.status === 'available' ? 'AVAILABLE' : 'COMING SOON'));
     card.append(mark, text('p', 'PREMIUM COLLECTION', 'eyebrow'), text('h3', product.name.en), text('p', product.description), actions); return card;
   }));

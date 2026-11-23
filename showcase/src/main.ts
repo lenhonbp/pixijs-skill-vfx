@@ -145,26 +145,37 @@ interface Variant { bytes: number; desktopBytes?: number; mobileBytes?: number }
 interface Entry extends Variant { id: string; name: { en: string; vi: string }; element: string; category: string; directions?: Record<string, Variant> }
 const base = import.meta.env.BASE_URL;
 document.querySelector<HTMLDivElement>('#app')!.innerHTML = `
-<header><a class="brand" href="#">L<span>✦</span> / LENHON <small>VFX LIBRARY</small></a><nav><a href="#library">Browse VFX</a><a href="#premium">Premium collections ↗</a><a href="https://github.com/lenhonbp/pixijs-skill-vfx">GitHub ↗</a></nav></header>
+<a class="skip-link" href="#library">Skip to the effect library</a>
+<header class="site-header">
+  <a class="brand" href="#" aria-label="Lenhon VFX home">
+    <svg class="brand-mark" viewBox="0 0 32 32" width="32" height="32" fill="none" aria-hidden="true"><path d="M16 1.5 30.5 16 16 30.5 1.5 16Z" stroke="currentColor"/><path d="M12 9v14h9M18 8v8h7" stroke="currentColor" stroke-width="1.5"/></svg>
+    <span>LENHON <b>VFX</b></span><small>AN EFFECT LIBRARY</small>
+  </a>
+  <nav aria-label="Main navigation"><a href="#library">Browse effects</a><a href="https://github.com/lenhonbp/pixijs-skill-vfx/tree/main/runtime">Runtime docs</a><a href="https://github.com/lenhonbp/pixijs-skill-vfx">GitHub <span aria-hidden="true">↗</span></a></nav>
+</header>
 <main>
-  <section class="intro"><div><p class="eyebrow">BUILT FOR PIXIJS 7 + 8 · ZERO RUNTIME DEPENDENCIES</p><h1>A little magic.<br><em>A lot of impact.</em></h1><p class="lede">Game-ready 2.5D effects. Find your next spell,<br> try the free effects and explore Premium collections.</p></div><div class="intro-note"><span class="star">✳</span><strong>Runtime is free forever (MIT)</strong><p>Free effects, ready to use.<br>Discover each collection below.</p><a href="https://github.com/lenhonbp/pixijs-skill-vfx/tree/main/runtime">Explore the runtime ↗</a></div></section>
-  <section id="library" class="library">
-    <aside>
-      <div class="section-heading"><h2>VFX catalog</h2><span id="catalog-count" aria-live="polite">Loading…</span></div>
-      <div id="catalog-access" role="group" aria-label="Product access"></div>
-      <label class="sr-only" for="collection-filter">Collection</label><select id="collection-filter" aria-label="Collection"></select>
-      <label class="sr-only" for="search">Search effects and collections</label><input id="search" placeholder="Search effects or collections…" type="search" autocomplete="off">
+  <section class="intro" aria-labelledby="intro-title">
+    <div class="intro-copy"><p class="eyebrow">THE FREE COLLECTION <span aria-hidden="true">/</span> PIXIJS 7 + 8</p><h1 id="intro-title">A little magic.<br><em>A lot of impact.</em></h1><p class="lede">Game-ready 2.5D effects, made for your next world.<br>Preview every angle. Find your effect. Make it yours.</p></div>
+    <div class="intro-note"><p class="eyebrow">CRAFTED TO BE SHARED</p><div class="collection-stat"><strong>25</strong><span>effects.<br>All free.</span></div><p>MIT-licensed packs &amp; runtime.<br>Ready to use in your own game.</p><a href="#library">Explore the collection <span aria-hidden="true">↓</span></a></div>
+  </section>
+  <section id="library" class="library" aria-label="Interactive effect library">
+    <aside aria-labelledby="catalog-heading">
+      <div class="section-heading catalog-heading"><h2 id="catalog-heading" tabindex="-1">Browse effects</h2><span id="catalog-count" aria-live="polite">Loading…</span></div>
+      <div id="catalog-access" role="group" aria-label="Product access" hidden></div>
+      <label class="sr-only" for="collection-filter" hidden>Collection</label><select id="collection-filter" aria-label="Collection" hidden></select>
+      <div class="search-field"><svg viewBox="0 0 24 24" width="17" height="17" fill="none" stroke="currentColor" stroke-width="1.5" aria-hidden="true"><circle cx="10.5" cy="10.5" r="6.5"/><path d="m16 16 4.5 4.5"/></svg><label class="sr-only" for="search">Search effects and collections</label><input id="search" placeholder="Find an effect…" type="search" autocomplete="off"></div>
       <div id="filters" role="group" aria-label="Element filters"></div>
-      <div id="list" class="skill-list" aria-label="Products"></div>
+      <div id="list" class="skill-list" aria-label="Effects"></div>
+      <p class="catalog-footnote">Every effect in this collection is free.</p>
     </aside>
     <div class="viewer">
-      <div class="arena-header"><div><p class="eyebrow" id="category">LIVE PREVIEW</p><h2><span id="selected-name">Loading collection…</span><span id="selected-vi"></span><span id="product-badge" class="product-badge"></span></h2></div><button id="browse" class="browse">Browse ↓</button></div>
+      <div class="arena-header"><div class="effect-heading"><p class="eyebrow" id="category">LIVE PREVIEW</p><h2><span id="selected-name">Loading collection…</span><span id="product-badge" class="product-badge"></span></h2><p id="selected-vi"></p></div><button id="browse" class="browse" type="button">Browse <span aria-hidden="true">↓</span></button></div>
       <div class="stage-wrap">
-        <div id="stage" data-bg="stage" aria-label="Effect preview arena"><div class="arena-tip">Click the floor to cast · SPACE to replay</div></div>
-        <div class="stage-tools"><div class="aim-toolbar" id="aim" role="group" aria-label="Cast direction"></div><div class="stage-toolbar" role="group" aria-label="Preview background"><button data-bg="stage" title="Painted stage">Stage</button><button data-bg="dark" title="Dark #0e1118">Dark</button><button data-bg="light" title="Light">Light</button><button data-bg="checker" title="Transparent checkerboard: inspect additive glow and alpha">Alpha</button></div></div>
+        <div id="stage" data-bg="stage" aria-label="Effect preview arena"><div class="arena-tip">Click the floor to cast <span aria-hidden="true">·</span> <kbd>SPACE</kbd> to replay</div></div>
+        <div class="stage-tools"><div class="tool-group direction-group"><span class="tool-label" aria-hidden="true">Direction</span><div class="aim-toolbar" id="aim" role="group" aria-label="Cast direction"></div></div><div class="tool-group background-group"><span class="tool-label" aria-hidden="true">Backdrop</span><div class="stage-toolbar" role="group" aria-label="Preview background"><button type="button" data-bg="stage" title="Painted stage">Stage</button><button type="button" data-bg="dark" title="Dark #0e1118">Dark</button><button type="button" data-bg="light" title="Light">Light</button><button type="button" data-bg="checker" title="Transparent checkerboard: inspect additive glow and alpha">Alpha</button></div></div></div>
       </div>
-      <div class="controls"><button id="replay" class="primary">↻ Replay</button><label><input id="loop" type="checkbox"> Loop</label><label><input id="sound" type="checkbox"> Sound</label><label><input id="shake" type="checkbox" checked> Shake</label><span id="status" role="status" aria-live="polite">Loading…</span></div>
-      <div class="actions"><button id="download-kit" class="kit">Download kit (.zip) <span></span></button><button id="copy-url">Copy asset URL</button><button id="copy">Copy code</button></div>
+      <div class="controls"><button id="replay" type="button"><svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 10a8 8 0 1 1 1.6 7.8M4 4v6h6"/></svg>Replay</button><label><input id="loop" type="checkbox"> Loop</label><label><input id="sound" type="checkbox"> Sound</label><label><input id="shake" type="checkbox" checked> Shake</label><span id="status" role="status" aria-live="polite">Loading…</span></div>
+      <div class="actions"><button id="download-kit" class="kit" type="button">Download kit (.zip) <span></span></button><button id="copy-url" type="button">Copy asset URL</button><button id="copy" type="button">Copy code</button></div>
       <div id="premium-preview" class="premium-preview" hidden></div>
       <div id="premium-actions" class="premium-actions" hidden>
         <p id="coming-soon"><strong>Coming soon</strong><span id="coming-soon-note">Pack contents, pricing and purchase links will be announced at launch.</span></p>
@@ -178,11 +189,12 @@ document.querySelector<HTMLDivElement>('#app')!.innerHTML = `
         <div class="product-specs"><div><h3 id="product-includes-title">In the download kit</h3><ul id="product-includes"></ul></div><div><h3>Compatibility</h3><ul id="product-compatibility"></ul></div></div>
         <p id="product-license" class="product-license"></p>
       </section>
-      <div id="integration" class="integration"><div class="section-heading"><h3>From preview to your game</h3><span>npm i @lenhonbp/pixijs-vfx-runtime</span></div><pre><code id="snippet"></code></pre><div class="downloads" aria-label="Download the selected pack"><a id="download-desktop" download>Desktop pack <span></span></a><a id="download-mobile" download>Mobile pack <span></span></a></div><p>One tiny runtime. One self-contained pack. That’s it. <a href="https://github.com/lenhonbp/pixijs-skill-vfx/blob/main/runtime/README.md">Read the docs ↗</a><a href="https://github.com/lenhonbp/pixijs-skill-vfx/tree/main/skills/lenhon-vfx">Agent skill ↗</a></p></div>
+      <div id="integration" class="integration"><div class="section-heading"><h3>From preview to your game</h3><span>npm i @lenhonbp/pixijs-vfx-runtime</span></div><pre><code id="snippet"></code></pre><div class="downloads" aria-label="Download the selected pack"><a id="download-desktop" download>Desktop pack <span></span><svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3v12m-5-5 5 5 5-5M5 16v5h14v-5"/></svg></a><a id="download-mobile" download>Mobile pack <span></span><svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3v12m-5-5 5 5 5-5M5 16v5h14v-5"/></svg></a></div><p class="integration-note">Individual packs follow the selected cast direction. The complete kit includes every direction.</p><div class="documentation-links"><a href="https://github.com/lenhonbp/pixijs-skill-vfx/blob/main/runtime/README.md">Runtime documentation <span aria-hidden="true">↗</span></a><a href="https://github.com/lenhonbp/pixijs-skill-vfx/tree/main/skills/lenhon-vfx">Agent skill <span aria-hidden="true">↗</span></a></div></div>
     </div>
   </section>
-  <section id="premium"><div class="premium-heading"><div><p class="eyebrow">PREMIUM COLLECTIONS</p><h2>More worlds. More wonder.</h2></div><p>Explore the Premium collections.<br><span>See each collection for previews, contents and release status.</span></p></div><div id="premium-grid" class="premium-grid"></div></section>
-  <footer><span>© 2026 lenhonbp · <a href="https://opensource.org/license/mit">Runtime: MIT license</a> · <a href="https://github.com/lenhonbp/pixijs-skill-vfx">GitHub repository</a> · <a href="https://github.com/lenhonbp/pixijs-skill-vfx/issues">Report an issue</a> · <a href="mailto:lenhon.vfx@gmail.com">lenhon.vfx@gmail.com</a></span><span>Character artwork (c) 2026 lenhonbp; excluded from the MIT licence.</span></footer>
+  <section id="premium" hidden aria-label="Future collections"><div id="premium-grid" class="premium-grid"></div></section>
+  <p class="collection-note">Premium collections are planned for later. <span>This entire collection is free.</span></p>
+  <footer><div class="footer-main"><span class="footer-brand">LENHON <b>VFX</b><span>© 2026 lenhonbp</span></span><nav aria-label="Footer navigation"><a href="https://opensource.org/license/mit">MIT license</a><a href="https://github.com/lenhonbp/pixijs-skill-vfx">GitHub</a><a href="https://github.com/lenhonbp/pixijs-skill-vfx/issues">Report an issue</a><a href="mailto:lenhon.vfx@gmail.com">Get in touch <span aria-hidden="true">↗</span></a></nav></div><p>All 25 effect packs and the runtime are free under MIT. Character artwork © 2026 lenhonbp is separate and excluded from the MIT license.</p></footer>
 </main>`;
 const el = <T extends HTMLElement>(id: string) => document.getElementById(id) as T;
 const app = new Application();
@@ -228,7 +240,7 @@ function readHash() {
   if (product.tier === 'free') selected = packs.find(p => p.id === product.packId)!;
   return true;
 }
-readHash();
+if (!readHash() && location.hash.startsWith('#product/')) history.replaceState(null, '', '#' + selected.id);
 const selectedId = () => selected.id;
 const formatBytes = (bytes: number) => bytes >= 1000000 ? (bytes / 1000000).toFixed(2) + ' MB' : Math.round(bytes / 1000) + ' KB';
 const sizeLabel = () => { const v = variantOf(selected, castDirection()); return formatBytes((mobileAsset() ? v.mobileBytes : v.desktopBytes) ?? v.bytes); };
@@ -362,8 +374,10 @@ el('sound').onchange = () => { if (el<HTMLInputElement>('sound').checked) void e
 el('shake').onchange = () => { vfx.shakeEnabled = el<HTMLInputElement>('shake').checked; };
 el('search').oninput = renderList;
 el('browse').onclick = () => {
-  const pinned = el('library').querySelector<HTMLElement>('.viewer')!, viewer = matchMedia('(max-width:720px)').matches && getComputedStyle(pinned).position === 'sticky' ? pinned.offsetHeight : 0;
-  scrollTo({ top: el('library').querySelector('aside')!.getBoundingClientRect().top + scrollY - viewer, behavior: 'smooth' });
+  el('library').querySelector('aside')!.scrollIntoView({
+    behavior: matchMedia('(prefers-reduced-motion: reduce)').matches ? 'auto' : 'smooth', block: 'start',
+  });
+  el('catalog-heading').focus({ preventScroll: true });
 };
 function flash(id: string, text: string) {
   const button = el(id); button.dataset.label ??= button.innerHTML;

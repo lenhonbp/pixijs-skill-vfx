@@ -17,11 +17,24 @@ const { collections, productDefinitions, resolveCatalog, getProductAction, filte
 const catalogData = JSON.parse(readFileSync('showcase/src/catalog-data.json', 'utf8'));
 const packs = JSON.parse(readFileSync('showcase/public/packs/free/index.json', 'utf8'));
 const fresh = () => structuredClone(productDefinitions);
+const fixtureCollection = {
+  id: 'fixture-premium', name: 'Synthetic premium collection', description: 'Test-only collection metadata.',
+  accent: '#d6b477', symbol: '✧',
+};
+const fixtureCollections = [...collections, fixtureCollection];
+const premiumDefinition = () => ({
+  id: 'fixture-premium', collectionId: fixtureCollection.id, tier: 'premium', status: 'coming-soon',
+  name: { en: 'Synthetic collection', vi: 'Bộ hiệu ứng thử nghiệm' },
+  description: 'Test-only future Premium metadata, independent of the published catalog.',
+  includes: [], compatibility: [],
+});
 function mutatePremium(change) {
-  const definitions = fresh();
-  change(definitions.find(p => p.tier === 'premium'));
+  const premium = premiumDefinition();
+  change(premium);
+  const definitions = [...fresh(), premium];
   return definitions;
 }
+const resolveFixture = definitions => resolveCatalog(packs, definitions, fixtureCollections);
 
 test('catalog references all 25 delivered free packs without duplicating their names', () => {
   const products = resolveCatalog(packs);
@@ -41,7 +54,7 @@ test('catalog references all 25 delivered free packs without duplicating their n
 test('imported catalog data validates version, collection identity and supported fields', () => {
   const valid = validateCatalogData(catalogData);
   assert.equal(valid.version, 1);
-  assert.equal(valid.products.length, 28);
+  assert.equal(valid.products.length, 25);
   assert.throws(() => validateCatalogData({ ...catalogData, version: 2 }), /unsupported data version/);
   assert.throws(() => validateCatalogData({ ...catalogData, version: '1' }), /unsupported data version/);
   assert.throws(() => validateCatalogData({ ...catalogData, sourcePath: '/private/recipes' }), /unsupported fields/);
@@ -60,8 +73,8 @@ test('imported Free metadata contains descriptions and rejects duplicate or play
   assert.throws(() => validateCatalogData({ ...catalogData, products: [...catalogData.products, catalogData.products[0]] }), /duplicate product/);
   invalid.products[0] = { ...catalogData.products[0], name: { en: 'Wrong name', vi: 'Wrong name' } };
   assert.throws(() => validateCatalogData(invalid), /unsupported fields in free definition/);
-  const badStatus = structuredClone(catalogData);
-  badStatus.products.find(p => p.tier === 'premium').status = ['available'];
+  const badStatus = { ...structuredClone(catalogData), collections: fixtureCollections,
+    products: mutatePremium(p => { p.status = ['available']; }) };
   assert.throws(() => validateCatalogData(badStatus), /tier or status/);
 });
 
@@ -77,29 +90,19 @@ test('a data-only export update reaches the default catalog without editing Type
   assert.deepEqual(product.name, packs.find(p => p.id === 'hoa-fireball').name);
   assert.equal(product.element, packs.find(p => p.id === 'hoa-fireball').element);
   assert.equal(imported.getProductAction(product).kind, 'download');
-  assert.equal(imported.resolveCatalog(packs).length, 28);
+  assert.equal(imported.resolveCatalog(packs).length, 25);
 });
 
-test('confirmed Kiếm Hiệp contents and preview remain upcoming without checkout or paid packs', () => {
-  const premium = resolveCatalog(packs).filter(p => p.tier === 'premium');
-  assert.deepEqual(premium.map(p => p.id), ['kiem-hiep', 'ngu-hanh', 'ultimate-boss']);
-  assert.equal(collections.length, 4);
-  for (const product of premium) {
-    assert.deepEqual(getProductAction(product), { kind: 'coming-soon', stores: [] });
-    assert.equal(product.packId, undefined);
+test('the published catalog contains only the 25 Free effects and their used collection', () => {
+  const products = resolveCatalog(packs);
+  assert.equal(products.length, 25);
+  assert.deepEqual([...new Set(products.map(product => product.tier))], ['free']);
+  assert.deepEqual(collections.map(collection => collection.id), ['free-collection']);
+  for (const product of products) {
+    assert.deepEqual(getProductAction(product), { kind: 'download', stores: [] });
+    assert.equal(product.status, 'available');
     assert.equal(product.stores, undefined);
-  }
-  const kiemHiep = premium.find(product => product.id === 'kiem-hiep');
-  for (const name of ['Thiên Kiếm Quy Tông', 'Tam Tuyệt Kim Quang', 'Bát Âm Kim Chung']) {
-    assert.ok(kiemHiep.includes.some(item => item.includes(name)), `confirmed member ${name}`);
-  }
-  assert.match(kiemHiep.includes.join(' '), /30 compiled \.vfxb files/);
-  assert.match(kiemHiep.compatibility.join(' '), /PixiJS 7 \/ 8.*Lenhon VFX runtime/);
-  assert.deepEqual(kiemHiep.preview, { type: 'video', src: 'previews/kiem-hiep/preview.mp4', poster: 'previews/kiem-hiep/poster.webp' });
-  for (const product of premium.filter(product => product.id !== 'kiem-hiep')) {
     assert.equal(product.preview, undefined);
-    assert.deepEqual(product.includes, []);
-    assert.deepEqual(product.compatibility, []);
   }
 });
 
@@ -114,20 +117,20 @@ test('missing, duplicate and unlisted packs fail before rendering a broken catal
 });
 
 test('premium release requires a supported product URL and coming-soon gates prepared links', () => {
-  assert.throws(() => resolveCatalog(packs, mutatePremium(p => { p.status = 'available'; })), /need a store URL/);
+  assert.throws(() => resolveFixture(mutatePremium(p => { p.status = 'available'; })), /need a store URL/);
   const definitions = mutatePremium(p => {
     p.stores = [{ store: 'itch', url: 'https://fixture-studio.itch.io/vfx-collection' },
       { store: 'gumroad', url: 'https://fixture-studio.gumroad.com/l/vfx-collection' }];
   });
-  let product = resolveCatalog(packs, definitions).find(p => p.tier === 'premium');
+  let product = resolveFixture(definitions).find(p => p.tier === 'premium');
   assert.deepEqual(getProductAction(product), { kind: 'coming-soon', stores: [] });
   const released = definitions.find(p => p.tier === 'premium');
   released.status = 'available';
   released.includes = []; released.compatibility = [];
-  assert.throws(() => resolveCatalog(packs, definitions), /confirmed contents and compatibility/);
+  assert.throws(() => resolveFixture(definitions), /confirmed contents and compatibility/);
   released.includes = ['Synthetic test bundle'];
   released.compatibility = ['Synthetic test target'];
-  product = resolveCatalog(packs, definitions).find(p => p.tier === 'premium');
+  product = resolveFixture(definitions).find(p => p.tier === 'premium');
   assert.equal(getProductAction(product).kind, 'purchase');
   assert.equal(getProductAction(product).stores.length, 2);
 });
@@ -136,34 +139,37 @@ test('unsafe, placeholder and non-product checkout URLs are rejected', () => {
   for (const url of ['javascript:alert(1)', 'http://fixture.itch.io/vfx', '#itch-link-tbd',
     'https://example.itch.io/vfx', 'https://fixture.itch.io/vfx#buy', 'https://fixture.itch.io/',
     'https://fixture.itch.io.evil.test/vfx', 'https://user:pass@fixture.itch.io/vfx', 'https://fixture.itch.io/%E0%A4%A']) {
-    assert.throws(() => resolveCatalog(packs, mutatePremium(p => { p.stores = [{ store: 'itch', url }]; })), /Catalog:/, url);
+    assert.throws(() => resolveFixture(mutatePremium(p => { p.stores = [{ store: 'itch', url }]; })), /Catalog:/, url);
   }
-  assert.throws(() => resolveCatalog(packs, mutatePremium(p => { p.stores = [{ store: 'gumroad', url: 'https://gumroad.com/discover' }]; })), /product/);
+  assert.throws(() => resolveFixture(mutatePremium(p => { p.stores = [{ store: 'gumroad', url: 'https://gumroad.com/discover' }]; })), /product/);
 });
 
 test('premium video previews accept media assets and reject full packs or executable URLs', () => {
   const definitions = mutatePremium(p => { p.preview = { type: 'video', src: 'previews/launch.mp4', poster: 'previews/launch.webp' }; });
-  assert.ok(resolveCatalog(packs, definitions).find(p => p.tier === 'premium').preview);
+  assert.ok(resolveFixture(definitions).find(p => p.tier === 'premium').preview);
   for (const src of ['javascript:alert(1)', 'data:video/mp4;base64,AAA', '../private/launch.mp4',
     'packs/premium/launch.vfxb', 'https://media.test/launch.vfxb', 'https://media.test/placeholder.mp4']) {
-    assert.throws(() => resolveCatalog(packs, mutatePremium(p => { p.preview = { type: 'video', src }; })), /Catalog:/, src);
+    assert.throws(() => resolveFixture(mutatePremium(p => { p.preview = { type: 'video', src }; })), /Catalog:/, src);
   }
-  assert.throws(() => resolveCatalog(packs, mutatePremium(p => { p.packId = 'hoa-fireball'; })), /premium definitions/);
+  assert.throws(() => resolveFixture(mutatePremium(p => { p.packId = 'hoa-fireball'; })), /premium definitions/);
 });
 
 test('invalid product metadata is rejected and discovery supports tier, collection and Vietnamese names', () => {
-  assert.throws(() => resolveCatalog(packs, mutatePremium(p => { p.collectionId = 'missing'; })), /unknown collection/);
-  assert.throws(() => resolveCatalog(packs, mutatePremium(p => { p.status = 'unpublished'; })), /status/);
-  assert.throws(() => resolveCatalog(packs, mutatePremium(p => { p.description = ''; })), /nonempty/);
+  assert.throws(() => resolveFixture(mutatePremium(p => { p.collectionId = 'missing'; })), /unknown collection/);
+  assert.throws(() => resolveFixture(mutatePremium(p => { p.status = 'unpublished'; })), /status/);
+  assert.throws(() => resolveFixture(mutatePremium(p => { p.description = ''; })), /nonempty/);
   const products = resolveCatalog(packs);
-  assert.equal(filterProducts(products, { tier: 'premium' }).length, 3);
+  assert.equal(filterProducts(products, { tier: 'premium' }).length, 0);
   assert.equal(filterProducts(products, { tier: 'free', element: 'hoa' }).length, 4);
-  assert.equal(filterProducts(products, { collectionId: 'kiem-hiep' })[0].id, 'kiem-hiep');
+  assert.equal(filterProducts(products, { collectionId: 'free-collection' }).length, 25);
   assert.equal(filterProducts(products, { query: 'hoa cau' })[0].id, 'hoa-fireball');
   assert.equal(filterProducts(products, { query: 'dia liet' })[0].id, 'tho-fissure');
-  for (const query of ['Thiên Kiếm Quy Tông', 'thien kiem quy tong', 'Tam Tuyet Kim Quang', 'bat am kim chung']) {
-    assert.deepEqual(filterProducts(products, { query }).map(product => product.id), ['kiem-hiep']);
-  }
-  assert.deepEqual(filterProducts(products, { query: 'Golden Edge' }).map(product => product.id), ['kim-golden-edge', 'kiem-hiep']);
+  assert.deepEqual(filterProducts(products, { query: 'Golden Edge' }).map(product => product.id), ['kim-golden-edge']);
   assert.equal(filterProducts(products, { query: 'missing effect' }).length, 0);
+  const syntheticProducts = resolveFixture(mutatePremium(p => { p.includes = ['Ánh Sáng Thử Nghiệm — Test Spark']; }));
+  assert.deepEqual(filterProducts(syntheticProducts, { tier: 'premium' }).map(product => product.id), ['fixture-premium']);
+  assert.deepEqual(filterProducts(syntheticProducts, { collectionId: 'fixture-premium' }).map(product => product.id), ['fixture-premium']);
+  for (const query of ['Bộ hiệu ứng thử nghiệm', 'bo hieu ung thu nghiem', 'Ánh Sáng Thử Nghiệm', 'anh sang thu nghiem', 'Test Spark']) {
+    assert.deepEqual(filterProducts(syntheticProducts, { query }).map(product => product.id), ['fixture-premium']);
+  }
 });

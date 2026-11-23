@@ -4,120 +4,97 @@ import assert from 'node:assert/strict';
 const product = (page, id) => page.locator(`#list [data-product-id="${id}"]`);
 const access = (page, tier) => page.locator(`#catalog-access [data-access="${tier}"]`);
 const ready = page => page.waitForFunction(() => window.__showcase);
-const playing = page => page.waitForFunction(() => document.getElementById('status').textContent.startsWith('Playing'));
+const playing = (page, id = null) => page.waitForFunction(expected =>
+  document.getElementById('status').textContent.startsWith('Playing') &&
+  (!expected || window.__showcase.current?.manifest.id === expected), id);
 
-async function expectUpcoming(page, name) {
-  await page.waitForFunction(expected => document.getElementById('selected-name').textContent === expected, name);
-  assert.equal(await page.locator('#selected-name').textContent(), name);
-  assert.match(await page.locator('#product-badge').textContent(), /Premium/i);
-  assert.match(await page.locator('#product-status').textContent(), /Coming soon/i);
-  assert.equal(await page.locator('#premium-preview').isVisible(), true);
-  assert.equal(await page.locator('#coming-soon').isVisible(), true);
-  assert.equal(await page.locator('#purchase-links a').count(), 0);
-  for (const selector of ['.stage-wrap', '.controls', '.actions', '#integration']) {
-    assert.equal(await page.locator(selector).isVisible(), false, `${selector} hidden for an upcoming collection`);
-  }
-  assert.equal(await page.evaluate(() => window.__showcase.vfx.stats().active), 0);
-  assert.equal(await page.locator('a[href*="link-tbd"], a[href*="placeholder"]').count(), 0);
+function observePublicRequests(page) {
+  const result = { packs: [], unexpected: [], errors: [] };
+  page.on('pageerror', error => result.errors.push(error.message));
+  page.on('request', request => {
+    const address = new URL(request.url()), path = address.pathname;
+    if (path.endsWith('.vfxb')) {
+      result.packs.push(path);
+      if (!path.startsWith('/collection/packs/free/')) result.unexpected.push(address.href);
+    }
+    if (path.includes('/previews/') || /\.(mp4|webm)$/.test(path) || /(?:^|\.)(?:itch\.io|gumroad\.com)$/.test(address.hostname)) {
+      result.unexpected.push(address.href);
+    }
+  });
+  return result;
 }
 
-async function playKiemHiepPreview(page) {
-  await page.bringToFront();
-  for (const name of ['Thiên Kiếm Quy Tông', 'Tam Tuyệt Kim Quang', 'Bát Âm Kim Chung']) {
-    assert.ok((await page.locator('#product-includes').textContent()).includes(name));
+async function expectFreeCatalog(page, collection) {
+  assert.equal(collection.length, 25);
+  assert.deepEqual(await page.locator('#list .skill').evaluateAll(nodes => nodes.map(node => node.dataset.productId).sort()), collection.map(pack => pack.id).sort());
+  assert.equal(await page.locator('#list .product-entry, #premium-grid > *, #purchase-links a, video').count(), 0);
+  assert.equal(await page.locator('a[href*="itch.io/"], a[href*="gumroad.com/"]').count(), 0);
+  for (const selector of ['#catalog-access', '#collection-filter', 'label[for="collection-filter"]', '#premium-preview', '#premium-actions']) {
+    assert.equal(await page.locator(selector).isVisible(), false, `${selector} is unnecessary for the Free library`);
   }
-  assert.match(await page.locator('#product-compatibility').textContent(), /\.vfxb.*Lenhon runtime/);
-  assert.equal(await page.locator('#coming-soon-note').textContent(), 'Pricing, license and purchase links will be announced at launch.');
-  assert.match(await page.locator('.preview-caption').textContent(), /Collection coming soon/);
-  const video = page.locator('#premium-preview video');
-  const media = await video.evaluate(node => ({
-    controls: node.controls, autoplay: node.autoplay, preload: node.preload, inline: node.playsInline,
-    src: new URL(node.src).pathname, poster: new URL(node.poster).pathname,
+  assert.equal(await page.locator('#catalog-count').textContent(), '25 effects · All free');
+  assert.match(await page.locator('#product-badge').textContent(), /Free/i);
+  assert.match(await page.locator('#product-status').textContent(), /Available/i);
+  assert.match(await page.locator('#product-includes').textContent(), /\.vfxb/);
+  assert.match(await page.locator('#product-compatibility').textContent(), /PixiJS/);
+}
+
+async function expectPreviewInViewport(page) {
+  await page.waitForFunction(() => ['#selected-name', '#stage', '#aim', '.stage-toolbar', '#replay'].every(selector => {
+    const box = document.querySelector(selector).getBoundingClientRect();
+    return box.width > 0 && box.height > 0 && box.top >= -1 && box.bottom <= innerHeight + 1 && box.left >= -1 && box.right <= innerWidth + 1;
   }));
-  assert.deepEqual(media, {
-    controls: true, autoplay: false, preload: 'none', inline: true,
-    src: '/collection/previews/kiem-hiep/preview.mp4', poster: '/collection/previews/kiem-hiep/poster.webp',
-  });
-  await video.evaluate(node => {
-    window.__catalogProductVideo = node; window.__catalogVideoPlayError = null; node.muted = true;
-    void node.play().catch(error => { window.__catalogVideoPlayError = String(error); });
-  });
+}
+
+async function browseMobile(page) {
+  await page.locator('#browse').click();
   await page.waitForFunction(() => {
-    const video = window.__catalogProductVideo;
-    return window.__catalogVideoPlayError !== null || video.error ||
-      (!video.paused && video.currentTime > 0.1 && video.videoWidth > 0 && video.videoHeight > 0);
-  }, null, { timeout: 15000, polling: 100 });
-  const failure = await video.evaluate(node => ({
-    play: window.__catalogVideoPlayError,
-    media: node.error ? { code: node.error.code, message: node.error.message } : null,
-  }));
-  assert.deepEqual(failure, { play: null, media: null }, 'the real teaser must decode and play without errors');
-}
-
-async function expectVideoReleased(page) {
-  assert.deepEqual(await page.evaluate(() => ({
-    connected: window.__catalogProductVideo.isConnected,
-    src: window.__catalogProductVideo.getAttribute('src'), paused: window.__catalogProductVideo.paused,
-  })), { connected: false, src: null, paused: true });
-}
-
-async function expectPosterDecoded(page) {
-  await page.waitForFunction(async () => {
-    const image = new Image();
-    image.src = document.querySelector('#premium-preview video').poster;
-    try { await image.decode(); return image.naturalWidth > 0 && image.naturalHeight > 0; }
-    catch { return false; }
-  }, null, { timeout: 15000 });
+    const search = document.getElementById('search').getBoundingClientRect(), list = document.getElementById('list').getBoundingClientRect();
+    return search.top >= 0 && search.bottom <= innerHeight && list.top < innerHeight && document.activeElement.id === 'catalog-heading';
+  });
+  assert.equal(await page.locator('#list').evaluate(node => node.scrollHeight > node.clientHeight), true, 'the full library has its own bounded scroll area on mobile');
 }
 
 export async function catalogSmoke({ browser, url, collection }) {
   const page = await browser.newPage({ viewport: { width: 1440, height: 900 } });
-  const errors = [], requests = [], videos = [];
-  page.on('pageerror', error => errors.push(error.message));
-  page.on('request', request => { if (request.url().endsWith('.vfxb')) requests.push(request.url()); });
-  page.on('request', request => { if (/\.(mp4|webm)$/.test(new URL(request.url()).pathname)) videos.push(request.url()); });
+  const desktop = observePublicRequests(page);
   try {
-    await page.goto(`${url}/collection/#hoa-fireball`); await ready(page);
-    assert.equal(await page.locator('#list .skill').count(), collection.length);
-    assert.equal(await page.locator('#list .product-entry').count(), 3);
-    assert.match(await page.locator('#product-badge').textContent(), /Free/i);
-    assert.match(await page.locator('#product-status').textContent(), /Available/i);
-    assert.match(await page.locator('#product-includes').textContent(), /\.vfxb/);
-    assert.match(await page.locator('#product-compatibility').textContent(), /PixiJS/);
+    // Previously shared Premium URLs must fall back to an available Free effect.
+    await page.goto(`${url}/collection/#product/kiem-hiep`); await ready(page);
+    assert.equal(new URL(page.url()).hash, '#hoa-fireball');
+    assert.equal(await page.evaluate(() => history.length), 2, 'an obsolete product route is replaced rather than adding a navigation entry');
+    assert.deepEqual(desktop.packs, ['/collection/packs/free/hoa-fireball.vfxb']);
+    await expectFreeCatalog(page, collection);
 
-    await access(page, 'premium').click();
-    assert.equal(await page.locator('#list .skill').count(), 0);
-    assert.equal(await page.locator('#list .product-entry').count(), 3);
-    await page.locator('#collection-filter').selectOption('kiem-hiep');
-    assert.equal(await page.locator('#list .product-entry').count(), 1);
-    await page.locator('#collection-filter').selectOption('all');
-    for (const query of ['Ngũ Hành', 'Ngu Hanh']) {
+    const fire = collection.filter(pack => pack.element === 'hoa');
+    await page.locator('#filters [data-element="hoa"]').click();
+    assert.deepEqual(await page.locator('#list .skill').evaluateAll(nodes => nodes.map(node => node.dataset.productId).sort()), fire.map(pack => pack.id).sort());
+    assert.equal(await page.locator('#catalog-count').textContent(), `${fire.length} of 25 effects`);
+    assert.equal(await page.locator('#filters [data-element="hoa"]').getAttribute('aria-pressed'), 'true');
+    for (const query of ['Fireball', 'Hỏa Cầu Thuật', 'hoa cau thuat']) {
       await page.locator('#search').fill(query);
-      assert.equal(await page.locator('#list .product-entry').count(), 1);
-      assert.equal(await product(page, 'ngu-hanh').count(), 1, 'Vietnamese names are searchable with or without accents');
-    }
-    for (const query of ['Thiên Kiếm Quy Tông', 'thien kiem quy tong']) {
-      await page.locator('#search').fill(query);
-      assert.equal(await page.locator('#list .product-entry').count(), 1);
-      assert.equal(await product(page, 'kiem-hiep').count(), 1, 'confirmed Premium members are discoverable');
+      assert.equal(await page.locator('#list .skill').count(), 1);
+      assert.equal(await product(page, 'hoa-fireball').count(), 1, 'English and Vietnamese names work with or without accents');
     }
     await page.locator('#search').fill('zz-no-such-vfx');
     assert.equal(await page.locator('#list [data-product-id]').count(), 0);
-    assert.match(await page.locator('#list').textContent(), /no .*found|no .*match/i);
-    await page.locator('#search').fill('');
-    await access(page, 'free').click();
-    assert.equal(await page.locator('#list .skill').count(), collection.length);
-    assert.equal(await page.locator('#list .product-entry').count(), 0);
-    await access(page, 'all').click();
+    assert.match(await page.locator('#list').textContent(), /No effects found/);
+    assert.equal(await page.locator('#catalog-count').textContent(), '0 of 25 effects');
+    await page.getByRole('button', { name: 'Reset filters', exact: true }).click();
+    assert.equal(await page.locator('#search').inputValue(), '');
+    assert.equal(await page.locator('#filters [data-element="all"]').getAttribute('aria-pressed'), 'true');
+    assert.equal(await page.locator('#search').evaluate(node => node === document.activeElement), true);
+    await expectFreeCatalog(page, collection);
+    assert.equal(desktop.packs.length, 1, 'searching and filtering do not download other effects');
 
-    await page.locator('#loop').check(); await playing(page);
+    await page.locator('#loop').check(); await playing(page, 'hoa-fireball');
     const directions = [
       ['up-left', -45], ['up', -90], ['up-right', -45], ['left', 0],
       ['right', 0], ['down-left', 45], ['down', 90], ['down-right', 45],
     ];
     for (const [name, direction] of directions) {
       const button = page.getByRole('button', { name: `Cast ${name}`, exact: true });
-      await button.click(); await playing(page);
+      await button.click(); await playing(page, 'hoa-fireball');
       assert.equal(await button.getAttribute('aria-pressed'), 'true');
       assert.equal(await page.evaluate(() => window.__showcase.current.manifest.direction ?? 0), direction);
       for (const [device, suffix] of [['desktop', ''], ['mobile', '.m']]) {
@@ -127,124 +104,121 @@ export async function catalogSmoke({ browser, url, collection }) {
       }
     }
     await page.locator('.stage-toolbar [data-bg=light]').click();
-    const countBeforePremium = requests.length;
-    const posterResponse = page.waitForResponse(response => response.url().endsWith('/previews/kiem-hiep/poster.webp'));
-    await product(page, 'kiem-hiep').click();
-    await expectUpcoming(page, 'Kiếm Hiệp');
-    assert.ok((await posterResponse).ok(), 'actual Kiếm Hiệp poster loads');
-    assert.deepEqual(videos, [], 'an upcoming teaser is not downloaded before interaction');
-    assert.equal(new URL(page.url()).hash, '#product/kiem-hiep');
-    assert.equal(requests.length, countBeforePremium, 'selecting Premium does not request a VFX pack');
-    assert.equal(await page.evaluate(() => window.__showcase.vfx.stats().packs), 0, 'previous free pack is released');
-    await page.keyboard.press('Space');
-    assert.equal(await page.evaluate(() => window.__showcase.vfx.stats().active), 0, 'Space does not cast a hidden free effect');
-    if (process.env.VFX_CATALOG_SCREENSHOT) {
-      await expectPosterDecoded(page);
-      await page.screenshot({ path: process.env.VFX_CATALOG_SCREENSHOT, fullPage: true });
-    }
-    await playKiemHiepPreview(page);
-    assert.ok(videos.some(request => request.endsWith('/previews/kiem-hiep/preview.mp4')));
-    assert.equal(requests.length, countBeforePremium, 'playing a Premium teaser never requests a paid container');
-
-    await page.goBack(); await playing(page);
-    await expectVideoReleased(page);
-    assert.equal(new URL(page.url()).hash, '#hoa-fireball', 'entering Premium preserves the previous Free history entry');
-    await page.goForward(); await expectUpcoming(page, 'Kiếm Hiệp');
-
-    await product(page, 'hoa-fireball').click(); await playing(page);
+    await product(page, 'thuy-frost-nova').click(); await playing(page, 'thuy-frost-nova');
+    assert.equal(await page.evaluate(() => window.__showcase.vfx.stats().packs), 1, 'switching effects releases the previous pack');
+    await page.goBack(); await playing(page, 'hoa-fireball');
+    assert.equal(new URL(page.url()).hash, '#hoa-fireball');
+    await page.goForward(); await playing(page, 'thuy-frost-nova');
+    assert.equal(new URL(page.url()).hash, '#thuy-frost-nova');
+    await product(page, 'hoa-fireball').click(); await playing(page, 'hoa-fireball');
+    assert.equal(await product(page, 'hoa-fireball').getAttribute('aria-pressed'), 'true');
     assert.equal(await page.locator('#stage').getAttribute('data-bg'), 'light');
     assert.equal(await page.getByRole('button', { name: 'Cast down-right', exact: true }).getAttribute('aria-pressed'), 'true');
-    for (const selector of ['.stage-wrap', '.controls', '.actions', '#integration']) {
-      assert.equal(await page.locator(selector).isVisible(), true, `${selector} restored for Free`);
-    }
-    assert.equal(await page.locator('#premium-preview').isVisible(), false);
-    assert.match(await page.locator('#product-badge').textContent(), /Free/i);
+    for (const selector of ['.stage-wrap', '.controls', '.actions', '#integration']) assert.equal(await page.locator(selector).isVisible(), true);
+    assert.equal(await page.evaluate(() => window.__showcase.vfx.stats().active), 1);
     assert.equal(await page.evaluate(() => document.documentElement.scrollWidth > innerWidth), false);
-    await page.goBack(); await expectUpcoming(page, 'Kiếm Hiệp');
-    assert.deepEqual(errors, []);
+
+    await page.locator('.stage-toolbar [data-bg=stage]').click();
+    await page.getByRole('button', { name: 'Cast right', exact: true }).click(); await playing(page, 'hoa-fireball');
+    if (process.env.VFX_CATALOG_SCREENSHOT) {
+      await page.evaluate(() => scrollTo({ top: 0, behavior: 'instant' }));
+      await page.screenshot({ path: process.env.VFX_CATALOG_SCREENSHOT, fullPage: true });
+      console.log(`Free library desktop screenshot: ${process.env.VFX_CATALOG_SCREENSHOT}`);
+    }
+    assert.deepEqual(desktop.unexpected, [], 'the public library never requests Premium media, checkout or paid containers');
+    assert.deepEqual(desktop.errors, []);
   } finally { await page.close(); }
 
   const mobile = await browser.newPage({ viewport: { width: 390, height: 844 }, deviceScaleFactor: 2, isMobile: true, hasTouch: true });
-  const mobileRequests = [], mobileErrors = [], mobileVideos = [];
-  mobile.on('request', request => { if (request.url().endsWith('.vfxb')) mobileRequests.push(request.url()); });
-  mobile.on('request', request => { if (/\.(mp4|webm)$/.test(new URL(request.url()).pathname)) mobileVideos.push(request.url()); });
-  mobile.on('pageerror', error => mobileErrors.push(error.message));
+  const mobileTraffic = observePublicRequests(mobile);
   try {
-    await mobile.goto(`${url}/collection/#product/ngu-hanh`); await ready(mobile);
-    await expectUpcoming(mobile, 'Ngũ Hành');
-    assert.match(await mobile.locator('#coming-soon-note').textContent(), /^Pack contents,/);
-    assert.deepEqual(mobileRequests, [], 'a Premium deep link never downloads a free or premium pack');
-    assert.equal(await mobile.evaluate(() => document.documentElement.scrollWidth > innerWidth), false);
-    await product(mobile, 'kiem-hiep').click(); await expectUpcoming(mobile, 'Kiếm Hiệp');
-    assert.deepEqual(mobileVideos, [], 'mobile teaser is not downloaded before interaction');
+    await mobile.goto(`${url}/collection/#hoa-fireball`); await ready(mobile);
+    await expectFreeCatalog(mobile, collection);
+    assert.deepEqual(mobileTraffic.packs, ['/collection/packs/free/hoa-fireball.m.vfxb']);
+    await mobile.locator('#loop').check(); await playing(mobile, 'hoa-fireball');
+    await browseMobile(mobile);
+    await mobile.locator('#search').fill('bang phong toa');
+    assert.equal(await mobile.locator('#list .skill').count(), 1);
+    await product(mobile, 'thuy-frost-nova').click(); await playing(mobile, 'thuy-frost-nova');
+    await expectPreviewInViewport(mobile);
+    assert.equal(await product(mobile, 'thuy-frost-nova').getAttribute('aria-pressed'), 'true');
     assert.equal(await mobile.evaluate(() => document.documentElement.scrollWidth > innerWidth), false);
     if (process.env.VFX_CATALOG_MOBILE_SCREENSHOT) {
-      await expectPosterDecoded(mobile);
+      await mobile.evaluate(() => scrollTo({ top: 0, behavior: 'instant' }));
       await mobile.screenshot({ path: process.env.VFX_CATALOG_MOBILE_SCREENSHOT, fullPage: true });
+      console.log(`Free library mobile search screenshot: ${process.env.VFX_CATALOG_MOBILE_SCREENSHOT}`);
     }
-    await playKiemHiepPreview(mobile);
-    assert.deepEqual(mobileRequests, [], 'mobile Premium playback never downloads a VFX pack');
-    await access(mobile, 'free').click();
-    await mobile.locator('#search').fill('fireball');
-    await product(mobile, 'hoa-fireball').click(); await playing(mobile);
-    await expectVideoReleased(mobile);
-    assert.equal(new URL(mobile.url()).hash, '#hoa-fireball');
-    assert.ok(mobileRequests.every(request => request.endsWith('.m.vfxb')));
-    assert.equal(await mobile.locator('#stage').isVisible(), true);
+    await mobile.locator('#search').fill('zz-no-such-vfx');
+    await mobile.getByRole('button', { name: 'Reset filters', exact: true }).click();
+    await expectFreeCatalog(mobile, collection);
+    // Choosing an entry near the end of the list must return the user to the selected preview.
+    await product(mobile, 'curse-weaken').click(); await playing(mobile, 'curse-weaken');
+    await expectPreviewInViewport(mobile);
+    assert.equal(await mobile.locator('#selected-name').textContent(), collection.find(pack => pack.id === 'curse-weaken').name.en);
+
+    // Two-column cards and the compact preview toolbar must also work on a narrow phone.
+    await mobile.setViewportSize({ width: 360, height: 740 });
+    await browseMobile(mobile);
+    await product(mobile, 'hoa-fireball').click(); await playing(mobile, 'hoa-fireball');
+    await expectPreviewInViewport(mobile);
     assert.equal(await mobile.evaluate(() => document.documentElement.scrollWidth > innerWidth), false);
-    await mobile.goBack(); await expectUpcoming(mobile, 'Kiếm Hiệp');
-    await mobile.locator('#search').fill(''); await access(mobile, 'all').click();
-    await product(mobile, 'hoa-fireball').click(); await playing(mobile);
-    await product(mobile, 'ultimate-boss').evaluate(node => node.scrollIntoView({ block: 'end', behavior: 'instant' }));
-    assert.equal(await mobile.evaluate(() => document.getElementById('library').getBoundingClientRect().top < -innerHeight), true, 'browse the end of the list before selecting Premium');
-    await product(mobile, 'ultimate-boss').click(); await expectUpcoming(mobile, 'Ultimate Boss');
-    await mobile.waitForFunction(() => ['#selected-name', '#premium-preview'].every(selector => {
-      const box = document.querySelector(selector).getBoundingClientRect();
-      return box.top >= 0 && box.bottom <= innerHeight;
-    }));
-    assert.deepEqual(mobileErrors, []);
+
+    // A short landscape viewport must keep a usable canvas and scrollable controls.
+    await mobile.setViewportSize({ width: 844, height: 390 });
+    const landscape = await mobile.evaluate(() => {
+      const stage = document.getElementById('stage').getBoundingClientRect(), viewer = document.querySelector('.viewer').getBoundingClientRect();
+      return { width: stage.width, height: stage.height, viewerWidth: viewer.width, overflow: document.documentElement.scrollWidth > innerWidth };
+    });
+    assert.ok(landscape.width >= landscape.viewerWidth / 2 && landscape.height >= landscape.width / 2, `landscape preview retains a usable area: ${JSON.stringify(landscape)}`);
+    assert.equal(landscape.overflow, false);
+    await mobile.locator('#replay').click(); await playing(mobile, 'hoa-fireball');
+    for (const selector of ['#replay', '#download-kit']) {
+      await mobile.locator(selector).click({ trial: true });
+      assert.equal(await mobile.locator(selector).evaluate(node => {
+        const box = node.getBoundingClientRect();
+        return box.top >= 0 && box.bottom <= innerHeight;
+      }), true, `${selector} remains reachable by normal scrolling in landscape`);
+    }
+    assert.ok(mobileTraffic.packs.every(path => path.endsWith('.m.vfxb')));
+    assert.deepEqual(mobileTraffic.unexpected, []);
+    assert.deepEqual(mobileTraffic.errors, []);
   } finally { await mobile.close(); }
 
-  // A cancelled free download must stay stopped on Premium and recover on return to the same Free effect.
-  for (const returnToFree of [false, true]) {
+  // A late download must not replace a newer selection; returning to that same pack must recover.
+  for (const returnToPending of [false, true]) {
     const race = await browser.newPage();
     const raceErrors = []; race.on('pageerror', error => raceErrors.push(error.message));
     let release;
     const gate = new Promise(resolve => { release = resolve; });
     try {
-      await race.goto(`${url}/collection/#product/kiem-hiep`); await ready(race);
+      await race.goto(`${url}/collection/#thuy-frost-nova`); await ready(race);
+      await race.locator('#loop').check(); await playing(race, 'thuy-frost-nova');
       await race.route('**/hoa-fireball.vfxb', async route => { await gate; await route.continue(); });
       await race.evaluate(() => {
-        document.getElementById('loop').checked = true;
         const vfx = window.__showcase.vfx, load = vfx.load.bind(vfx);
+        window.__catalogPendingLoads = [];
         vfx.load = (...args) => {
           const task = load(...args);
-          window.__catalogPendingLoad = task.then(() => undefined, () => undefined);
+          if (String(args[0]).endsWith('/hoa-fireball.vfxb')) window.__catalogPendingLoads.push(task.then(() => undefined, () => undefined));
           return task;
         };
       });
       const requested = race.waitForRequest('**/hoa-fireball.vfxb');
       await product(race, 'hoa-fireball').click(); await requested;
-      await product(race, 'ultimate-boss').click();
-      if (returnToFree) await product(race, 'hoa-fireball').click();
+      await product(race, 'thuy-frost-nova').click(); await playing(race, 'thuy-frost-nova');
+      if (returnToPending) await product(race, 'hoa-fireball').click();
       release();
-      if (returnToFree) {
-        await playing(race);
-        assert.equal(new URL(race.url()).hash, '#hoa-fireball');
-        assert.equal(await race.evaluate(() => window.__showcase.current.manifest.id), 'hoa-fireball');
-        assert.equal(await race.evaluate(() => window.__showcase.vfx.stats().packs), 1);
-        assert.equal(await race.evaluate(() => window.__showcase.vfx.stats().active), 1);
-      } else {
-        await race.evaluate(async () => { await window.__catalogPendingLoad; });
-        await expectUpcoming(race, 'Ultimate Boss');
-        assert.equal(await race.evaluate(() => window.__showcase.vfx.stats().packs), 0);
-        assert.equal(new URL(race.url()).hash, '#product/ultimate-boss');
-      }
+      const expected = returnToPending ? 'hoa-fireball' : 'thuy-frost-nova';
+      await race.evaluate(async () => { await Promise.all(window.__catalogPendingLoads); });
+      await playing(race, expected);
+      assert.equal(new URL(race.url()).hash, `#${expected}`);
+      assert.equal(await race.evaluate(() => window.__showcase.vfx.stats().packs), 1);
+      assert.equal(await race.evaluate(() => window.__showcase.vfx.stats().active), 1);
       assert.deepEqual(raceErrors, []);
     } finally { release(); await race.close(); }
   }
 
-  // Test released products without inventing sellable production catalog entries.
+  // Future Premium behavior uses synthetic fixtures, with no sellable production entries.
   const fixture = await browser.newPage();
   const external = [], fixtureErrors = [], fixturePacks = [];
   fixture.on('pageerror', error => fixtureErrors.push(error.message));
@@ -262,9 +236,20 @@ export async function catalogSmoke({ browser, url, collection }) {
     });
     await fixture.goto(`${url}/catalog-fixture.html`);
     await fixture.waitForFunction(() => window.__catalogFixture);
+    assert.equal(await fixture.locator('#catalog-access').isVisible(), true);
+    assert.equal(await fixture.locator('#collection-filter').isVisible(), true);
+    await access(fixture, 'premium').click();
+    await fixture.locator('#collection-filter').selectOption('fixture-upcoming-collection');
+    assert.equal(await fixture.locator('#list .product-entry').count(), 2);
+    await fixture.locator('#search').fill('confirmed upcoming test effect');
+    assert.equal(await product(fixture, 'fixture-upcoming').count(), 1, 'future collection members are searchable');
+    assert.equal(await fixture.locator('#list .product-entry').count(), 1);
+    await fixture.locator('#search').fill('');
+    await fixture.locator('#collection-filter').selectOption('all');
     assert.match(await fixture.locator('#product-status').textContent(), /Available/i);
     assert.match(await fixture.locator('#product-includes').textContent(), /Test collection contents/);
     assert.match(await fixture.locator('#product-compatibility').textContent(), /Test format compatibility/);
+    for (const selector of ['.stage-wrap', '.controls', '.actions', '#integration']) assert.equal(await fixture.locator(selector).evaluate(node => node.hidden), true);
     assert.equal(await fixture.locator('#coming-soon').isVisible(), false);
     assert.equal(await fixture.locator('#purchase-note').isVisible(), true);
     assert.match(await fixture.locator('.preview-caption').textContent(), /Full pack delivered by the store/);
@@ -288,11 +273,15 @@ export async function catalogSmoke({ browser, url, collection }) {
     assert.equal(await fixture.locator('#purchase-links a').count(), 0, 'a prepared store URL stays hidden until release');
     assert.equal(await fixture.locator('a[href="https://catalog-fixture.itch.io/prepared-test"]').count(), 0);
     assert.deepEqual(await fixture.evaluate(() => ({ connected: window.__catalogPreviousVideo.isConnected, src: window.__catalogPreviousVideo.getAttribute('src'), paused: window.__catalogPreviousVideo.paused })), { connected: false, src: null, paused: true });
+    await product(fixture, 'fixture-no-preview').click();
+    assert.equal(await fixture.locator('#premium-preview video, #purchase-links a').count(), 0);
+    assert.match(await fixture.locator('#premium-preview').textContent(), /Preview coming soon/);
+    assert.equal(await fixture.locator('#coming-soon-note').textContent(), 'Pack contents, pricing and purchase links will be announced at launch.');
     await product(fixture, 'fixture-released').click();
     await fixture.locator('#premium-preview video').evaluate(video => { video.preload = 'auto'; video.load(); });
     await fixture.waitForFunction(() => document.querySelector('.preview-caption').textContent.includes('could not load'));
     assert.ok(external.every(request => new URL(request).hostname === 'media.test'), 'store links never trigger requests before purchase');
     assert.deepEqual(fixturePacks, []); assert.deepEqual(fixtureErrors, []);
   } finally { await fixture.close(); }
-  console.log('Storefront catalog: PASS (filters/member search, eight directions/downloads, Premium deep links, playback cleanup/race, history, mobile, purchase gating, actual Kiếm Hiệp teaser playback, video controls/error/cleanup)');
+  console.log('Storefront catalog: PASS (25 Free effects, search/filters/reset, eight directions/downloads, history, cancelled loads, mobile browse/selection at 390 and 360, short landscape controls, no public Premium requests, synthetic purchase/video/error/cleanup gates)');
 }
