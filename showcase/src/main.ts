@@ -167,7 +167,7 @@ document.querySelector<HTMLDivElement>('#app')!.innerHTML = `
       <div class="actions"><button id="download-kit" class="kit">Download kit (.zip) <span></span></button><button id="copy-url">Copy asset URL</button><button id="copy">Copy code</button></div>
       <div id="premium-preview" class="premium-preview" hidden></div>
       <div id="premium-actions" class="premium-actions" hidden>
-        <p id="coming-soon"><strong>Coming soon</strong><span>Pack contents, pricing and purchase links will be announced at launch.</span></p>
+        <p id="coming-soon"><strong>Coming soon</strong><span id="coming-soon-note">Pack contents, pricing and purchase links will be announced at launch.</span></p>
         <div id="purchase-links" class="purchase-links"></div><p id="purchase-note" hidden>Checkout and full pack delivery are handled by the store.</p>
       </div>
     </div>

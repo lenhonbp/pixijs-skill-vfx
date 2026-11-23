@@ -21,11 +21,61 @@ async function expectUpcoming(page, name) {
   assert.equal(await page.locator('a[href*="link-tbd"], a[href*="placeholder"]').count(), 0);
 }
 
+async function playKiemHiepPreview(page) {
+  await page.bringToFront();
+  for (const name of ['Thiên Kiếm Quy Tông', 'Tam Tuyệt Kim Quang', 'Bát Âm Kim Chung']) {
+    assert.ok((await page.locator('#product-includes').textContent()).includes(name));
+  }
+  assert.match(await page.locator('#product-compatibility').textContent(), /\.vfxb.*Lenhon runtime/);
+  assert.equal(await page.locator('#coming-soon-note').textContent(), 'Pricing, license and purchase links will be announced at launch.');
+  assert.match(await page.locator('.preview-caption').textContent(), /Collection coming soon/);
+  const video = page.locator('#premium-preview video');
+  const media = await video.evaluate(node => ({
+    controls: node.controls, autoplay: node.autoplay, preload: node.preload, inline: node.playsInline,
+    src: new URL(node.src).pathname, poster: new URL(node.poster).pathname,
+  }));
+  assert.deepEqual(media, {
+    controls: true, autoplay: false, preload: 'none', inline: true,
+    src: '/collection/previews/kiem-hiep/preview.mp4', poster: '/collection/previews/kiem-hiep/poster.webp',
+  });
+  await video.evaluate(node => {
+    window.__catalogProductVideo = node; window.__catalogVideoPlayError = null; node.muted = true;
+    void node.play().catch(error => { window.__catalogVideoPlayError = String(error); });
+  });
+  await page.waitForFunction(() => {
+    const video = window.__catalogProductVideo;
+    return window.__catalogVideoPlayError !== null || video.error ||
+      (!video.paused && video.currentTime > 0.1 && video.videoWidth > 0 && video.videoHeight > 0);
+  }, null, { timeout: 15000, polling: 100 });
+  const failure = await video.evaluate(node => ({
+    play: window.__catalogVideoPlayError,
+    media: node.error ? { code: node.error.code, message: node.error.message } : null,
+  }));
+  assert.deepEqual(failure, { play: null, media: null }, 'the real teaser must decode and play without errors');
+}
+
+async function expectVideoReleased(page) {
+  assert.deepEqual(await page.evaluate(() => ({
+    connected: window.__catalogProductVideo.isConnected,
+    src: window.__catalogProductVideo.getAttribute('src'), paused: window.__catalogProductVideo.paused,
+  })), { connected: false, src: null, paused: true });
+}
+
+async function expectPosterDecoded(page) {
+  await page.waitForFunction(async () => {
+    const image = new Image();
+    image.src = document.querySelector('#premium-preview video').poster;
+    try { await image.decode(); return image.naturalWidth > 0 && image.naturalHeight > 0; }
+    catch { return false; }
+  }, null, { timeout: 15000 });
+}
+
 export async function catalogSmoke({ browser, url, collection }) {
   const page = await browser.newPage({ viewport: { width: 1440, height: 900 } });
-  const errors = [], requests = [];
+  const errors = [], requests = [], videos = [];
   page.on('pageerror', error => errors.push(error.message));
   page.on('request', request => { if (request.url().endsWith('.vfxb')) requests.push(request.url()); });
+  page.on('request', request => { if (/\.(mp4|webm)$/.test(new URL(request.url()).pathname)) videos.push(request.url()); });
   try {
     await page.goto(`${url}/collection/#hoa-fireball`); await ready(page);
     assert.equal(await page.locator('#list .skill').count(), collection.length);
@@ -45,6 +95,11 @@ export async function catalogSmoke({ browser, url, collection }) {
       await page.locator('#search').fill(query);
       assert.equal(await page.locator('#list .product-entry').count(), 1);
       assert.equal(await product(page, 'ngu-hanh').count(), 1, 'Vietnamese names are searchable with or without accents');
+    }
+    for (const query of ['Thiên Kiếm Quy Tông', 'thien kiem quy tong']) {
+      await page.locator('#search').fill(query);
+      assert.equal(await page.locator('#list .product-entry').count(), 1);
+      assert.equal(await product(page, 'kiem-hiep').count(), 1, 'confirmed Premium members are discoverable');
     }
     await page.locator('#search').fill('zz-no-such-vfx');
     assert.equal(await page.locator('#list [data-product-id]').count(), 0);
@@ -73,16 +128,26 @@ export async function catalogSmoke({ browser, url, collection }) {
     }
     await page.locator('.stage-toolbar [data-bg=light]').click();
     const countBeforePremium = requests.length;
+    const posterResponse = page.waitForResponse(response => response.url().endsWith('/previews/kiem-hiep/poster.webp'));
     await product(page, 'kiem-hiep').click();
     await expectUpcoming(page, 'Kiếm Hiệp');
+    assert.ok((await posterResponse).ok(), 'actual Kiếm Hiệp poster loads');
+    assert.deepEqual(videos, [], 'an upcoming teaser is not downloaded before interaction');
     assert.equal(new URL(page.url()).hash, '#product/kiem-hiep');
     assert.equal(requests.length, countBeforePremium, 'selecting Premium does not request a VFX pack');
     assert.equal(await page.evaluate(() => window.__showcase.vfx.stats().packs), 0, 'previous free pack is released');
     await page.keyboard.press('Space');
     assert.equal(await page.evaluate(() => window.__showcase.vfx.stats().active), 0, 'Space does not cast a hidden free effect');
-    if (process.env.VFX_CATALOG_SCREENSHOT) await page.screenshot({ path: process.env.VFX_CATALOG_SCREENSHOT, fullPage: true });
+    if (process.env.VFX_CATALOG_SCREENSHOT) {
+      await expectPosterDecoded(page);
+      await page.screenshot({ path: process.env.VFX_CATALOG_SCREENSHOT, fullPage: true });
+    }
+    await playKiemHiepPreview(page);
+    assert.ok(videos.some(request => request.endsWith('/previews/kiem-hiep/preview.mp4')));
+    assert.equal(requests.length, countBeforePremium, 'playing a Premium teaser never requests a paid container');
 
     await page.goBack(); await playing(page);
+    await expectVideoReleased(page);
     assert.equal(new URL(page.url()).hash, '#hoa-fireball', 'entering Premium preserves the previous Free history entry');
     await page.goForward(); await expectUpcoming(page, 'Kiếm Hiệp');
 
@@ -100,23 +165,34 @@ export async function catalogSmoke({ browser, url, collection }) {
   } finally { await page.close(); }
 
   const mobile = await browser.newPage({ viewport: { width: 390, height: 844 }, deviceScaleFactor: 2, isMobile: true, hasTouch: true });
-  const mobileRequests = [], mobileErrors = [];
+  const mobileRequests = [], mobileErrors = [], mobileVideos = [];
   mobile.on('request', request => { if (request.url().endsWith('.vfxb')) mobileRequests.push(request.url()); });
+  mobile.on('request', request => { if (/\.(mp4|webm)$/.test(new URL(request.url()).pathname)) mobileVideos.push(request.url()); });
   mobile.on('pageerror', error => mobileErrors.push(error.message));
   try {
     await mobile.goto(`${url}/collection/#product/ngu-hanh`); await ready(mobile);
     await expectUpcoming(mobile, 'Ngũ Hành');
+    assert.match(await mobile.locator('#coming-soon-note').textContent(), /^Pack contents,/);
     assert.deepEqual(mobileRequests, [], 'a Premium deep link never downloads a free or premium pack');
     assert.equal(await mobile.evaluate(() => document.documentElement.scrollWidth > innerWidth), false);
-    if (process.env.VFX_CATALOG_MOBILE_SCREENSHOT) await mobile.screenshot({ path: process.env.VFX_CATALOG_MOBILE_SCREENSHOT, fullPage: true });
+    await product(mobile, 'kiem-hiep').click(); await expectUpcoming(mobile, 'Kiếm Hiệp');
+    assert.deepEqual(mobileVideos, [], 'mobile teaser is not downloaded before interaction');
+    assert.equal(await mobile.evaluate(() => document.documentElement.scrollWidth > innerWidth), false);
+    if (process.env.VFX_CATALOG_MOBILE_SCREENSHOT) {
+      await expectPosterDecoded(mobile);
+      await mobile.screenshot({ path: process.env.VFX_CATALOG_MOBILE_SCREENSHOT, fullPage: true });
+    }
+    await playKiemHiepPreview(mobile);
+    assert.deepEqual(mobileRequests, [], 'mobile Premium playback never downloads a VFX pack');
     await access(mobile, 'free').click();
     await mobile.locator('#search').fill('fireball');
     await product(mobile, 'hoa-fireball').click(); await playing(mobile);
+    await expectVideoReleased(mobile);
     assert.equal(new URL(mobile.url()).hash, '#hoa-fireball');
     assert.ok(mobileRequests.every(request => request.endsWith('.m.vfxb')));
     assert.equal(await mobile.locator('#stage').isVisible(), true);
     assert.equal(await mobile.evaluate(() => document.documentElement.scrollWidth > innerWidth), false);
-    await mobile.goBack(); await expectUpcoming(mobile, 'Ngũ Hành');
+    await mobile.goBack(); await expectUpcoming(mobile, 'Kiếm Hiệp');
     await mobile.locator('#search').fill(''); await access(mobile, 'all').click();
     await product(mobile, 'hoa-fireball').click(); await playing(mobile);
     await product(mobile, 'ultimate-boss').evaluate(node => node.scrollIntoView({ block: 'end', behavior: 'instant' }));
@@ -191,6 +267,7 @@ export async function catalogSmoke({ browser, url, collection }) {
     assert.match(await fixture.locator('#product-compatibility').textContent(), /Test format compatibility/);
     assert.equal(await fixture.locator('#coming-soon').isVisible(), false);
     assert.equal(await fixture.locator('#purchase-note').isVisible(), true);
+    assert.match(await fixture.locator('.preview-caption').textContent(), /Full pack delivered by the store/);
     const links = await fixture.locator('#purchase-links a').evaluateAll(nodes => nodes.map(node => ({
       href: node.href, target: node.target, rel: node.rel, text: node.textContent,
     })));
@@ -206,6 +283,8 @@ export async function catalogSmoke({ browser, url, collection }) {
     assert.ok(!external.some(request => request.endsWith('.webm')), 'video is not downloaded before interaction');
     await product(fixture, 'fixture-upcoming').click();
     assert.equal(await fixture.locator('#coming-soon').isVisible(), true);
+    assert.match(await fixture.locator('.preview-caption').textContent(), /Collection coming soon/);
+    assert.equal(await fixture.locator('#coming-soon-note').textContent(), 'Pricing, license and purchase links will be announced at launch.');
     assert.equal(await fixture.locator('#purchase-links a').count(), 0, 'a prepared store URL stays hidden until release');
     assert.equal(await fixture.locator('a[href="https://catalog-fixture.itch.io/prepared-test"]').count(), 0);
     assert.deepEqual(await fixture.evaluate(() => ({ connected: window.__catalogPreviousVideo.isConnected, src: window.__catalogPreviousVideo.getAttribute('src'), paused: window.__catalogPreviousVideo.paused })), { connected: false, src: null, paused: true });
@@ -215,5 +294,5 @@ export async function catalogSmoke({ browser, url, collection }) {
     assert.ok(external.every(request => new URL(request).hostname === 'media.test'), 'store links never trigger requests before purchase');
     assert.deepEqual(fixturePacks, []); assert.deepEqual(fixtureErrors, []);
   } finally { await fixture.close(); }
-  console.log('Storefront catalog: PASS (filters/search, eight directions/downloads, Premium deep links, playback cleanup/race, history, mobile, purchase gating, video controls/error/cleanup)');
+  console.log('Storefront catalog: PASS (filters/member search, eight directions/downloads, Premium deep links, playback cleanup/race, history, mobile, purchase gating, actual Kiếm Hiệp teaser playback, video controls/error/cleanup)');
 }

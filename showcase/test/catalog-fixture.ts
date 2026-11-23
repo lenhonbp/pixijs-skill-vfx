@@ -20,8 +20,9 @@ const definitions: PremiumProductDefinition[] = [
     id: 'fixture-upcoming', collectionId: 'ngu-hanh', tier: 'premium', status: 'coming-soon',
     name: { en: 'Upcoming test collection', vi: 'Bộ kiểm thử sắp ra mắt' },
     description: 'A prepared link must remain unavailable until release.',
-    includes: [], compatibility: [],
+    includes: ['Confirmed upcoming test effect'], compatibility: [],
     stores: [{ store: 'itch', url: 'https://catalog-fixture.itch.io/prepared-test' }],
+    preview: { type: 'video', src: 'https://media.test/upcoming-preview.webm' },
   },
 ];
 
@@ -35,7 +36,7 @@ document.body.innerHTML = `
     <div class="viewer">
       <div class="stage-wrap"></div><div class="controls"></div><div class="actions"></div>
       <div id="premium-preview"></div>
-      <div id="premium-actions"><p id="coming-soon">Coming soon</p><div id="purchase-links"></div><p id="purchase-note">Checkout at the store</p></div>
+      <div id="premium-actions"><p id="coming-soon"><strong>Coming soon</strong><span id="coming-soon-note"></span></p><div id="purchase-links"></div><p id="purchase-note">Checkout at the store</p></div>
     </div>
     <span id="product-badge"></span><span id="product-status"></span><span id="product-collection"></span>
     <h2 id="product-includes-title"></h2><ul id="product-includes"></ul><ul id="product-compatibility"></ul>

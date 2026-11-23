@@ -218,5 +218,5 @@ export function filterProducts(products: CatalogProduct[], options: {
   return products.filter(p => (!options.tier || options.tier === 'all' || p.tier === options.tier) &&
     (!options.element || options.element === 'all' || p.element === options.element) &&
     (!options.collectionId || options.collectionId === 'all' || p.collectionId === options.collectionId) &&
-    normalize(`${p.name.en} ${p.name.vi} ${p.id} ${p.collection.name}`).includes(query));
+    normalize(`${p.name.en} ${p.name.vi} ${p.id} ${p.collection.name} ${p.tier === 'premium' ? p.includes.join(' ') : ''}`).includes(query));
 }

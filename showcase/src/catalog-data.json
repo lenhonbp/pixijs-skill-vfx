@@ -240,9 +240,25 @@
         "en": "Kiếm Hiệp",
         "vi": "Kiếm Hiệp"
       },
-      "description": "Sword auras, flying blades and the spirit of a wandering hero.",
-      "includes": [],
-      "compatibility": []
+      "description": "Three evolved martial effects: guardian swords, three golden cuts and a bronze bell crowned with eight blades.",
+      "includes": [
+        "Thiên Kiếm Quy Tông — evolved Sword Rain",
+        "Tam Tuyệt Kim Quang — evolved Golden Edge",
+        "Bát Âm Kim Chung — evolved Golden Bell",
+        "30 compiled .vfxb files: three effects, five baked directions and separate desktop/mobile presets",
+        "Integration README and SHA-256 file checksums"
+      ],
+      "compatibility": [
+        "PixiJS 7 / 8 with the free Lenhon VFX runtime, installed separately",
+        ".vfxb animation atlases for the Lenhon runtime, captured at 60 FPS",
+        "Baked directions: 0°, ±45°, ±90°; left-facing casts use runtime mirroring",
+        "VFX assets only; character artwork and audio files are not included"
+      ],
+      "preview": {
+        "type": "video",
+        "src": "previews/kiem-hiep/preview.mp4",
+        "poster": "previews/kiem-hiep/poster.webp"
+      }
     },
     {
       "id": "ngu-hanh",
