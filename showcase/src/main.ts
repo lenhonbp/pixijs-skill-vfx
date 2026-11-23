@@ -308,7 +308,10 @@ el('download-kit').onclick = async () => {
       `# ${pack.name.en} (${pack.name.vi})`, '', `Free Lenhon VFX pack (MIT). Live preview: ${location.origin}${location.pathname}#${id}`, '',
       `- \`${id}.vfxb\`: desktop`, `- \`${id}.m.vfxb\`: phones and small screens`, '',
       '```sh', 'npm install @lenhonbp/pixijs-vfx-runtime', '```', '',
-      '```ts', "import { VfxPlayer } from '@lenhonbp/pixijs-vfx-runtime';", '', el('snippet').textContent!, '```', '',
+      'Serve both files with your game (here: next to the page) and load the one that fits the device:', '',
+      '```ts', "import { VfxPlayer } from '@lenhonbp/pixijs-vfx-runtime';", '',
+      `const pack = matchMedia('(max-width: 720px)').matches ? './${id}.m.vfxb' : './${id}.vfxb';`,
+      'const vfx = await VfxPlayer.create(app, { packs: [pack] });', `vfx.play('${id}', { from: caster, to: target });`, '```', '',
       'Docs: https://github.com/lenhonbp/pixijs-skill-vfx/blob/main/runtime/README.md', 'Support: lenhon.vfx@gmail.com', '',
     ].join('\n');
     files.push({ name: `${id}/README.md`, data: new TextEncoder().encode(readme) });
