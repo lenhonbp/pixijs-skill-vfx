@@ -2,7 +2,7 @@
 // SPDX-License-Identifier: MIT
 import { Application, Assets, Container, Sprite, Texture } from 'pixi.js';
 import type { Spritesheet } from 'pixi.js';
-import { VfxPlayer } from '../../runtime/src/index';
+import { VfxPlayer, packDirection } from '../../runtime/src/index';
 import type { Playback, CueEvent } from '../../runtime/src/index';
 import './style.css';
 import { createStage } from './stage';
@@ -140,14 +140,14 @@ function dummyTexture() {
 }
 
 interface Variant { bytes: number; desktopBytes?: number; mobileBytes?: number }
-interface Entry extends Variant { id: string; name: { en: string; vi: string }; element: string; category: string }
+interface Entry extends Variant { id: string; name: { en: string; vi: string }; element: string; category: string; directions?: Record<string, Variant> }
 const descriptions: Record<string, { description: string }> = details;
 const base = import.meta.env.BASE_URL;
 document.querySelector<HTMLDivElement>('#app')!.innerHTML = `
 <header><a class="brand" href="#">L<span>✦</span> / LENHON <small>VFX LIBRARY</small></a><nav><a href="#library">Free collection</a><a href="#premium">Premium packs ↗</a><a href="https://github.com/lenhonbp/pixijs-skill-vfx">GitHub ↗</a></nav></header>
 <main><section class="intro"><div><p class="eyebrow">BUILT FOR PIXIJS 7 + 8 · ZERO RUNTIME DEPENDENCIES</p><h1>A little magic.<br><em>A lot of impact.</em></h1><p class="lede">Game-ready 2.5D effects. Pick a spell, see it in motion,<br> and make it yours in two lines of code.</p></div><div class="intro-note"><span class="star">✳</span><strong>Runtime is free forever (MIT)</strong><p>Commercial use welcome.<br>Just keep the MIT copyright and license notice.</p><a href="https://github.com/lenhonbp/pixijs-skill-vfx/tree/main/runtime">Explore the runtime ↗</a></div></section>
 <section id="library" class="library"><aside><div class="section-heading"><h2>Free collection</h2><span>25 SKILLS</span></div><label class="sr-only" for="search">Search effects</label><input id="search" placeholder="Search a spell…" type="search" autocomplete="off"><div id="filters" aria-label="Element filters"></div><div id="list" class="skill-list" aria-label="Effects"></div></aside>
-<div class="viewer"><div class="arena-header"><div><p class="eyebrow" id="category">LIVE PREVIEW</p><h2><span id="selected-name">Loading collection…</span><span id="selected-vi"></span></h2></div><button id="browse" class="browse">All skills ↓</button></div><div id="stage" data-bg="stage" aria-label="Effect preview arena"><div class="stage-toolbar" role="group" aria-label="Preview background"><button data-bg="stage" title="Painted stage">Stage</button><button data-bg="dark" title="Dark #0e1118">Dark</button><button data-bg="light" title="Light">Light</button><button data-bg="checker" title="Transparent checkerboard: inspect additive glow and alpha">Alpha</button></div><div class="arena-tip">Click the floor to cast · SPACE to replay</div></div><div class="controls"><button id="replay" class="primary">↻ Replay</button><label><input id="loop" type="checkbox"> Loop</label><label><input id="sound" type="checkbox"> Sound</label><label><input id="shake" type="checkbox" checked> Shake</label><span id="status" role="status" aria-live="polite">Loading…</span></div><div class="actions"><button id="download-kit" class="kit">Download kit (.zip) <span></span></button><button id="copy-url">Copy asset URL</button><button id="copy">Copy code</button></div></div>
+<div class="viewer"><div class="arena-header"><div><p class="eyebrow" id="category">LIVE PREVIEW</p><h2><span id="selected-name">Loading collection…</span><span id="selected-vi"></span></h2></div><button id="browse" class="browse">All skills ↓</button></div><div id="stage" data-bg="stage" aria-label="Effect preview arena"><div class="stage-toolbar" role="group" aria-label="Preview background"><button data-bg="stage" title="Painted stage">Stage</button><button data-bg="dark" title="Dark #0e1118">Dark</button><button data-bg="light" title="Light">Light</button><button data-bg="checker" title="Transparent checkerboard: inspect additive glow and alpha">Alpha</button></div><div class="aim-toolbar" id="aim" role="group" aria-label="Cast direction"></div><div class="arena-tip">Click the floor to cast · SPACE to replay</div></div><div class="controls"><button id="replay" class="primary">↻ Replay</button><label><input id="loop" type="checkbox"> Loop</label><label><input id="sound" type="checkbox"> Sound</label><label><input id="shake" type="checkbox" checked> Shake</label><span id="status" role="status" aria-live="polite">Loading…</span></div><div class="actions"><button id="download-kit" class="kit">Download kit (.zip) <span></span></button><button id="copy-url">Copy asset URL</button><button id="copy">Copy code</button></div></div>
 <div class="details"><p id="description" class="effect-description"></p><div class="integration"><div class="section-heading"><h3>From preview to your game</h3><span>npm i @lenhonbp/pixijs-vfx-runtime</span></div><pre><code id="snippet"></code></pre><div class="downloads" aria-label="Download the selected pack"><a id="download-desktop" download>Desktop pack <span></span></a><a id="download-mobile" download>Mobile pack <span></span></a></div><p>One tiny runtime. One self-contained pack. That’s it. <a href="https://github.com/lenhonbp/pixijs-skill-vfx/blob/main/runtime/README.md">Read the docs ↗</a><a href="https://github.com/lenhonbp/pixijs-skill-vfx/tree/main/skills/lenhon-vfx">Agent skill ↗</a></p></div></div></section>
 <section id="premium"><div class="premium-heading"><div><p class="eyebrow">THE NEXT CHAPTER</p><h2>More worlds. More wonder.</h2></div><p>Handcrafted collections for your next adventure.<br><span>Premium art. The same free runtime.</span></p></div><div class="premium-grid"><article style="--accent:#d6b477"><span class="pack-symbol">劍</span><p class="eyebrow">01 / MARTIAL LEGENDS</p><h3>Kiếm Hiệp</h3><p>Sword auras, flying blades and the spirit of a wandering hero.</p><div><a href="#gumroad-link-tbd">Gumroad ↗</a><a href="#itch-link-tbd">itch.io ↗</a><span>COMING SOON</span></div></article><article style="--accent:#7dbaa9"><span class="pack-symbol">五</span><p class="eyebrow">02 / FIVE ELEMENTS</p><h3>Ngũ Hành</h3><p>Metal, wood, water, fire and earth. Five forces in perfect motion.</p><div><a href="#gumroad-link-tbd">Gumroad ↗</a><a href="#itch-link-tbd">itch.io ↗</a><span>COMING SOON</span></div></article><article style="--accent:#b69ed4"><span class="pack-symbol">冥</span><p class="eyebrow">03 / FINAL ENCOUNTERS</p><h3>Ultimate Boss</h3><p>Arena-shaking ultimates for battles players will remember.</p><div><a href="#gumroad-link-tbd">Gumroad ↗</a><a href="#itch-link-tbd">itch.io ↗</a><span>COMING SOON</span></div></article></div></section>
 <footer><span>© 2026 lenhonbp · <a href="https://opensource.org/license/mit">MIT license</a> · <a href="https://github.com/lenhonbp/pixijs-skill-vfx">GitHub repository</a> · <a href="https://github.com/lenhonbp/pixijs-skill-vfx/issues">Report an issue</a> · <a href="mailto:lenhon.vfx@gmail.com">lenhon.vfx@gmail.com</a></span><span>Character artwork (c) 2026 lenhonbp; excluded from the MIT licence.</span></footer></main>`;
@@ -162,7 +162,16 @@ const resize = new ResizeObserver(() => {
 });
 resize.observe(el('stage'));
 const world = new Container(); app.stage.addChild(world);
-const from = { x: 300, y: 365 }, to = { x: 660, y: 365 };
+// Caster and target sit on a 360 px ground ring around the stage centre; the camera squashes ground depth by 0.6.
+const SQUASH = 0.6, RANGE = 360, CENTRE = { x: 480, y: 350 };
+const from = { x: 0, y: 0 }, to = { x: 0, y: 0 };
+let aim = 0;
+function placeActors() {
+  const a = aim * Math.PI / 180, vx = Math.cos(a) * RANGE, vy = Math.sin(a) * RANGE * SQUASH;
+  Object.assign(from, { x: Math.round(CENTRE.x - vx / 2), y: Math.round(CENTRE.y - vy / 2) });
+  Object.assign(to, { x: Math.round(CENTRE.x + vx / 2), y: Math.round(CENTRE.y + vy / 2) });
+}
+placeActors();
 const scene = createStage(world, from, to, { head: heroTexture('head'), torso: heroTexture('torso'), legs: heroTexture('legs'), staff: heroTexture('staff'), dummy: dummyTexture() });
 try {
   const sheet = await Assets.load<Spritesheet>(`${base}actors/ngu-hanh-sword/son-ha-kiem-khi-se.json`);
@@ -180,7 +189,7 @@ function readHash() {
 readHash();
 const selectedId = () => selected.id;
 const formatBytes = (bytes: number) => bytes >= 1000000 ? (bytes / 1000000).toFixed(2) + ' MB' : Math.round(bytes / 1000) + ' KB';
-const sizeLabel = () => formatBytes((mobileAsset() ? selected.mobileBytes : selected.desktopBytes) ?? selected.bytes);
+const sizeLabel = () => { const v = variantOf(selected, castDirection()); return formatBytes((mobileAsset() ? v.mobileBytes : v.desktopBytes) ?? v.bytes); };
 function loading(active: boolean) {
   el('status').classList.toggle('is-loading', active); el('stage').setAttribute('aria-busy', String(active));
   if (active) el('status').textContent = 'Loading · ' + sizeLabel();
@@ -189,8 +198,14 @@ const resident = new Set<string>();
 function unloadOthers(id: string) {
   for (const other of resident) if (other !== id) { vfx.unload(other); resident.delete(other); }
 }
+const bakedDirections = (p: Entry) => [0, ...Object.keys(p.directions ?? {}).map(Number)];
+const castDirection = () => packDirection(from, to, SQUASH, bakedDirections(selected)).direction;
+const fileOf = (id: string, direction: number, mobile: boolean) => `${id}${direction ? '@' + direction : ''}${mobile ? '.m' : ''}.vfxb`;
+const variantOf = (p: Entry, direction: number): Variant => (direction ? p.directions?.[direction] : undefined) ?? p;
 async function loadSelected(id: string) {
-  if (!resident.has(id)) { await vfx.load(packUrl(id)); resident.add(id); }
+  const direction = castDirection();
+  resident.add(id);
+  if (!vfx.directions(id).includes(direction)) await vfx.load(packUrl(id, direction));
   if (id !== selectedId()) { vfx.unload(id); resident.delete(id); return false; }
   return true;
 }
@@ -198,7 +213,7 @@ let audio: AudioContext | undefined;
 async function enableAudio() { audio ??= new AudioContext(); await audio.resume(); }
 const colors: Record<string, string> = { kim: '#d6b477', moc: '#9cbe85', thuy: '#83bfd6', hoa: '#ed9674', tho: '#c6a783', phong: '#91c9b8', loi: '#b6a2e0', neutral: '#b1afbf' };
 const mobileAsset = () => matchMedia('(max-width:720px)').matches || (devicePixelRatio > 1.5 && innerWidth < 900);
-const packUrl = (id: string) => `${base}packs/free/${id}${mobileAsset() ? '.m' : ''}.vfxb`;
+const packUrl = (id: string, direction = 0) => `${base}packs/free/${fileOf(id, direction, mobileAsset())}`;
 const labels: Record<string, string> = { all: 'All', kim: 'Metal', moc: 'Wood', thuy: 'Water', hoa: 'Fire', tho: 'Earth', phong: 'Wind', loi: 'Thunder', neutral: 'Utility' };
 const native: Record<string, string> = { kim: 'Kim', moc: 'Mộc', thuy: 'Thủy', hoa: 'Hỏa', tho: 'Thổ', phong: 'Phong', loi: 'Lôi', neutral: 'Tiện ích' };
 const icons: Record<string, string> = { kim: '✧', moc: '❋', thuy: '❄', hoa: '♨', tho: '◈', phong: '≋', loi: 'ϟ', neutral: '⌘' };
@@ -232,14 +247,18 @@ function renderSelection() {
   const hash = '#' + selected.id;
   if (location.hash !== hash) history[location.hash.slice(1).split('/')[0] === selected.id ? 'replaceState' : 'pushState'](null, '', hash);
   el('category').textContent = `LIVE PREVIEW / ${labels[selected.element].toUpperCase()} · ${native[selected.element].toUpperCase()} / ${selected.category.toUpperCase()}`;
-  el('snippet').textContent = `const vfx = await VfxPlayer.create(app, { packs: ['packs/free/${id}.vfxb'] });\nvfx.play('${id}', { from: caster, to: target });`;
-  for (const [tier, suffix, bytes] of [['desktop', '', selected.desktopBytes ?? selected.bytes], ['mobile', '.m', selected.mobileBytes]] as const) {
-    const link = el<HTMLAnchorElement>('download-' + tier), file = `${id}${suffix}.vfxb`;
+  el('snippet').textContent = selected.directions
+    ? `// Load the bake nearest the cast's ground direction (0, ±45, ±90; left casts mirror)\nconst { direction } = packDirection(caster, target, groundSquash);\nawait vfx.load(\`packs/free/${id}\${direction ? '@' + direction : ''}.vfxb\`);\nvfx.play('${id}', { from: caster, to: target, groundSquash });`
+    : `const vfx = await VfxPlayer.create(app, { packs: ['packs/free/${id}.vfxb'] });\nvfx.play('${id}', { from: caster, to: target });`;
+  const direction = castDirection(), variant = variantOf(selected, direction);
+  for (const [tier, mobile, bytes] of [['desktop', false, variant.desktopBytes ?? variant.bytes], ['mobile', true, variant.mobileBytes]] as const) {
+    const link = el<HTMLAnchorElement>('download-' + tier), file = fileOf(id, direction, mobile);
     link.href = `${base}packs/free/${file}`; link.download = file;
     link.title = `Download ${file}`; link.querySelector('span')!.textContent = bytes ? '· ' + formatBytes(bytes) : '';
   }
   const kit = el('download-kit');
-  kit.dataset.label = `Download kit (.zip) <span>· ${formatBytes((selected.desktopBytes ?? selected.bytes) + (selected.mobileBytes ?? 0))}</span>`;
+  const kitBytes = bakedDirections(selected).reduce((n, d) => { const v = variantOf(selected, d); return n + (v.desktopBytes ?? v.bytes) + (v.mobileBytes ?? 0); }, 0);
+  kit.dataset.label = `Download kit (.zip) <span>· ${formatBytes(kitBytes)}</span>`;
   if (!kit.dataset.timer) kit.innerHTML = kit.dataset.label;
   renderList();
 }
@@ -256,7 +275,7 @@ async function cast() {
     const release = manifest.cues.find(c => c.type === 'sound' && c.id === 'release')?.t
       ?? manifest.cues.find(c => c.type === 'sound' && ['buff', 'debuff'].includes(c.id ?? ''))?.t ?? 220;
     scene.prepare(movement ? 'movement' : selected.category === 'attack' || selected.category === 'channel' ? 'projectile' : selected.category, { release, duration: manifest.durationMs });
-    current = vfx.play(id, { from, to, parent: world, loop: el<HTMLInputElement>('loop').checked });
+    current = vfx.play(id, { from, to, groundSquash: SQUASH, parent: world, loop: el<HTMLInputElement>('loop').checked });
     el('status').textContent = 'Playing · ' + sizeLabel();
     await current.finished;
     if (token === request) { scene.reset(); el('status').textContent = 'Ready · ' + sizeLabel(); }
@@ -275,7 +294,18 @@ vfx.on('cue', (cue: CueEvent) => {
 });
 app.ticker.add((ticker: any) => scene.animate(ticker.deltaMS, current?.pose('caster'), current?.pose('target'), current?.elapsedMs));
 window.addEventListener('hashchange', () => { if (readHash()) { renderSelection(); void cast(); } });
-el('replay').onclick = () => void cast(); el('stage').onclick = () => void cast();
+el('replay').onclick = () => void cast();
+el('stage').onclick = event => { if (!(event.target as HTMLElement).closest('.aim-toolbar, .stage-toolbar')) void cast(); };
+const aims: [number, string, string][] = [[-135, '↖', 'up-left'], [-90, '↑', 'up'], [-45, '↗', 'up-right'], [180, '←', 'left'], [0, '→', 'right'], [135, '↙', 'down-left'], [90, '↓', 'down'], [45, '↘', 'down-right']];
+function renderAim() {
+  el('aim').replaceChildren(...aims.map(([deg, arrow, name]) => {
+    const button = document.createElement('button'); button.textContent = arrow; button.title = `Cast ${name}`;
+    button.setAttribute('aria-label', `Cast ${name}`); button.setAttribute('aria-pressed', String(deg === aim));
+    button.onclick = () => { if (aim === deg) return void cast(); aim = deg; placeActors(); scene.layout(); renderAim(); renderSelection(); void cast(); };
+    return button;
+  }));
+}
+renderAim();
 el('loop').onchange = () => void cast();
 el('sound').onchange = () => { if (el<HTMLInputElement>('sound').checked) void enableAudio().catch(() => {}); };
 el('shake').onchange = () => { vfx.shakeEnabled = el<HTMLInputElement>('shake').checked; };
@@ -294,24 +324,37 @@ async function copy(id: string, text: string) {
 }
 const assetUrl = (file: string) => new URL(`${base}packs/free/${file}`, location.href).href;
 el('copy').onclick = () => copy('copy', el('snippet').textContent!);
-el('copy-url').onclick = () => copy('copy-url', assetUrl(`${selectedId()}.vfxb`));
+el('copy-url').onclick = () => copy('copy-url', assetUrl(fileOf(selectedId(), castDirection(), false)));
 el('download-kit').onclick = async () => {
   const pack = selected, id = pack.id, button = el<HTMLButtonElement>('download-kit');
   if (button.getAttribute('aria-busy') === 'true') return;
   button.setAttribute('aria-busy', 'true');
   try {
-    const files = await Promise.all([`${id}.vfxb`, `${id}.m.vfxb`].map(async name => {
+    const names = bakedDirections(pack).flatMap(d => [fileOf(id, d, false), fileOf(id, d, true)]);
+    const files = await Promise.all(names.map(async name => {
       const res = await fetch(assetUrl(name)); if (!res.ok) throw Error(`${name}: HTTP ${res.status}`);
       return { name: `${id}/${name}`, data: new Uint8Array(await res.arrayBuffer()) };
     }));
     const readme = [
       `# ${pack.name.en} (${pack.name.vi})`, '', `Free Lenhon VFX pack (MIT). Live preview: ${location.origin}${location.pathname}#${id}`, '',
-      `- \`${id}.vfxb\`: desktop`, `- \`${id}.m.vfxb\`: phones and small screens`, '',
+      `- \`${id}.vfxb\`: desktop`, `- \`${id}.m.vfxb\`: phones and small screens`,
+      ...(pack.directions ? [`- \`${id}@<direction>.vfxb\` / \`.m.vfxb\`: the same skill baked toward ${Object.keys(pack.directions).join(', ')} degrees on the ground (0 = right, 90 = toward the camera); left-facing casts mirror these`] : []), '',
       '```sh', 'npm install @lenhonbp/pixijs-vfx-runtime', '```', '',
       'Serve both files with your game (here: next to the page) and load the one that fits the device:', '',
-      '```ts', "import { VfxPlayer } from '@lenhonbp/pixijs-vfx-runtime';", '',
-      `const pack = matchMedia('(max-width: 720px)').matches ? './${id}.m.vfxb' : './${id}.vfxb';`,
-      'const vfx = await VfxPlayer.create(app, { packs: [pack] });', `vfx.play('${id}', { from: caster, to: target });`, '```', '',
+      '```ts',
+      ...(pack.directions ? [
+        "import { VfxPlayer, packDirection } from '@lenhonbp/pixijs-vfx-runtime';", '',
+        "const tier = matchMedia('(max-width: 720px)').matches ? '.m' : '';",
+        'const vfx = await VfxPlayer.create(app);',
+        '// groundSquash: ground y / screen y of your camera (0.5 for 2:1 isometric)',
+        'const { direction } = packDirection(caster, target, groundSquash);',
+        `await vfx.load(\`./${id}\${direction ? '@' + direction : ''}\${tier}.vfxb\`);`,
+        `vfx.play('${id}', { from: caster, to: target, groundSquash });`,
+      ] : [
+        "import { VfxPlayer } from '@lenhonbp/pixijs-vfx-runtime';", '',
+        `const pack = matchMedia('(max-width: 720px)').matches ? './${id}.m.vfxb' : './${id}.vfxb';`,
+        'const vfx = await VfxPlayer.create(app, { packs: [pack] });', `vfx.play('${id}', { from: caster, to: target });`,
+      ]), '```', '',
       'Docs: https://github.com/lenhonbp/pixijs-skill-vfx/blob/main/runtime/README.md', 'Support: lenhon.vfx@gmail.com', '',
     ].join('\n');
     files.push({ name: `${id}/README.md`, data: new TextEncoder().encode(readme) });

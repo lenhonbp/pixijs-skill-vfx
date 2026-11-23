@@ -46,14 +46,22 @@ handles rectangle textures, blend constants and ticker differences internally.
   - `parent`: container, defaults to `app.stage`.
   - `zIndex`: effect-root depth; enable `parent.sortableChildren` to use sorting.
   - `speed`: positive playback multiplier, default 1.
-  - `fitDistance`: scale the baked horizontal distance to the actual horizontal
+  - `fitDistance`: scale the baked cast distance to the actual caster–target
     distance. Effects mirror automatically when the target is left of the caster.
-    There is no rotation: the 2.5D projection stays intact.
+  - `groundSquash`: camera squash (ground y / screen y) of your game view, used to
+    pick a direction; defaults to the pack's baked value, else 0.6.
   - `loop`: repeat until explicitly stopped. The finished promise remains pending.
 - `on('cue', fn)` / `off('cue', fn)`: cue events contain manifest cue fields plus
   `packId` and the playback `handle`. Times are animation-clock milliseconds.
   Sound is only a hint; the runtime does not create audio.
-- `unload(id)`: stop that pack's plays and free sheet/frame textures.
+- `unload(id)`: stop that pack's plays and free sheet/frame textures. For a
+  directional family, `unload('id')` frees every loaded direction and
+  `unload('id@90')` frees just that one.
+- `directions(id)` → loaded ground directions of a pack family, e.g. `[0, 90]`.
+- `packDirection(from, to, groundSquash?, available?)` (named export) →
+  `{ direction, mirror }`: the canonical direction (0, 45, 90, -45 or -90) whose
+  file a cast toward `to` needs, and whether it plays mirrored. Use it to load
+  only the directions a scene needs.
 - `destroy()`: stop all plays, detach ticker, restore shake offset, free resources.
 - `stats()` → `{ active, pooled, packs }`: active plays, available pooled sprites,
   loaded packs. Sprites and effect containers are reused on subsequent plays;
@@ -115,6 +123,33 @@ resolution follows the displayed width with DPR capped at 2, including on phones
 See [pack-format.md](https://github.com/lenhonbp/pixijs-skill-vfx/blob/main/docs/pack-format.md). Scrambling is an anti-scrape
 deterrent, **not DRM or encryption**. MIT code and free packs may be used commercially.
 
+## Cast direction (3D and 2.5D games)
+
+Packs are baked in ground space, so a cast can go any way on the ground: left,
+right, up the screen (away from the camera), down (toward it) or diagonally.
+Directional skills ship up to five files: `<id>.vfxb` (direction 0, cast to the
+right), `<id>@45.vfxb` (down-right), `<id>@90.vfxb` (down), `<id>@-45.vfxb`
+(up-right) and `<id>@-90.vfxb` (up). Left-hand directions reuse the right-hand
+file mirrored. Their manifests carry `direction` and `groundSquash`. Skills that
+look the same from every side (self buffs) ship only `<id>.vfxb`.
+
+Load any subset of a family; the files share one id. `play` picks the nearest
+loaded direction for the actual caster–target angle, mirrors it when the target
+is to the left, and skews it the remaining few degrees onto the real target, so
+the effect lands on the target at any angle. With only `<id>.vfxb` loaded it falls
+back to the original left/right behavior.
+
+```ts
+import { VfxPlayer, packDirection } from '@lenhonbp/pixijs-vfx-runtime';
+
+const { direction } = packDirection(hero.position, enemy.position);
+const base = 'https://lenhonbp.github.io/pixijs-skill-vfx/packs/';
+await vfx.load(`${base}hoa-fireball${direction ? '@' + direction : ''}.vfxb`);
+vfx.play('hoa-fireball', { from: hero.position, to: enemy.position, fitDistance: true });
+```
+
+Packs without `direction` metadata (all 1.0 packs) keep playing exactly as before.
+
 ## Actor tracks and playback poses
 
 Optional `actors` is an object with `caster` and/or `target` tracks. Each track
@@ -129,8 +164,9 @@ This optional field does not change the v1 format; old packs remain valid.
 or null when that actor has no track. Numeric values interpolate by the same
 playback clock as VFX, including speed, looping and hitstop. Visibility/facing
 step at frame boundaries. Coordinates are relative to actor home in the chosen
-parent's local space: mirroring reverses x and facing; `fitDistance` scales x
-only, matching the runtime's horizontal VFX fit (y/lift are unchanged).
+parent's local space and follow the same transform as the VFX: mirroring
+reverses x and facing, and `fitDistance` and direction correction move x and y
+(lift is unchanged).
 After stop or natural end, each tracked actor returns
 `{ x: 0, y: 0, lift: 0, visible: true, facing: 1 }` once, then null.
 Untracked actors always return null, including after stop. No pose event is emitted.

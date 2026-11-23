@@ -19,12 +19,15 @@ const decoded = readContainer(buffer(example));
 const collection = JSON.parse(await readFile(resolve(dist, 'packs/free/index.json'), 'utf8'));
 let verifiedFiles = 0;
 assert.equal(collection.length, 25);
-assert.ok(collection.every(p => !('evolved' in p) && p.files.length === 2));
-for (const pack of collection) for (const file of pack.files) {
+assert.ok(collection.every(p => !('evolved' in p) && p.files.length === 2 && Object.values(p.directions ?? {}).every(d => d.files.length === 2)));
+for (const pack of collection) for (const file of [...pack.files, ...Object.values(pack.directions ?? {}).flatMap(d => d.files)]) {
   const bytes = await readFile(resolve(dist, 'packs/free', file.name));
   const manifest = readContainer(buffer(bytes)).manifest;
   assert.equal(bytes.length, file.bytes);
-  assert.equal(manifest.id, file.name.replace(/(?:\.m)?\.vfxb$/, ''));
+  const [, id, direction] = file.name.match(/^(.+?)(?:@(-?\d+))?(?:\.m)?\.vfxb$/);
+  assert.equal(manifest.id, id);
+  assert.equal(manifest.direction ?? 0, Number(direction ?? 0), `${file.name} direction`);
+  if (direction) assert.ok(pack.directions[direction].files.includes(file));
   assert.ok(bytes.length <= (file.name.endsWith('.m.vfxb') ? 1500000 : 4000000), `${file.name} exceeds pack budget`);
   verifiedFiles++;
 }
@@ -64,6 +67,13 @@ validate(actors);
 for (const value of [null, [], { stranger: { frames: [[0, 0, 0, 1], [0, 0, 0, 1]] } }, { caster: null }, { caster: { frames: [] } }, { caster: { frames: [[0, 0, 0, 4], [0, 0, 0, 1]] } }, { caster: { frames: [[NaN, 0, 0, 1], [0, 0, 0, 1]] } }, { caster: { frames: [[0, 0, 0], [0, 0, 0, 1]] } }]) {
   assert.throws(() => validate({ ...actors, actors: value }));
 }
+const aimed = Object.fromEntries([0, 90].map(direction => {
+  const m = structuredClone(actors);
+  Object.assign(m, { id: 'aimed', direction, groundSquash: 0.6, origin: { x: 0, y: 0 }, target: direction ? { x: 0, y: 216 } : { x: 360, y: 0 } });
+  validate(m); return [direction, m];
+}));
+for (const value of [91, -91, NaN]) assert.throws(() => validate({ ...aimed[0], direction: value }));
+assert.throws(() => validate({ ...aimed[0], groundSquash: 0 }));
 async function actorSmoke(engine) {
   const { app, vfx: existing } = engine === 'v8' ? window.__showcase : window.__v7;
   const Player = engine === 'v8' ? existing.constructor : window.__v7.VfxPlayer;
@@ -101,6 +111,25 @@ async function actorSmoke(engine) {
     check(loop.pose('caster') !== null, 'loop remains tracked');
     check(loop.elapsedMs === 0, 'loop clock did not wrap');
     loop.stop();
+    await player.load(['/aimed.vfxb', '/aimed@90.vfxb']);
+    check(JSON.stringify(player.directions('aimed')) === '[0,90]', 'loaded directions');
+    const near = (a, b) => Math.abs(a - b) < 1e-6;
+    const pair = (to, fitDistance = false) => {
+      const ref = player.play('actors', { from: { x: 0, y: 0 } }), h = player.play('aimed', { from: { x: 0, y: 0 }, to, fitDistance });
+      player.update(150);
+      const out = [ref.pose('caster'), h.pose('caster')]; ref.stop(); h.stop(); return out;
+    };
+    let [r, p] = pair({ x: 0, y: 216 });
+    check(r.x > 0 && near(p.x, r.x) && near(p.y, r.y) && p.facing === r.facing, 'exact baked direction plays untransformed');
+    [r, p] = pair({ x: -360, y: 0 });
+    check(near(p.x, -r.x) && near(p.y, r.y) && p.facing === -r.facing, 'left cast mirrors the right bake');
+    [r, p] = pair({ x: 0, y: 432 }, true);
+    check(near(p.x, r.x) && near(p.y, 2 * r.y), 'fitDistance stretches along the cast');
+    [r, p] = pair({ x: 300, y: 30 });
+    check(p.x < r.x && p.y > r.y, 'near-horizontal cast bends the right bake toward its target');
+    player.unload('aimed@90');
+    check(JSON.stringify(player.directions('aimed')) === '[0]', 'direction unload');
+    player.unload('aimed'); check(player.directions('aimed').length === 0, 'family unload');
     await player.load('/packs/free/kim-golden-edge.vfxb');
     const dash = player.play('kim-golden-edge', { from: { x: 0, y: 0 } });
     player.update(200);
@@ -193,6 +222,7 @@ const server = createServer(async (req, res) => {
     if (path === '/destroy-cue.vfxb') { res.end(fixture(destroyCue, decoded.sheets)); return; }
     if (path === '/loop-cues.vfxb') { res.end(fixture(loopCues, new Map())); return; }
     if (path === '/actors.vfxb') { res.end(fixture(actors, new Map())); return; }
+    if (path === '/aimed.vfxb' || path === '/aimed@90.vfxb') { res.end(fixture(aimed[path === '/aimed.vfxb' ? 0 : 90], new Map())); return; }
     if (path === '/slow.vfxb') { await new Promise(resolve => setTimeout(resolve, 40)); res.end(fixture(decoded.manifest, decoded.sheets)); return; }
     if (path === '/custom.vfxb' || path === '/plain.vfxb' || path === '/empty.vfxb') { res.end(path === '/custom.vfxb' ? custom : path === '/empty.vfxb' ? fixture(empty, new Map()) : plainContainer); return; }
     const local = path.replace(/^\/collection/, '') || '/';
