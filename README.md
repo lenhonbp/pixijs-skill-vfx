@@ -97,15 +97,21 @@ The runtime stays free; optional art collections will expand your library:
 
 | Collection | Theme | Availability |
 |---|---|---|
-| **Kiếm Hiệp** | Martial legends, sword auras and flying blades | Coming soon |
+| **[Kiếm Hiệp](https://lenhonbp.github.io/pixijs-skill-vfx/#product/kiem-hiep)** | Three evolved effects: Thiên Kiếm Quy Tông, Tam Tuyệt Kim Quang and Bát Âm Kim Chung | Preview available · Coming soon |
 | **Ngũ Hành** | Metal, wood, water, fire and earth | Coming soon |
 | **Ultimate Boss** | Arena-shaking final encounters | Coming soon |
 
 The showcase catalog distinguishes Free effects from Premium collections and
 shows each product's contents, compatibility and release status. Free effects keep
-their live previews, all cast directions and downloads. Premium collections get
-video previews and itch.io/Gumroad purchase links when released. The current three
+their live previews, all cast directions and downloads. Premium collections can show
+video previews before launch and gain real itch.io/Gumroad purchase links when released. The current three
 collections are coming soon, with no prices or checkout links announced.
+
+Kiếm Hiệp now has a rendered teaser and confirmed contents: three effects, five
+baked directions and separate desktop/mobile presets, totaling 30 compiled
+`.vfxb` containers for the free Lenhon runtime with PixiJS 7/8. Only the rendered
+video and poster are public; the Premium delivery files remain private. Its
+price, customer license and checkout link will be announced at launch.
 
 See [storefront catalog maintenance](docs/storefront-catalog.md) for product data,
 release requirements and the boundary between public previews and paid delivery.
@@ -126,5 +132,10 @@ GitHub Pages deploys the Vite showcase.
 ## License
 
 © 2026 lenhonbp <lenhonbp@gmail.com> · [MIT license](LICENSE).
-The runtime and showcase are MIT licensed. Keep the copyright and license notice when redistributing runtime code.
+The runtime, showcase code, Free collection and public format examples are MIT
+licensed. Keep the copyright and license notice when redistributing runtime code.
 Character artwork (c) 2026 lenhonbp; excluded from the MIT licence.
+The newly published Kiếm Hiệp rendered preview media is separate from the MIT
+code and Free collection; see its [media notice](showcase/public/previews/kiem-hiep/README.md).
+The customer license for the future Premium download will be stated at launch.
+Existing MIT grants on previously published material remain unchanged.

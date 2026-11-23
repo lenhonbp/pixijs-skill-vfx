@@ -236,7 +236,7 @@ const server = createServer(async (req, res) => {
     const relative = path.startsWith('/format-examples/') ? path.slice('/format-examples'.length) : local;
     const file = resolve(folder, '.' + (relative.endsWith('/') ? relative + 'index.html' : relative));
     if (!file.startsWith(folder + sep)) { res.writeHead(403).end(); return; }
-    res.setHeader('Content-Type', { '.html': 'text/html', '.js': 'text/javascript', '.css': 'text/css', '.json': 'application/json', '.webp': 'image/webp', '.png': 'image/png', '.jpg': 'image/jpeg', '.svg': 'image/svg+xml' }[extname(file)] ?? 'application/octet-stream');
+    res.setHeader('Content-Type', { '.html': 'text/html', '.js': 'text/javascript', '.css': 'text/css', '.json': 'application/json', '.webp': 'image/webp', '.png': 'image/png', '.jpg': 'image/jpeg', '.svg': 'image/svg+xml', '.mp4': 'video/mp4', '.webm': 'video/webm' }[extname(file)] ?? 'application/octet-stream');
     res.end(await readFile(file));
   } catch { res.writeHead(404).end(); }
 });

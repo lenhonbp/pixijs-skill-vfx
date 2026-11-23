@@ -8,9 +8,11 @@ One effect is one pack, with two equivalent delivery formats:
 The free collection ships containers for every effect and plain examples for
 Fireball and Frost Nova in `docs/format-examples/` (outside the deployed site). These
 legacy two-layer, uniform-scale examples demonstrate compatibility, not the current
-collection's quality presets. All VFX packs and format examples are MIT licensed;
+collection's quality presets. The Free collection and these public format examples are MIT licensed;
 the showcase's character artwork is separate and is not covered by that licence.
 Only baked output is needed to play an effect. No factory or baker is distributed here.
+Future Premium deliveries have their own customer terms, announced at release.
+Rendered Premium marketing media is covered by the notice in its preview directory.
 
 ## Manifest
 

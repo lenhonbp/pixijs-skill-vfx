@@ -86,6 +86,9 @@ export function createCatalogView(products: CatalogProduct[], theme: Theme, sele
       : product.status === 'available' ? 'See the store listing for the license and terms included with this collection.'
         : 'License details will be published with this collection at launch.';
     el('coming-soon').hidden = action.kind !== 'coming-soon';
+    el('coming-soon-note').textContent = product.includes.length
+      ? 'Pricing, license and purchase links will be announced at launch.'
+      : 'Pack contents, pricing and purchase links will be announced at launch.';
     el('purchase-links').replaceChildren(...action.stores.map(store => {
       const name = store.store === 'itch' ? 'itch.io' : 'Gumroad';
       const link = text('a', `Buy on ${name} ↗`, 'purchase-link');
@@ -100,7 +103,8 @@ export function createCatalogView(products: CatalogProduct[], theme: Theme, sele
       const video = document.createElement('video'); video.controls = true; video.preload = 'none'; video.playsInline = true;
       video.src = product.preview.src; if (product.preview.poster) video.poster = product.preview.poster;
       video.setAttribute('aria-label', `${product.name.en} video preview`);
-      const caption = text('p', 'Video preview · Full pack delivered by the store', 'preview-caption');
+      const caption = text('p', product.status === 'available' ? 'Video preview · Full pack delivered by the store'
+        : 'Video preview · Collection coming soon', 'preview-caption');
       video.addEventListener('error', () => { caption.textContent = 'The video preview could not load. Try again later.'; });
       el('premium-preview').append(video, caption);
     } else {

@@ -80,15 +80,26 @@ test('a data-only export update reaches the default catalog without editing Type
   assert.equal(imported.resolveCatalog(packs).length, 28);
 });
 
-test('existing premium collections are honest coming-soon products with no checkout or pack', () => {
+test('confirmed Kiếm Hiệp contents and preview remain upcoming without checkout or paid packs', () => {
   const premium = resolveCatalog(packs).filter(p => p.tier === 'premium');
   assert.deepEqual(premium.map(p => p.id), ['kiem-hiep', 'ngu-hanh', 'ultimate-boss']);
   assert.equal(collections.length, 4);
   for (const product of premium) {
     assert.deepEqual(getProductAction(product), { kind: 'coming-soon', stores: [] });
-    assert.equal(product.preview, undefined);
     assert.equal(product.packId, undefined);
+    assert.equal(product.stores, undefined);
+  }
+  const kiemHiep = premium.find(product => product.id === 'kiem-hiep');
+  for (const name of ['Thiên Kiếm Quy Tông', 'Tam Tuyệt Kim Quang', 'Bát Âm Kim Chung']) {
+    assert.ok(kiemHiep.includes.some(item => item.includes(name)), `confirmed member ${name}`);
+  }
+  assert.match(kiemHiep.includes.join(' '), /30 compiled \.vfxb files/);
+  assert.match(kiemHiep.compatibility.join(' '), /PixiJS 7 \/ 8.*Lenhon VFX runtime/);
+  assert.deepEqual(kiemHiep.preview, { type: 'video', src: 'previews/kiem-hiep/preview.mp4', poster: 'previews/kiem-hiep/poster.webp' });
+  for (const product of premium.filter(product => product.id !== 'kiem-hiep')) {
+    assert.equal(product.preview, undefined);
     assert.deepEqual(product.includes, []);
+    assert.deepEqual(product.compatibility, []);
   }
 });
 
@@ -112,6 +123,7 @@ test('premium release requires a supported product URL and coming-soon gates pre
   assert.deepEqual(getProductAction(product), { kind: 'coming-soon', stores: [] });
   const released = definitions.find(p => p.tier === 'premium');
   released.status = 'available';
+  released.includes = []; released.compatibility = [];
   assert.throws(() => resolveCatalog(packs, definitions), /confirmed contents and compatibility/);
   released.includes = ['Synthetic test bundle'];
   released.compatibility = ['Synthetic test target'];
@@ -149,5 +161,9 @@ test('invalid product metadata is rejected and discovery supports tier, collecti
   assert.equal(filterProducts(products, { collectionId: 'kiem-hiep' })[0].id, 'kiem-hiep');
   assert.equal(filterProducts(products, { query: 'hoa cau' })[0].id, 'hoa-fireball');
   assert.equal(filterProducts(products, { query: 'dia liet' })[0].id, 'tho-fissure');
+  for (const query of ['Thiên Kiếm Quy Tông', 'thien kiem quy tong', 'Tam Tuyet Kim Quang', 'bat am kim chung']) {
+    assert.deepEqual(filterProducts(products, { query }).map(product => product.id), ['kiem-hiep']);
+  }
+  assert.deepEqual(filterProducts(products, { query: 'Golden Edge' }).map(product => product.id), ['kim-golden-edge', 'kiem-hiep']);
   assert.equal(filterProducts(products, { query: 'missing effect' }).length, 0);
 });

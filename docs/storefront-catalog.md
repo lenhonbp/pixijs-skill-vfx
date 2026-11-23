@@ -9,9 +9,13 @@ The catalog references existing pack IDs. It does not replace the delivery index
 
 ## Current products
 
-The catalog lists the existing **25 available Free effects** and three **Premium collections coming soon**: Kiếm Hiệp, Ngũ Hành and Ultimate Boss. Their planned themes come from the existing storefront. They do not currently have confirmed contents, prices, video previews or checkout links.
+The catalog lists the existing **25 available Free effects** and three **Premium collections coming soon**: Kiếm Hiệp, Ngũ Hành and Ultimate Boss.
 
-The Free/Premium tabs, collection selector and name search operate together. Search accepts English, Vietnamese and Vietnamese without accents. A Free effect keeps its existing `#<pack-id>` link. Premium collection details use `#product/<product-id>`.
+Kiếm Hiệp now has confirmed contents and an approved public video preview: **Thiên Kiếm Quy Tông**, **Tam Tuyệt Kim Quang** and **Bát Âm Kim Chung**, the evolved Sword Rain, Golden Edge and Golden Bell effects. The prepared collection contains 30 compiled `.vfxb` files covering three effects, five baked directions and separate desktop/mobile presets, plus an integration README and SHA-256 checksums. These are animation atlases for the free Lenhon runtime with PixiJS 7/8. The 60 FPS figure describes the captured animation timing, not a device performance guarantee. Character artwork and audio files are not included.
+
+Kiếm Hiệp remains **Coming soon** until pricing, customer license and a real store listing are confirmed. Its public teaser and poster are at `previews/kiem-hiep/preview.mp4` and `previews/kiem-hiep/poster.webp`; the compiled Premium files and review receipts remain private. Ngũ Hành and Ultimate Boss retain their planned themes and do not yet have confirmed contents or previews. None of the three collections has an announced price or checkout link.
+
+The Free/Premium tabs, collection selector and name search operate together. Search accepts English, Vietnamese and Vietnamese without accents, including confirmed Premium member names. A Free effect keeps its existing `#<pack-id>` link. Premium collection details use `#product/<product-id>`.
 
 | Product | Action shown |
 |---|---|
@@ -70,6 +74,6 @@ npm run build
 npm run check:runtime
 ```
 
-The focused catalog tests cover schema validation, membership, duplicate and missing references, release requirements, link/media validation and filtering. A data-only fixture update also verifies that a changed exported description and collection name reach the default catalog without editing TypeScript. The existing runtime smoke suite also invokes the catalog browser smoke: Free/Premium navigation, all eight cast directions and their download links, Premium deep links without pack downloads, playback cleanup, delayed-load transitions including return to the same Free effect, browser history and mobile browsing after scrolling the list. A test-only fixture exercises released-product purchase links and video controls, failure messaging and cleanup. Its synthetic listings are not imported into the production app, and all external fixture traffic is intercepted by the test.
+The focused catalog tests cover schema validation, confirmed Kiếm Hiệp membership, duplicate and missing references, release requirements, link/media validation and member-name filtering. A data-only fixture update also verifies that a changed exported description and collection name reach the default catalog without editing TypeScript. The existing runtime smoke suite also invokes the catalog browser smoke: Free/Premium navigation, all eight cast directions and their download links, Premium deep links without pack downloads, playback cleanup, delayed-load transitions including return to the same Free effect, browser history and mobile browsing after scrolling the list. The real Kiếm Hiệp teaser is played on desktop and mobile, with a deferred video request, confirmed contents, Coming soon copy and release of the video on navigation. A test-only fixture exercises released-product purchase links and video controls, failure messaging and cleanup. Its synthetic listings are not imported into the production app, and all external fixture traffic is intercepted by the test.
 
 Review the desktop and mobile views as well as automated results. Confirm that the Free stage, background selection, directions, ZIP downloads and integration code still work. CI screenshots can be produced through `VFX_CATALOG_SCREENSHOT` and `VFX_CATALOG_MOBILE_SCREENSHOT` for the new catalog states, alongside the existing showcase screenshot variables.
