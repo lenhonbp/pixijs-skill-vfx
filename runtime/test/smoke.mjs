@@ -159,11 +159,12 @@ function fixture(manifest, sheets, key) {
 const custom = fixture(decoded.manifest, decoded.sheets, 'test-custom-火');
 const plainContainer = fixture(decoded.manifest, decoded.sheets);
 const orderedColors = [[0, 30, 0, 255], [80, 20, 10, 192], [30, 0, 0, 255], [0, 0, 80, 128], [10, 20, 0, 255], [20, 40, 10, 128]];
+const orderedSheetSize = 16;
 const orderedSheets = new Map();
 const orderedManifest = count => ({ ...empty, id: `ordered-${count}`, durationMs: 200, frameCount: 2, fps: 10, origin: { x: 0, y: 0 }, scale: 1,
-  layers: orderedColors.slice(0, count).map((_, i) => ({ name: `ordered-${i}`, blend: i % 2 ? 'normal' : 'add', scale: [1, 0.5, 2][i % 3], sheets: [`ordered-${i}.png`], frames: [[0, 0, 0, 4, 4, 0, 0], i === 1 ? null : [0, 0, 0, 4, 4, 0, 0]] })),
+  layers: orderedColors.slice(0, count).map((_, i) => ({ name: `ordered-${i}`, blend: i % 2 ? 'normal' : 'add', scale: [1, 0.5, 2][i % 3], sheets: [`ordered-${i}.png`], frames: [[0, 0, 0, orderedSheetSize, orderedSheetSize, 0, 0], i === 1 ? null : [0, 0, 0, orderedSheetSize, orderedSheetSize, 0, 0]] })),
 });
-async function orderedSmoke({ engine, colors }) {
+async function orderedSmoke({ engine, colors, sheetSize }) {
   const { app, vfx: existing } = engine === 'v8' ? window.__showcase : window.__v7;
   const Player = engine === 'v8' ? existing.constructor : window.__v7.VfxPlayer;
   const visible = app.stage.children.map(c => c.visible), children = [...app.stage.children];
@@ -190,7 +191,8 @@ async function orderedSmoke({ engine, colors }) {
         app.render();
         const canvas = app.canvas ?? app.view, copy = document.createElement('canvas'); copy.width = canvas.width; copy.height = canvas.height;
         const ctx = copy.getContext('2d'); ctx.drawImage(canvas, 0, 0);
-        const xy = Math.floor(20.75 * app.renderer.resolution), actual = ctx.getImageData(xy, xy, 1, 1).data;
+        // Sample the center of the smallest (scale 1/2) layer, away from MSAA edges at fractional responsive resolutions.
+        const xy = Math.floor((20 + sheetSize / 4) * app.renderer.resolution), actual = ctx.getImageData(xy, xy, 1, 1).data;
         if (expected.some((v, c) => Math.abs(v - actual[c]) > 4)) throw Error(`${engine}: ${count}-layer compositing/order ${[...actual]} != ${expected}`);
       };
       const handle = player.play(id, { from: { x: 20, y: 20 }, parent }); checkFrame(false);
@@ -283,12 +285,12 @@ try {
     return { count: packs.length, cues, pooled: vfx.stats().pooled };
   });
   console.log(`Pixi v8: PASS (${result.count} packs + plain JSON, cleanup, replay pool=${result.pooled}, ${result.cues} cues, loop/stop/errors)`);
-  const pngs = await page.evaluate(colors => colors.map(color => {
-    const c = document.createElement('canvas'); c.width = c.height = 4; const ctx = c.getContext('2d');
-    ctx.fillStyle = `rgba(${color[0]},${color[1]},${color[2]},${color[3] / 255})`; ctx.fillRect(0, 0, 4, 4); return c.toDataURL('image/png').split(',')[1];
-  }), orderedColors);
+  const pngs = await page.evaluate(({ colors, sheetSize }) => colors.map(color => {
+    const c = document.createElement('canvas'); c.width = c.height = sheetSize; const ctx = c.getContext('2d');
+    ctx.fillStyle = `rgba(${color[0]},${color[1]},${color[2]},${color[3] / 255})`; ctx.fillRect(0, 0, sheetSize, sheetSize); return c.toDataURL('image/png').split(',')[1];
+  }), { colors: orderedColors, sheetSize: orderedSheetSize });
   pngs.forEach((png, i) => orderedSheets.set(`ordered-${i}.png`, Buffer.from(png, 'base64')));
-  await page.evaluate(orderedSmoke, { engine: 'v8', colors: orderedColors });
+  await page.evaluate(orderedSmoke, { engine: 'v8', colors: orderedColors, sheetSize: orderedSheetSize });
   await page.evaluate(actorSmoke, 'v8');
   console.log('Pixi v8 actors: PASS (validation, interpolation, mirror/fit, hitstop, stepped flags, legacy, stop/end/reset, loop)');
   console.log('Pixi v8 ordered layers: PASS (3/6 layers, pixel-checked blend order, mixed scales, null frames, replay)');
@@ -391,7 +393,7 @@ try {
   });
   assert.deepEqual(errors, []);
   console.log('Pixi v7: PASS (WebGL render, mirror/fitDistance/parent/zIndex, target anchor/nonzero origin, cleanup/pool, custom key, unscrambled, empty pack, shake/hitstop toggles, invalid load, destroy)');
-  await page.evaluate(orderedSmoke, { engine: 'v7', colors: orderedColors });
+  await page.evaluate(orderedSmoke, { engine: 'v7', colors: orderedColors, sheetSize: orderedSheetSize });
   await page.evaluate(actorSmoke, 'v7');
   console.log('Pixi v7 actors: PASS (interpolation, mirror/fit, hitstop, legacy, stop/end/reset, loop)');
   console.log('Pixi v7 ordered layers: PASS (3/6 layers, pixel-checked blend order, mixed scales, null frames, replay)');
