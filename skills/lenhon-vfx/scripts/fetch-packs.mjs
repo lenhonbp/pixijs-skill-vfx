@@ -35,7 +35,7 @@ for (const arg of all ? collection.map(p => p.id) : ids) {
   const entry = collection.find(p => p.id === id);
   if (!entry) { unknown.push(arg); continue; }
   if (dir === null) { wanted.push(entry); continue; }
-  const variant = entry.directions?.[dir];
+  const variant = dir === '0' ? { files: entry.files } : entry.directions?.[dir];
   if (!variant) { missing.push(arg); continue; }
   wanted.push({ ...entry, files: variant.files, directions: undefined });
 }
