@@ -29,8 +29,8 @@ jobs:
         env:
           VFX_SCREENSHOT: test-artifacts/free-desktop.png
           VFX_MOBILE_SCREENSHOT: test-artifacts/free-mobile.png
-          VFX_CATALOG_SCREENSHOT: test-artifacts/premium-desktop.png
-          VFX_CATALOG_MOBILE_SCREENSHOT: test-artifacts/premium-mobile.png
+          VFX_CATALOG_SCREENSHOT: test-artifacts/library-desktop.png
+          VFX_CATALOG_MOBILE_SCREENSHOT: test-artifacts/library-mobile.png
       - name: Storefront screenshots
         if: always()
         uses: actions/upload-artifact@v4

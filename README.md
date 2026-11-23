@@ -1,5 +1,3 @@
-[![Swordsman casting on the interactive VFX stage](docs/images/showcase-desktop.png)](https://lenhonbp.github.io/pixijs-skill-vfx/)
-
 # PixiJS Skill VFX
 
 [![Live demo](https://img.shields.io/badge/Live_demo-Cast_a_spell-d6b477?style=flat-square)](https://lenhonbp.github.io/pixijs-skill-vfx/)
@@ -70,48 +68,37 @@ node skills/lenhon-vfx/scripts/fetch-packs.mjs hoa-fireball --out public/vfx
 Only baked assets are distributed: no procedural authoring factory or baker
 implementation is included. The runtime and showcase remain MIT.
 
-<details>
-<summary>Mobile showcase</summary>
-
-![Mobile showcase](docs/images/showcase-mobile.png)
-
-</details>
+The showcase pairs a searchable effect library with a live stage. Preview all
+eight cast directions against Stage, Dark, Light or Alpha backgrounds, then
+download the complete effect kit or copy its integration code. The mobile layout
+keeps browsing and playback together, with technical details below the library.
 
 ## Collection size and loading
 
-The 25 skills ship as **50 desktop/mobile containers**:
-57,462,676 bytes desktop + 20,832,436 bytes mobile = **78,295,112 bytes**.
-Including the 15,944-byte index, `showcase/public/packs/free/` totals 78,311,056 bytes.
-You only need the packs selected for your game; the showcase loads one skill at a time.
-18 desktop and 15 mobile packs play at 60 FPS; the rest play at 30 FPS.
+The 25 skills include **226 desktop/mobile containers across their baked
+directions**: 272,854,709 bytes desktop + 97,535,753 bytes mobile = **370,390,462
+bytes**. Including the 46,961-byte index, `showcase/public/packs/free/` totals
+370,437,423 bytes. You only need the packs selected for your game; the showcase
+loads the selected skill and direction on demand. Each manifest specifies its
+playback frame rate.
 
-Measured on 2026-11-22, the default Fireball cold first load was **2,195,377 bytes
+Measured before this presentation refresh, on 2026-11-22, the default Fireball
+cold first load was **2,195,377 bytes
 desktop / 1,444,150 bytes mobile**, including the application, character artwork
 and HTTP overhead on a local uncompressed server. See
 [download sizes and measurement conditions](docs/pack-format.md#current-free-collection-and-download-sizes)
 for the full breakdown.
 
-## Premium Skill Packs — coming soon
+## Current collection and future releases
 
-The runtime stays free; optional art collections will expand your library:
+**All 25 effects in the current collection are Free.** The current priority is a
+polished, useful showcase for those effects. Premium VFX will be developed later;
+there are no Premium product listings, trailers, prices or checkout links in the
+production catalog.
 
-| Collection | Theme | Availability |
-|---|---|---|
-| **[Kiếm Hiệp](https://lenhonbp.github.io/pixijs-skill-vfx/#product/kiem-hiep)** | Three evolved effects: Thiên Kiếm Quy Tông, Tam Tuyệt Kim Quang and Bát Âm Kim Chung | Preview available · Coming soon |
-| **Ngũ Hành** | Metal, wood, water, fire and earth | Coming soon |
-| **Ultimate Boss** | Arena-shaking final encounters | Coming soon |
-
-The showcase catalog distinguishes Free effects from Premium collections and
-shows each product's contents, compatibility and release status. Free effects keep
-their live previews, all cast directions and downloads. Premium collections can show
-video previews before launch and gain real itch.io/Gumroad purchase links when released. The current three
-collections are coming soon, with no prices or checkout links announced.
-
-Kiếm Hiệp now has a rendered teaser and confirmed contents: three effects, five
-baked directions and separate desktop/mobile presets, totaling 30 compiled
-`.vfxb` containers for the free Lenhon runtime with PixiJS 7/8. Only the rendered
-video and poster are public; the Premium delivery files remain private. Its
-price, customer license and checkout link will be announced at launch.
+The catalog keeps support for future Premium releases in its data model and
+isolated test fixtures. Those fixtures do not represent announced products and
+are not included in the deployed page.
 
 See [storefront catalog maintenance](docs/storefront-catalog.md) for product data,
 release requirements and the boundary between public previews and paid delivery.
@@ -135,7 +122,5 @@ GitHub Pages deploys the Vite showcase.
 The runtime, showcase code, Free collection and public format examples are MIT
 licensed. Keep the copyright and license notice when redistributing runtime code.
 Character artwork (c) 2026 lenhonbp; excluded from the MIT licence.
-The newly published Kiếm Hiệp rendered preview media is separate from the MIT
-code and Free collection; see its [media notice](showcase/public/previews/kiem-hiep/README.md).
-The customer license for the future Premium download will be stated at launch.
-Existing MIT grants on previously published material remain unchanged.
+Any future Premium release will state its customer terms separately. Existing
+MIT grants on previously published material remain unchanged.

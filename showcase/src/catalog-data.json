@@ -7,27 +7,6 @@
       "description": "Ready-to-play 2.5D skill effects for your game.",
       "accent": "#d6b477",
       "symbol": "✦"
-    },
-    {
-      "id": "kiem-hiep",
-      "name": "Kiếm Hiệp",
-      "description": "Sword auras, flying blades and the spirit of a wandering hero.",
-      "accent": "#d6b477",
-      "symbol": "劍"
-    },
-    {
-      "id": "ngu-hanh",
-      "name": "Ngũ Hành",
-      "description": "Metal, wood, water, fire and earth. Five forces in perfect motion.",
-      "accent": "#7dbaa9",
-      "symbol": "五"
-    },
-    {
-      "id": "ultimate-boss",
-      "name": "Ultimate Boss",
-      "description": "Arena-shaking ultimates for battles players will remember.",
-      "accent": "#b69ed4",
-      "symbol": "冥"
     }
   ],
   "products": [
@@ -230,61 +209,6 @@
       "tier": "free",
       "status": "available",
       "description": "A spreading hex binds and weighs down enemies, leaving a sickly, draining curse."
-    },
-    {
-      "id": "kiem-hiep",
-      "collectionId": "kiem-hiep",
-      "tier": "premium",
-      "status": "coming-soon",
-      "name": {
-        "en": "Kiếm Hiệp",
-        "vi": "Kiếm Hiệp"
-      },
-      "description": "Three evolved martial effects: guardian swords, three golden cuts and a bronze bell crowned with eight blades.",
-      "includes": [
-        "Thiên Kiếm Quy Tông — evolved Sword Rain",
-        "Tam Tuyệt Kim Quang — evolved Golden Edge",
-        "Bát Âm Kim Chung — evolved Golden Bell",
-        "30 compiled .vfxb files: three effects, five baked directions and separate desktop/mobile presets",
-        "Integration README and SHA-256 file checksums"
-      ],
-      "compatibility": [
-        "PixiJS 7 / 8 with the free Lenhon VFX runtime, installed separately",
-        ".vfxb animation atlases for the Lenhon runtime, captured at 60 FPS",
-        "Baked directions: 0°, ±45°, ±90°; left-facing casts use runtime mirroring",
-        "VFX assets only; character artwork and audio files are not included"
-      ],
-      "preview": {
-        "type": "video",
-        "src": "previews/kiem-hiep/preview.mp4",
-        "poster": "previews/kiem-hiep/poster.webp"
-      }
-    },
-    {
-      "id": "ngu-hanh",
-      "collectionId": "ngu-hanh",
-      "tier": "premium",
-      "status": "coming-soon",
-      "name": {
-        "en": "Ngũ Hành",
-        "vi": "Ngũ Hành"
-      },
-      "description": "Metal, wood, water, fire and earth. Five forces in perfect motion.",
-      "includes": [],
-      "compatibility": []
-    },
-    {
-      "id": "ultimate-boss",
-      "collectionId": "ultimate-boss",
-      "tier": "premium",
-      "status": "coming-soon",
-      "name": {
-        "en": "Ultimate Boss",
-        "vi": "Ultimate Boss"
-      },
-      "description": "Arena-shaking ultimates for battles players will remember.",
-      "includes": [],
-      "compatibility": []
     }
   ]
 }

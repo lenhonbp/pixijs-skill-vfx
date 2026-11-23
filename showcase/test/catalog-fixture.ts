@@ -1,12 +1,17 @@
 // Copyright (c) 2026 lenhonbp <lenhonbp@gmail.com> — MIT
 // Test-only view fixture. Never imported by the production showcase.
 import { resolveCatalog } from '../src/catalog';
-import type { CatalogProduct, PremiumProductDefinition } from '../src/catalog';
+import type { CatalogCollection, CatalogProduct, PremiumProductDefinition } from '../src/catalog';
 import { createCatalogView } from '../src/catalog-view';
+
+const fixtureCollections: CatalogCollection[] = [
+  { id: 'fixture-released-collection', name: 'Released fixture', description: 'Synthetic released collection.', accent: '#d6b477', symbol: '✧' },
+  { id: 'fixture-upcoming-collection', name: 'Upcoming fixture', description: 'Synthetic upcoming collection.', accent: '#83bfd6', symbol: '✧' },
+];
 
 const definitions: PremiumProductDefinition[] = [
   {
-    id: 'fixture-released', collectionId: 'kiem-hiep', tier: 'premium', status: 'available',
+    id: 'fixture-released', collectionId: 'fixture-released-collection', tier: 'premium', status: 'available',
     name: { en: 'Released test collection', vi: 'Bộ kiểm thử đã phát hành' },
     description: 'Synthetic metadata for purchase and media view regressions.',
     includes: ['Test collection contents'], compatibility: ['Test format compatibility'],
@@ -17,12 +22,18 @@ const definitions: PremiumProductDefinition[] = [
     preview: { type: 'video', src: 'https://media.test/catalog-preview.webm', poster: 'https://media.test/catalog-poster.png' },
   },
   {
-    id: 'fixture-upcoming', collectionId: 'ngu-hanh', tier: 'premium', status: 'coming-soon',
+    id: 'fixture-upcoming', collectionId: 'fixture-upcoming-collection', tier: 'premium', status: 'coming-soon',
     name: { en: 'Upcoming test collection', vi: 'Bộ kiểm thử sắp ra mắt' },
     description: 'A prepared link must remain unavailable until release.',
     includes: ['Confirmed upcoming test effect'], compatibility: [],
     stores: [{ store: 'itch', url: 'https://catalog-fixture.itch.io/prepared-test' }],
     preview: { type: 'video', src: 'https://media.test/upcoming-preview.webm' },
+  },
+  {
+    id: 'fixture-no-preview', collectionId: 'fixture-upcoming-collection', tier: 'premium', status: 'coming-soon',
+    name: { en: 'Unannounced test collection', vi: 'Bộ kiểm thử chưa công bố' },
+    description: 'Synthetic empty metadata for unreleased collection fallbacks.',
+    includes: [], compatibility: [],
   },
 ];
 
@@ -44,7 +55,7 @@ document.body.innerHTML = `
   </section>
   <div id="premium-grid"></div>`;
 
-const products = resolveCatalog([], definitions);
+const products = resolveCatalog([], definitions, fixtureCollections);
 const view = createCatalogView(products, {
   colors: { neutral: '#d6b477' }, labels: { all: 'All', neutral: 'Utility' },
   native: { neutral: 'Tiện ích' }, icons: { neutral: '✧' },

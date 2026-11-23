@@ -169,8 +169,9 @@ const catalogData = validateCatalogData(importedCatalog);
 export const collections = catalogData.collections;
 export const productDefinitions = catalogData.products;
 
-export function resolveCatalog(packs: PackMetadata[], definitions: ProductDefinition[] = productDefinitions): CatalogProduct[] {
-  validateDefinitions(definitions, collections);
+export function resolveCatalog(packs: PackMetadata[], definitions: ProductDefinition[] = productDefinitions,
+  catalogCollections: CatalogCollection[] = collections): CatalogProduct[] {
+  validateDefinitions(definitions, catalogCollections);
   const packMap = new Map<string, PackMetadata>();
   for (const pack of packs) {
     requireText(pack.id, 'pack ID');
@@ -179,7 +180,7 @@ export function resolveCatalog(packs: PackMetadata[], definitions: ProductDefini
   }
   const usedPacks = new Set<string>();
   const result = definitions.map((product): CatalogProduct => {
-    const collection = collections.find(c => c.id === product.collectionId)!;
+    const collection = catalogCollections.find(c => c.id === product.collectionId)!;
     if (product.tier === 'free') {
       const pack = packMap.get(product.packId);
       if (!pack) throw new Error(`Catalog: missing free pack ${product.packId}`);

@@ -12,7 +12,7 @@ collection's quality presets. The Free collection and these public format exampl
 the showcase's character artwork is separate and is not covered by that licence.
 Only baked output is needed to play an effect. No factory or baker is distributed here.
 Future Premium deliveries have their own customer terms, announced at release.
-Rendered Premium marketing media is covered by the notice in its preview directory.
+The current public catalog contains only the 25 Free effects.
 
 ## Manifest
 
@@ -135,26 +135,27 @@ not two downloads required by the runtime.
 
 ### Current free collection and download sizes
 
-Snapshot verified on 2026-11-22: **25 skills**, each with desktop and mobile
-assets, for **50 containers**. All containers are referenced by the 25-entry
-index; there are no orphan or missing containers.
+Snapshot verified on 2026-11-23: **25 skills**, with desktop and mobile assets
+across their baked directions, for **226 containers** (113 desktop and 113
+mobile). All containers are referenced by the 25-entry index; there are no
+orphan or missing containers.
 
 | Assets | Bytes |
 |---|---:|
-| Desktop containers | 57,462,676 |
-| Mobile containers | 20,832,436 |
-| All containers | 78,295,112 |
-| `index.json` | 15,944 |
-| Pack directory including index | 78,311,056 |
-| Largest desktop: Glacier Path | 3,300,689 |
-| Largest mobile: Tornado | 1,304,145 |
+| Desktop containers | 272,854,709 |
+| Mobile containers | 97,535,753 |
+| All containers | 370,390,462 |
+| `index.json` | 46,961 |
+| Pack directory including index | 370,437,423 |
+| Largest desktop: Dragon Breath, 90° | 3,947,129 |
+| Largest mobile: Dragon Breath, −45° | 1,443,772 |
 
 Bytes are decimal file sizes, not decoded texture memory or complete page loads.
 Every container fits the collection's 4,000,000-byte desktop / 1,500,000-byte mobile
-pack limits. The showcase downloads only its selected skill, not this total.
-18 desktop and 15 mobile packs use 60 FPS; the others use 30 FPS.
+pack limits. The showcase downloads its selected skill and direction on demand,
+not this total. Use each loaded manifest's frame rate for playback.
 
-Cold first loads of the built showcase, measured on the same date over a local
+The following historical cold first loads were measured on 2026-11-22 over a local
 uncompressed HTTP server, include code, character artwork, index, selected pack
 and HTTP overhead. Desktop viewport was 1440×900; mobile was 390×844 at DPR 3.
 
@@ -164,7 +165,7 @@ and HTTP overhead. Desktop viewport was 1440×900; mobile was 390×844 at DPR 3.
 | `#hoa-fire-dragon-crossing` | 3,019,015 | 1,622,625 |
 | `#thuy-glacier-path` (largest desktop pack) | 3,875,904 | 1,868,189 |
 
-Non-pack overhead was 575,215 bytes in these measurements. The default meets the
+Non-pack overhead was 575,215 bytes in these measurements. In that snapshot, the default met the
 3,000,000-byte desktop / 1,600,000-byte mobile first-load targets. Deep links to
 heavier skills exceed them because the selected pack alone is larger.
 Container limits do not guarantee whole-page first-load limits. These are local

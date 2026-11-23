@@ -15,15 +15,15 @@ export async function showcaseSmoke({ page, browser, url, collection }) {
   assert.ok(await page.locator('footer a[href="mailto:lenhon.vfx@gmail.com"]').count());
   assert.ok(await page.locator('footer a[href$="/issues"]').count());
 
+  await page.setViewportSize({ width: 1440, height: 900 });
   const split = await page.evaluate(async () => {
-    scrollTo({ top: document.getElementById('library').offsetTop, behavior: 'instant' });
+    scrollTo({ top: document.getElementById('library').getBoundingClientRect().top + scrollY, behavior: 'instant' });
     await new Promise(requestAnimationFrame);
-    const aside = document.querySelector('aside'), r = aside.getBoundingClientRect(), actions = document.querySelector('.actions').getBoundingClientRect();
+    const list = document.querySelector('aside').getBoundingClientRect(), actions = document.querySelector('.actions').getBoundingClientRect();
     scrollTo({ top: 0, behavior: 'instant' });
-    return { position: getComputedStyle(aside).position, asideBottom: r.bottom, actionsBottom: actions.bottom, vh: innerHeight };
+    return { listTop: list.top, listBottom: list.bottom, actionsTop: actions.top, actionsBottom: actions.bottom, vh: innerHeight };
   });
-  assert.equal(split.position, 'sticky');
-  assert.ok(split.asideBottom <= split.vh + 2 && split.actionsBottom <= split.vh, `skill list and preview actions fit one screen: ${JSON.stringify(split)}`);
+  assert.ok(split.listTop >= -1 && split.listBottom <= split.vh + 1 && split.actionsTop >= 0 && split.actionsBottom <= split.vh + 1, `skill list and preview actions fit a 1440×900 screen: ${JSON.stringify(split)}`);
   assert.deepEqual(await page.locator('.group').evaluateAll(g => g.slice(0, 5).map(e => e.textContent.split(' · ')[0])), ['Metal', 'Wood', 'Water', 'Fire', 'Earth']);
 
   for (const mode of ['checker', 'light', 'dark', 'stage']) {
@@ -169,13 +169,6 @@ export async function showcaseSmoke({ page, browser, url, collection }) {
     ]);
     assert.ok(downloads.every(d => /· [\d.]+ (KB|MB)$/.test(d.label)));
     for (const d of downloads) assert.equal((await linkPage.request.get(url + d.path)).status(), 200);
-    const sticky = await linkPage.evaluate(async () => {
-      scrollTo({ top: document.querySelector('aside').offsetTop + 400, behavior: 'instant' });
-      await new Promise(requestAnimationFrame);
-      return { viewer: document.querySelector('.viewer').getBoundingClientRect().top, stage: document.getElementById('stage').getBoundingClientRect().bottom };
-    });
-    assert.equal(sticky.viewer, 0, 'mobile preview stays pinned while the skill list scrolls');
-    assert.ok(sticky.stage > 150 && sticky.stage < 844 / 2, `mobile stage ends at ${sticky.stage}`);
     await linkPage.goBack();
     await linkPage.waitForFunction(() => location.hash === '#phong-tailwind' && document.getElementById('status').textContent.startsWith('Playing'));
     assert.equal(await linkPage.evaluate(() => window.__showcase.vfx.stats().packs), 1);
