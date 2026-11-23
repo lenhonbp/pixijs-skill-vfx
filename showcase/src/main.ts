@@ -287,7 +287,8 @@ function renderSelection() {
   el('selected-vi').textContent = activeProduct.name.vi === activeProduct.name.en ? '' : activeProduct.name.vi;
   el('description').textContent = activeProduct.description;
   const hash = activeProduct.tier === 'free' ? '#' + selected.id : '#product/' + activeProduct.id;
-  if (location.hash !== hash) history[location.hash.slice(1).split('/')[0] === selected.id ? 'replaceState' : 'pushState'](null, '', hash);
+  const legacyFreeHash = activeProduct.tier === 'free' && location.hash.startsWith('#' + selected.id + '/');
+  if (location.hash !== hash) history[legacyFreeHash ? 'replaceState' : 'pushState'](null, '', hash);
   if (activeProduct.tier === 'premium') {
     el('category').textContent = 'PREMIUM / COLLECTION';
     el('snippet').textContent = '';

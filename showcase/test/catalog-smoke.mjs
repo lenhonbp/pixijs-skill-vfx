@@ -82,6 +82,10 @@ export async function catalogSmoke({ browser, url, collection }) {
     assert.equal(await page.evaluate(() => window.__showcase.vfx.stats().active), 0, 'Space does not cast a hidden free effect');
     if (process.env.VFX_CATALOG_SCREENSHOT) await page.screenshot({ path: process.env.VFX_CATALOG_SCREENSHOT, fullPage: true });
 
+    await page.goBack(); await playing(page);
+    assert.equal(new URL(page.url()).hash, '#hoa-fireball', 'entering Premium preserves the previous Free history entry');
+    await page.goForward(); await expectUpcoming(page, 'Kiếm Hiệp');
+
     await product(page, 'hoa-fireball').click(); await playing(page);
     assert.equal(await page.locator('#stage').getAttribute('data-bg'), 'light');
     assert.equal(await page.getByRole('button', { name: 'Cast down-right', exact: true }).getAttribute('aria-pressed'), 'true');
