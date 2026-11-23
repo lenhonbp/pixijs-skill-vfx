@@ -144,6 +144,9 @@ function dummyTexture() {
 interface Variant { bytes: number; desktopBytes?: number; mobileBytes?: number }
 interface Entry extends Variant { id: string; name: { en: string; vi: string }; element: string; category: string; directions?: Record<string, Variant> }
 const base = import.meta.env.BASE_URL;
+function arrowIcon(degrees: number, size = 16) {
+  return `<svg viewBox="0 0 24 24" width="${size}" height="${size}" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="M5 12h14m-6-6 6 6-6 6" transform="rotate(${degrees} 12 12)"/></svg>`;
+}
 document.querySelector<HTMLDivElement>('#app')!.innerHTML = `
 <a class="skip-link" href="#library">Skip to the effect library</a>
 <header class="site-header">
@@ -151,12 +154,12 @@ document.querySelector<HTMLDivElement>('#app')!.innerHTML = `
     <svg class="brand-mark" viewBox="0 0 32 32" width="32" height="32" fill="none" aria-hidden="true"><path d="M16 1.5 30.5 16 16 30.5 1.5 16Z" stroke="currentColor"/><path d="M12 9v14h9M18 8v8h7" stroke="currentColor" stroke-width="1.5"/></svg>
     <span>LENHON <b>VFX</b></span><small>AN EFFECT LIBRARY</small>
   </a>
-  <nav aria-label="Main navigation"><a href="#library">Browse effects</a><a href="https://github.com/lenhonbp/pixijs-skill-vfx/tree/main/runtime">Runtime docs</a><a href="https://github.com/lenhonbp/pixijs-skill-vfx">GitHub <span aria-hidden="true">↗</span></a></nav>
+  <nav aria-label="Main navigation"><a href="#library">Browse effects</a><a href="https://github.com/lenhonbp/pixijs-skill-vfx/tree/main/runtime">Runtime docs</a><a href="https://github.com/lenhonbp/pixijs-skill-vfx">GitHub <span aria-hidden="true">${arrowIcon(-45, 12)}</span></a></nav>
 </header>
 <main>
   <section class="intro" aria-labelledby="intro-title">
     <div class="intro-copy"><p class="eyebrow">THE FREE COLLECTION <span aria-hidden="true">/</span> PIXIJS 7 + 8</p><h1 id="intro-title">A little magic.<br><em>A lot of impact.</em></h1><p class="lede">Game-ready 2.5D effects, made for your next world.<br>Preview every angle. Find your effect. Make it yours.</p></div>
-    <div class="intro-note"><p class="eyebrow">CRAFTED TO BE SHARED</p><div class="collection-stat"><strong>25</strong><span>effects.<br>All free.</span></div><p>MIT-licensed packs &amp; runtime.<br>Ready to use in your own game.</p><a href="#library">Explore the collection <span aria-hidden="true">↓</span></a></div>
+    <div class="intro-note"><p class="eyebrow">CRAFTED TO BE SHARED</p><div class="collection-stat"><strong>25</strong><span>effects.<br>All free.</span></div><p>MIT-licensed packs &amp; runtime.<br>Ready to use in your own game.</p><a href="#library">Explore the collection <span aria-hidden="true">${arrowIcon(90, 12)}</span></a></div>
   </section>
   <section id="library" class="library" aria-label="Interactive effect library">
     <aside aria-labelledby="catalog-heading">
@@ -169,7 +172,7 @@ document.querySelector<HTMLDivElement>('#app')!.innerHTML = `
       <p class="catalog-footnote">Every effect in this collection is free.</p>
     </aside>
     <div class="viewer">
-      <div class="arena-header"><div class="effect-heading"><p class="eyebrow" id="category">LIVE PREVIEW</p><h2><span id="selected-name">Loading collection…</span><span id="product-badge" class="product-badge"></span></h2><p id="selected-vi"></p></div><button id="browse" class="browse" type="button">Browse <span aria-hidden="true">↓</span></button></div>
+      <div class="arena-header"><div class="effect-heading"><p class="eyebrow" id="category">LIVE PREVIEW</p><h2><span id="selected-name">Loading collection…</span><span id="product-badge" class="product-badge"></span></h2><p id="selected-vi"></p></div><button id="browse" class="browse" type="button">Browse <span aria-hidden="true">${arrowIcon(90, 12)}</span></button></div>
       <div class="stage-wrap">
         <div id="stage" data-bg="stage" aria-label="Effect preview arena"><div class="arena-tip">Click the floor to cast <span aria-hidden="true">·</span> <kbd>SPACE</kbd> to replay</div></div>
         <div class="stage-tools"><div class="tool-group direction-group"><span class="tool-label" aria-hidden="true">Direction</span><div class="aim-toolbar" id="aim" role="group" aria-label="Cast direction"></div></div><div class="tool-group background-group"><span class="tool-label" aria-hidden="true">Backdrop</span><div class="stage-toolbar" role="group" aria-label="Preview background"><button type="button" data-bg="stage" title="Painted stage">Stage</button><button type="button" data-bg="dark" title="Dark #0e1118">Dark</button><button type="button" data-bg="light" title="Light">Light</button><button type="button" data-bg="checker" title="Transparent checkerboard: inspect additive glow and alpha">Alpha</button></div></div></div>
@@ -189,12 +192,12 @@ document.querySelector<HTMLDivElement>('#app')!.innerHTML = `
         <div class="product-specs"><div><h3 id="product-includes-title">In the download kit</h3><ul id="product-includes"></ul></div><div><h3>Compatibility</h3><ul id="product-compatibility"></ul></div></div>
         <p id="product-license" class="product-license"></p>
       </section>
-      <div id="integration" class="integration"><div class="section-heading"><h3>From preview to your game</h3><span>npm i @lenhonbp/pixijs-vfx-runtime</span></div><pre><code id="snippet"></code></pre><div class="downloads" aria-label="Download the selected pack"><a id="download-desktop" download>Desktop pack <span></span><svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3v12m-5-5 5 5 5-5M5 16v5h14v-5"/></svg></a><a id="download-mobile" download>Mobile pack <span></span><svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3v12m-5-5 5 5 5-5M5 16v5h14v-5"/></svg></a></div><p class="integration-note">Individual packs follow the selected cast direction. The complete kit includes every direction.</p><div class="documentation-links"><a href="https://github.com/lenhonbp/pixijs-skill-vfx/blob/main/runtime/README.md">Runtime documentation <span aria-hidden="true">↗</span></a><a href="https://github.com/lenhonbp/pixijs-skill-vfx/tree/main/skills/lenhon-vfx">Agent skill <span aria-hidden="true">↗</span></a></div></div>
+      <div id="integration" class="integration"><div class="section-heading"><h3>From preview to your game</h3><span>npm i @lenhonbp/pixijs-vfx-runtime</span></div><pre><code id="snippet"></code></pre><div class="downloads" aria-label="Download the selected pack"><a id="download-desktop" download>Desktop pack <span></span><svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3v12m-5-5 5 5 5-5M5 16v5h14v-5"/></svg></a><a id="download-mobile" download>Mobile pack <span></span><svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3v12m-5-5 5 5 5-5M5 16v5h14v-5"/></svg></a></div><p class="integration-note">Individual packs follow the selected cast direction. The complete kit includes every direction.</p><div class="documentation-links"><a href="https://github.com/lenhonbp/pixijs-skill-vfx/blob/main/runtime/README.md">Runtime documentation <span aria-hidden="true">${arrowIcon(-45, 12)}</span></a><a href="https://github.com/lenhonbp/pixijs-skill-vfx/tree/main/skills/lenhon-vfx">Agent skill <span aria-hidden="true">${arrowIcon(-45, 12)}</span></a></div></div>
     </div>
   </section>
   <section id="premium" hidden aria-label="Future collections"><div id="premium-grid" class="premium-grid"></div></section>
   <p class="collection-note">Premium collections are planned for later. <span>This entire collection is free.</span></p>
-  <footer><div class="footer-main"><span class="footer-brand">LENHON <b>VFX</b><span>© 2026 lenhonbp</span></span><nav aria-label="Footer navigation"><a href="https://opensource.org/license/mit">MIT license</a><a href="https://github.com/lenhonbp/pixijs-skill-vfx">GitHub</a><a href="https://github.com/lenhonbp/pixijs-skill-vfx/issues">Report an issue</a><a href="mailto:lenhon.vfx@gmail.com">Get in touch <span aria-hidden="true">↗</span></a></nav></div><p>All 25 effect packs and the runtime are free under MIT. Character artwork © 2026 lenhonbp is separate and excluded from the MIT license.</p></footer>
+  <footer><div class="footer-main"><span class="footer-brand">LENHON <b>VFX</b><span>© 2026 lenhonbp</span></span><nav aria-label="Footer navigation"><a href="https://opensource.org/license/mit">MIT license</a><a href="https://github.com/lenhonbp/pixijs-skill-vfx">GitHub</a><a href="https://github.com/lenhonbp/pixijs-skill-vfx/issues">Report an issue</a><a href="mailto:lenhon.vfx@gmail.com">Get in touch <span aria-hidden="true">${arrowIcon(-45, 12)}</span></a></nav></div><p>All 25 effect packs and the runtime are free under MIT. Character artwork © 2026 lenhonbp is separate and excluded from the MIT license.</p></footer>
 </main>`;
 const el = <T extends HTMLElement>(id: string) => document.getElementById(id) as T;
 const app = new Application();
@@ -359,10 +362,10 @@ app.ticker.add((ticker: any) => scene.animate(ticker.deltaMS, current?.pose('cas
 window.addEventListener('hashchange', () => { if (readHash()) showProduct(activeProduct); });
 el('replay').onclick = () => void cast();
 el('stage').onclick = event => { if (!(event.target as HTMLElement).closest('.aim-toolbar, .stage-toolbar')) void cast(); };
-const aims: [number, string, string][] = [[-135, '↖', 'up-left'], [-90, '↑', 'up'], [-45, '↗', 'up-right'], [180, '←', 'left'], [0, '→', 'right'], [135, '↙', 'down-left'], [90, '↓', 'down'], [45, '↘', 'down-right']];
+const aims: [number, string][] = [[-135, 'up-left'], [-90, 'up'], [-45, 'up-right'], [180, 'left'], [0, 'right'], [135, 'down-left'], [90, 'down'], [45, 'down-right']];
 function renderAim() {
-  el('aim').replaceChildren(...aims.map(([deg, arrow, name]) => {
-    const button = document.createElement('button'); button.textContent = arrow; button.title = `Cast ${name}`;
+  el('aim').replaceChildren(...aims.map(([deg, name]) => {
+    const button = document.createElement('button'); button.type = 'button'; button.innerHTML = arrowIcon(deg); button.title = `Cast ${name}`;
     button.setAttribute('aria-label', `Cast ${name}`); button.setAttribute('aria-pressed', String(deg === aim));
     button.onclick = () => { if (aim === deg) return void cast(); aim = deg; placeActors(); scene.layout(); renderAim(); renderSelection(); void cast(); };
     return button;
