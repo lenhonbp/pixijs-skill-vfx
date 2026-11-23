@@ -4,9 +4,17 @@ import { readFileSync } from 'node:fs';
 import test from 'node:test';
 import { build } from 'esbuild';
 
-const compiled = await build({ entryPoints: ['showcase/src/catalog.ts'], bundle: true, write: false, format: 'esm', platform: 'node' });
-const { collections, productDefinitions, resolveCatalog, getProductAction, filterProducts } =
-  await import(`data:text/javascript;base64,${Buffer.from(compiled.outputFiles[0].contents).toString('base64')}`);
+async function loadCatalog(data) {
+  const compiled = await build({
+    entryPoints: ['showcase/src/catalog.ts'], bundle: true, write: false, format: 'esm', platform: 'node',
+    plugins: data ? [{ name: 'catalog-data-fixture', setup(builder) {
+      builder.onLoad({ filter: /catalog-data\.json$/ }, () => ({ contents: JSON.stringify(data), loader: 'json' }));
+    } }] : [],
+  });
+  return import(`data:text/javascript;base64,${Buffer.from(compiled.outputFiles[0].contents).toString('base64')}`);
+}
+const { collections, productDefinitions, resolveCatalog, getProductAction, filterProducts, validateCatalogData } = await loadCatalog();
+const catalogData = JSON.parse(readFileSync('showcase/src/catalog-data.json', 'utf8'));
 const packs = JSON.parse(readFileSync('showcase/public/packs/free/index.json', 'utf8'));
 const fresh = () => structuredClone(productDefinitions);
 function mutatePremium(change) {
@@ -28,6 +36,48 @@ test('catalog references all 25 delivered free packs without duplicating their n
     assert.match(product.includes.join(' '), /README/);
     assert.match(product.compatibility.join(' '), /separately/);
   }
+});
+
+test('imported catalog data validates version, collection identity and supported fields', () => {
+  const valid = validateCatalogData(catalogData);
+  assert.equal(valid.version, 1);
+  assert.equal(valid.products.length, 28);
+  assert.throws(() => validateCatalogData({ ...catalogData, version: 2 }), /unsupported data version/);
+  assert.throws(() => validateCatalogData({ ...catalogData, version: '1' }), /unsupported data version/);
+  assert.throws(() => validateCatalogData({ ...catalogData, sourcePath: '/private/recipes' }), /unsupported fields/);
+  assert.throws(() => validateCatalogData({ ...catalogData, collections: [] }), /nonempty list/);
+  assert.throws(() => validateCatalogData({ ...catalogData, products: [] }), /nonempty list/);
+  assert.throws(() => validateCatalogData({ ...catalogData, collections: [...catalogData.collections, catalogData.collections[0]] }), /duplicate collection/);
+  const invalid = structuredClone(catalogData);
+  invalid.collections[0].accent = 'url(https://media.test/theme)';
+  assert.throws(() => validateCatalogData(invalid), /hex color/);
+});
+
+test('imported Free metadata contains descriptions and rejects duplicate or playback fields', () => {
+  const invalid = structuredClone(catalogData);
+  delete invalid.products[0].description;
+  assert.throws(() => validateCatalogData(invalid), /description must be nonempty/);
+  assert.throws(() => validateCatalogData({ ...catalogData, products: [...catalogData.products, catalogData.products[0]] }), /duplicate product/);
+  invalid.products[0] = { ...catalogData.products[0], name: { en: 'Wrong name', vi: 'Wrong name' } };
+  assert.throws(() => validateCatalogData(invalid), /unsupported fields in free definition/);
+  const badStatus = structuredClone(catalogData);
+  badStatus.products.find(p => p.tier === 'premium').status = ['available'];
+  assert.throws(() => validateCatalogData(badStatus), /tier or status/);
+});
+
+test('a data-only export update reaches the default catalog without editing TypeScript', async () => {
+  const updated = structuredClone(catalogData);
+  const effect = updated.products.find(p => p.id === 'hoa-fireball');
+  effect.description = 'Updated release description supplied through the data fixture.';
+  updated.collections[0].name = 'Updated collection in data fixture';
+  const imported = await loadCatalog(updated);
+  const product = imported.resolveCatalog(packs).find(p => p.id === 'hoa-fireball');
+  assert.equal(product.description, effect.description);
+  assert.equal(product.collection.name, updated.collections[0].name);
+  assert.deepEqual(product.name, packs.find(p => p.id === 'hoa-fireball').name);
+  assert.equal(product.element, packs.find(p => p.id === 'hoa-fireball').element);
+  assert.equal(imported.getProductAction(product).kind, 'download');
+  assert.equal(imported.resolveCatalog(packs).length, 28);
 });
 
 test('existing premium collections are honest coming-soon products with no checkout or pack', () => {
