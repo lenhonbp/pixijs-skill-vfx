@@ -281,7 +281,7 @@ el('sound').onchange = () => { if (el<HTMLInputElement>('sound').checked) void e
 el('shake').onchange = () => { vfx.shakeEnabled = el<HTMLInputElement>('shake').checked; };
 el('search').oninput = renderList;
 el('browse').onclick = () => {
-  const viewer = matchMedia('(max-width:720px)').matches ? el('library').querySelector<HTMLElement>('.viewer')!.offsetHeight : 0;
+  const pinned = el('library').querySelector<HTMLElement>('.viewer')!, viewer = matchMedia('(max-width:720px)').matches && getComputedStyle(pinned).position === 'sticky' ? pinned.offsetHeight : 0;
   scrollTo({ top: el('library').querySelector('aside')!.getBoundingClientRect().top + scrollY - viewer, behavior: 'smooth' });
 };
 function flash(id: string, text: string) {
