@@ -424,16 +424,16 @@
     "files": [
       {
         "name": "moc-toxic-spores.vfxb",
-        "bytes": 2911456
+        "bytes": 2771662
       },
       {
         "name": "moc-toxic-spores.m.vfxb",
-        "bytes": 1216000
+        "bytes": 1167296
       }
     ],
-    "bytes": 2911456,
-    "desktopBytes": 2911456,
-    "mobileBytes": 1216000,
+    "bytes": 2771662,
+    "desktopBytes": 2771662,
+    "mobileBytes": 1167296,
     "desktopScales": {
       "glow-back": 0.5,
       "base": 1,
@@ -449,61 +449,61 @@
         "files": [
           {
             "name": "moc-toxic-spores@-90.vfxb",
-            "bytes": 2913824
+            "bytes": 2773842
           },
           {
             "name": "moc-toxic-spores@-90.m.vfxb",
-            "bytes": 1218096
+            "bytes": 1163106
           }
         ],
-        "bytes": 2913824,
-        "desktopBytes": 2913824,
-        "mobileBytes": 1218096
+        "bytes": 2773842,
+        "desktopBytes": 2773842,
+        "mobileBytes": 1163106
       },
       "-45": {
         "files": [
           {
             "name": "moc-toxic-spores@-45.vfxb",
-            "bytes": 2917991
+            "bytes": 2779657
           },
           {
             "name": "moc-toxic-spores@-45.m.vfxb",
-            "bytes": 1221732
+            "bytes": 1168937
           }
         ],
-        "bytes": 2917991,
-        "desktopBytes": 2917991,
-        "mobileBytes": 1221732
+        "bytes": 2779657,
+        "desktopBytes": 2779657,
+        "mobileBytes": 1168937
       },
       "45": {
         "files": [
           {
             "name": "moc-toxic-spores@45.vfxb",
-            "bytes": 2920249
+            "bytes": 2785104
           },
           {
             "name": "moc-toxic-spores@45.m.vfxb",
-            "bytes": 1222192
+            "bytes": 1171197
           }
         ],
-        "bytes": 2920249,
-        "desktopBytes": 2920249,
-        "mobileBytes": 1222192
+        "bytes": 2785104,
+        "desktopBytes": 2785104,
+        "mobileBytes": 1171197
       },
       "90": {
         "files": [
           {
             "name": "moc-toxic-spores@90.vfxb",
-            "bytes": 2711701
+            "bytes": 2784659
           },
           {
             "name": "moc-toxic-spores@90.m.vfxb",
-            "bytes": 1221014
+            "bytes": 1171316
           }
         ],
-        "bytes": 2711701,
-        "desktopBytes": 2711701,
-        "mobileBytes": 1221014
+        "bytes": 2784659,
+        "desktopBytes": 2784659,
+        "mobileBytes": 1171316
       }
     }
   },
@@ -897,16 +897,16 @@
     "files": [
       {
         "name": "hoa-heaven-fire.vfxb",
-        "bytes": 2679214
+        "bytes": 2712254
       },
       {
         "name": "hoa-heaven-fire.m.vfxb",
-        "bytes": 1271016
+        "bytes": 1315748
       }
     ],
-    "bytes": 2679214,
-    "desktopBytes": 2679214,
-    "mobileBytes": 1271016,
+    "bytes": 2712254,
+    "desktopBytes": 2712254,
+    "mobileBytes": 1315748,
     "desktopScales": {
       "glow-back": 0.75,
       "base": 1,
@@ -922,61 +922,61 @@
         "files": [
           {
             "name": "hoa-heaven-fire@-90.vfxb",
-            "bytes": 2732757
+            "bytes": 2775329
           },
           {
             "name": "hoa-heaven-fire@-90.m.vfxb",
-            "bytes": 1275048
+            "bytes": 1324734
           }
         ],
-        "bytes": 2732757,
-        "desktopBytes": 2732757,
-        "mobileBytes": 1275048
+        "bytes": 2775329,
+        "desktopBytes": 2775329,
+        "mobileBytes": 1324734
       },
       "-45": {
         "files": [
           {
             "name": "hoa-heaven-fire@-45.vfxb",
-            "bytes": 2668368
+            "bytes": 2699996
           },
           {
             "name": "hoa-heaven-fire@-45.m.vfxb",
-            "bytes": 1268678
+            "bytes": 1305122
           }
         ],
-        "bytes": 2668368,
-        "desktopBytes": 2668368,
-        "mobileBytes": 1268678
+        "bytes": 2699996,
+        "desktopBytes": 2699996,
+        "mobileBytes": 1305122
       },
       "45": {
         "files": [
           {
             "name": "hoa-heaven-fire@45.vfxb",
-            "bytes": 2550005
+            "bytes": 2578827
           },
           {
             "name": "hoa-heaven-fire@45.m.vfxb",
-            "bytes": 1205545
+            "bytes": 1234157
           }
         ],
-        "bytes": 2550005,
-        "desktopBytes": 2550005,
-        "mobileBytes": 1205545
+        "bytes": 2578827,
+        "desktopBytes": 2578827,
+        "mobileBytes": 1234157
       },
       "90": {
         "files": [
           {
             "name": "hoa-heaven-fire@90.vfxb",
-            "bytes": 2627009
+            "bytes": 2670749
           },
           {
             "name": "hoa-heaven-fire@90.m.vfxb",
-            "bytes": 1233459
+            "bytes": 1272045
           }
         ],
-        "bytes": 2627009,
-        "desktopBytes": 2627009,
-        "mobileBytes": 1233459
+        "bytes": 2670749,
+        "desktopBytes": 2670749,
+        "mobileBytes": 1272045
       }
     }
   },
@@ -1219,16 +1219,16 @@
     "files": [
       {
         "name": "phong-gale-blade.vfxb",
-        "bytes": 912274
+        "bytes": 1225455
       },
       {
         "name": "phong-gale-blade.m.vfxb",
-        "bytes": 168264
+        "bytes": 263198
       }
     ],
-    "bytes": 912274,
-    "desktopBytes": 912274,
-    "mobileBytes": 168264,
+    "bytes": 1225455,
+    "desktopBytes": 1225455,
+    "mobileBytes": 263198,
     "desktopScales": {
       "glow-back": 1,
       "base": 2,
@@ -1244,61 +1244,61 @@
         "files": [
           {
             "name": "phong-gale-blade@-90.vfxb",
-            "bytes": 1095248
+            "bytes": 1392746
           },
           {
             "name": "phong-gale-blade@-90.m.vfxb",
-            "bytes": 224654
+            "bytes": 293129
           }
         ],
-        "bytes": 1095248,
-        "desktopBytes": 1095248,
-        "mobileBytes": 224654
+        "bytes": 1392746,
+        "desktopBytes": 1392746,
+        "mobileBytes": 293129
       },
       "-45": {
         "files": [
           {
             "name": "phong-gale-blade@-45.vfxb",
-            "bytes": 1014863
+            "bytes": 1333338
           },
           {
             "name": "phong-gale-blade@-45.m.vfxb",
-            "bytes": 188326
+            "bytes": 281851
           }
         ],
-        "bytes": 1014863,
-        "desktopBytes": 1014863,
-        "mobileBytes": 188326
+        "bytes": 1333338,
+        "desktopBytes": 1333338,
+        "mobileBytes": 281851
       },
       "45": {
         "files": [
           {
             "name": "phong-gale-blade@45.vfxb",
-            "bytes": 924791
+            "bytes": 1249243
           },
           {
             "name": "phong-gale-blade@45.m.vfxb",
-            "bytes": 169979
+            "bytes": 263236
           }
         ],
-        "bytes": 924791,
-        "desktopBytes": 924791,
-        "mobileBytes": 169979
+        "bytes": 1249243,
+        "desktopBytes": 1249243,
+        "mobileBytes": 263236
       },
       "90": {
         "files": [
           {
             "name": "phong-gale-blade@90.vfxb",
-            "bytes": 878681
+            "bytes": 1215438
           },
           {
             "name": "phong-gale-blade@90.m.vfxb",
-            "bytes": 178275
+            "bytes": 271644
           }
         ],
-        "bytes": 878681,
-        "desktopBytes": 878681,
-        "mobileBytes": 178275
+        "bytes": 1215438,
+        "desktopBytes": 1215438,
+        "mobileBytes": 271644
       }
     }
   },
@@ -1599,16 +1599,16 @@
     "files": [
       {
         "name": "lightning-chain.vfxb",
-        "bytes": 356534
+        "bytes": 854508
       },
       {
         "name": "lightning-chain.m.vfxb",
-        "bytes": 104256
+        "bytes": 200269
       }
     ],
-    "bytes": 356534,
-    "desktopBytes": 356534,
-    "mobileBytes": 104256,
+    "bytes": 854508,
+    "desktopBytes": 854508,
+    "mobileBytes": 200269,
     "desktopScales": {
       "glow-back": 1,
       "base": 2,
@@ -1624,61 +1624,61 @@
         "files": [
           {
             "name": "lightning-chain@-90.vfxb",
-            "bytes": 281775
+            "bytes": 748523
           },
           {
             "name": "lightning-chain@-90.m.vfxb",
-            "bytes": 86362
+            "bytes": 181595
           }
         ],
-        "bytes": 281775,
-        "desktopBytes": 281775,
-        "mobileBytes": 86362
+        "bytes": 748523,
+        "desktopBytes": 748523,
+        "mobileBytes": 181595
       },
       "-45": {
         "files": [
           {
             "name": "lightning-chain@-45.vfxb",
-            "bytes": 321290
+            "bytes": 823356
           },
           {
             "name": "lightning-chain@-45.m.vfxb",
-            "bytes": 98977
+            "bytes": 199361
           }
         ],
-        "bytes": 321290,
-        "desktopBytes": 321290,
-        "mobileBytes": 98977
+        "bytes": 823356,
+        "desktopBytes": 823356,
+        "mobileBytes": 199361
       },
       "45": {
         "files": [
           {
             "name": "lightning-chain@45.vfxb",
-            "bytes": 344248
+            "bytes": 818204
           },
           {
             "name": "lightning-chain@45.m.vfxb",
-            "bytes": 103980
+            "bytes": 197157
           }
         ],
-        "bytes": 344248,
-        "desktopBytes": 344248,
-        "mobileBytes": 103980
+        "bytes": 818204,
+        "desktopBytes": 818204,
+        "mobileBytes": 197157
       },
       "90": {
         "files": [
           {
             "name": "lightning-chain@90.vfxb",
-            "bytes": 321278
+            "bytes": 769198
           },
           {
             "name": "lightning-chain@90.m.vfxb",
-            "bytes": 99563
+            "bytes": 190435
           }
         ],
-        "bytes": 321278,
-        "desktopBytes": 321278,
-        "mobileBytes": 99563
+        "bytes": 769198,
+        "desktopBytes": 769198,
+        "mobileBytes": 190435
       }
     }
   },
