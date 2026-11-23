@@ -201,15 +201,15 @@
     "files": [
       {
         "name": "kim-golden-bell.vfxb",
-        "bytes": 2381899
+        "bytes": 2381913
       },
       {
         "name": "kim-golden-bell.m.vfxb",
         "bytes": 769993
       }
     ],
-    "bytes": 2381899,
-    "desktopBytes": 2381899,
+    "bytes": 2381913,
+    "desktopBytes": 2381913,
     "mobileBytes": 769993,
     "desktopScales": {
       "glow-back": 0.75,
