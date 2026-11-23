@@ -1,0 +1,29 @@
+name: Publish runtime to npm
+
+on:
+  push:
+    tags: ['runtime-v*']
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  id-token: write
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          registry-url: https://registry.npmjs.org
+      - run: npm install --no-save --package-lock=false pixi.js@8.23.0 typescript
+      - name: Check the tag matches the package version
+        if: github.ref_type == 'tag'
+        run: test "runtime-v$(node -p "require('./runtime/package.json').version")" = "$GITHUB_REF_NAME"
+      - run: npm --prefix runtime run typecheck
+      - run: npm publish --provenance
+        working-directory: runtime
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}

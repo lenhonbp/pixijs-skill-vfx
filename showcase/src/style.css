@@ -86,6 +86,10 @@ input::placeholder { color: #929baa; }
 pre { background: #0d111a; border: 1px solid var(--line); padding: 16px; border-radius: 6px; color: #b6c8d6; font-size: 11px; line-height: 1.9; margin: 14px 0 12px; }
 .integration p { font-size: 10px; line-height: 1.8; color: #96a2b6; margin: 0; }
 .integration p a { color: var(--gold); margin-left: 10px; }
+.downloads { display: flex; flex-wrap: wrap; gap: 8px; margin: 0 0 12px; }
+.downloads a { flex: 1 1 160px; display: flex; justify-content: center; gap: 6px; border: 1px solid #d6b47765; background: #d6b47712; color: var(--gold); text-decoration: none; font-size: 11px; border-radius: 5px; padding: 9px 12px; min-height: 36px; align-items: center; }
+.downloads a:hover { background: #d6b47722; }
+.downloads span { color: #96a2b6; }
 #premium { padding: 60px 0 44px; scroll-margin-top: 24px; }
 .premium-heading { display: flex; justify-content: space-between; align-items: end; margin-bottom: 26px; gap: 24px; }
 .premium-heading .eyebrow { margin-bottom: 12px; }

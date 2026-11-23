@@ -1,14 +1,54 @@
 {
   "name": "@lenhon/pixijs-vfx-runtime",
   "version": "1.0.0",
+  "description": "Free MIT atlas player for pre-baked 2.5D skill VFX packs in PixiJS v7 and v8",
   "type": "module",
   "license": "MIT",
   "author": "lenhonbp <lenhonbp@gmail.com>",
+  "homepage": "https://lenhonbp.github.io/pixijs-skill-vfx/",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/lenhonbp/pixijs-skill-vfx.git",
+    "directory": "runtime"
+  },
+  "bugs": {
+    "url": "https://github.com/lenhonbp/pixijs-skill-vfx/issues"
+  },
+  "keywords": [
+    "pixijs",
+    "pixi.js",
+    "vfx",
+    "particles",
+    "spritesheet",
+    "game-development",
+    "webgl",
+    "skills",
+    "effects"
+  ],
   "main": "./dist/index.js",
   "module": "./dist/index.js",
   "types": "./dist/index.d.ts",
-  "exports": { ".": { "types": "./dist/index.d.ts", "import": "./dist/index.js" } },
-  "files": ["dist", "README.md", "LICENSE"],
-  "scripts": { "build": "tsc -p tsconfig.json", "typecheck": "tsc -p tsconfig.json --noEmit" },
-  "peerDependencies": { "pixi.js": ">=7 <9" }
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js"
+    }
+  },
+  "sideEffects": false,
+  "files": [
+    "dist",
+    "README.md",
+    "LICENSE"
+  ],
+  "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "typecheck": "tsc -p tsconfig.json --noEmit",
+    "prepublishOnly": "npm run build"
+  },
+  "peerDependencies": {
+    "pixi.js": ">=7 <9"
+  },
+  "publishConfig": {
+    "access": "public"
+  }
 }

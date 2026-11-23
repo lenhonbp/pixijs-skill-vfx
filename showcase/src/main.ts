@@ -147,7 +147,7 @@ document.querySelector<HTMLDivElement>('#app')!.innerHTML = `
 <main><section class="intro"><div><p class="eyebrow">BUILT FOR PIXIJS 7 + 8 · ZERO RUNTIME DEPENDENCIES</p><h1>A little magic.<br><em>A lot of impact.</em></h1><p class="lede">Game-ready 2.5D effects. Pick a spell, see it in motion,<br> and make it yours in two lines of code.</p></div><div class="intro-note"><span class="star">✳</span><strong>Runtime is free forever (MIT)</strong><p>Commercial use welcome.<br>Just keep the MIT copyright and license notice.</p><a href="https://github.com/lenhonbp/pixijs-skill-vfx/tree/main/runtime">Explore the runtime ↗</a></div></section>
 <section id="library" class="library"><aside><div class="section-heading"><h2>Free collection</h2><span>25 SKILLS</span></div><label class="sr-only" for="search">Search effects</label><input id="search" placeholder="Search a spell…" type="search"><div id="filters" aria-label="Element filters"></div><div id="list" class="skill-list" aria-label="Effects"></div></aside>
 <div class="workspace"><div class="arena-header"><div><p class="eyebrow" id="category">LIVE PREVIEW / ATTACK</p><h2 id="selected-name">Loading collection…</h2><p id="selected-vi"></p></div><button id="browse" class="browse">Browse skills ↓</button></div><p id="description" class="effect-description"></p><div id="stage" aria-label="Effect preview arena"><div class="arena-label left">CASTER</div><div class="arena-label right">TARGET</div><div class="arena-tip">Click the floor to cast · SPACE to replay</div><span class="axis">2.5D / ISOMETRIC</span></div><div class="controls"><button id="replay" class="primary">↻ Replay effect</button><label><input id="loop" type="checkbox"> Loop</label><label><input id="sound" type="checkbox"> Sound</label><label><input id="shake" type="checkbox" checked> Screen shake</label><span id="status" role="status" aria-live="polite">Loading…</span></div>
-<div class="integration"><div class="section-heading"><h3>From preview to your game</h3><button id="copy">Copy code ↗</button></div><pre><code id="snippet"></code></pre><p>One tiny runtime. One self-contained pack. That’s it. <a href="https://github.com/lenhonbp/pixijs-skill-vfx/blob/main/runtime/README.md">Read the docs ↗</a></p></div></div></section>
+<div class="integration"><div class="section-heading"><h3>From preview to your game</h3><button id="copy">Copy code ↗</button></div><pre><code id="snippet"></code></pre><div class="downloads" aria-label="Download the selected pack"><a id="download-desktop" download>Desktop pack <span></span></a><a id="download-mobile" download>Mobile pack <span></span></a></div><p>One tiny runtime. One self-contained pack. That’s it. <a href="https://github.com/lenhonbp/pixijs-skill-vfx/blob/main/runtime/README.md">Read the docs ↗</a><a href="https://github.com/lenhonbp/pixijs-skill-vfx/tree/main/skills/lenhon-vfx">Agent skill ↗</a></p></div></div></section>
 <section id="premium"><div class="premium-heading"><div><p class="eyebrow">THE NEXT CHAPTER</p><h2>More worlds. More wonder.</h2></div><p>Handcrafted collections for your next adventure.<br><span>Premium art. The same free runtime.</span></p></div><div class="premium-grid"><article style="--accent:#d6b477"><span class="pack-symbol">劍</span><p class="eyebrow">01 / MARTIAL LEGENDS</p><h3>Kiếm Hiệp</h3><p>Sword auras, flying blades and the spirit of a wandering hero.</p><div><a href="#gumroad-link-tbd">Gumroad ↗</a><a href="#itch-link-tbd">itch.io ↗</a><span>COMING SOON</span></div></article><article style="--accent:#7dbaa9"><span class="pack-symbol">五</span><p class="eyebrow">02 / FIVE ELEMENTS</p><h3>Ngũ Hành</h3><p>Metal, wood, water, fire and earth. Five forces in perfect motion.</p><div><a href="#gumroad-link-tbd">Gumroad ↗</a><a href="#itch-link-tbd">itch.io ↗</a><span>COMING SOON</span></div></article><article style="--accent:#b69ed4"><span class="pack-symbol">冥</span><p class="eyebrow">03 / FINAL ENCOUNTERS</p><h3>Ultimate Boss</h3><p>Arena-shaking ultimates for battles players will remember.</p><div><a href="#gumroad-link-tbd">Gumroad ↗</a><a href="#itch-link-tbd">itch.io ↗</a><span>COMING SOON</span></div></article></div></section>
 <footer><span>© 2026 lenhonbp &lt;lenhonbp@gmail.com&gt; · <a href="https://opensource.org/license/mit">MIT license</a></span><span>Character artwork (c) 2026 lenhonbp; excluded from the MIT licence.</span></footer></main>`;
 const el = <T extends HTMLElement>(id: string) => document.getElementById(id) as T;
@@ -178,10 +178,8 @@ function readHash() {
 }
 readHash();
 const selectedId = () => selected.id;
-const sizeLabel = () => {
-  const pack = selected, bytes = (mobileAsset() ? pack.mobileBytes : pack.desktopBytes) ?? pack.bytes;
-  return bytes >= 1000000 ? (bytes / 1000000).toFixed(2) + ' MB' : Math.round(bytes / 1000) + ' KB';
-};
+const formatBytes = (bytes: number) => bytes >= 1000000 ? (bytes / 1000000).toFixed(2) + ' MB' : Math.round(bytes / 1000) + ' KB';
+const sizeLabel = () => formatBytes((mobileAsset() ? selected.mobileBytes : selected.desktopBytes) ?? selected.bytes);
 function loading(active: boolean) {
   el('status').classList.toggle('is-loading', active); el('stage').setAttribute('aria-busy', String(active));
   if (active) el('status').textContent = 'Loading · ' + sizeLabel();
@@ -226,6 +224,11 @@ function renderSelection() {
   if (location.hash !== hash) history[location.hash.slice(1).split('/')[0] === selected.id ? 'replaceState' : 'pushState'](null, '', hash);
   el('category').textContent = `LIVE PREVIEW / ${labels[selected.element].toUpperCase()} / ${selected.category.toUpperCase()}`;
   el('snippet').textContent = `const vfx = await VfxPlayer.create(app, { packs: ['packs/free/${id}.vfxb'] });\nvfx.play('${id}', { from: caster, to: target });`;
+  for (const [tier, suffix, bytes] of [['desktop', '', selected.desktopBytes ?? selected.bytes], ['mobile', '.m', selected.mobileBytes]] as const) {
+    const link = el<HTMLAnchorElement>('download-' + tier), file = `${id}${suffix}.vfxb`;
+    link.href = `${base}packs/free/${file}`; link.download = file;
+    link.title = `Download ${file}`; link.querySelector('span')!.textContent = bytes ? '· ' + formatBytes(bytes) : '';
+  }
   renderList();
 }
 async function cast() {
