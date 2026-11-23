@@ -233,6 +233,9 @@ aside { grid-row: 1 / span 2; position: sticky; top: 0; height: 100vh; height: 1
   #filters button { flex-shrink: 0; }
   .group { grid-column: 1 / -1; margin: 10px 2px 2px; }
 }
+@media (max-width: 720px) and (max-height: 600px) {
+  .viewer { position: relative; box-shadow: none; }
+}
 @media (max-width: 380px) {
   .controls label { font-size: 10px; gap: 4px; }
 }
