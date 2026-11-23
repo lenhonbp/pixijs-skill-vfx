@@ -125,10 +125,13 @@ aside { grid-row: 1 / span 2; position: sticky; top: 0; height: 100vh; height: 1
 #stage[data-bg=light] { background: #eef0f4; }
 #stage[data-bg=checker] { background: repeating-conic-gradient(#d6d9e0 0 25%, #fff 0 50%) 0 0 / 20px 20px; }
 #stage[data-bg=light] .arena-tip, #stage[data-bg=checker] .arena-tip { color: #4c5566; }
-.stage-toolbar { position: absolute; top: 10px; right: 10px; display: flex; padding: 3px; gap: 2px; border-radius: 7px; background: #0b0e15cc; border: 1px solid #ffffff1c; backdrop-filter: blur(6px); z-index: 1; }
+.stage-wrap { position: relative; }
+.stage-tools { position: absolute; top: 10px; left: 10px; right: 10px; display: flex; justify-content: space-between; align-items: flex-start; gap: 8px; pointer-events: none; z-index: 1; }
+.stage-tools > * { pointer-events: auto; }
+.stage-toolbar { display: flex; padding: 3px; gap: 2px; border-radius: 7px; background: #0b0e15cc; border: 1px solid #ffffff1c; backdrop-filter: blur(6px); }
 .stage-toolbar button { border: 0; background: transparent; color: #aab3c2; font-size: 10px; padding: 6px 9px; border-radius: 5px; min-height: 28px; touch-action: manipulation; }
 .stage-toolbar button[aria-pressed=true] { background: #d6b47726; color: var(--gold); }
-.aim-toolbar { position: absolute; top: 10px; left: 10px; display: grid; grid-template-columns: repeat(3, 26px); grid-auto-rows: 26px; padding: 3px; gap: 2px; border-radius: 7px; background: #0b0e15cc; border: 1px solid #ffffff1c; backdrop-filter: blur(6px); z-index: 1; }
+.aim-toolbar { display: grid; grid-template-columns: repeat(3, 26px); grid-auto-rows: 26px; padding: 3px; gap: 2px; border-radius: 7px; background: #0b0e15cc; border: 1px solid #ffffff1c; backdrop-filter: blur(6px); }
 .aim-toolbar button { border: 0; background: transparent; color: #aab3c2; font-size: 13px; line-height: 1; padding: 0; border-radius: 5px; touch-action: manipulation; }
 .aim-toolbar button:nth-child(5) { grid-column: 3; }
 .aim-toolbar button[aria-pressed=true] { background: #d6b47726; color: var(--gold); }
@@ -222,10 +225,13 @@ aside { grid-row: 1 / span 2; position: sticky; top: 0; height: 100vh; height: 1
   .arena-header h2 { font-size: 20px; }
   #selected-vi { font-size: 11px; margin-left: 10px; }
   .browse { padding: 8px 0; min-height: 36px; align-self: end; }
-  #stage { width: 100%; min-width: 0; aspect-ratio: 1000 / 580; }
+  #stage { width: min(100%, max(240px, calc((100dvh - 270px) * 1000 / 580))); min-width: 0; aspect-ratio: 1000 / 580; }
   .arena-tip { display: none; }
-  .stage-toolbar { top: 6px; right: 6px; }
-  .stage-toolbar button { padding: 5px 8px; min-height: 30px; }
+  .stage-tools { position: static; flex-direction: column; align-items: stretch; gap: 6px; padding: 8px 14px 0; pointer-events: auto; }
+  .aim-toolbar { display: flex; justify-content: space-between; padding: 4px; }
+  .aim-toolbar button { flex: 1 1 0; min-height: 34px; font-size: 14px; }
+  .stage-toolbar { align-self: stretch; }
+  .stage-toolbar button { flex: 1 1 0; padding: 5px 8px; min-height: 32px; }
   .controls { gap: 4px 14px; padding: 6px 14px; border-bottom: 0; flex-wrap: nowrap; }
   .controls button { width: auto; min-height: 36px; padding: 7px 12px; flex-shrink: 0; }
   .controls label { min-height: 36px; }
