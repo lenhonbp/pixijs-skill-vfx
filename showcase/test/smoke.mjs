@@ -2,6 +2,53 @@
 import assert from 'node:assert/strict';
 
 export async function showcaseSmoke({ page, browser, url, collection }) {
+  assert.equal(await page.title(), 'Lenhon VFX • Game-Ready PixiJS Skill Effects');
+  const meta = await page.evaluate(() => Object.fromEntries([...document.querySelectorAll('meta[property], meta[name]')].map(m => [m.getAttribute('property') ?? m.name, m.content])));
+  for (const key of ['description', 'og:title', 'og:description', 'og:image', 'twitter:card', 'twitter:title', 'twitter:description', 'twitter:image']) assert.ok(meta[key], key);
+  assert.equal(meta['twitter:card'], 'summary_large_image');
+  const assets = await page.evaluate(() => ['link[rel=icon]', 'link[rel=apple-touch-icon]'].map(s => document.querySelector(s).href));
+  for (const asset of [...assets, new URL('og-preview.jpg', page.url()).href]) {
+    const res = await page.request.get(asset);
+    assert.equal(res.status(), 200, asset); assert.match(res.headers()['content-type'], /^image\//, asset);
+  }
+  assert.equal((await page.content()).includes('lenhonbp@gmail.com'), false);
+  assert.ok(await page.locator('footer a[href="mailto:lenhon.vfx@gmail.com"]').count());
+  assert.ok(await page.locator('footer a[href$="/issues"]').count());
+
+  const split = await page.evaluate(async () => {
+    scrollTo({ top: document.getElementById('library').offsetTop, behavior: 'instant' });
+    await new Promise(requestAnimationFrame);
+    const aside = document.querySelector('aside'), r = aside.getBoundingClientRect(), actions = document.querySelector('.actions').getBoundingClientRect();
+    scrollTo({ top: 0, behavior: 'instant' });
+    return { position: getComputedStyle(aside).position, asideBottom: r.bottom, actionsBottom: actions.bottom, vh: innerHeight };
+  });
+  assert.equal(split.position, 'sticky');
+  assert.ok(split.asideBottom <= split.vh + 2 && split.actionsBottom <= split.vh, `skill list and preview actions fit one screen: ${JSON.stringify(split)}`);
+  assert.deepEqual(await page.locator('.group').evaluateAll(g => g.slice(0, 5).map(e => e.textContent.split(' · ')[0])), ['Metal', 'Wood', 'Water', 'Fire', 'Earth']);
+
+  for (const mode of ['checker', 'light', 'dark', 'stage']) {
+    await page.click(`.stage-toolbar [data-bg=${mode}]`);
+    assert.equal(await page.locator('#stage').getAttribute('data-bg'), mode);
+    assert.equal(await page.evaluate(() => window.__showcase.scene.backdrop.visible), mode === 'stage');
+  }
+  assert.equal(await page.evaluate(() => localStorage.getItem('lenhon-vfx-bg')), 'stage');
+
+  await page.evaluate(() => { window.__copied = []; Object.defineProperty(navigator, 'clipboard', { configurable: true, value: { writeText: async t => { window.__copied.push(t); } } }); });
+  await page.click('#copy-url'); await page.click('#copy');
+  const copied = await page.evaluate(() => window.__copied), id = await page.evaluate(() => location.hash.slice(1));
+  assert.equal(copied[0], new URL(`packs/free/${id}.vfxb`, page.url()).href);
+  assert.equal((await page.request.get(copied[0])).status(), 200);
+  assert.match(copied[1], new RegExp(`vfx\\.play\\('${id}'`));
+
+  const [download] = await Promise.all([page.waitForEvent('download'), page.click('#download-kit')]);
+  assert.equal(download.suggestedFilename(), `lenhon-vfx-${id}.zip`);
+  const zip = await (await import('node:fs/promises')).readFile(await download.path());
+  assert.equal(zip.readUInt32LE(0), 0x04034b50);
+  const names = zip.toString('latin1');
+  for (const name of [`${id}/${id}.vfxb`, `${id}/${id}.m.vfxb`, `${id}/README.md`]) assert.ok(names.includes(name), name);
+  const entry = collection.find(p => p.id === id);
+  assert.ok(zip.length > (entry.desktopBytes ?? entry.bytes) + entry.mobileBytes);
+
   await page.evaluate(() => { document.getElementById('loop').checked = false; });
   for (const id of ['kim-golden-edge', 'phong-tailwind']) {
     await page.evaluate(id => { const s = window.__showcase; s.select(id); void s.cast(); }, id);
@@ -122,10 +169,13 @@ export async function showcaseSmoke({ page, browser, url, collection }) {
     ]);
     assert.ok(downloads.every(d => /· [\d.]+ (KB|MB)$/.test(d.label)));
     for (const d of downloads) assert.equal((await linkPage.request.get(url + d.path)).status(), 200);
-    await linkPage.waitForFunction(() => {
-      const top = document.getElementById('library').getBoundingClientRect().top;
-      return top >= 0 && top <= 40;
+    const sticky = await linkPage.evaluate(async () => {
+      scrollTo({ top: document.querySelector('aside').offsetTop + 400, behavior: 'instant' });
+      await new Promise(requestAnimationFrame);
+      return { viewer: document.querySelector('.viewer').getBoundingClientRect().top, stage: document.getElementById('stage').getBoundingClientRect().bottom };
     });
+    assert.equal(sticky.viewer, 0, 'mobile preview stays pinned while the skill list scrolls');
+    assert.ok(sticky.stage > 150 && sticky.stage < 844 / 2, `mobile stage ends at ${sticky.stage}`);
     await linkPage.goBack();
     await linkPage.waitForFunction(() => location.hash === '#phong-tailwind' && document.getElementById('status').textContent.startsWith('Playing'));
     assert.equal(await linkPage.evaluate(() => window.__showcase.vfx.stats().packs), 1);

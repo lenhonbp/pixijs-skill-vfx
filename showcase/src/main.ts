@@ -1,12 +1,13 @@
 // Copyright (c) 2026 lenhonbp <lenhonbp@gmail.com> — https://github.com/lenhonbp/pixijs-skill-vfx
 // SPDX-License-Identifier: MIT
-import { Application, Assets, Container, Texture } from 'pixi.js';
+import { Application, Assets, Container, Sprite, Texture } from 'pixi.js';
 import type { Spritesheet } from 'pixi.js';
 import { VfxPlayer } from '../../runtime/src/index';
 import type { Playback, CueEvent } from '../../runtime/src/index';
 import './style.css';
 import { createStage } from './stage';
 import details from './skill-details';
+import { zip } from './zip';
 function canvas(w: number, h: number): [HTMLCanvasElement, CanvasRenderingContext2D] {
   const c = document.createElement('canvas');
   c.width = w * 3;
@@ -145,14 +146,14 @@ const base = import.meta.env.BASE_URL;
 document.querySelector<HTMLDivElement>('#app')!.innerHTML = `
 <header><a class="brand" href="#">L<span>✦</span> / LENHON <small>VFX LIBRARY</small></a><nav><a href="#library">Free collection</a><a href="#premium">Premium packs ↗</a><a href="https://github.com/lenhonbp/pixijs-skill-vfx">GitHub ↗</a></nav></header>
 <main><section class="intro"><div><p class="eyebrow">BUILT FOR PIXIJS 7 + 8 · ZERO RUNTIME DEPENDENCIES</p><h1>A little magic.<br><em>A lot of impact.</em></h1><p class="lede">Game-ready 2.5D effects. Pick a spell, see it in motion,<br> and make it yours in two lines of code.</p></div><div class="intro-note"><span class="star">✳</span><strong>Runtime is free forever (MIT)</strong><p>Commercial use welcome.<br>Just keep the MIT copyright and license notice.</p><a href="https://github.com/lenhonbp/pixijs-skill-vfx/tree/main/runtime">Explore the runtime ↗</a></div></section>
-<section id="library" class="library"><aside><div class="section-heading"><h2>Free collection</h2><span>25 SKILLS</span></div><label class="sr-only" for="search">Search effects</label><input id="search" placeholder="Search a spell…" type="search"><div id="filters" aria-label="Element filters"></div><div id="list" class="skill-list" aria-label="Effects"></div></aside>
-<div class="workspace"><div class="arena-header"><div><p class="eyebrow" id="category">LIVE PREVIEW / ATTACK</p><h2 id="selected-name">Loading collection…</h2><p id="selected-vi"></p></div><button id="browse" class="browse">Browse skills ↓</button></div><p id="description" class="effect-description"></p><div id="stage" aria-label="Effect preview arena"><div class="arena-label left">CASTER</div><div class="arena-label right">TARGET</div><div class="arena-tip">Click the floor to cast · SPACE to replay</div><span class="axis">2.5D / ISOMETRIC</span></div><div class="controls"><button id="replay" class="primary">↻ Replay effect</button><label><input id="loop" type="checkbox"> Loop</label><label><input id="sound" type="checkbox"> Sound</label><label><input id="shake" type="checkbox" checked> Screen shake</label><span id="status" role="status" aria-live="polite">Loading…</span></div>
-<div class="integration"><div class="section-heading"><h3>From preview to your game</h3><button id="copy">Copy code ↗</button></div><pre><code id="snippet"></code></pre><div class="downloads" aria-label="Download the selected pack"><a id="download-desktop" download>Desktop pack <span></span></a><a id="download-mobile" download>Mobile pack <span></span></a></div><p>One tiny runtime. One self-contained pack. That’s it. <a href="https://github.com/lenhonbp/pixijs-skill-vfx/blob/main/runtime/README.md">Read the docs ↗</a><a href="https://github.com/lenhonbp/pixijs-skill-vfx/tree/main/skills/lenhon-vfx">Agent skill ↗</a></p></div></div></section>
+<section id="library" class="library"><aside><div class="section-heading"><h2>Free collection</h2><span>25 SKILLS</span></div><label class="sr-only" for="search">Search effects</label><input id="search" placeholder="Search a spell…" type="search" autocomplete="off"><div id="filters" aria-label="Element filters"></div><div id="list" class="skill-list" aria-label="Effects"></div></aside>
+<div class="viewer"><div class="arena-header"><div><p class="eyebrow" id="category">LIVE PREVIEW</p><h2><span id="selected-name">Loading collection…</span><span id="selected-vi"></span></h2></div><button id="browse" class="browse">All skills ↓</button></div><div id="stage" data-bg="stage" aria-label="Effect preview arena"><div class="stage-toolbar" role="group" aria-label="Preview background"><button data-bg="stage" title="Painted stage">Stage</button><button data-bg="dark" title="Dark #0e1118">Dark</button><button data-bg="light" title="Light">Light</button><button data-bg="checker" title="Transparent checkerboard: inspect additive glow and alpha">Alpha</button></div><div class="arena-tip">Click the floor to cast · SPACE to replay</div></div><div class="controls"><button id="replay" class="primary">↻ Replay</button><label><input id="loop" type="checkbox"> Loop</label><label><input id="sound" type="checkbox"> Sound</label><label><input id="shake" type="checkbox" checked> Shake</label><span id="status" role="status" aria-live="polite">Loading…</span></div><div class="actions"><button id="download-kit" class="kit">Download kit (.zip) <span></span></button><button id="copy-url">Copy asset URL</button><button id="copy">Copy code</button></div></div>
+<div class="details"><p id="description" class="effect-description"></p><div class="integration"><div class="section-heading"><h3>From preview to your game</h3><span>npm i @lenhonbp/pixijs-vfx-runtime</span></div><pre><code id="snippet"></code></pre><div class="downloads" aria-label="Download the selected pack"><a id="download-desktop" download>Desktop pack <span></span></a><a id="download-mobile" download>Mobile pack <span></span></a></div><p>One tiny runtime. One self-contained pack. That’s it. <a href="https://github.com/lenhonbp/pixijs-skill-vfx/blob/main/runtime/README.md">Read the docs ↗</a><a href="https://github.com/lenhonbp/pixijs-skill-vfx/tree/main/skills/lenhon-vfx">Agent skill ↗</a></p></div></div></section>
 <section id="premium"><div class="premium-heading"><div><p class="eyebrow">THE NEXT CHAPTER</p><h2>More worlds. More wonder.</h2></div><p>Handcrafted collections for your next adventure.<br><span>Premium art. The same free runtime.</span></p></div><div class="premium-grid"><article style="--accent:#d6b477"><span class="pack-symbol">劍</span><p class="eyebrow">01 / MARTIAL LEGENDS</p><h3>Kiếm Hiệp</h3><p>Sword auras, flying blades and the spirit of a wandering hero.</p><div><a href="#gumroad-link-tbd">Gumroad ↗</a><a href="#itch-link-tbd">itch.io ↗</a><span>COMING SOON</span></div></article><article style="--accent:#7dbaa9"><span class="pack-symbol">五</span><p class="eyebrow">02 / FIVE ELEMENTS</p><h3>Ngũ Hành</h3><p>Metal, wood, water, fire and earth. Five forces in perfect motion.</p><div><a href="#gumroad-link-tbd">Gumroad ↗</a><a href="#itch-link-tbd">itch.io ↗</a><span>COMING SOON</span></div></article><article style="--accent:#b69ed4"><span class="pack-symbol">冥</span><p class="eyebrow">03 / FINAL ENCOUNTERS</p><h3>Ultimate Boss</h3><p>Arena-shaking ultimates for battles players will remember.</p><div><a href="#gumroad-link-tbd">Gumroad ↗</a><a href="#itch-link-tbd">itch.io ↗</a><span>COMING SOON</span></div></article></div></section>
-<footer><span>© 2026 lenhonbp &lt;lenhonbp@gmail.com&gt; · <a href="https://opensource.org/license/mit">MIT license</a></span><span>Character artwork (c) 2026 lenhonbp; excluded from the MIT licence.</span></footer></main>`;
+<footer><span>© 2026 lenhonbp · <a href="https://opensource.org/license/mit">MIT license</a> · <a href="https://github.com/lenhonbp/pixijs-skill-vfx">GitHub repository</a> · <a href="https://github.com/lenhonbp/pixijs-skill-vfx/issues">Report an issue</a> · <a href="mailto:lenhon.vfx@gmail.com">lenhon.vfx@gmail.com</a></span><span>Character artwork (c) 2026 lenhonbp; excluded from the MIT licence.</span></footer></main>`;
 const el = <T extends HTMLElement>(id: string) => document.getElementById(id) as T;
 const app = new Application();
-await app.init({ width: 1000, height: 580, backgroundColor: 0x121620, antialias: true, resolution: Math.min(devicePixelRatio, 2) * el('stage').clientWidth / 1000, autoDensity: true });
+await app.init({ width: 1000, height: 580, backgroundColor: 0x0e1118, antialias: true, resolution: Math.min(devicePixelRatio, 2) * el('stage').clientWidth / 1000, autoDensity: true });
 el('stage').prepend(app.canvas);
 const resize = new ResizeObserver(() => {
   app.renderer.resolution = Math.min(devicePixelRatio, 2) * el('stage').clientWidth / 1000;
@@ -198,7 +199,8 @@ async function enableAudio() { audio ??= new AudioContext(); await audio.resume(
 const colors: Record<string, string> = { kim: '#d6b477', moc: '#9cbe85', thuy: '#83bfd6', hoa: '#ed9674', tho: '#c6a783', phong: '#91c9b8', loi: '#b6a2e0', neutral: '#b1afbf' };
 const mobileAsset = () => matchMedia('(max-width:720px)').matches || (devicePixelRatio > 1.5 && innerWidth < 900);
 const packUrl = (id: string) => `${base}packs/free/${id}${mobileAsset() ? '.m' : ''}.vfxb`;
-const labels: Record<string, string> = { all: 'All elements', kim: 'Kim', moc: 'Mộc', thuy: 'Thủy', hoa: 'Hỏa', tho: 'Thổ', phong: 'Phong', loi: 'Lôi', neutral: 'Utility' };
+const labels: Record<string, string> = { all: 'All', kim: 'Metal', moc: 'Wood', thuy: 'Water', hoa: 'Fire', tho: 'Earth', phong: 'Wind', loi: 'Thunder', neutral: 'Utility' };
+const native: Record<string, string> = { kim: 'Kim', moc: 'Mộc', thuy: 'Thủy', hoa: 'Hỏa', tho: 'Thổ', phong: 'Phong', loi: 'Lôi', neutral: 'Tiện ích' };
 const icons: Record<string, string> = { kim: '✧', moc: '❋', thuy: '❄', hoa: '♨', tho: '◈', phong: '≋', loi: 'ϟ', neutral: '⌘' };
 function renderList() {
   el('filters').replaceChildren(...Object.entries(labels).map(([key, name]) => {
@@ -207,11 +209,18 @@ function renderList() {
   }));
   const query = el<HTMLInputElement>('search').value.toLocaleLowerCase();
   const visible = packs.filter(p => (filter === 'all' || p.element === filter) && `${p.name.en} ${p.name.vi}`.toLocaleLowerCase().includes(query));
-  el('list').replaceChildren(...visible.map(p => {
+  const item = (p: Entry) => {
     const button = document.createElement('button'); button.className = `skill ${p.id === selected.id ? 'selected' : ''}`; button.style.setProperty('--element', colors[p.element]);
     button.innerHTML = `<span class="skill-icon">${icons[p.element]}</span><span><strong></strong><small></small></span><span class="arrow">↗</span>`;
     button.querySelector('strong')!.textContent = p.name.en; button.querySelector('small')!.textContent = p.name.vi;
-    button.setAttribute('aria-pressed', String(p.id === selected.id)); button.onclick = () => { selected = p; renderSelection(); void cast(); if (matchMedia('(max-width:720px)').matches) el('library').scrollIntoView({ behavior: 'smooth', block: 'start' }); }; return button;
+    button.setAttribute('aria-pressed', String(p.id === selected.id)); button.onclick = () => { selected = p; renderSelection(); void cast(); }; return button;
+  };
+  el('list').replaceChildren(...Object.keys(native).flatMap(element => {
+    const group = visible.filter(p => p.element === element);
+    if (!group.length) return [];
+    const heading = document.createElement('p'); heading.className = 'group'; heading.style.setProperty('--element', colors[element]);
+    heading.innerHTML = `<span></span><small>${group.length}</small>`; heading.querySelector('span')!.textContent = `${labels[element]} · ${native[element]}`;
+    return [heading, ...group.map(item)];
   }));
   if (!visible.length) el('list').textContent = 'No effects found. Try another name.';
 }
@@ -222,13 +231,16 @@ function renderSelection() {
   el('description').textContent = info?.description ?? '';
   const hash = '#' + selected.id;
   if (location.hash !== hash) history[location.hash.slice(1).split('/')[0] === selected.id ? 'replaceState' : 'pushState'](null, '', hash);
-  el('category').textContent = `LIVE PREVIEW / ${labels[selected.element].toUpperCase()} / ${selected.category.toUpperCase()}`;
+  el('category').textContent = `LIVE PREVIEW / ${labels[selected.element].toUpperCase()} · ${native[selected.element].toUpperCase()} / ${selected.category.toUpperCase()}`;
   el('snippet').textContent = `const vfx = await VfxPlayer.create(app, { packs: ['packs/free/${id}.vfxb'] });\nvfx.play('${id}', { from: caster, to: target });`;
   for (const [tier, suffix, bytes] of [['desktop', '', selected.desktopBytes ?? selected.bytes], ['mobile', '.m', selected.mobileBytes]] as const) {
     const link = el<HTMLAnchorElement>('download-' + tier), file = `${id}${suffix}.vfxb`;
     link.href = `${base}packs/free/${file}`; link.download = file;
     link.title = `Download ${file}`; link.querySelector('span')!.textContent = bytes ? '· ' + formatBytes(bytes) : '';
   }
+  const kit = el('download-kit');
+  kit.dataset.label = `Download kit (.zip) <span>· ${formatBytes((selected.desktopBytes ?? selected.bytes) + (selected.mobileBytes ?? 0))}</span>`;
+  if (!kit.dataset.timer) kit.innerHTML = kit.dataset.label;
   renderList();
 }
 async function cast() {
@@ -268,11 +280,78 @@ el('loop').onchange = () => void cast();
 el('sound').onchange = () => { if (el<HTMLInputElement>('sound').checked) void enableAudio().catch(() => {}); };
 el('shake').onchange = () => { vfx.shakeEnabled = el<HTMLInputElement>('shake').checked; };
 el('search').oninput = renderList;
-el('browse').onclick = () => el('search').scrollIntoView({ behavior: 'smooth', block: 'start' });
-el('copy').onclick = async () => {
-  try { await navigator.clipboard.writeText(el('snippet').textContent!); el('copy').textContent = 'Copied ✓'; setTimeout(() => { el('copy').textContent = 'Copy code ↗'; }, 1600); }
-  catch { el('copy').textContent = 'Select the code to copy'; }
+el('browse').onclick = () => {
+  const viewer = matchMedia('(max-width:720px)').matches ? el('library').querySelector<HTMLElement>('.viewer')!.offsetHeight : 0;
+  scrollTo({ top: el('library').querySelector('aside')!.getBoundingClientRect().top + scrollY - viewer, behavior: 'smooth' });
 };
+function flash(id: string, text: string) {
+  const button = el(id); button.dataset.label ??= button.innerHTML;
+  button.textContent = text; clearTimeout(Number(button.dataset.timer));
+  button.dataset.timer = String(setTimeout(() => { button.innerHTML = button.dataset.label!; delete button.dataset.timer; }, 1600));
+}
+async function copy(id: string, text: string) {
+  try { await navigator.clipboard.writeText(text); flash(id, 'Copied ✓'); } catch { flash(id, 'Copy failed'); }
+}
+const assetUrl = (file: string) => new URL(`${base}packs/free/${file}`, location.href).href;
+el('copy').onclick = () => copy('copy', el('snippet').textContent!);
+el('copy-url').onclick = () => copy('copy-url', assetUrl(`${selectedId()}.vfxb`));
+el('download-kit').onclick = async () => {
+  const pack = selected, id = pack.id, button = el<HTMLButtonElement>('download-kit');
+  if (button.getAttribute('aria-busy') === 'true') return;
+  button.setAttribute('aria-busy', 'true');
+  try {
+    const files = await Promise.all([`${id}.vfxb`, `${id}.m.vfxb`].map(async name => {
+      const res = await fetch(assetUrl(name)); if (!res.ok) throw Error(`${name}: HTTP ${res.status}`);
+      return { name: `${id}/${name}`, data: new Uint8Array(await res.arrayBuffer()) };
+    }));
+    const readme = [
+      `# ${pack.name.en} (${pack.name.vi})`, '', `Free Lenhon VFX pack (MIT). Live preview: ${location.origin}${location.pathname}#${id}`, '',
+      `- \`${id}.vfxb\`: desktop`, `- \`${id}.m.vfxb\`: phones and small screens`, '',
+      '```sh', 'npm install @lenhonbp/pixijs-vfx-runtime', '```', '',
+      '```ts', "import { VfxPlayer } from '@lenhonbp/pixijs-vfx-runtime';", '', el('snippet').textContent!, '```', '',
+      'Docs: https://github.com/lenhonbp/pixijs-skill-vfx/blob/main/runtime/README.md', 'Support: lenhon.vfx@gmail.com', '',
+    ].join('\n');
+    files.push({ name: `${id}/README.md`, data: new TextEncoder().encode(readme) });
+    const url = URL.createObjectURL(zip(files)), link = document.createElement('a');
+    link.href = url; link.download = `lenhon-vfx-${id}.zip`; document.body.append(link); link.click(); link.remove();
+    setTimeout(() => URL.revokeObjectURL(url), 10000);
+    flash('download-kit', 'Downloaded ✓');
+  } catch (error) { console.warn(error); flash('download-kit', 'Download failed · retry'); }
+  finally { button.removeAttribute('aria-busy'); }
+};
+// Inspection backdrops are drawn inside the canvas so additive layers composite onto them as they would in a game.
+const paints: Record<string, (ctx: CanvasRenderingContext2D) => void> = {
+  dark: ctx => { ctx.fillStyle = '#0e1118'; ctx.fillRect(0, 0, 1240, 820); },
+  light: ctx => { ctx.fillStyle = '#eef0f4'; ctx.fillRect(0, 0, 1240, 820); },
+  checker: ctx => {
+    ctx.fillStyle = '#ffffff'; ctx.fillRect(0, 0, 1240, 820); ctx.fillStyle = '#d6d9e0';
+    for (let y = 0; y < 820; y += 20) for (let x = (y / 20) % 2 * 20; x < 1240; x += 40) ctx.fillRect(x, y, 20, 20);
+  }
+};
+const backdrops: Record<string, Sprite> = {};
+function backdrop(mode: string) {
+  if (!backdrops[mode]) {
+    const canvas = document.createElement('canvas'); canvas.width = 1240; canvas.height = 820; paints[mode](canvas.getContext('2d')!);
+    const sprite = backdrops[mode] = new Sprite(Texture.from(canvas)); sprite.position.set(-120, -120); world.addChildAt(sprite, 0);
+  }
+  return backdrops[mode];
+}
+const backgrounds = ['stage', 'dark', 'light', 'checker'];
+function setBackground(mode: string) {
+  if (!backgrounds.includes(mode)) mode = 'stage';
+  el('stage').dataset.bg = mode; scene.backdrop.visible = mode === 'stage';
+  for (const key of Object.keys(paints)) if (key === mode || backdrops[key]) backdrop(key).visible = key === mode;
+  el('stage').querySelectorAll<HTMLButtonElement>('.stage-toolbar button').forEach(button => button.setAttribute('aria-pressed', String(button.dataset.bg === mode)));
+  try { localStorage.setItem('lenhon-vfx-bg', mode); } catch {}
+}
+el('stage').querySelector<HTMLElement>('.stage-toolbar')!.onclick = event => {
+  event.stopPropagation();
+  const mode = (event.target as HTMLElement).closest<HTMLButtonElement>('button')?.dataset.bg;
+  if (mode) setBackground(mode);
+};
+let savedBackground: string | null = null;
+try { savedBackground = localStorage.getItem('lenhon-vfx-bg'); } catch {}
+setBackground(savedBackground ?? 'stage');
 window.addEventListener('keydown', event => { if (event.code === 'Space' && !['INPUT', 'BUTTON', 'TEXTAREA', 'A'].includes((event.target as HTMLElement).tagName)) { event.preventDefault(); void cast(); } });
 renderSelection();
 loading(true);
@@ -282,7 +361,7 @@ try {
 } catch {
   if (initialToken === request) { loading(false); el('status').textContent = 'Pack download failed. Tap Replay to retry.'; }
 }
-(window as any).__showcase = { vfx, app, packs, from, to, world, scene, animate: scene.animate, cast, get current() { return current; }, audioState: () => audio?.state, select(id: string) { selected = packs.find(p => p.id === id)!; renderSelection(); } };
+(window as any).__showcase = { vfx, app, packs, from, to, world, scene, animate: scene.animate, cast, setBackground, get current() { return current; }, audioState: () => audio?.state, select(id: string) { selected = packs.find(p => p.id === id)!; renderSelection(); } };
 window.addEventListener('pagehide', event => {
   if (event.persisted) return;
   resize.disconnect(); vfx.destroy(); void audio?.close(); app.destroy(true, { children: true });
