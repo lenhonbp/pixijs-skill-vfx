@@ -47,12 +47,13 @@ async function expectPreviewInViewport(page) {
 }
 
 async function browseMobile(page) {
-  await page.locator('#browse').click();
+  // The library sits right under the pinned preview and flows with the page: one scroll, not two.
+  await page.locator('#search').scrollIntoViewIfNeeded();
   await page.waitForFunction(() => {
-    const search = document.getElementById('search').getBoundingClientRect(), list = document.getElementById('list').getBoundingClientRect();
-    return search.top >= 0 && search.bottom <= innerHeight && list.top < innerHeight && document.activeElement.id === 'catalog-heading';
+    const dock = document.querySelector('.dock').getBoundingClientRect(), search = document.getElementById('search').getBoundingClientRect(), list = document.getElementById('list').getBoundingClientRect();
+    return dock.top >= -1 && search.top >= dock.bottom - 1 && search.bottom <= innerHeight && list.top < innerHeight;
   });
-  assert.equal(await page.locator('#list').evaluate(node => node.scrollHeight > node.clientHeight), true, 'the full library has its own bounded scroll area on mobile');
+  assert.equal(await page.locator('#list').evaluate(node => node.scrollHeight <= node.clientHeight + 1), true, 'the library flows with the page on mobile instead of scrolling inside itself');
 }
 
 export async function catalogSmoke({ browser, url, collection }) {
@@ -151,9 +152,13 @@ export async function catalogSmoke({ browser, url, collection }) {
     await mobile.locator('#search').fill('zz-no-such-vfx');
     await mobile.getByRole('button', { name: 'Reset filters', exact: true }).click();
     await expectFreeCatalog(mobile, collection);
-    // Choosing an entry near the end of the list must return the user to the selected preview.
+    // The preview is pinned to the top: choosing an entry near the end of the list leaves the page where it is, and the chosen effect plays in view.
+    await product(mobile, 'curse-weaken').scrollIntoViewIfNeeded();
+    const scrolledTo = await mobile.evaluate(() => scrollY);
     await product(mobile, 'curse-weaken').click(); await playing(mobile, 'curse-weaken');
     await expectPreviewInViewport(mobile);
+    assert.ok(Math.abs(await mobile.evaluate(() => scrollY) - scrolledTo) < 40, 'choosing an entry does not move the page');
+    assert.equal(await mobile.evaluate(() => getComputedStyle(document.querySelector('.dock')).position), 'sticky');
     assert.equal(await mobile.locator('#selected-name').textContent(), collection.find(pack => pack.id === 'curse-weaken').name.en);
 
     // Two-column cards and the compact preview toolbar must also work on a narrow phone.
