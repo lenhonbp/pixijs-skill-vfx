@@ -33,6 +33,33 @@ export async function showcaseSmoke({ page, browser, url, collection }) {
   }
   assert.equal(await page.evaluate(() => localStorage.getItem('lenhon-vfx-bg')), 'stage');
 
+  // Eight-way aiming: the toolbar, a click on the floor and the keyboard each pick one of the eight ground directions.
+  const pressed = () => page.locator('#aim button[aria-pressed=true]').getAttribute('aria-label');
+  assert.equal(await page.locator('#aim button').count(), 8);
+  await page.click('#aim button[aria-label="Cast up-left"]');
+  assert.equal(await pressed(), 'Cast up-left');
+  const arena = await page.locator('#stage').boundingBox();
+  // Ground distances are squashed by 0.6 on screen, so the screen offsets below are 200 ground units from the centre.
+  for (const [dx, dy, name] of [[200, 0, 'right'], [0, 120, 'down'], [-141, 85, 'down-left'], [-200, 0, 'left'], [0, -120, 'up'], [141, -85, 'up-right'], [-141, -85, 'up-left'], [141, 85, 'down-right']]) {
+    await page.mouse.click(arena.x + arena.width * (480 + dx) / 1000, arena.y + arena.height * (350 + dy) / 580);
+    assert.equal(await pressed(), `Cast ${name}`, `a click on the floor aims ${name}`);
+  }
+  await page.evaluate(() => document.activeElement.blur());
+  const hover = async () => { const now = await page.locator('#stage').boundingBox(); await page.mouse.move(now.x + now.width / 2, now.y + now.height / 2); }; // the page may have scrolled since the clicks
+  await hover();
+  await page.keyboard.down('ArrowUp'); await page.keyboard.down('ArrowRight');
+  assert.equal(await pressed(), 'Cast up-right', 'two held arrows make a diagonal');
+  await page.keyboard.up('ArrowUp'); await page.keyboard.up('ArrowRight');
+  await page.keyboard.press('Numpad1');
+  assert.equal(await pressed(), 'Cast down-left', 'the numpad aims too');
+  await page.mouse.move(5, 5); await page.evaluate(() => document.activeElement.blur());
+  await page.keyboard.press('ArrowLeft');
+  assert.equal(await pressed(), 'Cast down-left', 'arrow keys do nothing away from the stage, so the page still scrolls');
+  await hover();
+  await page.keyboard.press('Numpad6');
+  assert.equal(await pressed(), 'Cast right');
+  await page.mouse.move(5, 5);
+
   await page.evaluate(() => { window.__copied = []; Object.defineProperty(navigator, 'clipboard', { configurable: true, value: { writeText: async t => { window.__copied.push(t); } } }); });
   await page.click('#copy-url'); await page.click('#copy');
   const copied = await page.evaluate(() => window.__copied), id = await page.evaluate(() => location.hash.slice(1));
