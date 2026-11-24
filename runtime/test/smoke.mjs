@@ -101,6 +101,8 @@ const impactManifest = (version = 1) => ({ ...empty, id: version === 1 ? 'impact
     { name: 'hit-point-glow', blend: 'add', scale: 1, sheets: ['ordered-3.png'], frames: [impactFrame(352, -61), null, null] }],
   impact: { ...impactBlock(), schema_version: version } });
 validate(impactManifest());
+const juiceManifest = { ...impactManifest(), id: 'juice', cues: [{ t: 100, type: 'hit' }, { t: 100, type: 'hitstop', ms: 100 }, { t: 100, type: 'shake', amp: 6, ms: 200 }] };
+validate(juiceManifest);
 const actors = structuredClone(feedback);
 actors.id = 'actors';
 actors.actors = { caster: { frames: [[0, 0, 0, 1], [20, 10, 30, 2]] }, target: { frames: [[0, 0, 0, 1], [-10, 4, 12, 1]] } };
@@ -241,6 +243,84 @@ async function impactSmoke(engine) {
     flat.stop();
   } finally { player.destroy(); [parent, bg, ov, fg].forEach(c => c.destroy({ children: true })); }
 }
+async function juiceSmoke(engine) {
+  const g = engine === 'v8' ? window.__v8 : window.__v7, { app, Container, Sprite, Texture, VfxPlayer } = g;
+  const check = (ok, message) => { if (!ok) throw Error(`${engine} juice: ${message}`); };
+  const near = (a, b, e = 1e-6) => Math.abs(a - b) < e;
+  const stage = new Container(), camera = new Container(); app.stage.addChild(camera); camera.addChild(stage); camera.position.set(100, 50);
+  const target = new Sprite(Texture.WHITE); target.width = 24; target.height = 24; target.tint = 0xff0000; target.anchor.set(0.5); target.position.set(460, 200); stage.addChild(target);
+  const player = new VfxPlayer(app, { shake: { target: camera } });
+  const frame = ms => { player.update(ms); app.render(); };
+  const white = () => { // colour at the target's lower-right corner, clear of the 16 px effect sprites drawn over its centre
+    const canvas = app.canvas ?? app.view, copy = document.createElement('canvas'); copy.width = canvas.width; copy.height = canvas.height;
+    const ctx = copy.getContext('2d'); ctx.drawImage(canvas, 0, 0);
+    const r = app.renderer.resolution, p = ctx.getImageData(Math.floor((camera.x + target.x + 10) * r), Math.floor((camera.y + target.y + 10) * r), 1, 1).data;
+    return [p[0], p[1], p[2]];
+  };
+  try {
+    await player.load('/juice.vfxb');
+    const from = { x: 100, y: 200 };
+    // `target` is both the flash subject and the default destination (read live: its x/y are the feet).
+    let h = player.play('juice', { from, fitDistance: true, parent: stage, hitstop: true, target });
+    const ground = stage.children[0];
+    check(near(ground.x, 460) && near(ground.y, 200), 'target is the default destination');
+    player.update(99); app.render();
+    check(!player.frozen && (!target.filters || target.filters.length === 0) && camera.x === 100, 'nothing happens before contact');
+    check(white().join() === '255,0,0', 'target is red before the flash: ' + white());
+    player.update(1);   // contact at t = 100 ms
+    check(player.frozen, 'contact freezes the player');
+    check(near(camera.x - 100, 2.5) && camera.y === 50, `camera kicks 2.5 px along the blow (right): ${camera.x - 100},${camera.y - 50}`);
+    app.render();
+    check(white().join() === '255,255,255', 'full-strength flash is a flat white silhouette: ' + white());
+    const t0 = h.elapsedMs;
+    frame(16); check(h.elapsedMs === t0 && player.frozen, 'frame 1 of the micro-freeze');
+    frame(16); check(h.elapsedMs === t0, 'frame 2 of the micro-freeze (the pack\'s own 100 ms hitstop is replaced, not added)');
+    frame(16); check(h.elapsedMs > t0 && !player.frozen, 'playback resumes after 32 ms: ' + (h.elapsedMs - t0));
+    check(white().join() !== '255,255,255', 'flash has decayed after the hold');
+    for (let i = 0; i < 30; i++) frame(16);
+    check(camera.x === 100 && camera.y === 50, 'camera is back exactly where it started: ' + camera.x + ',' + camera.y);
+    check(!target.filters || target.filters.length === 0, 'flash filter removed: ' + target.filters?.length);
+    h.stop();
+    // Left cast kicks the other way; the pack's own jitter shake is replaced by the impulse.
+    target.position.set(-260, 200);
+    h = player.play('juice', { from, fitDistance: true, parent: stage, hitstop: 16, target });
+    player.update(100);
+    check(near(camera.x - 100, -2.5), 'left cast kicks left: ' + (camera.x - 100));
+    frame(16); const cut = h.elapsedMs; frame(16); check(h.elapsedMs > cut, 'hitstop: 16 is a single frame');
+    for (let i = 0; i < 20; i++) frame(16);
+    check(camera.x === 100 && camera.y === 50, 'camera restored after the left kick');
+    h.stop();
+    // Opt-outs: flash false and impulse false leave only the freeze.
+    target.position.set(460, 200);
+    h = player.play('juice', { from, fitDistance: true, parent: stage, hitstop: true, target, flash: false, impulse: false });
+    player.update(100);
+    check(player.frozen && camera.x === 100 && (!target.filters || target.filters.length === 0), 'flash:false and impulse:false opt out');
+    h.stop(); for (let i = 0; i < 4; i++) frame(16);
+    // Plain plays keep the 1.x behaviour: no juice, the pack's own cues are ignored unless the player enables them.
+    h = player.play('juice', { from, to: { x: 460, y: 200 }, fitDistance: true, parent: stage });
+    player.update(100);
+    check(!player.frozen && !target.filters?.length, 'a play without juice options adds no freeze and no flash');
+    check(Math.hypot(camera.x - 100, camera.y - 50) <= 6, 'the pack\'s own non-directional shake cue still works as before');
+    h.stop(); for (let i = 0; i < 20; i++) frame(16);
+    check(camera.x === 100 && camera.y === 50, 'legacy jitter settles back exactly');
+    // A second contact while flashing restarts the flash instead of stacking filters.
+    h = player.play('juice', { from, fitDistance: true, parent: stage, target, loop: true });
+    player.update(100); frame(16);
+    const filters = target.filters.length; player.update(300);
+    check(target.filters.length <= filters, 'repeated hits never stack flash filters');
+    h.stop(); for (let i = 0; i < 12; i++) frame(16);
+    check(!target.filters || target.filters.length === 0, 'flash ends after the loop is stopped');
+    // reuseEvents hands out one object per type.
+    const shared = new VfxPlayer(app, { reuseEvents: true }), seen = [];
+    await shared.load('/juice.vfxb');
+    shared.on('tier', e => seen.push(e)); shared.on('cue', e => seen.push(e));
+    const r = shared.play('juice', { from, to: { x: 460, y: 200 }, fitDistance: true, parent: stage });
+    shared.update(150);
+    const tiers = seen.filter(e => e.tier), cues = seen.filter(e => e.type);
+    check(tiers.length >= 2 && tiers.every(e => e === tiers[0]) && cues.length >= 1 && cues.every(e => e === cues[0]), 'reuseEvents shares one object per type');
+    r.stop(); shared.destroy();
+  } finally { player.destroy(); camera.destroy({ children: true }); }
+}
 // Independent wire fixture: JSON and WebP payloads framed with little-endian fields.
 function fixture(manifest, sheets, key) {
   const chunks = [], u32 = n => { const b = Buffer.alloc(4); b.writeUInt32LE(n); return b; };
@@ -313,8 +393,12 @@ assert.deepEqual(readContainer(buffer(custom), 'test-custom-火').manifest, deco
 assert.deepEqual(readContainer(buffer(plainContainer)).manifest, decoded.manifest);
 console.log('Format contracts: PASS (default/custom keys, unscrambled, empty layers, malformed data)');
 const v7Bundle = await build({
-  stdin: { contents: `import { Application, Container } from 'pixi.js'; import { VfxPlayer } from './runtime/src/index'; const app = new Application({width:1000,height:580}); document.body.appendChild(app.view); const vfx = await VfxPlayer.create(app); window.__v7 = {app,vfx,Container,VfxPlayer};`, resolveDir: root },
+  stdin: { contents: `import { Application, Container, Sprite, Texture } from 'pixi.js'; import { VfxPlayer } from './runtime/src/index'; const app = new Application({width:1000,height:580}); document.body.appendChild(app.view); const vfx = await VfxPlayer.create(app); window.__v7 = {app,vfx,Container,Sprite,Texture,VfxPlayer};`, resolveDir: root },
   bundle: true, format: 'esm', write: false, alias: { 'pixi.js': 'pixi7' },
+});
+const v8Bundle = await build({
+  stdin: { contents: `import { Application, Container, Sprite, Texture } from 'pixi.js'; import { VfxPlayer } from './runtime/src/index'; const app = new Application(); await app.init({ width: 1000, height: 580, preference: 'webgl' }); document.body.appendChild(app.canvas); const vfx = await VfxPlayer.create(app); window.__v8 = {app,vfx,Container,Sprite,Texture,VfxPlayer};`, resolveDir: root },
+  bundle: true, format: 'esm', write: false,
 });
 const catalogFixtureBundle = await build({
   entryPoints: [resolve(root, 'showcase/test/catalog-fixture.ts')], bundle: true, format: 'esm', write: false,
@@ -324,6 +408,9 @@ const server = createServer(async (req, res) => {
     const path = decodeURIComponent(new URL(req.url, 'http://localhost').pathname);
     if (path === '/catalog-fixture.html') { res.setHeader('Content-Type', 'text/html'); res.end('<link rel="icon" href="data:,"><script type="module" src="/catalog-fixture.js"></script>'); return; }
     if (path === '/catalog-fixture.js') { res.setHeader('Content-Type', 'text/javascript'); res.end(catalogFixtureBundle.outputFiles[0].contents); return; }
+    if (path === '/v8.html') { res.setHeader('Content-Type', 'text/html'); res.end('<link rel="icon" href="data:,"><script type="module" src="/v8.js"></script>'); return; }
+    if (path === '/v8.js') { res.setHeader('Content-Type', 'text/javascript'); res.end(v8Bundle.outputFiles[0].contents); return; }
+    if (path === '/juice.vfxb') { res.end(fixture(juiceManifest, impactSheets)); return; }
     if (path === '/v7.html') { res.setHeader('Content-Type', 'text/html'); res.end('<link rel="icon" href="data:,"><script type="module" src="/v7.js"></script>'); return; }
     if (path === '/v7.js') { res.setHeader('Content-Type', 'text/javascript'); res.end(v7Bundle.outputFiles[0].contents); return; }
     if (path === '/feedback.vfxb' || path === '/invalid.vfxb') { res.end(path === '/feedback.vfxb' ? fixture(feedback, new Map()) : Buffer.from('invalid')); return; }
@@ -508,10 +595,15 @@ try {
   console.log('Pixi v7: PASS (WebGL render, mirror/fitDistance/parent/zIndex, target anchor/nonzero origin, cleanup/pool, custom key, unscrambled, empty pack, shake/hitstop toggles, invalid load, destroy)');
   await page.evaluate(orderedSmoke, { engine: 'v7', colors: orderedColors, sheetSize: orderedSheetSize });
   await page.evaluate(impactSmoke, 'v7');
+  await page.evaluate(juiceSmoke, 'v7');
+  console.log('Pixi v7 combat juice: PASS (micro-freeze, camera impulse along the blow, silhouette flash)');
   console.log('Pixi v7 impact tiers: PASS (same contract on Pixi 7)');
   await page.evaluate(actorSmoke, 'v7');
   console.log('Pixi v7 actors: PASS (interpolation, mirror/fit, hitstop, legacy, stop/end/reset, loop)');
   console.log('Pixi v7 ordered layers: PASS (3/6 layers, pixel-checked blend order, mixed scales, null frames, replay)');
+  await page.goto(`${url}/v8.html`); await page.waitForFunction(() => window.__v8);
+  await page.evaluate(juiceSmoke, 'v8');
+  console.log('Pixi v8 combat juice: PASS (default target as destination, 32 ms micro-freeze replacing the pack hitstop, 2.5 px impulse along the blow and its exact restore, flat white silhouette flash then decay, opt-outs, no stacked filters, reuseEvents)');
   const mobile = await browser.newPage({ viewport: { width: 390, height: 844 }, deviceScaleFactor: 3, isMobile: true, hasTouch: true });
   mobile.on('pageerror', e => errors.push(e.message)); mobile.on('console', m => { if (m.type() === 'error') errors.push(m.text()); });
   const requests = [];
