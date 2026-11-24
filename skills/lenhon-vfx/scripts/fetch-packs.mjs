@@ -8,7 +8,19 @@ import { resolve } from 'node:path';
 const usage = `Usage: node fetch-packs.mjs <id...|--all> [--out public/vfx] [--tier both|desktop|mobile] [--source URL]
        node fetch-packs.mjs --list`;
 const args = process.argv.slice(2), ids = [];
-const opts = { out: 'public/vfx', tier: 'both', source: 'https://lenhonbp.github.io/pixijs-skill-vfx/packs/free/' };
+const site = 'https://lenhonbp.github.io/pixijs-skill-vfx/';
+const opts = { out: 'public/vfx', tier: 'both', source: null };
+// The active pack release is named by the site's pointer file; older deployments serve packs/free/ directly.
+async function activeSource() {
+  try {
+    const response = await fetch(site + 'packs-release.json');
+    if (response.ok) {
+      const { base, release } = await response.json();
+      if (typeof base === 'string' && /^https:\/\/[^\s?#]+$/.test(base) && typeof release === 'string' && /^[A-Za-z0-9][A-Za-z0-9._-]{2,63}$/.test(release)) return `${base.replace(/\/+$/, '')}/${release}/`;
+    }
+  } catch { /* fall back below */ }
+  return site + 'packs/free/';
+}
 let all = false, list = false;
 for (let i = 0; i < args.length; i++) {
   const a = args[i];
@@ -20,7 +32,8 @@ for (let i = 0; i < args.length; i++) {
   else ids.push(a);
 }
 if (!['both', 'desktop', 'mobile'].includes(opts.tier)) { console.error(`--tier must be both, desktop or mobile\n${usage}`); process.exit(2); }
-const source = opts.source.endsWith('/') ? opts.source : opts.source + '/';
+const chosen = opts.source ?? await activeSource();
+const source = chosen.endsWith('/') ? chosen : chosen + '/';
 const response = await fetch(source + 'index.json');
 if (!response.ok) throw Error(`Could not read ${source}index.json (HTTP ${response.status})`);
 const collection = await response.json();
