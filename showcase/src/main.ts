@@ -539,11 +539,11 @@ if (activeProduct.tier === 'free') {
   if (!product) throw new Error('Unknown catalog product: ' + id);
   showProduct(product, false);
 } };
-// On phones the preview dock is pinned to the top of the screen: the backdrop choice moves into its header row, and the page
+// On phones the preview dock is pinned to the top of the screen: the backdrop choice floats over the corner of the stage, and the page
 // keeps the dock's height so anchors and keyboard focus never end up underneath it.
 const phone = matchMedia('(max-width:720px)');
 const backdropGroup = document.querySelector<HTMLElement>('.background-group')!;
-function placePreviewControls() { (phone.matches ? document.querySelector('.arena-header')! : document.querySelector('.stage-tools')!).append(backdropGroup); }
+function placePreviewControls() { (phone.matches ? document.querySelector('.stage-wrap')! : document.querySelector('.stage-tools')!).append(backdropGroup); }
 placePreviewControls(); phone.addEventListener('change', placePreviewControls);
 const dock = document.querySelector<HTMLElement>('.dock')!;
 const updateDockHeight = () => document.documentElement.style.setProperty('--dock-h', phone.matches ? dock.getBoundingClientRect().height + 'px' : '0px');

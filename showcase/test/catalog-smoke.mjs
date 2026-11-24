@@ -168,6 +168,14 @@ export async function catalogSmoke({ browser, url, collection }) {
     await expectPreviewInViewport(mobile);
     assert.equal(await mobile.evaluate(() => document.documentElement.scrollWidth > innerWidth), false);
 
+    // A short phone viewport (the visible area under the browser toolbars) must keep the backdrop choice, and a tap must change it.
+    await mobile.setViewportSize({ width: 390, height: 664 });
+    assert.equal(await mobile.locator('.stage-toolbar').isVisible(), true, 'the backdrop choice stays visible on a short phone');
+    await mobile.locator('.stage-toolbar [data-bg=light]').tap();
+    assert.equal(await mobile.locator('#stage').getAttribute('data-bg'), 'light');
+    await mobile.locator('.stage-toolbar [data-bg=stage]').tap();
+    assert.equal(await mobile.locator('#stage').getAttribute('data-bg'), 'stage');
+
     // A short landscape viewport must keep a usable canvas and scrollable controls.
     await mobile.setViewportSize({ width: 844, height: 390 });
     const landscape = await mobile.evaluate(() => {
