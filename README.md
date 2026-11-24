@@ -1,13 +1,13 @@
 # PixiJS Skill VFX
 
-[![Live demo](https://img.shields.io/badge/Live_demo-Cast_a_spell-d6b477?style=flat-square)](https://lenhonbp.github.io/pixijs-skill-vfx/)
+[![Live demo](https://img.shields.io/badge/Live_demo-Cast_a_spell-d6b477?style=flat-square)](https://vfx-store.pages.dev/)
 [![License: MIT](https://img.shields.io/badge/License-MIT-83bfd6?style=flat-square)](LICENSE)
 
 **Free runtime. Instant magic.** 25 ready-to-play skills.
 A lightweight, zero-runtime-dependency atlas player for **PixiJS v7 and v8**,
 with a responsive, interactive showcase. Commercial use welcome.
 
-[Try the live collection →](https://lenhonbp.github.io/pixijs-skill-vfx/) · [Runtime docs](runtime/README.md) · [Pack format](docs/pack-format.md)
+[Try the live collection →](https://vfx-store.pages.dev/) · [Runtime docs](runtime/README.md) · [Pack format](docs/pack-format.md)
 
 ## Quick start
 
@@ -22,8 +22,8 @@ npm install @lenhonbp/pixijs-vfx-runtime
 ```
 
 Get packs from the showcase's **Desktop pack / Mobile pack** buttons, from
-`showcase/public/packs/free/`, or with the agent skill's fetch script below, and
-serve them from your app's public directory.
+hosted release (see [docs/pack-hosting.md](docs/pack-hosting.md)), or with the
+agent skill's fetch script below, and serve them from your app's public directory.
 
 ## Use it from an AI coding agent
 
@@ -77,10 +77,16 @@ keeps browsing and playback together, with technical details below the library.
 
 The 25 skills include **226 desktop/mobile containers across their baked
 directions**: 272,854,709 bytes desktop + 97,535,753 bytes mobile = **370,390,462
-bytes**. Including the 46,961-byte index, `showcase/public/packs/free/` totals
-370,437,423 bytes. You only need the packs selected for your game; the showcase
+bytes**. The binaries live outside git on the pack host (see
+[docs/pack-hosting.md](docs/pack-hosting.md)); `showcase/public/packs/free/` keeps
+only the index. You only need the packs selected for your game; the showcase
 loads the selected skill and direction on demand. Each manifest specifies its
-playback frame rate.
+playback frame rate. To work on the showcase or run `check:runtime` locally,
+fetch the packs once:
+
+```sh
+node skills/lenhon-vfx/scripts/fetch-packs.mjs --all --out showcase/public/packs/free
+```
 
 Measured before this presentation refresh, on 2026-11-22, the default Fireball
 cold first load was **2,195,377 bytes

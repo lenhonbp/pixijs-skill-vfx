@@ -20,7 +20,16 @@ jobs:
       - run: npm run check:docs
       - run: npm run check:catalog
       - run: npm run typecheck
-      - run: npm run build
+      - name: Restore hosted Free packs for the smoke tests
+        uses: actions/cache@v4
+        with:
+          path: showcase/public/packs/free
+          key: free-packs-${{ hashFiles('showcase/public/packs/free/index.json') }}
+      - run: node skills/lenhon-vfx/scripts/fetch-packs.mjs --all --out showcase/public/packs/free
+      - name: Build the showcase against the local restored packs
+        run: npm run build
+        env:
+          VITE_PACKS_URL: packs/free
       - run: npx playwright install --with-deps chromium
       - name: Runtime and storefront browser checks
         run: |
