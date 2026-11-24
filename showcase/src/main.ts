@@ -144,6 +144,8 @@ function dummyTexture() {
 interface Variant { bytes: number; desktopBytes?: number; mobileBytes?: number }
 interface Entry extends Variant { id: string; name: { en: string; vi: string }; element: string; category: string; directions?: Record<string, Variant> }
 const base = import.meta.env.BASE_URL;
+// Free packs are same-origin by default. Set VITE_PACKS_URL (e.g. a CDN/R2 public URL) at build time to serve them elsewhere; the host must send CORS headers for this origin.
+const packsBase = ((import.meta.env.VITE_PACKS_URL as string | undefined)?.trim() || `${base}packs/free`).replace(/\/+$/, '') + '/';
 function arrowIcon(degrees: number, size = 16) {
   return `<svg viewBox="0 0 24 24" width="${size}" height="${size}" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="M5 12h14m-6-6 6 6-6 6" transform="rotate(${degrees} 12 12)"/></svg>`;
 }
@@ -228,7 +230,7 @@ try {
   scene.setCaster(sheet.animations['son-ha-kiem-khi-se']);
 } catch (error) { console.warn('Character sheet unavailable; using drawn caster.', error); }
 const vfx = await VfxPlayer.create(app, { shake: { target: world }, hitstop: true });
-const response = await fetch(`${base}packs/free/index.json`); if (!response.ok) throw Error('Collection index unavailable');
+const response = await fetch(`${packsBase}index.json`); if (!response.ok) throw Error('Collection index unavailable');
 const packs: Entry[] = await response.json();
 const products = resolveCatalog(packs);
 let selected = packs.find(p => p.id === 'hoa-fireball')!, current: Playback | undefined, request = 0;
@@ -278,7 +280,7 @@ let audio: AudioContext | undefined;
 async function enableAudio() { audio ??= new AudioContext(); await audio.resume(); }
 const colors: Record<string, string> = { kim: '#d6b477', moc: '#9cbe85', thuy: '#83bfd6', hoa: '#ed9674', tho: '#c6a783', phong: '#91c9b8', loi: '#b6a2e0', neutral: '#b1afbf' };
 const mobileAsset = () => matchMedia('(max-width:720px)').matches || (devicePixelRatio > 1.5 && innerWidth < 900);
-const packUrl = (id: string, direction = 0) => `${base}packs/free/${fileOf(id, direction, mobileAsset())}`;
+const packUrl = (id: string, direction = 0) => `${packsBase}${fileOf(id, direction, mobileAsset())}`;
 const labels: Record<string, string> = { all: 'All', kim: 'Metal', moc: 'Wood', thuy: 'Water', hoa: 'Fire', tho: 'Earth', phong: 'Wind', loi: 'Thunder', neutral: 'Utility' };
 const native: Record<string, string> = { kim: 'Kim', moc: 'Mộc', thuy: 'Thủy', hoa: 'Hỏa', tho: 'Thổ', phong: 'Phong', loi: 'Lôi', neutral: 'Tiện ích' };
 const icons: Record<string, string> = { kim: '✧', moc: '❋', thuy: '❄', hoa: '♨', tho: '◈', phong: '≋', loi: 'ϟ', neutral: '⌘' };
@@ -318,7 +320,7 @@ function renderSelection() {
   const direction = castDirection(), variant = variantOf(selected, direction);
   for (const [tier, mobile, bytes] of [['desktop', false, variant.desktopBytes ?? variant.bytes], ['mobile', true, variant.mobileBytes]] as const) {
     const link = el<HTMLAnchorElement>('download-' + tier), file = fileOf(id, direction, mobile);
-    link.href = `${base}packs/free/${file}`; link.download = file;
+    link.href = `${packsBase}${file}`; link.download = file;
     link.title = `Download ${file}`; link.querySelector('span')!.textContent = bytes ? '· ' + formatBytes(bytes) : '';
   }
   const kit = el('download-kit');
@@ -390,7 +392,7 @@ function flash(id: string, text: string) {
 async function copy(id: string, text: string) {
   try { await navigator.clipboard.writeText(text); flash(id, 'Copied ✓'); } catch { flash(id, 'Copy failed'); }
 }
-const assetUrl = (file: string) => new URL(`${base}packs/free/${file}`, location.href).href;
+const assetUrl = (file: string) => new URL(`${packsBase}${file}`, location.href).href;
 el('copy').onclick = () => { if (activeProduct.tier === 'free') void copy('copy', el('snippet').textContent!); };
 el('copy-url').onclick = () => { if (activeProduct.tier === 'free') void copy('copy-url', assetUrl(fileOf(selectedId(), castDirection(), false))); };
 el('download-kit').onclick = async () => {

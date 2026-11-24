@@ -24,6 +24,9 @@ jobs:
           node-version: 22
       - uses: actions/configure-pages@v5
       - name: Build showcase
+        env:
+          # Optional repository variable. Empty keeps packs same-origin; see docs/pack-hosting.md.
+          VITE_PACKS_URL: ${{ vars.PACKS_URL }}
         run: |
           npm install --no-save --package-lock=false pixi.js@8.23.0
           npm run build:runtime
