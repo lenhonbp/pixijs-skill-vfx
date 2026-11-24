@@ -8,7 +8,7 @@ import { resolve } from 'node:path';
 const usage = `Usage: node fetch-packs.mjs <id...|--all> [--out public/vfx] [--tier both|desktop|mobile] [--source URL]
        node fetch-packs.mjs --list`;
 const args = process.argv.slice(2), ids = [];
-const site = 'https://lenhonbp.github.io/pixijs-skill-vfx/';
+const site = 'https://vfx-store.pages.dev/';
 const opts = { out: 'public/vfx', tier: 'both', source: null };
 // The active pack release is named by the site's pointer file; older deployments serve packs/free/ directly.
 async function activeSource() {

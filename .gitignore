@@ -3,3 +3,4 @@ runtime/dist/
 showcase/dist/
 *.zip
 .DS_Store
+showcase/public/packs/free/*.vfxb
