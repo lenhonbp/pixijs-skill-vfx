@@ -19,6 +19,7 @@ jobs:
       - run: npm install --no-save --package-lock=false pixi.js@8.23.0 typescript esbuild
       - run: npm run check:docs
       - run: npm run check:catalog
+      - run: npm run check:fetch
       - run: npm run typecheck
       - name: Restore hosted Free packs for the smoke tests
         uses: actions/cache@v4

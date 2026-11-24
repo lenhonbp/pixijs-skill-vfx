@@ -6,7 +6,9 @@ import { mkdir, writeFile } from 'node:fs/promises';
 import { resolve } from 'node:path';
 
 const usage = `Usage: node fetch-packs.mjs <id...|--all> [--out public/vfx] [--tier both|desktop|mobile] [--source URL]
-       node fetch-packs.mjs --list`;
+       node fetch-packs.mjs --list
+With --all and --tier both, the release's index.json is saved next to the packs, so the files and the index always come
+from the same release (a committed index.json can lag behind the live site).`;
 const args = process.argv.slice(2), ids = [];
 const site = 'https://vfx-store.pages.dev/';
 const opts = { out: 'public/vfx', tier: 'both', source: null };
@@ -36,7 +38,7 @@ const chosen = opts.source ?? await activeSource();
 const source = chosen.endsWith('/') ? chosen : chosen + '/';
 const response = await fetch(source + 'index.json');
 if (!response.ok) throw Error(`Could not read ${source}index.json (HTTP ${response.status})`);
-const collection = await response.json();
+const indexText = await response.text(), collection = JSON.parse(indexText);
 if (list) {
   for (const p of collection) console.log(`${p.id.padEnd(26)} ${p.element.padEnd(8)} ${p.category.padEnd(8)} ${p.name.en} / ${p.name.vi}`);
   process.exit(0);
@@ -65,5 +67,10 @@ for (const file of files) {
   if (bytes.length !== file.bytes) throw Error(`${file.name}: expected ${file.bytes} bytes, got ${bytes.length}`);
   await writeFile(resolve(out, file.name), bytes);
   console.log(`${file.name}  ${(bytes.length / 1e6).toFixed(2)} MB`);
+}
+// A complete download also keeps the index it was made from: every listed file is on disk and matches its size.
+if (all && opts.tier === 'both') {
+  await writeFile(resolve(out, 'index.json'), indexText);
+  console.log('Saved index.json');
 }
 console.log(`Saved ${files.length} file(s) to ${out}`);

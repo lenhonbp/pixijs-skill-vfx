@@ -88,6 +88,9 @@ fetch the packs once:
 node skills/lenhon-vfx/scripts/fetch-packs.mjs --all --out showcase/public/packs/free
 ```
 
+This also saves the live release's `index.json` into that folder (overwriting the committed copy in your working
+tree), so the packs and the index always match even when a newer release has been published.
+
 Measured before this presentation refresh, on 2026-11-22, the default Fireball
 cold first load was **2,195,377 bytes
 desktop / 1,444,150 bytes mobile**, including the application, character artwork
