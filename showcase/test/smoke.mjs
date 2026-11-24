@@ -2,7 +2,7 @@
 import assert from 'node:assert/strict';
 
 export async function showcaseSmoke({ page, browser, url, collection }) {
-  assert.equal(await page.title(), 'Lenhon VFX • Game-Ready PixiJS Skill Effects');
+  assert.equal(await page.title(), 'VFX Store • Game-Ready PixiJS Skill Effects');
   const meta = await page.evaluate(() => Object.fromEntries([...document.querySelectorAll('meta[property], meta[name]')].map(m => [m.getAttribute('property') ?? m.name, m.content])));
   for (const key of ['description', 'og:title', 'og:description', 'og:image', 'twitter:card', 'twitter:title', 'twitter:description', 'twitter:image']) assert.ok(meta[key], key);
   assert.equal(meta['twitter:card'], 'summary_large_image');
@@ -41,7 +41,7 @@ export async function showcaseSmoke({ page, browser, url, collection }) {
   assert.match(copied[1], new RegExp(`vfx\\.play\\('${id}'`));
 
   const [download] = await Promise.all([page.waitForEvent('download'), page.click('#download-kit')]);
-  assert.equal(download.suggestedFilename(), `lenhon-vfx-${id}.zip`);
+  assert.equal(download.suggestedFilename(), `vfx-store-${id}.zip`);
   const zip = await (await import('node:fs/promises')).readFile(await download.path());
   assert.equal(zip.readUInt32LE(0), 0x04034b50);
   const names = zip.toString('latin1');

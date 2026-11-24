@@ -152,9 +152,9 @@ function arrowIcon(degrees: number, size = 16) {
 document.querySelector<HTMLDivElement>('#app')!.innerHTML = `
 <a class="skip-link" href="#library">Skip to the effect library</a>
 <header class="site-header">
-  <a class="brand" href="#" aria-label="Lenhon VFX home">
-    <svg class="brand-mark" viewBox="0 0 32 32" width="32" height="32" fill="none" aria-hidden="true"><path d="M16 1.5 30.5 16 16 30.5 1.5 16Z" stroke="currentColor"/><path d="M12 9v14h9M18 8v8h7" stroke="currentColor" stroke-width="1.5"/></svg>
-    <span>LENHON <b>VFX</b></span><small>AN EFFECT LIBRARY</small>
+  <a class="brand" href="#" aria-label="VFX Store home">
+    <svg class="brand-mark" viewBox="0 0 32 32" width="32" height="32" fill="none" aria-hidden="true"><path d="M16 4.7 27.89 13.34 23.35 27.31H8.65L4.11 13.34Z" stroke="currentColor" stroke-width="1.3" stroke-linejoin="round"/><path d="M16 4.7 23.35 27.31 4.11 13.34H27.89L8.65 27.31Z" stroke="currentColor" stroke-width="0.9" stroke-linejoin="round" opacity=".4"/><circle cx="16" cy="4.7" r="2" fill="#ed9674"/><circle cx="27.89" cy="13.34" r="2" fill="#c6a783"/><circle cx="23.35" cy="27.31" r="2" fill="#d6b477"/><circle cx="8.65" cy="27.31" r="2" fill="#83bfd6"/><circle cx="4.11" cy="13.34" r="2" fill="#9cbe85"/></svg>
+    <span>VFX <b>STORE</b></span><small>AN EFFECT LIBRARY</small>
   </a>
   <nav aria-label="Main navigation"><a href="#library">Browse effects</a><a href="https://github.com/lenhonbp/pixijs-skill-vfx/tree/main/runtime">Runtime docs</a><a href="https://github.com/lenhonbp/pixijs-skill-vfx">GitHub <span aria-hidden="true">${arrowIcon(-45, 12)}</span></a></nav>
 </header>
@@ -199,7 +199,7 @@ document.querySelector<HTMLDivElement>('#app')!.innerHTML = `
   </section>
   <section id="premium" hidden aria-label="Future collections"><div id="premium-grid" class="premium-grid"></div></section>
   <p class="collection-note">Premium collections are planned for later. <span>This entire collection is free.</span></p>
-  <footer><div class="footer-main"><span class="footer-brand">LENHON <b>VFX</b><span>© 2026 lenhonbp</span></span><nav aria-label="Footer navigation"><a href="https://opensource.org/license/mit">MIT license</a><a href="https://github.com/lenhonbp/pixijs-skill-vfx">GitHub</a><a href="https://github.com/lenhonbp/pixijs-skill-vfx/issues">Report an issue</a><a href="mailto:lenhon.vfx@gmail.com">Get in touch <span aria-hidden="true">${arrowIcon(-45, 12)}</span></a></nav></div><p>All 25 effect packs and the runtime are free under MIT. Character artwork © 2026 lenhonbp is separate and excluded from the MIT license.</p></footer>
+  <footer><div class="footer-main"><span class="footer-brand">VFX <b>STORE</b><span>© 2026 VFX Store</span></span><nav aria-label="Footer navigation"><a href="https://opensource.org/license/mit">MIT license</a><a href="https://github.com/lenhonbp/pixijs-skill-vfx">GitHub</a><a href="https://github.com/lenhonbp/pixijs-skill-vfx/issues">Report an issue</a><a href="mailto:lenhon.vfx@gmail.com">Get in touch <span aria-hidden="true">${arrowIcon(-45, 12)}</span></a></nav></div><p>All 25 effect packs and the runtime are free under MIT. Character artwork © 2026 lenhonbp is separate and excluded from the MIT license.</p></footer>
 </main>`;
 const el = <T extends HTMLElement>(id: string) => document.getElementById(id) as T;
 // Start the network work that does not need the renderer now, so it overlaps with renderer start-up
@@ -426,7 +426,7 @@ el('download-kit').onclick = async () => {
       return { name: `${id}/${name}`, data: new Uint8Array(await res.arrayBuffer()) };
     }));
     const readme = [
-      `# ${pack.name.en} (${pack.name.vi})`, '', `Free Lenhon VFX pack (MIT). Live preview: ${location.origin}${location.pathname}#${id}`, '',
+      `# ${pack.name.en} (${pack.name.vi})`, '', `Free VFX Store pack (MIT). Live preview: ${location.origin}${location.pathname}#${id}`, '',
       `- \`${id}.vfxb\`: desktop`, `- \`${id}.m.vfxb\`: phones and small screens`,
       ...(pack.directions ? [`- \`${id}@<direction>.vfxb\` / \`.m.vfxb\`: the same skill baked toward ${Object.keys(pack.directions).join(', ')} degrees on the ground (0 = right, 90 = toward the camera); left-facing casts mirror these`] : []), '',
       '```sh', 'npm install @lenhonbp/pixijs-vfx-runtime', '```', '',
@@ -449,7 +449,7 @@ el('download-kit').onclick = async () => {
     ].join('\n');
     files.push({ name: `${id}/README.md`, data: new TextEncoder().encode(readme) });
     const url = URL.createObjectURL(zip(files)), link = document.createElement('a');
-    link.href = url; link.download = `lenhon-vfx-${id}.zip`; document.body.append(link); link.click(); link.remove();
+    link.href = url; link.download = `vfx-store-${id}.zip`; document.body.append(link); link.click(); link.remove();
     setTimeout(() => URL.revokeObjectURL(url), 10000);
     flash('download-kit', 'Downloaded ✓');
   } catch (error) { console.warn(error); flash('download-kit', 'Download failed · retry'); }
