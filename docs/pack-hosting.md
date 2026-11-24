@@ -26,7 +26,9 @@ file in git, `showcase/public/packs-release.json`:
 - **Rolling back** = reverting that PR. The previous release directory is still there.
 - The showcase reads the pointer at build time (`showcase/vite.config.ts`); `fetch-packs.mjs` reads the
   deployed copy at `<site>/packs-release.json`, falling back to the old `packs/free/` URL when it is absent.
-- With no pointer file, packs stay same-origin `packs/free/`, exactly as before.
+- With no pointer file, packs stay same-origin `packs/free/` (the legacy layout).
+  `showcase/public/packs-release.json` is checked in so clean builds point at the
+  last applied release; each release rewrites it.
 - `VITE_PACKS_URL` overrides the pointer (local tests or an emergency repoint). Precedence:
   `VITE_PACKS_URL`, then the pointer, then same-origin.
 
@@ -36,8 +38,8 @@ no longer the live one or a rollback target.
 ## Checklist (R2 example)
 
 1. Create a bucket and expose it on a public domain (custom domain or the r2.dev URL).
-2. Add a CORS rule allowing `GET` and `HEAD` from the showcase origin
-   (`https://vfx-store.pages.dev`) and exposing `Content-Length`.
+2. Add a CORS rule allowing `GET` and `HEAD` from any origin (`*`) — the packs are
+   public and games load them cross-origin — exposing `Content-Length`.
 3. Run the factory's *Release Free effects* workflow. The first release seeds the directory from
    the containers still in this repo; later releases copy from the previous one.
 4. The workflow runs `node scripts/verify-remote-packs.mjs <base>/<release>` before opening the
