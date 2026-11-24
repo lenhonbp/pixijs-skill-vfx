@@ -37,7 +37,7 @@ no longer the live one or a rollback target.
 
 1. Create a bucket and expose it on a public domain (custom domain or the r2.dev URL).
 2. Add a CORS rule allowing `GET` and `HEAD` from the showcase origin
-   (`https://lenhonbp.github.io`) and exposing `Content-Length`.
+   (`https://vfx-store.pages.dev`) and exposing `Content-Length`.
 3. Run the factory's *Release Free effects* workflow. The first release seeds the directory from
    the containers still in this repo; later releases copy from the previous one.
 4. The workflow runs `node scripts/verify-remote-packs.mjs <base>/<release>` before opening the
@@ -51,7 +51,7 @@ no longer the live one or a rollback target.
 
 - Per-pack download buttons use `Content-Disposition: attachment`, which the factory sets on every object.
   Verify one download on the live host.
-- The smoke tests currently read packs from `showcase/public/packs/free/`. They need local
-  packs, or a fetch step from the hosted copy, once the binaries leave the tree.
+- The smoke tests read packs from `showcase/public/packs/free/`. Restore them locally or in CI with
+  `node skills/lenhon-vfx/scripts/fetch-packs.mjs --all --out showcase/public/packs/free`.
 - `fetch-packs.mjs` resolves the pointer from the deployed site. Until the pointer is deployed, or if it
   cannot be fetched, it uses the old `packs/free/` URL, which stops working once binaries leave the tree.
