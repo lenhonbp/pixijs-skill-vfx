@@ -22,5 +22,3 @@ export function setBlend(sprite: PIXI.Sprite, additive: boolean, screen = false)
   sprite.blendMode = (v8 ? additive ? screen ? 'screen' : 'add' : 'normal' : additive ? screen ? 3 : 1 : 0) as any;
 }
 
-/** Pixi's ColorMatrixFilter, wherever this Pixi version keeps it (v8: root export, v7: `filters`). */
-export function colorMatrixFilterClass(): any { return (PIXI as any).ColorMatrixFilter ?? (PIXI as any).filters?.ColorMatrixFilter; }

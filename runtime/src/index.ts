@@ -2,12 +2,17 @@
 // SPDX-License-Identifier: MIT
 import { Container, Sprite, Texture } from 'pixi.js';
 import type { Application } from 'pixi.js';
-import { colorMatrixFilterClass, frameTexture, setBlend, setMatrix, v8 } from './compat.js';
+import { frameTexture, setBlend, setMatrix, v8 } from './compat.js';
+import { BatchSet, QuadBatch } from './batch.js';
+import { RAMP_PRESETS, RampSet } from './ramp.js';
+import type { RampStops } from './ramp.js';
 import { readContainer, validate } from './format.js';
-import type { ActorName, AnchorType, BlendAdvice, Cue, ImpactTier, Manifest, TierId, ZLayer } from './format.js';
+import type { ActorName, AnchorType, BlendAdvice, Cue, Frame, ImpactTier, Manifest, TierId, ZLayer } from './format.js';
 export type { ActorName, ActorFrame, ActorTrack, AnchorType, BlendAdvice, Cue, ImpactMeta, ImpactTier, Manifest, Frame, TierId, ZLayer } from './format.js';
 export interface Point { x: number; y: number }
 export { FlowTrail, makeNoiseTexture } from './flow.js';
+export { RAMP_PRESETS, RampSet } from './ramp.js';
+export type { RampPreset, RampStops } from './ramp.js';
 export type { FlowTrailOptions } from './flow.js';
 /** Where the three depth slots of an impact draw. Missing slots fall back to `PlayOptions.parent` (or the stage). */
 export interface ImpactLayers {
@@ -31,6 +36,12 @@ export interface PlayOptions {
    * is the freeze in ms (0-100). Freezes every playback, not just this one, and sets `player.frozen`.
    */
   hitstop?: boolean | number;
+  /**
+   * Colour the pack's energy layers with this ramp: an element (`'fire'`, `'kim'`, `'thuy'`, ...), a preset (`'gold'`, `'crimson'`,
+   * `'cyan'`) or a ramp you registered. Only packs baked with `--mono` have recolourable layers; without it a pack with a native
+   * ramp plays in its baked colours.
+   */
+  element?: string;
   /** Entity the blow lands on. Flashed at contact, and used as `to` when `to` is omitted (read live: its x/y are the feet). */
   target?: FlashTarget;
   /** Silhouette flash of `target` at contact. Default (with a `target`): 100% white, held 2 frames, then a short decay. `false` disables it. */
@@ -52,6 +63,14 @@ export interface PlayerOptions {
    * tier fires, but the object is only valid inside the callback (copy what you need). Default false.
    */
   reuseEvents?: boolean;
+  /**
+   * Pixi's `ColorMatrixFilter` class (`import { ColorMatrixFilter } from 'pixi.js'`). With it the target flash is an exact flat
+   * silhouette of any Sprite or Container; without it the flash is two additive overlay sprites that burn a Sprite out towards the
+   * flash colour. It is passed in rather than imported so games that never flash do not pay for Pixi's filter system (~140 KB).
+   */
+  colorMatrixFilter?: new () => any;
+  /** Extra ramps by id, as `[position, 0xRRGGBB]` stops from black (0) to the hottest colour (1). Usable as `play(id, { element })`. */
+  ramps?: Record<string, RampStops>;
 }
 export interface ActorPose { x: number; y: number; lift: number; visible: boolean; facing: number }
 export interface Playback {
@@ -71,7 +90,13 @@ export interface TierEvent {
   normalDeg?: number;
   zLayer: ZLayer; blend: BlendAdvice; startMs: number;
 }
-interface Pack { manifest: Manifest; sheets: Texture[]; frames: (Texture | null)[][] }
+/**
+ * Per layer: the sheet textures of a ramp layer drawn by the batched shader (null for layers drawn as sprites), and the row of
+ * the pack's native ramp when it ships one.
+ */
+interface Pack { manifest: Manifest; sheets: Texture[]; frames: (Texture | null)[][]; rampSheets: (Texture[] | null)[]; nativeRow: number }
+/** A quad of a ramp layer: one per sheet of the layer, only the sheet the current frame uses is visible. */
+interface QuadRef { batch: QuadBatch; slot: number }
 /** Ground-plane directions (degrees) the free packs are baked in; left-facing casts mirror them. */
 export const PACK_DIRECTIONS = [0, 45, 90, -45, -90] as const;
 const keyOf = (m: Manifest) => m.direction ? `${m.id}@${m.direction}` : m.id;
@@ -103,7 +128,9 @@ export class Pool<T> {
   drain(each?: (item: T) => void): void { if (each) for (let i = 0; i < this.items.length; i++) each(this.items[i]); this.items.length = 0; }
 }
 interface Active {
-  pack: Pack; options: PlayOptions; legacy: boolean; matrix: [number, number, number, number]; root: Container; sprites: Sprite[]; time: number; cue: number;
+  pack: Pack; options: PlayOptions; legacy: boolean; matrix: Float64Array; root: Container; sprites: (Sprite | null)[]; time: number; cue: number;
+  /** Ramp layers: their quads, and the ramp row they are coloured with (-1 when the pack has no ramp layers). */
+  quads: (QuadRef[] | null)[]; rampRow: number;
   /** Where the blow lands: `to`, else the live target, else `from`. */
   dest: Point;
   /** Impact tiers (empty for packs without an impact block), the plan owning each layer, tiers by start time, next tier to fire. */
@@ -113,7 +140,7 @@ interface Active {
   done: boolean; poseResets: number; handle: Playback; promise: Promise<void> | null; resolve: (() => void) | null;
 }
 /** One running silhouette flash: the filter lives on the target until the flash ends. */
-interface Flash { target: Container | null; filter: any; list: any[]; prev: any; age: number; color: number; hold: number; decay: number }
+interface Flash { target: Container | null; filter: any; list: any[]; prev: any; overlays: Sprite[]; age: number; color: number; hold: number; decay: number }
 const MAX_LOOP_CYCLES_PER_UPDATE = 32;
 export class VfxPlayer {
   shakeEnabled: boolean;
@@ -130,15 +157,18 @@ export class VfxPlayer {
   // Event objects are reused for every emit: read them inside the listener, do not keep them.
   private cueEvent = { t: 0, type: '', id: undefined, amp: undefined, ms: undefined, packId: '', handle: null } as unknown as CueEvent;
   private tierEvent = { tier: 'hit_point', tierNumber: 1, packId: '', handle: null, point: { x: 0, y: 0 }, anchorType: 'contact_normal', normalDeg: undefined, zLayer: 'foreground', blend: 'ADD', startMs: 0 } as unknown as TierEvent;
-  private scratch: [number, number, number, number] = [1, 0, 0, 1];
+  private scratch = new Float64Array([1, 0, 0, 1]);
   private point: Point = { x: 0, y: 0 };
   private freezeLeft = 0;
   /** Freeze requested by a pack's own hitstop cue: switched off together with `hitstopEnabled`. */
   private cueFreeze = 0;
   private impulse = { age: 0, duration: 0, amp: 0, dx: 0, dy: 0, x: 0, y: 0 };
   private flashes: Flash[] = [];
-  private flashPool = new Pool<Flash>(() => ({ target: null, filter: null, list: [], prev: null, age: 0, color: 0xffffff, hold: 0, decay: 0 }));
-  private filters = new Pool<any>(() => new (colorMatrixFilterClass())());
+  private flashPool = new Pool<Flash>(() => ({ target: null, filter: null, list: [], prev: null, overlays: [], age: 0, color: 0xffffff, hold: 0, decay: 0 }));
+  private rampSet_: RampSet | null = null;
+  private batchSet_: BatchSet | null = null;
+  /** The ramp shader runs on Pixi 8 + WebGL only; elsewhere ramp layers are drawn as tinted sprites. */
+  private rampGpu: boolean;
   private dead = false;
   private loading = new Map<string, Promise<void>>();
   private requestSerial = 0;
@@ -147,7 +177,16 @@ export class VfxPlayer {
   private tick = (ticker: any) => this.update(v8 ? ticker.deltaMS : (this.app.ticker as any).deltaMS);
   constructor(private app: Application, private options: PlayerOptions = {}) {
     this.shakeEnabled = !!options.shake; this.hitstopEnabled = !!options.hitstop;
+    this.rampGpu = v8 && (app.renderer as any).name === 'webgl';
     app.ticker.add(this.tick);
+    if (options.ramps) for (const id of Object.keys(options.ramps)) this.addRamp(id, options.ramps[id]);
+  }
+  private ramps(): RampSet { return this.rampSet_ ??= new RampSet(); }
+  private batchSet(): BatchSet { return this.batchSet_ ??= new BatchSet(this.ramps()); }
+  /** Registers a ramp (`[position, 0xRRGGBB]` stops, black at 0) for `play(id, { element })`. */
+  addRamp(id: string, stops: RampStops): void {
+    if (!/^[a-z][a-z0-9-]{0,31}$/.test(id)) throw Error(`Invalid ramp id: ${id}`);
+    this.ramps().add(id, stops);
   }
   static async create(app: Application, options: PlayerOptions = {}) {
     const player = new VfxPlayer(app, options);
@@ -189,8 +228,12 @@ export class VfxPlayer {
           textures.set(name, Texture.from(image));
         } finally { if (decoded) URL.revokeObjectURL(src); }
       }
+      const rampSheets: (Texture[] | null)[] = [];
       for (const layer of manifest.layers) {
         const row: (Texture | null)[] = []; frames.push(row);
+        // Ramp layers go through the batched shader, which reads the sheet directly: they need no per-frame textures.
+        if (this.rampGpu && manifest.color && layer.ramp) { rampSheets.push(layer.sheets.map(name => textures.get(name)!)); continue; }
+        rampSheets.push(null);
         for (const frame of layer.frames) {
           if (!frame) { row.push(null); continue; }
           const [sheet, x, y, w, h] = frame, texture = textures.get(layer.sheets[sheet])!;
@@ -201,7 +244,9 @@ export class VfxPlayer {
       if (this.dead) throw Error('VfxPlayer is destroyed');
       if ((this.cancelledLoads.get(manifest.id) ?? 0) >= request) throw Error(`VFX load cancelled: ${manifest.id}`);
       if (this.packs.has(key)) { frames.flat().forEach(t => t?.destroy()); textures.forEach(t => t.destroy(true)); return; }
-      const pack = { manifest, sheets: [...textures.values()], frames };
+      let nativeRow = -1;
+      if (manifest.color?.lut) nativeRow = this.ramps().addLut(`native:${key}`, Uint8Array.from(atob(manifest.color.lut), ch => ch.charCodeAt(0)));
+      const pack: Pack = { manifest, sheets: [...textures.values()], frames, rampSheets, nativeRow };
       this.packs.set(key, pack);
       this.families.set(manifest.id, [...(this.families.get(manifest.id) ?? []), pack]);
     } catch (error) { frames.flat().forEach(t => t?.destroy()); textures.forEach(t => t.destroy(true)); throw error; }
@@ -221,14 +266,21 @@ export class VfxPlayer {
       tierRoot.zIndex = base + Z_BIAS[tier.default_z_layer];
       tiers.push({ tier, root: tierRoot, enabled: options.tiers?.[tier.id] !== false, startMs: tier.start_frame * 1000 / manifest.fps });
     }
-    const tierOf: (TierPlan | undefined)[] = [], sprites: Sprite[] = [];
+    // Ramp layers (energy stored as a luminance mask) take their colour from a ramp row: the requested element, else the
+    // pack's native ramp, else its suggested preset.
+    const colored = manifest.color?.mode === 'ramp';
+    const rampRow = !colored ? -1 : options.element !== undefined ? this.ramps().rowOf(options.element) : pack.nativeRow >= 0 ? pack.nativeRow : this.ramps().rowOf(manifest.color!.ramp ?? 'hoa');
+    const tierOf: (TierPlan | undefined)[] = [], sprites: (Sprite | null)[] = [], quads: (QuadRef[] | null)[] = [];
     for (let li = 0; li < manifest.layers.length; li++) {
       const layer = manifest.layers[li];
       let plan: TierPlan | undefined;
       for (let t = 0; t < tiers.length && !plan; t++) if (tiers[t].tier.layers.includes(layer.name)) plan = tiers[t];
-      tierOf.push(plan);
+      tierOf.push(plan); quads.push(null);
+      if (pack.rampSheets[li]) { sprites.push(null); continue; }       // drawn by the batched shader below
       const sprite = this.sprites.acquire(); sprite.visible = false;
       setBlend(sprite, layer.blend === 'add', !!plan && options.recommendedBlend !== false && plan.tier.recommended_blend_mode === 'SCREEN');
+      // Where the shader is unavailable (Pixi 7, WebGPU) a ramp layer degrades to its mask tinted with the ramp's hue.
+      sprite.tint = colored && layer.ramp ? this.ramps().colorAt(rampRow, 0.75) : 0xffffff;
       (plan ? plan.root : root).addChild(sprite); sprites.push(sprite);
     }
     // Display order bottom to top: background tiers, the pack's own layers, target overlay, foreground.
@@ -240,11 +292,20 @@ export class VfxPlayer {
       }
     };
     attach('background'); parent.addChild(root); attach('target_overlay'); attach('foreground');
+    // Batched ramp quads are added last, so each batch mesh ends on top of the materials in its parent.
+    for (let li = 0; li < manifest.layers.length; li++) {
+      const sheets = pack.rampSheets[li]; if (!sheets) continue;
+      const plan = tierOf[li], z = plan?.tier.default_z_layer;
+      const home = (z === 'background' ? options.layers?.background : z === 'target_overlay' ? options.layers?.overlay : z === 'foreground' ? options.layers?.foreground : undefined) ?? parent;
+      const refs: QuadRef[] = [];
+      for (let si = 0; si < sheets.length; si++) { const batch = this.batchSet().get(home, sheets[si], true); refs.push({ batch, slot: batch.alloc() }); }
+      quads[li] = refs;
+    }
     const target = options.target, targetOk = !!target && Number.isFinite(target.x) && Number.isFinite(target.y);
     const juice = options.hitstop !== undefined && options.hitstop !== false || targetOk;
     const flash = options.flash === false ? null : options.flash ?? {};
     const player = this;
-    const a: Active = { pack, options, legacy, matrix: [1, 0, 0, 1], root, sprites, time: 0, cue: 0, dest: options.to ?? (targetOk ? target as Point : options.from),
+    const a: Active = { pack, options, legacy, matrix: new Float64Array([1, 0, 0, 1]), root, sprites, quads, rampRow, time: 0, cue: 0, dest: options.to ?? (targetOk ? target as Point : options.from),
       tiers, tierOf, tierOrder: tiers.slice().sort((x, y) => x.tier.start_frame - y.tier.start_frame), tierCursor: 0,
       juice, freezeMs: options.hitstop === true ? 32 : typeof options.hitstop === 'number' ? Math.max(0, Math.min(100, options.hitstop)) : 0,
       impulsePx: options.impulse === false ? 0 : options.impulse ?? (juice ? 2.5 : 0),
@@ -258,6 +319,7 @@ export class VfxPlayer {
         stop: () => this.finish(a),
       } as Playback };
     this.list.push(a); this.live++; this.draw(a); this.emitCues(a);
+    this.batchSet_?.flush();
     return a.handle;
   }
   /** Actor pose for a playback; see `Playback.pose`. */
@@ -287,7 +349,8 @@ export class VfxPlayer {
   off(type: 'cue', listener: (event: CueEvent) => void): this;
   off(type: 'tier', listener: (event: TierEvent) => void): this;
   off(type: 'cue' | 'tier', listener: any): this { if (type === 'cue') this.listeners = this.listeners.filter(l => l !== listener); else this.tierListeners = this.tierListeners.filter(l => l !== listener); return this; }
-  stats() { return { active: this.live, pooled: this.sprites.size, packs: this.packs.size }; }
+  /** `quadBatches`: draw calls the ramp shader costs right now, one per atlas sheet however many plays are active. */
+  stats() { return { active: this.live, pooled: this.sprites.size, packs: this.packs.size, quadBatches: this.batchSet_?.activeBatches ?? 0 }; }
   /** True while a hit-stop freeze is running. Pause your own game logic on it so everything stops together. */
   get frozen(): boolean { return this.freezeLeft > 0 || (this.hitstopEnabled && this.cueFreeze > 0); }
   /** Freezes every playback for `ms` (0-1000); overlapping freezes keep the longest. Playback resumes where it stopped. */
@@ -312,7 +375,7 @@ export class VfxPlayer {
    * Recomputed per draw so live endpoints keep tracking; legacy packs keep the 1.0 per-frame mirror.
    * Writes [a, b, c, d] into `out` (no allocation).
    */
-  private matrix(a: Active, out: [number, number, number, number]): void {
+  private matrix(a: Active, out: Float64Array): void {
     const m = a.pack.manifest, o = a.options, to = a.dest;
     if (a.legacy) {
       const mirror = to.x < o.from.x ? -1 : 1, span = Math.abs(m.target.x - m.origin.x);
@@ -347,7 +410,9 @@ export class VfxPlayer {
     for (let i = 0; i < a.tiers.length; i++) { const plan = a.tiers[i]; this.tierPoint(a, plan, mx, this.point); setMatrix(plan.root, s, 0, 0, 1, this.point.x, this.point.y); }
     const index = Math.min(m.frameCount - 1, Math.floor(a.time * m.fps / 1000)), layers = m.layers;
     for (let li = 0; li < a.sprites.length; li++) {
-      const sprite = a.sprites[li], f = layers[li].frames[index], t = a.pack.frames[li][index], plan = a.tierOf[li];
+      const sprite = a.sprites[li], f = layers[li].frames[index], plan = a.tierOf[li];
+      if (!sprite) { this.drawQuads(a, li, f, plan, mx, anchor); continue; }
+      const t = a.pack.frames[li][index];
       sprite.visible = !!f && (!plan || plan.enabled);
       // A tier's frames are drawn around its anchor, so the tier root alone decides where the impact lands.
       if (f && t) {
@@ -357,12 +422,32 @@ export class VfxPlayer {
       }
     }
   }
+  /** Writes a ramp layer's quad for the current frame: into the tier's anchored space, or through the pack matrix. */
+  private drawQuads(a: Active, li: number, f: Frame, plan: TierPlan | undefined, mx: Float64Array, anchor: Point) {
+    const refs = a.quads[li]!, m = a.pack.manifest, sheets = a.pack.rampSheets[li]!;
+    if (!f || (plan && !plan.enabled)) { for (let i = 0; i < refs.length; i++) refs[i].batch.hide(refs[i].slot); return; }
+    const k = 1 / (m.layers[li].scale ?? m.scale), w = f[3] * k, h = f[4] * k;
+    let ox: number, oy: number, ax: number, ay: number, s = 1;
+    if (plan) { this.tierPoint(a, plan, mx, this.point); ax = this.point.x; ay = this.point.y; s = Math.sign(mx[0]) || 1; ox = f[5] - plan.tier.anchor_point.x; oy = f[6] - plan.tier.anchor_point.y; }
+    else { ax = anchor.x; ay = anchor.y; ox = f[5]; oy = f[6]; }
+    const x1 = ox + w, y1 = oy + h;
+    for (let si = 0; si < refs.length; si++) {
+      const ref = refs[si];
+      if (f[0] !== si) { ref.batch.hide(ref.slot); continue; }
+      const sheet = sheets[si], sw = sheet.width, sh = sheet.height;
+      if (plan) ref.batch.set(ref.slot, ax + s * ox, ay + oy, ax + s * x1, ay + oy, ax + s * ox, ay + y1, ax + s * x1, ay + y1, f[1] / sw, f[2] / sh, (f[1] + f[3]) / sw, (f[2] + f[4]) / sh, a.rampRow);
+      else ref.batch.set(ref.slot,
+        ax + mx[0] * ox + mx[2] * oy, ay + mx[1] * ox + mx[3] * oy, ax + mx[0] * x1 + mx[2] * oy, ay + mx[1] * x1 + mx[3] * oy,
+        ax + mx[0] * ox + mx[2] * y1, ay + mx[1] * ox + mx[3] * y1, ax + mx[0] * x1 + mx[2] * y1, ay + mx[1] * x1 + mx[3] * y1,
+        f[1] / sw, f[2] / sh, (f[1] + f[3]) / sw, (f[2] + f[4]) / sh, a.rampRow);
+    }
+  }
   /**
    * Where an impact tier is anchored in the parent's space: the baked target's feet as the pack places them
    * (so tiers land where the rest of the pack does; exactly on `to` with fitDistance), then the tier's own height
    * above the feet. Tiers are translated and mirrored only, never sheared or stretched. Writes into `out`.
    */
-  private tierPoint(a: Active, plan: TierPlan, matrix: [number, number, number, number], out: Point): void {
+  private tierPoint(a: Active, plan: TierPlan, matrix: Float64Array, out: Point): void {
     const m = a.pack.manifest, s = Math.sign(matrix[0]) || 1, at = plan.tier.anchor_point;
     let fx: number, fy: number;
     if (m.anchor === 'target') { fx = a.dest.x; fy = a.dest.y; }
@@ -418,32 +503,55 @@ export class VfxPlayer {
     if (a.flashFrames > 0 && a.options.target) this.startFlash(a.options.target, a.flashColor, a.flashFrames * 1000 / 60, a.flashDecayMs);
   }
   private startFlash(target: Container, color: number, hold: number, decay: number) {
+    const Filter = this.options.colorMatrixFilter;
+    if (!Filter && !(target instanceof Sprite)) return;   // the overlay flash needs a Sprite; a Container needs the filter
     let f: Flash | undefined;
     for (let i = 0; i < this.flashes.length; i++) if (this.flashes[i].target === target) f = this.flashes[i];
-    if (f) { f.age = 0; f.color = color; f.hold = hold; f.decay = decay; return; }   // already flashing: restart, never stack filters
+    if (f) { f.age = 0; f.color = color; f.hold = hold; f.decay = decay; return; }   // already flashing: restart, never stack
     f = this.flashPool.acquire();
-    if (!f.filter) f.filter = this.filters.acquire();
     f.target = target; f.age = 0; f.color = color; f.hold = hold; f.decay = decay;
-    f.prev = target.filters;
-    f.list.length = 0;
-    if (Array.isArray(f.prev)) for (let i = 0; i < f.prev.length; i++) f.list.push(f.prev[i]); else if (f.prev) f.list.push(f.prev);
-    f.list.push(f.filter);
+    if (Filter) {
+      if (!f.filter) f.filter = new Filter();
+      f.prev = target.filters;
+      f.list.length = 0;
+      if (Array.isArray(f.prev)) for (let i = 0; i < f.prev.length; i++) f.list.push(f.prev[i]); else if (f.prev) f.list.push(f.prev);
+      f.list.push(f.filter);
+      target.filters = f.list;
+    } else {
+      // Two additive copies of the sprite right above it: at full strength they push any colour at least 4x brighter.
+      while (f.overlays.length < 2) f.overlays.push(this.sprites.acquire());
+      for (let i = 0; i < 2; i++) { const o = f.overlays[i]; o.blendMode = (v8 ? 'add' : 1) as any; target.parent?.addChild(o); }
+    }
     this.setFlash(f, 1);
-    target.filters = f.list;
     this.flashes.push(f);
   }
-  /** Mixes the target's colour towards `color` by `amount`, alpha untouched: a full-strength flash is a flat silhouette. */
+  /** Mixes the target towards `color` by `amount` (1 = flash colour at full strength). */
   private setFlash(f: Flash, amount: number) {
-    const m: number[] = f.filter.matrix, k = amount, r = (f.color >> 16 & 255) / 255, g = (f.color >> 8 & 255) / 255, b = (f.color & 255) / 255;
-    m[0] = 1 - k; m[1] = 0; m[2] = 0; m[3] = 0; m[4] = k * r;
-    m[5] = 0; m[6] = 1 - k; m[7] = 0; m[8] = 0; m[9] = k * g;
-    m[10] = 0; m[11] = 0; m[12] = 1 - k; m[13] = 0; m[14] = k * b;
-    m[15] = 0; m[16] = 0; m[17] = 0; m[18] = 1; m[19] = 0;
-    f.filter.matrix = m;
+    if (f.filter && f.list.length) {
+      // Filter mode: out = (1 - k) * in + k * colour, alpha untouched, so full strength is a flat silhouette.
+      const m: number[] = f.filter.matrix, k = amount, r = (f.color >> 16 & 255) / 255, g = (f.color >> 8 & 255) / 255, b = (f.color & 255) / 255;
+      m[0] = 1 - k; m[1] = 0; m[2] = 0; m[3] = 0; m[4] = k * r;
+      m[5] = 0; m[6] = 1 - k; m[7] = 0; m[8] = 0; m[9] = k * g;
+      m[10] = 0; m[11] = 0; m[12] = 1 - k; m[13] = 0; m[14] = k * b;
+      m[15] = 0; m[16] = 0; m[17] = 0; m[18] = 1; m[19] = 0;
+      f.filter.matrix = m;
+      return;
+    }
+    const t = f.target as Sprite, parent = t.parent;
+    for (let i = 0; i < f.overlays.length; i++) {
+      const o = f.overlays[i];
+      if (parent && o.parent !== parent) parent.addChild(o);
+      // Follow the target frame by frame: texture, anchor and transform.
+      o.texture = t.texture; o.anchor.set(t.anchor.x, t.anchor.y); o.position.set(t.x, t.y); o.scale.set(t.scale.x, t.scale.y);
+      o.rotation = t.rotation; o.skew.set(t.skew.x, t.skew.y); o.zIndex = t.zIndex + 0.001; o.visible = t.visible; o.tint = f.color; o.alpha = amount;
+    }
   }
   private endFlash(index: number) {
     const f = this.flashes[index], last = this.flashes.length - 1;
-    f.target!.filters = f.prev ?? null; f.target = null; f.prev = null; f.list.length = 0;
+    if (f.list.length) { f.target!.filters = f.prev ?? null; f.list.length = 0; f.prev = null; }
+    for (let i = 0; i < f.overlays.length; i++) { const o = f.overlays[i]; o.removeFromParent(); o.texture = Texture.EMPTY; o.visible = false; o.alpha = 1; o.tint = 0xffffff; this.sprites.release(o); }
+    f.overlays.length = 0;
+    f.target = null;
     this.flashes[index] = this.flashes[last]; this.flashes.length = last;
     this.flashPool.release(f);
   }
@@ -488,6 +596,7 @@ export class VfxPlayer {
       this.draw(a);
     }
     this.updating = false; this.compact();
+    this.batchSet_?.flush();
   }
   private compact() {
     let w = 0;
@@ -497,6 +606,8 @@ export class VfxPlayer {
   private updateShake(dt: number) {
     const target = this.options.shake?.target, s = this.shake, im = this.impulse;
     if (!target) return;
+    // Nothing shaking and nothing to undo: leave the camera alone (writing its position would mark it dirty every frame).
+    if (s.x === 0 && s.y === 0 && im.x === 0 && im.y === 0 && s.age >= s.duration && im.age >= im.duration) { s.age += dt; im.age += dt; return; }
     target.x -= s.x + im.x; target.y -= s.y + im.y; s.x = s.y = im.x = im.y = 0;
     s.age += dt; im.age += dt;
     if (this.shakeEnabled && s.age < s.duration) {
@@ -514,9 +625,13 @@ export class VfxPlayer {
     if (a.done) return;
     a.done = true; this.live--;
     for (let i = -1; i < a.tiers.length; i++) { const root = i < 0 ? a.root : a.tiers[i].root; root.removeFromParent(); root.removeChildren(); this.roots.release(root); }
-    for (let i = 0; i < a.sprites.length; i++) { const sprite = a.sprites[i]; sprite.visible = false; sprite.texture = Texture.EMPTY; this.sprites.release(sprite); }
+    for (let i = 0; i < a.sprites.length; i++) {
+      const sprite = a.sprites[i], refs = a.quads[i];
+      if (sprite) { sprite.visible = false; sprite.texture = Texture.EMPTY; this.sprites.release(sprite); }
+      if (refs) for (let q = 0; q < refs.length; q++) refs[q].batch.release(refs[q].slot);
+    }
     if (a.resolve) a.resolve();
-    if (!this.updating) this.compact();
+    if (!this.updating) { this.compact(); this.batchSet_?.flush(); }
   }
   unload(id: string) {
     const at = id.indexOf('@'), family = at < 0 ? id : id.slice(0, at);
@@ -524,6 +639,8 @@ export class VfxPlayer {
     const doomed = at < 0 ? this.families.get(id) ?? [] : [this.packs.get(id)].filter((p): p is Pack => !!p);
     for (const pack of doomed) {
       for (let i = this.list.length - 1; i >= 0; i--) if (this.list[i].pack === pack) this.finish(this.list[i]);
+      if (this.batchSet_) for (const sheet of pack.sheets) this.batchSet_.dropSheet(sheet);
+      this.rampSet_?.remove(`native:${keyOf(pack.manifest)}`);
       pack.frames.flat().forEach(t => t?.destroy()); pack.sheets.forEach(t => t.destroy(true)); this.packs.delete(keyOf(pack.manifest));
     }
     const rest = (this.families.get(family) ?? []).filter(p => !doomed.includes(p));
@@ -535,8 +652,9 @@ export class VfxPlayer {
     for (const id of [...this.families.keys()]) this.unload(id);
     while (this.flashes.length) this.endFlash(this.flashes.length - 1);
     this.shakeEnabled = false; this.impulse.duration = 0; this.updateShake(0);
+    this.batchSet_?.destroy(); this.rampSet_?.destroy();
     this.sprites.drain(s => s.destroy()); this.roots.drain(r => r.destroy());
-    this.flashPool.drain(f => f.filter?.destroy?.()); this.filters.drain(f => f.destroy?.());
+    this.flashPool.drain(f => f.filter?.destroy?.());
     this.listeners = []; this.tierListeners = [];
   }
 }

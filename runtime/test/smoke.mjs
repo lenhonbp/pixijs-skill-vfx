@@ -103,6 +103,24 @@ const impactManifest = (version = 1) => ({ ...empty, id: version === 1 ? 'impact
 validate(impactManifest());
 const juiceManifest = { ...impactManifest(), id: 'juice', cues: [{ t: 100, type: 'hit' }, { t: 100, type: 'hitstop', ms: 100 }, { t: 100, type: 'shake', amp: 6, ms: 200 }] };
 validate(juiceManifest);
+// Ramp (grayscale + gradient) packs: validation, then a fixture whose mask is a left-to-right gradient.
+const greenLut = Buffer.from(Uint8Array.from({ length: 768 }, (_, i) => i % 3 === 1 ? Math.floor(i / 3) : 0)).toString('base64');
+const rampManifest = (id = 'ramped') => ({ ...empty, id, durationMs: 200, frameCount: 2, fps: 10, scale: 1, origin: { x: 0, y: 0 }, target: { x: 360, y: 0 }, groundSquash: 0.6, anchor: 'caster', cues: [],
+  layers: [
+    { name: 'base', blend: 'normal', scale: 1, sheets: ['ordered-0.png'], frames: [impactFrame(100, -20), impactFrame(100, -20)] },
+    { name: 'glow', blend: 'add', scale: 1, ramp: true, sheets: ['ramp-mask.png'], frames: [impactFrame(140, -20), impactFrame(140, -20)] }],
+  color: { mode: 'ramp', channel: 'value', ramp: 'hoa', lut: greenLut } });
+validate(rampManifest());
+{
+  const bare = rampManifest(); delete bare.color.lut; validate(bare);                              // the native ramp is optional
+  const future = rampManifest(); future.color = { mode: 'palette', channel: 'hue' }; assert.equal(validate(future).color, undefined, 'unknown colour mode is ignored');
+  for (const [name, mutate] of [
+    ['channel', m => { m.color.channel = 'alpha'; }], ['ramp id', m => { m.color.ramp = 'Not A Ramp'; }], ['short lut', m => { m.color.lut = 'AAAA'; }],
+    ['normal-blend ramp layer', m => { m.layers[0].ramp = true; }], ['ramp: false', m => { m.layers[1].ramp = false; }],
+  ]) { const m = rampManifest(); mutate(m); assert.throws(() => validate(m), /Invalid VFX colour mode/, name); }
+  console.log('Ramp colour block validation: PASS (native lut optional, unknown mode ignored, 5 malformed cases rejected)');
+}
+const rampSheets = new Map();
 const actors = structuredClone(feedback);
 actors.id = 'actors';
 actors.actors = { caster: { frames: [[0, 0, 0, 1], [20, 10, 30, 2]] }, target: { frames: [[0, 0, 0, 1], [-10, 4, 12, 1]] } };
@@ -243,13 +261,17 @@ async function impactSmoke(engine) {
     flat.stop();
   } finally { player.destroy(); [parent, bg, ov, fg].forEach(c => c.destroy({ children: true })); }
 }
-async function juiceSmoke(engine) {
+async function juiceSmoke({ engine, mode }) {
+  // mode 'filter': Pixi's ColorMatrixFilter is handed to the player (exact flat silhouette); 'overlay': the default, two additive sprites.
   const g = engine === 'v8' ? window.__v8 : window.__v7, { app, Container, Sprite, Texture, VfxPlayer } = g;
   const check = (ok, message) => { if (!ok) throw Error(`${engine} juice: ${message}`); };
   const near = (a, b, e = 1e-6) => Math.abs(a - b) < e;
   const stage = new Container(), camera = new Container(); app.stage.addChild(camera); camera.addChild(stage); camera.position.set(100, 50);
-  const target = new Sprite(Texture.WHITE); target.width = 24; target.height = 24; target.tint = 0xff0000; target.anchor.set(0.5); target.position.set(460, 200); stage.addChild(target);
-  const player = new VfxPlayer(app, { shake: { target: camera } });
+  const target = new Sprite(Texture.WHITE); target.width = 24; target.height = 24; target.tint = mode === 'filter' ? 0xff0000 : 0x808080; target.anchor.set(0.5); target.position.set(460, 200); stage.addChild(target);
+  const player = new VfxPlayer(app, { shake: { target: camera }, colorMatrixFilter: mode === 'filter' ? g.ColorMatrixFilter : undefined });
+  // Flash overlays are sprites sharing the target's texture: none may be left over once a flash is over.
+  const overlays = () => stage.children.filter(c => c !== target && c.texture === target.texture).length;
+  const clear = () => mode === 'filter' ? !target.filters?.length : overlays() === 0;
   const frame = ms => { player.update(ms); app.render(); };
   const white = () => { // colour at the target's lower-right corner, clear of the 16 px effect sprites drawn over its centre
     const canvas = app.canvas ?? app.view, copy = document.createElement('canvas'); copy.width = canvas.width; copy.height = canvas.height;
@@ -265,21 +287,22 @@ async function juiceSmoke(engine) {
     const ground = stage.children[0];
     check(near(ground.x, 460) && near(ground.y, 200), 'target is the default destination');
     player.update(99); app.render();
-    check(!player.frozen && (!target.filters || target.filters.length === 0) && camera.x === 100, 'nothing happens before contact');
-    check(white().join() === '255,0,0', 'target is red before the flash: ' + white());
+    check(!player.frozen && clear() && camera.x === 100, 'nothing happens before contact');
+    check(white().join() === (mode === 'filter' ? '255,0,0' : '128,128,128'), 'target colour before the flash: ' + white());
     player.update(1);   // contact at t = 100 ms
     check(player.frozen, 'contact freezes the player');
     check(near(camera.x - 100, 2.5) && camera.y === 50, `camera kicks 2.5 px along the blow (right): ${camera.x - 100},${camera.y - 50}`);
     app.render();
-    check(white().join() === '255,255,255', 'full-strength flash is a flat white silhouette: ' + white());
+    check(white().join() === '255,255,255', `full-strength flash (${mode}) is white: ` + white());
     const t0 = h.elapsedMs;
     frame(16); check(h.elapsedMs === t0 && player.frozen, 'frame 1 of the micro-freeze');
     frame(16); check(h.elapsedMs === t0, 'frame 2 of the micro-freeze (the pack\'s own 100 ms hitstop is replaced, not added)');
     frame(16); check(h.elapsedMs > t0 && !player.frozen, 'playback resumes after 32 ms: ' + (h.elapsedMs - t0));
-    check(white().join() !== '255,255,255', 'flash has decayed after the hold');
+    for (let i = 0; i < 3; i++) frame(16);   // overlays saturate until the flash is below half strength, ~75 ms in
+    check(white().join() !== '255,255,255', 'flash has decayed after the hold: ' + white());
     for (let i = 0; i < 30; i++) frame(16);
     check(camera.x === 100 && camera.y === 50, 'camera is back exactly where it started: ' + camera.x + ',' + camera.y);
-    check(!target.filters || target.filters.length === 0, 'flash filter removed: ' + target.filters?.length);
+    check(clear(), 'flash removed again: ' + overlays() + ' overlays, ' + target.filters?.length + ' filters');
     h.stop();
     // Left cast kicks the other way; the pack's own jitter shake is replaced by the impulse.
     target.position.set(-260, 200);
@@ -294,22 +317,22 @@ async function juiceSmoke(engine) {
     target.position.set(460, 200);
     h = player.play('juice', { from, fitDistance: true, parent: stage, hitstop: true, target, flash: false, impulse: false });
     player.update(100);
-    check(player.frozen && camera.x === 100 && (!target.filters || target.filters.length === 0), 'flash:false and impulse:false opt out');
+    check(player.frozen && camera.x === 100 && clear(), 'flash:false and impulse:false opt out');
     h.stop(); for (let i = 0; i < 4; i++) frame(16);
     // Plain plays keep the 1.x behaviour: no juice, the pack's own cues are ignored unless the player enables them.
     h = player.play('juice', { from, to: { x: 460, y: 200 }, fitDistance: true, parent: stage });
     player.update(100);
-    check(!player.frozen && !target.filters?.length, 'a play without juice options adds no freeze and no flash');
+    check(!player.frozen && clear(), 'a play without juice options adds no freeze and no flash');
     check(Math.hypot(camera.x - 100, camera.y - 50) <= 6, 'the pack\'s own non-directional shake cue still works as before');
     h.stop(); for (let i = 0; i < 20; i++) frame(16);
     check(camera.x === 100 && camera.y === 50, 'legacy jitter settles back exactly');
     // A second contact while flashing restarts the flash instead of stacking filters.
     h = player.play('juice', { from, fitDistance: true, parent: stage, target, loop: true });
     player.update(100); frame(16);
-    const filters = target.filters.length; player.update(300);
-    check(target.filters.length <= filters, 'repeated hits never stack flash filters');
+    const count = () => mode === 'filter' ? target.filters.length : overlays(), stacked = count(); player.update(300);
+    check(count() <= stacked && stacked <= 2, 'repeated hits never stack flash filters or overlays: ' + stacked);
     h.stop(); for (let i = 0; i < 12; i++) frame(16);
-    check(!target.filters || target.filters.length === 0, 'flash ends after the loop is stopped');
+    check(clear(), 'flash ends after the loop is stopped');
     // reuseEvents hands out one object per type.
     const shared = new VfxPlayer(app, { reuseEvents: true }), seen = [];
     await shared.load('/juice.vfxb');
@@ -364,6 +387,62 @@ async function flowSmoke(engine) {
   for (let i = 0; i < 3000; i++) { trail.push(20 + (i % 200), 100 + Math.sin(i) * 20); trail.update(16.7); }
   check(trail.mesh.geometry.getBuffer('aPosition').data === positions && trail.points.every((p, i) => p === before[i]), 'vertex buffer and points are reused');
   trail.destroy(); parent.destroy({ children: true });
+}
+async function rampSmoke(engine) {
+  const g = engine === 'v8' ? window.__v8 : window.__v7, { app, Container, VfxPlayer } = g;
+  const check = (ok, message) => { if (!ok) throw Error(`${engine} ramp: ${message}`); };
+  const gpu = engine === 'v8';
+  const parent = new Container(); app.stage.addChild(parent);
+  const player = new VfxPlayer(app, { ramps: { ice: [[0, 0], [0.5, 0x2040ff], [1, 0xffffff]] } });
+  const px = (x, y) => { const canvas = app.canvas ?? app.view, copy = document.createElement('canvas'); copy.width = canvas.width; copy.height = canvas.height;
+    const ctx = copy.getContext('2d'); ctx.drawImage(canvas, 0, 0); const r = app.renderer.resolution; return [...ctx.getImageData(Math.floor(x * r), Math.floor(y * r), 1, 1).data].slice(0, 3); };
+  const draw = () => { player.update(1); app.render(); };
+  const near = (p, q, e = 6) => p.every((v, i) => Math.abs(v - q[i]) <= e);
+  try {
+    await player.load('/ramped.vfxb');
+    const from = { x: 50, y: 200 };
+    // The energy layer sits at x 190-206 (50 + 140): level 0 at its left edge, 255 at its right edge.
+    let h = player.play('ramped', { from, to: { x: 410, y: 200 }, parent, fitDistance: true, element: 'fire' });
+    draw();
+    if (gpu) {
+      check(near(px(205.5, 188), [255, 243, 196], 8), 'fire ramp: core colour at the brightest column: ' + px(205.5, 188));
+      check(px(190.5, 188).every(v => v < 30), 'level 0 is black (additive adds nothing): ' + px(190.5, 188));
+      const mid = px(198.5, 188); check(mid[0] > mid[2] + 40, 'fire ramp mid-level is warm: ' + mid);
+      h.stop(); h = player.play('ramped', { from, to: { x: 410, y: 200 }, parent, fitDistance: true, element: 'cyan' }); draw();
+      const cy = px(205.5, 188); check(near(cy, [232, 255, 255], 8) && px(198.5, 188)[2] > px(198.5, 188)[0] + 40, 'the same atlas recoloured by element: cyan ' + cy + ' mid ' + px(198.5, 188));
+      h.stop(); h = player.play('ramped', { from, to: { x: 410, y: 200 }, parent, fitDistance: true }); draw();
+      const nat = px(198.5, 188); check(nat[1] > 100 && nat[0] < 10 && nat[2] < 10, 'no element: the pack\'s native ramp (green) is used: ' + nat);
+      h.stop(); h = player.play('ramped', { from, to: { x: 410, y: 200 }, parent, fitDistance: true, element: 'ice' }); draw();
+      check(near(px(205.5, 188), [255, 255, 255], 8) && px(198.5, 188)[2] > px(198.5, 188)[0] + 60, 'custom ramps registered with the player: core ' + px(205.5, 188) + ' mid ' + px(198.5, 188));
+      h.stop();
+      // Left cast: the layer is mirrored with the rest of the pack (bright edge now on the left of the quad).
+      h = player.play('ramped', { from: { x: 500, y: 200 }, to: { x: 140, y: 200 }, parent, fitDistance: true, element: 'fire' }); draw();
+      check(near(px(500 - 140 - 15.5, 188), [255, 243, 196], 8) && px(500 - 140 - 0.5, 188).every(v => v < 30), 'left cast mirrors the ramp layer');
+      h.stop();
+      // Many plays, many elements: one batched mesh per sheet, so the draw calls do not grow with the number of plays.
+      const gl = app.renderer.gl; let draws = 0;
+      for (const name of ['drawElements', 'drawArrays']) { const orig = gl[name].bind(gl); gl[name] = (...a) => { draws++; return orig(...a); }; }
+      const plays = ['fire', 'kim', 'thuy', 'moc', 'loi', 'tho'].map((element, i) => player.play('ramped', { from: { x: 50 + i * 40, y: 200 }, to: { x: 410 + i * 40, y: 200 }, parent, fitDistance: true, element }));
+      player.update(1); draws = 0; app.render();
+      check(player.stats().quadBatches === 1, 'six plays share one ramp batch: ' + player.stats().quadBatches);
+      check(draws <= 4, `six recoloured plays render in few draw calls (${draws}): one ramp mesh plus the material sprites`);
+      plays.forEach(p => p.stop());
+      check(player.stats().quadBatches === 0, 'finished plays release their quads');
+    } else {
+      // Pixi 7 has no ramp shader: the layer is its mask tinted with the ramp's hue, drawn by an ordinary sprite.
+      const root = parent.children[0], sprites = root.children;
+      check(sprites.length === 2 && sprites[0].tint === 0xffffff && sprites[1].tint !== 0xffffff, 'fallback: the energy layer is a tinted sprite, materials stay white');
+      const t = sprites[1].tint, r = t >> 16 & 255, gg = t >> 8 & 255, b = t & 255;
+      check(r > 240 && gg > 140 && gg < 175 && b > 55 && b < 95, 'fallback tint is the fire ramp at 75%: ' + t.toString(16));
+      check(player.stats().quadBatches === 0, 'no batches without the shader');
+      h.stop();
+    }
+    let unknown = false; try { player.play('ramped', { from, parent, element: 'plasma' }); } catch (e) { unknown = /Unknown ramp/.test(String(e)); }
+    check(unknown, 'an unknown element is an error, not a silent default');
+    // Loading and unloading must give the native ramp's row back: more cycles than there are rows.
+    for (let i = 0; i < 80; i++) { await player.load('/ramped.vfxb'); player.unload('ramped'); }
+    await player.load('/ramped.vfxb'); player.play('ramped', { from, parent }).stop();
+  } finally { player.destroy(); parent.destroy({ children: true }); }
 }
 // Independent wire fixture: JSON and WebP payloads framed with little-endian fields.
 function fixture(manifest, sheets, key) {
@@ -437,11 +516,11 @@ assert.deepEqual(readContainer(buffer(custom), 'test-custom-火').manifest, deco
 assert.deepEqual(readContainer(buffer(plainContainer)).manifest, decoded.manifest);
 console.log('Format contracts: PASS (default/custom keys, unscrambled, empty layers, malformed data)');
 const v7Bundle = await build({
-  stdin: { contents: `import { Application, Container, Sprite, Texture } from 'pixi.js'; import { VfxPlayer, FlowTrail, makeNoiseTexture } from './runtime/src/index'; const app = new Application({width:1000,height:580}); document.body.appendChild(app.view); const vfx = await VfxPlayer.create(app); window.__v7 = {app,vfx,Container,Sprite,Texture,VfxPlayer,FlowTrail,makeNoiseTexture};`, resolveDir: root },
+  stdin: { contents: `import * as PIXI from 'pixi.js'; import { Application, Container, Sprite, Texture } from 'pixi.js'; import { VfxPlayer, FlowTrail, makeNoiseTexture } from './runtime/src/index'; const app = new Application({width:1000,height:580}); document.body.appendChild(app.view); const vfx = await VfxPlayer.create(app); window.__v7 = {app,vfx,Container,Sprite,Texture,VfxPlayer,FlowTrail,makeNoiseTexture,ColorMatrixFilter: PIXI.ColorMatrixFilter ?? PIXI.filters.ColorMatrixFilter};`, resolveDir: root },
   bundle: true, format: 'esm', write: false, alias: { 'pixi.js': 'pixi7' },
 });
 const v8Bundle = await build({
-  stdin: { contents: `import { Application, Container, Sprite, Texture } from 'pixi.js'; import { VfxPlayer, FlowTrail, makeNoiseTexture } from './runtime/src/index'; const app = new Application(); await app.init({ width: 1000, height: 580, preference: 'webgl' }); document.body.appendChild(app.canvas); const vfx = await VfxPlayer.create(app); window.__v8 = {app,vfx,Container,Sprite,Texture,VfxPlayer,FlowTrail,makeNoiseTexture};`, resolveDir: root },
+  stdin: { contents: `import { Application, Container, Sprite, Texture, ColorMatrixFilter } from 'pixi.js'; import { VfxPlayer, FlowTrail, makeNoiseTexture } from './runtime/src/index'; const app = new Application(); await app.init({ width: 1000, height: 580, preference: 'webgl' }); document.body.appendChild(app.canvas); const vfx = await VfxPlayer.create(app); window.__v8 = {app,vfx,Container,Sprite,Texture,VfxPlayer,FlowTrail,makeNoiseTexture,ColorMatrixFilter};`, resolveDir: root },
   bundle: true, format: 'esm', write: false,
 });
 const catalogFixtureBundle = await build({
@@ -454,6 +533,7 @@ const server = createServer(async (req, res) => {
     if (path === '/catalog-fixture.js') { res.setHeader('Content-Type', 'text/javascript'); res.end(catalogFixtureBundle.outputFiles[0].contents); return; }
     if (path === '/v8.html') { res.setHeader('Content-Type', 'text/html'); res.end('<link rel="icon" href="data:,"><script type="module" src="/v8.js"></script>'); return; }
     if (path === '/v8.js') { res.setHeader('Content-Type', 'text/javascript'); res.end(v8Bundle.outputFiles[0].contents); return; }
+    if (path === '/ramped.vfxb') { res.end(fixture(rampManifest(), rampSheets)); return; }
     if (path === '/juice.vfxb') { res.end(fixture(juiceManifest, impactSheets)); return; }
     if (path === '/v7.html') { res.setHeader('Content-Type', 'text/html'); res.end('<link rel="icon" href="data:,"><script type="module" src="/v7.js"></script>'); return; }
     if (path === '/v7.js') { res.setHeader('Content-Type', 'text/javascript'); res.end(v7Bundle.outputFiles[0].contents); return; }
@@ -532,6 +612,11 @@ try {
   }), { colors: orderedColors, sheetSize: orderedSheetSize });
   pngs.forEach((png, i) => orderedSheets.set(`ordered-${i}.png`, Buffer.from(png, 'base64')));
   pngs.forEach((png, i) => impactSheets.set(`ordered-${i}.png`, Buffer.from(png, 'base64')));
+  pngs.forEach((png, i) => rampSheets.set(`ordered-${i}.png`, Buffer.from(png, 'base64')));
+  rampSheets.set('ramp-mask.png', Buffer.from(await page.evaluate(() => { // 16x16 mask, level 0 at the left edge up to 255 at the right edge
+    const c = document.createElement('canvas'); c.width = c.height = 16; const x = c.getContext('2d');
+    for (let i = 0; i < 16; i++) { x.fillStyle = `rgb(${i * 17},${i * 17},${i * 17})`; x.fillRect(i, 0, 1, 16); }
+    return c.toDataURL('image/png').split(',')[1]; }), 'base64'));
   await page.evaluate(orderedSmoke, { engine: 'v8', colors: orderedColors, sheetSize: orderedSheetSize });
   await page.evaluate(impactSmoke, 'v8');
   console.log('Pixi v8 impact tiers: PASS (tier roots, anchors on the target, mirror without shear, depth slots, switches, blend advice, tier events, loop, pool, unknown version)');
@@ -639,16 +724,20 @@ try {
   console.log('Pixi v7: PASS (WebGL render, mirror/fitDistance/parent/zIndex, target anchor/nonzero origin, cleanup/pool, custom key, unscrambled, empty pack, shake/hitstop toggles, invalid load, destroy)');
   await page.evaluate(orderedSmoke, { engine: 'v7', colors: orderedColors, sheetSize: orderedSheetSize });
   await page.evaluate(impactSmoke, 'v7');
-  await page.evaluate(juiceSmoke, 'v7');
+  for (const mode of ['overlay', 'filter']) await page.evaluate(juiceSmoke, { engine: 'v7', mode });
   await page.evaluate(flowSmoke, 'v7');
+  await page.evaluate(rampSmoke, 'v7');
+  console.log('Pixi v7 ramp packs: PASS (tinted-sprite fallback, no batches, unknown element)');
   console.log('Pixi v7 combat juice: PASS (micro-freeze, camera impulse along the blow, silhouette flash)');
   console.log('Pixi v7 impact tiers: PASS (same contract on Pixi 7)');
   await page.evaluate(actorSmoke, 'v7');
   console.log('Pixi v7 actors: PASS (interpolation, mirror/fit, hitstop, legacy, stop/end/reset, loop)');
   console.log('Pixi v7 ordered layers: PASS (3/6 layers, pixel-checked blend order, mixed scales, null frames, replay)');
   await page.goto(`${url}/v8.html`); await page.waitForFunction(() => window.__v8);
-  await page.evaluate(juiceSmoke, 'v8');
+  for (const mode of ['overlay', 'filter']) await page.evaluate(juiceSmoke, { engine: 'v8', mode });
   await page.evaluate(flowSmoke, 'v8');
+  await page.evaluate(rampSmoke, 'v8');
+  console.log('Pixi v8 ramp packs: PASS (element/preset/custom/native ramps on one atlas, mirror, one batch for six plays, few draw calls, row reuse)');
   console.log('Pixi v8 flow trails: PASS (WebGL-only support check, seamless 64x64 noise, deterministic render, scrolling/warping over time, dissolve 0/0.5/1, alpha, reused typed arrays)');
   console.log('Pixi v8 combat juice: PASS (default target as destination, 32 ms micro-freeze replacing the pack hitstop, 2.5 px impulse along the blow and its exact restore, flat white silhouette flash then decay, opt-outs, no stacked filters, reuseEvents)');
   const mobile = await browser.newPage({ viewport: { width: 390, height: 844 }, deviceScaleFactor: 3, isMobile: true, hasTouch: true });
@@ -669,7 +758,7 @@ try {
   assert.equal(first.packs, 1); assert.equal(first.overflow, false); assert.ok(first.backingWidth <= first.displayWidth * 2 + 1);
   assert.equal(await mobile.locator('.integration pre').evaluate(pre => getComputedStyle(pre).whiteSpace === 'pre-wrap' && pre.scrollWidth <= pre.clientWidth), true);
   console.log('Mobile integration snippet: PASS (wrapped without horizontal clipping)');
-  assert.ok(first.transfer <= 1600000, 'Mobile first-load budget exceeded');
+  assert.ok(first.transfer <= 1600000, `Mobile first-load budget exceeded: ${first.transfer} B`);
   for (const [id, mobileBytes] of first.bytes) assert.ok(mobileBytes <= 1500000, `${id} exceeds mobile pack budget`);
   await mobile.locator('.skill').filter({ hasText: 'Dragon Cyclone' }).tap();
   await mobile.waitForFunction(() => window.__showcase.vfx.stats().active === 1);
