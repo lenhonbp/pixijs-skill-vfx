@@ -71,6 +71,40 @@ approximation. Stone Skin (`tho-stone-skin`) instead preserves consecutive
 same-blend runs in exact draw order (five layers, within its eight-layer cap). The runtime supports arbitrary ordered layer counts,
 not only this collection's three-role layout.
 
+### Impact tiers (optional)
+
+Impact sprites tagged by the factory are kept in their own layers (`hit-point-*`, `ground-feedback-*`,
+`body-residual-*`; untagged layers keep `glow-back`, `base`, `glow`) and described by an optional
+`impact` object. It is additive: `version` stays 1, and readers that ignore it still draw every layer
+in array order. Layers are ordered bottom to top: ground feedback, untagged, body residual, hit point.
+
+```json
+"impact": {
+  "schema_version": 1,
+  "hit_vector": { "x": 1, "y": 0, "angle_deg": 0 },
+  "sequence_timing": { "unit": "frames", "fps": 30, "ordered": true,
+    "hit_point": { "start_frame": 27, "offset_frames": 0 },
+    "ground_feedback": { "start_frame": 27, "offset_frames": 0 },
+    "body_residual": { "start_frame": 32, "offset_frames": 5 } },
+  "tiers": [{
+    "tier": 2, "id": "ground_feedback", "role": "ground-feedback",
+    "anchor_type": "ground_center", "anchor_point": { "x": 360, "y": 0 },
+    "pivot": "bottom_center", "y_sort": 0,
+    "recommended_blend_mode": "ADD", "default_z_layer": "background",
+    "start_frame": 27, "layers": ["ground-feedback-glow-back", "ground-feedback-base"]
+  }]
+}
+```
+
+`id` is `hit_point` (tier 1), `ground_feedback` (2) or `body_residual` (3). `anchor_type` is
+`contact_normal`, `ground_center` or `body_center`; `anchor_point` is in frame-offset space (origin =
+caster's feet, y down), and `contact_normal` tiers add `normal_deg`, the direction back toward the source.
+`recommended_blend_mode` (`ADD`, `SCREEN`, `NORMAL`) applies to the tier's additive layers.
+`default_z_layer` is `foreground`, `target_overlay` or `background`. `start_frame` values are measured
+from the baked frames. A tier's layers exist in `layers`, belong to one tier, and do not draw before its
+`start_frame`. A reader should ignore an `impact` object with an unknown `schema_version`.
+`@lenhonbp/pixijs-vfx-runtime` 1.2 places and sorts the tiers (see its README).
+
 Normal-blend pixels are stored on transparent; additive light is stored on black
 and plays with additive blending. Frames exclude unit sprites, damage/healing numbers and UI.
 Hit-stop and shake are metadata, not baked frozen frames or camera movement.

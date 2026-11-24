@@ -252,6 +252,12 @@ function placeActors() {
 }
 placeActors();
 const scene = createStage(world, from, to, { head: heroTexture('head'), torso: heroTexture('torso'), legs: heroTexture('legs'), staff: heroTexture('staff'), dummy: dummyTexture() }, { centre: CENTRE, range: RANGE, squash: SQUASH });
+// Impact tiers (packs baked with an `impact` block): ground feedback draws under both actors' shadows, body
+// residual right over the dummy, the hit point above everything. Packs without tiers ignore these slots.
+const fxGround = new Container(), fxBody = new Container();
+world.addChildAt(fxGround, world.getChildIndex(scene.casterShadow));
+world.addChildAt(fxBody, world.getChildIndex(scene.dummy) + 1);
+const impactLayers = { background: fxGround, overlay: fxBody };
 try {
   const sheet = await sheetRequest;
   scene.setCaster(sheet.animations['son-ha-kiem-khi-se']);
@@ -369,7 +375,7 @@ async function cast() {
     const release = manifest.cues.find(c => c.type === 'sound' && c.id === 'release')?.t
       ?? manifest.cues.find(c => c.type === 'sound' && ['buff', 'debuff'].includes(c.id ?? ''))?.t ?? 220;
     scene.prepare(movement ? 'movement' : selected.category === 'attack' || selected.category === 'channel' ? 'projectile' : selected.category, { release, duration: manifest.durationMs });
-    current = vfx.play(id, { from, to, groundSquash: SQUASH, parent: world, loop: el<HTMLInputElement>('loop').checked });
+    current = vfx.play(id, { from, to, groundSquash: SQUASH, parent: world, layers: impactLayers, loop: el<HTMLInputElement>('loop').checked });
     el('status').textContent = 'Playing · ' + sizeLabel();
     await current.finished;
     if (token === request) { scene.reset(); el('status').textContent = 'Ready · ' + sizeLabel(); }
