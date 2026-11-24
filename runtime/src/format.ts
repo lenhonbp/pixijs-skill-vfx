@@ -5,6 +5,31 @@ export interface Cue { t: number; type: string; id?: string; amp?: number; ms?: 
 export type ActorName = 'caster' | 'target';
 export type ActorFrame = [number, number, number, number];
 export interface ActorTrack { frames: ActorFrame[] }
+export type TierId = 'hit_point' | 'ground_feedback' | 'body_residual';
+export type AnchorType = 'contact_normal' | 'ground_center' | 'body_center';
+export type BlendAdvice = 'ADD' | 'SCREEN' | 'NORMAL';
+export type ZLayer = 'foreground' | 'target_overlay' | 'background';
+/** One tier of a baked impact: the layers that draw it and where, when and how to place them. */
+export interface ImpactTier {
+  /** 1 = hit point (cause), 2 = ground feedback (effect), 3 = body residual (aftermath). */
+  tier: 1 | 2 | 3; id: TierId; role: string;
+  anchor_type: AnchorType;
+  /** Pivot in the pack's pixel space (origin = caster's feet, y down). Frame offsets share this space. */
+  anchor_point: { x: number; y: number };
+  /** contact_normal tiers only: direction (degrees, 0 = right) the surface normal faces, back toward the source. */
+  normal_deg?: number;
+  pivot: string; y_sort: number;
+  recommended_blend_mode: BlendAdvice; default_z_layer: ZLayer;
+  start_frame: number;
+  /** Names of the manifest layers that make up this tier. */
+  layers: string[];
+}
+export interface ImpactMeta {
+  schema_version: 1;
+  hit_vector: { x: number; y: number; angle_deg: number };
+  sequence_timing: { unit: 'frames'; fps: number; ordered?: boolean } & Partial<Record<TierId, { start_frame: number; offset_frames: number }>>;
+  tiers: ImpactTier[];
+}
 export interface Manifest {
   format: 'lenhon-vfx'; version: 1; id: string; name: { en: string; vi: string };
   element: string; category: string; fps: number; frameCount: number; durationMs: number; scale: number;
@@ -15,7 +40,39 @@ export interface Manifest {
   groundSquash?: number;
   layers: { name: string; blend: 'normal' | 'add'; scale?: number; sheets: string[]; frames: Frame[] }[];
   cues: Cue[];
+  /** Present on packs whose impact was baked in tiers; see ImpactMeta. Absent or unknown versions are ignored. */
+  impact?: ImpactMeta;
   actors?: Partial<Record<ActorName, ActorTrack>>;
+}
+const TIER_IDS = ['hit_point', 'ground_feedback', 'body_residual'];
+const ANCHORS = ['contact_normal', 'ground_center', 'body_center'];
+const BLENDS = ['ADD', 'SCREEN', 'NORMAL'];
+const Z_LAYERS = ['foreground', 'target_overlay', 'background'];
+/**
+ * An impact block with a schema version this runtime does not know is dropped (the pack still plays as flat
+ * layers); a version-1 block that contradicts its own pack is an error.
+ */
+function validateImpact(m: Manifest) {
+  const i = m.impact as any;
+  if (!i || typeof i !== 'object' || i.schema_version !== 1) { delete m.impact; return; }
+  const bad = (why: string): never => { throw Error(`Invalid VFX impact block: ${why}`); };
+  const finite = (n: unknown) => typeof n === 'number' && Number.isFinite(n);
+  if (!i.hit_vector || !finite(i.hit_vector.x) || !finite(i.hit_vector.y) || !finite(i.hit_vector.angle_deg)) bad('hit_vector');
+  if (!i.sequence_timing || i.sequence_timing.unit !== 'frames') bad('sequence_timing');
+  if (!Array.isArray(i.tiers) || !i.tiers.length) bad('tiers');
+  const layers = new Set(m.layers.map(l => l.name)), claimed = new Set<string>(), seen = new Set<string>();
+  for (const t of i.tiers) {
+    if (!t || !TIER_IDS.includes(t.id) || seen.has(t.id) || ![1, 2, 3].includes(t.tier)) bad('tier id');
+    seen.add(t.id);
+    if (!ANCHORS.includes(t.anchor_type) || !BLENDS.includes(t.recommended_blend_mode) || !Z_LAYERS.includes(t.default_z_layer)) bad(`${t.id} enums`);
+    if (!t.anchor_point || !finite(t.anchor_point.x) || !finite(t.anchor_point.y) || (t.normal_deg !== undefined && !finite(t.normal_deg))) bad(`${t.id} anchor`);
+    if (!Number.isInteger(t.start_frame) || t.start_frame < 0 || t.start_frame >= m.frameCount) bad(`${t.id} start_frame`);
+    if (!Array.isArray(t.layers) || !t.layers.length) bad(`${t.id} layers`);
+    for (const name of t.layers) {
+      if (!layers.has(name) || claimed.has(name)) bad(`${t.id} layer ${name}`);
+      claimed.add(name);
+    }
+  }
 }
 export function validate(value: unknown): Manifest {
   const m = value as Manifest;
@@ -31,6 +88,7 @@ export function validate(value: unknown): Manifest {
     if (!['normal', 'add'].includes(l.blend) || !Array.isArray(l.sheets) || !l.sheets.every(s => typeof s === 'string' && s.length) || !Array.isArray(l.frames) || l.frames.length !== m.frameCount) throw Error('Invalid VFX layer');
     for (const f of l.frames) if (f !== null && (!Array.isArray(f) || f.length !== 7 || !f.every(Number.isFinite) || !Number.isInteger(f[0]) || f[0] < 0 || f[0] >= l.sheets.length || f[1] < 0 || f[2] < 0 || f[3] <= 0 || f[4] <= 0)) throw Error('Invalid VFX frame');
   }
+  if (m.impact !== undefined) validateImpact(m);
   if (m.actors !== undefined) {
     if (!m.actors || typeof m.actors !== 'object' || Array.isArray(m.actors)) throw Error('Invalid VFX actors');
     for (const [name, track] of Object.entries(m.actors)) {

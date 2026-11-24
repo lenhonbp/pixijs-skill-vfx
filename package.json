@@ -16,6 +16,7 @@
     "dev:showcase": "vite --config showcase/vite.config.ts",
     "check:runtime": "node runtime/test/smoke.mjs",
     "check:catalog": "node --test showcase/test/catalog.test.mjs",
+    "check:fetch": "node --test skills/lenhon-vfx/scripts/fetch-packs.test.mjs",
     "typecheck": "npm --prefix runtime run typecheck && tsc -p showcase",
     "check:docs": "node scripts/check-docs.mjs"
   },

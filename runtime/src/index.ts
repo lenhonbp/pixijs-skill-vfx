@@ -4,11 +4,26 @@ import { Container, Sprite, Texture } from 'pixi.js';
 import type { Application } from 'pixi.js';
 import { frameTexture, setBlend, setMatrix, v8 } from './compat.js';
 import { readContainer, validate } from './format.js';
-import type { ActorName, Cue, Manifest } from './format.js';
-export type { ActorName, ActorFrame, ActorTrack, Cue, Manifest, Frame } from './format.js';
+import type { ActorName, AnchorType, BlendAdvice, Cue, ImpactTier, Manifest, TierId, ZLayer } from './format.js';
+export type { ActorName, ActorFrame, ActorTrack, AnchorType, BlendAdvice, Cue, ImpactMeta, ImpactTier, Manifest, Frame, TierId, ZLayer } from './format.js';
 export interface Point { x: number; y: number }
+/** Where the three depth slots of an impact draw. Missing slots fall back to `PlayOptions.parent` (or the stage). */
+export interface ImpactLayers {
+  /** Ground feedback (decals, shockwaves): put it under every actor. */
+  background?: Container;
+  /** Body residual (aura, wisps): put it right above the target's sprite. */
+  overlay?: Container;
+  /** Hit point (flash, sparks): put it above everything. */
+  foreground?: Container;
+}
 export interface PlayOptions {
   from: Point; to?: Point; parent?: Container; zIndex?: number; speed?: number; fitDistance?: boolean; loop?: boolean;
+  /** Containers for the impact tiers' depth slots (packs with an `impact` block only). */
+  layers?: ImpactLayers;
+  /** Switch impact tiers off, for example `{ body_residual: false }` on low-end devices. All on by default. */
+  tiers?: Partial<Record<TierId, boolean>>;
+  /** Draw a tier's additive layers with its recommended blend (SCREEN for body residual). Default true. */
+  recommendedBlend?: boolean;
   /** Your camera's ground squash (ground y / screen y). Defaults to the pack's bake value. */
   groundSquash?: number;
 }
@@ -18,6 +33,14 @@ export interface PlayerOptions {
 export interface ActorPose { x: number; y: number; lift: number; visible: boolean; facing: number }
 export interface Playback { stop(): void; finished: Promise<void>; readonly elapsedMs: number; readonly manifest: Manifest; pose(name: ActorName): ActorPose | null }
 export type CueEvent = Cue & { packId: string; handle: Playback };
+/** Fired once when an impact tier starts. `point` is where the tier is anchored in the parent's space, right now. */
+export interface TierEvent {
+  tier: TierId; tierNumber: 1 | 2 | 3; packId: string; handle: Playback;
+  point: Point; anchorType: AnchorType;
+  /** contact_normal tiers: surface normal in degrees (0 = right), mirrored for left casts. */
+  normalDeg?: number;
+  zLayer: ZLayer; blend: BlendAdvice; startMs: number;
+}
 interface Pack { manifest: Manifest; sheets: Texture[]; frames: (Texture | null)[][] }
 /** Ground-plane directions (degrees) the free packs are baked in; left-facing casts mirror them. */
 export const PACK_DIRECTIONS = [0, 45, 90, -45, -90] as const;
@@ -33,8 +56,13 @@ export function packDirection(from: Point, to: Point, groundSquash = 0.6, availa
   const direction = available.reduce((best, d) => Math.abs(d - angle) < Math.abs(best - angle) ? d : best, available[0]);
   return { direction, mirror: dx < 0 };
 }
+/** One impact tier of a playing pack: its own root, so it can sit in a different depth slot than the rest. */
+interface TierPlan { tier: ImpactTier; root: Container; enabled: boolean; startMs: number }
+const Z_BIAS: Record<ZLayer, number> = { background: -1, target_overlay: 1, foreground: 2 };
 interface Active {
   pack: Pack; options: PlayOptions; legacy: boolean; matrix: [number, number, number, number]; root: Container; sprites: Sprite[]; time: number; cue: number; freeze: number;
+  /** Impact tiers (empty for packs without an impact block), the plan owning each layer, tiers by start time, next tier to fire. */
+  tiers: TierPlan[]; tierOf: (TierPlan | undefined)[]; tierOrder: TierPlan[]; tierCursor: number;
   handle: Playback; resolve(): void;
 }
 const MAX_LOOP_CYCLES_PER_UPDATE = 32;
@@ -47,6 +75,7 @@ export class VfxPlayer {
   private sprites: Sprite[] = [];
   private roots: Container[] = [];
   private listeners = new Set<(event: CueEvent) => void>();
+  private tierListeners = new Set<(event: TierEvent) => void>();
   private dead = false;
   private loading = new Map<string, Promise<void>>();
   private requestSerial = 0;
@@ -119,13 +148,29 @@ export class VfxPlayer {
     if (!this.families.get(id)?.length) throw Error(`Pack not loaded: ${id}`);
     if (!options?.from || !Number.isFinite(options.from.x) || !Number.isFinite(options.from.y) || (options.to && (!Number.isFinite(options.to.x) || !Number.isFinite(options.to.y))) || (options.speed !== undefined && (!Number.isFinite(options.speed) || options.speed <= 0))) throw Error('Invalid playback options');
     const { pack, legacy } = this.aim(id, options);
+    const manifest = pack.manifest, base = options.zIndex ?? 0, parent = options.parent ?? this.app.stage;
     const root = this.roots.pop() ?? new Container();
-    root.zIndex = options.zIndex ?? 0;
-    const sprites = pack.manifest.layers.map(layer => {
-      const sprite = this.sprites.pop() ?? new Sprite(); sprite.anchor.set(0); sprite.visible = false;
-      setBlend(sprite, layer.blend === 'add'); root.addChild(sprite); return sprite;
+    root.zIndex = base;
+    // Impact tiers get a root each so they can sit in their own depth slot; everything else stays in `root`.
+    const tiers: TierPlan[] = (manifest.impact?.tiers ?? []).map(tier => {
+      const tierRoot = this.roots.pop() ?? new Container();
+      tierRoot.zIndex = base + Z_BIAS[tier.default_z_layer];
+      return { tier, root: tierRoot, enabled: options.tiers?.[tier.id] !== false, startMs: tier.start_frame * 1000 / manifest.fps };
     });
-    (options.parent ?? this.app.stage).addChild(root);
+    const tierOf = manifest.layers.map(layer => tiers.find(t => t.tier.layers.includes(layer.name)));
+    const sprites = manifest.layers.map((layer, li) => {
+      const sprite = this.sprites.pop() ?? new Sprite(); sprite.anchor.set(0); sprite.visible = false;
+      const plan = tierOf[li];
+      setBlend(sprite, layer.blend === 'add', !!plan && options.recommendedBlend !== false && plan.tier.recommended_blend_mode === 'SCREEN');
+      (plan ? plan.root : root).addChild(sprite); return sprite;
+    });
+    // Display order bottom to top: background tiers, the pack's own layers, target overlay, foreground.
+    const slot = (z: ZLayer) => z === 'background' ? options.layers?.background : z === 'target_overlay' ? options.layers?.overlay : options.layers?.foreground;
+    const attach = (plan: TierPlan) => { if (plan.enabled) (slot(plan.tier.default_z_layer) ?? parent).addChild(plan.root); };
+    tiers.filter(t => t.tier.default_z_layer === 'background').forEach(attach);
+    parent.addChild(root);
+    tiers.filter(t => t.tier.default_z_layer === 'target_overlay').forEach(attach);
+    tiers.filter(t => t.tier.default_z_layer === 'foreground').forEach(attach);
     let resolve!: () => void;
     const finished = new Promise<void>(done => { resolve = done; });
     const resets = new Set<ActorName>();
@@ -143,12 +188,17 @@ export class VfxPlayer {
       const lerp = (k: number) => f[k] + (next[k] - f[k]) * t, x = lerp(0), y = lerp(1), [ma, mb, mc, md] = a.matrix;
       return { x: ma * x + mc * y, y: mb * x + md * y, lift: lerp(2), visible: !!(f[3] & 1), facing: (f[3] & 2 ? -1 : 1) * Math.sign(ma || 1) };
     };
-    const a: Active = { pack, options, legacy, matrix: [1, 0, 0, 1], root, sprites, time: 0, cue: 0, freeze: 0, resolve, handle: { finished, pose, get manifest() { return structuredClone(pack.manifest); }, get elapsedMs() { return player.active.has(a) ? a.time : 0; }, stop: () => this.finish(a) } };
+    const a: Active = { pack, options, legacy, matrix: [1, 0, 0, 1], root, sprites, time: 0, cue: 0, freeze: 0, tiers, tierOf, tierOrder: [...tiers].sort((x, y) => x.tier.start_frame - y.tier.start_frame), tierCursor: 0, resolve, handle: { finished, pose, get manifest() { return structuredClone(pack.manifest); }, get elapsedMs() { return player.active.has(a) ? a.time : 0; }, stop: () => this.finish(a) } };
     this.active.add(a); this.draw(a); this.emitCues(a);
     return a.handle;
   }
-  on(type: 'cue', listener: (event: CueEvent) => void): this { if (type === 'cue') this.listeners.add(listener); return this; }
-  off(type: 'cue', listener: (event: CueEvent) => void): this { if (type === 'cue') this.listeners.delete(listener); return this; }
+  on(type: 'cue', listener: (event: CueEvent) => void): this;
+  /** Fires once when an impact tier starts (hit point, then ground feedback, then body residual), with its live anchor. */
+  on(type: 'tier', listener: (event: TierEvent) => void): this;
+  on(type: 'cue' | 'tier', listener: any): this { (type === 'cue' ? this.listeners : this.tierListeners).add(listener); return this; }
+  off(type: 'cue', listener: (event: CueEvent) => void): this;
+  off(type: 'tier', listener: (event: TierEvent) => void): this;
+  off(type: 'cue' | 'tier', listener: any): this { (type === 'cue' ? this.listeners : this.tierListeners).delete(listener); return this; }
   stats() { return { active: this.active.size, pooled: this.sprites.length, packs: this.packs.size }; }
   /** Baked directions loaded for a pack id, in degrees. */
   directions(id: string): number[] { return (this.families.get(id) ?? []).map(p => p.manifest.direction ?? 0); }
@@ -198,14 +248,40 @@ export class VfxPlayer {
     const m = a.pack.manifest, o = a.options, to = o.to ?? o.from, anchor = m.anchor === 'target' ? to : o.from;
     a.matrix = this.matrix(a);
     setMatrix(a.root, ...a.matrix, anchor.x, anchor.y);
+    for (const plan of a.tiers) { const p = this.tierPoint(a, plan, a.matrix), s = Math.sign(a.matrix[0]) || 1; setMatrix(plan.root, s, 0, 0, 1, p.x, p.y); }
     const index = Math.min(m.frameCount - 1, Math.floor(a.time * m.fps / 1000));
     a.sprites.forEach((s, li) => {
-      const f = m.layers[li].frames[index], t = a.pack.frames[li][index];
-      s.visible = !!f;
-      if (f && t) { s.texture = t; s.position.set(f[5], f[6]); s.scale.set(1 / (m.layers[li].scale ?? m.scale)); }
+      const f = m.layers[li].frames[index], t = a.pack.frames[li][index], plan = a.tierOf[li];
+      s.visible = !!f && (!plan || plan.enabled);
+      // A tier's frames are drawn around its anchor, so the tier root alone decides where the impact lands.
+      if (f && t) { s.texture = t; s.position.set(plan ? f[5] - plan.tier.anchor_point.x : f[5], plan ? f[6] - plan.tier.anchor_point.y : f[6]); s.scale.set(1 / (m.layers[li].scale ?? m.scale)); }
     });
   }
+  /**
+   * Where an impact tier is anchored in the parent's space: the baked target's feet mapped by the pack's own
+   * placement (so tiers land where the rest of the pack does; exactly on `to` with fitDistance), then the tier's
+   * own height above the feet. Tiers are translated and mirrored only, never sheared or stretched.
+   */
+  private tierPoint(a: Active, plan: TierPlan, matrix: [number, number, number, number]): Point {
+    const m = a.pack.manifest, to = a.options.to ?? a.options.from, [ma, mb, mc, md] = matrix, s = Math.sign(ma) || 1, at = plan.tier.anchor_point;
+    const feet = m.anchor === 'target' ? to : { x: a.options.from.x + ma * m.target.x + mc * m.target.y, y: a.options.from.y + mb * m.target.x + md * m.target.y };
+    return { x: feet.x + s * (at.x - m.target.x), y: feet.y + (at.y - m.target.y) };
+  }
+  private emitTiers(a: Active): boolean {
+    while (a.tierCursor < a.tierOrder.length && a.tierOrder[a.tierCursor].startMs <= a.time) {
+      const plan = a.tierOrder[a.tierCursor++];
+      if (!plan.enabled || !this.tierListeners.size) continue;
+      const matrix = this.matrix(a), t = plan.tier, s = Math.sign(matrix[0]) || 1;
+      const event: TierEvent = { tier: t.id, tierNumber: t.tier, packId: a.pack.manifest.id, handle: a.handle, point: this.tierPoint(a, plan, matrix),
+        anchorType: t.anchor_type, zLayer: t.default_z_layer, blend: t.recommended_blend_mode, startMs: plan.startMs,
+        ...(t.normal_deg === undefined ? {} : { normalDeg: ((s < 0 ? 180 - t.normal_deg : t.normal_deg) % 360 + 360) % 360 }) };
+      for (const listener of this.tierListeners) listener(event);
+      if (this.dead || !this.active.has(a)) return false;
+    }
+    return true;
+  }
   private emitCues(a: Active) {
+    if (!this.emitTiers(a)) return false;
     const cues = a.pack.manifest.cues;
     while (a.cue < cues.length && cues[a.cue].t <= a.time) {
       const cue = cues[a.cue++];
@@ -231,9 +307,9 @@ export class VfxPlayer {
         this.emitCues(a);
         if (this.dead || !this.active.has(a)) break;
         if (!a.options.loop) { this.finish(a); break; }
-        a.time -= duration; a.cue = 0; cycles++;
+        a.time -= duration; a.cue = 0; a.tierCursor = 0; cycles++;
         if (cycles >= MAX_LOOP_CYCLES_PER_UPDATE && a.time >= duration) {
-          a.time %= duration; a.cue = 0; break;
+          a.time %= duration; a.cue = 0; a.tierCursor = 0; break;
         }
       }
       if (this.dead || !this.active.has(a)) continue;
@@ -255,9 +331,9 @@ export class VfxPlayer {
   }
   private finish(a: Active) {
     if (!this.active.delete(a)) return;
-    a.root.removeFromParent(); a.root.removeChildren();
+    for (const root of [a.root, ...a.tiers.map(t => t.root)]) { root.removeFromParent(); root.removeChildren(); this.roots.push(root); }
     a.sprites.forEach(s => { s.visible = false; s.texture = Texture.EMPTY; this.sprites.push(s); });
-    this.roots.push(a.root); a.resolve();
+    a.resolve();
   }
   unload(id: string) {
     const at = id.indexOf('@'), family = at < 0 ? id : id.slice(0, at);
@@ -276,6 +352,6 @@ export class VfxPlayer {
     for (const id of [...this.families.keys()]) this.unload(id);
     this.shakeEnabled = false; this.updateShake(0);
     this.sprites.forEach(s => s.destroy()); this.roots.forEach(r => r.destroy());
-    this.sprites = []; this.roots = []; this.listeners.clear();
+    this.sprites = []; this.roots = []; this.listeners.clear(); this.tierListeners.clear();
   }
 }

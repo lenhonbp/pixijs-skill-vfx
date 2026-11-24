@@ -61,6 +61,46 @@ offset.durationMs = 1000; offset.frameCount = 1; offset.fps = 1; offset.cues = [
 offset.layers.forEach(l => { l.frames = [l.frames.find(f => f !== null)]; });
 offset.layers.forEach((l, i) => { l.scale = i ? 0.25 : 0.8; });
 
+// Impact block: validated against its own pack, ignored when the schema version is unknown.
+const tier = (id, n, anchor, frame, layers, extra = {}) => ({ tier: n, id, role: id.replace('_', '-'), anchor_type: anchor.type, anchor_point: anchor.point, pivot: 'center', y_sort: 0,
+  recommended_blend_mode: anchor.blend, default_z_layer: anchor.z, start_frame: frame, layers, ...extra });
+const impactBlock = () => ({ schema_version: 1, hit_vector: { x: 1, y: 0, angle_deg: 0 }, sequence_timing: { unit: 'frames', fps: 10, ordered: true }, tiers: [
+  tier('hit_point', 1, { type: 'contact_normal', point: { x: 360, y: -52.8 }, blend: 'ADD', z: 'foreground' }, 0, ['hit-point-glow'], { normal_deg: 180 }),
+  tier('ground_feedback', 2, { type: 'ground_center', point: { x: 360, y: 0 }, blend: 'NORMAL', z: 'background' }, 0, ['ground-feedback-base']),
+  tier('body_residual', 3, { type: 'body_center', point: { x: 360, y: -48 }, blend: 'SCREEN', z: 'target_overlay' }, 1, ['body-residual-glow'])] });
+const flat = structuredClone(decoded.manifest);
+const withImpact = structuredClone(flat);
+withImpact.impact = { ...impactBlock(), tiers: [
+  tier('hit_point', 1, { type: 'contact_normal', point: { x: 360, y: -52.8 }, blend: 'ADD', z: 'foreground' }, 0, [flat.layers[0].name]),
+  tier('ground_feedback', 2, { type: 'ground_center', point: { x: 360, y: 0 }, blend: 'NORMAL', z: 'background' }, 0, [flat.layers[1].name]),
+  tier('body_residual', 3, { type: 'body_center', point: { x: 360, y: -48 }, blend: 'SCREEN', z: 'target_overlay' }, 1, [flat.layers[2].name])] };
+assert.equal(validate(structuredClone(withImpact)).impact.tiers.length, 3);
+const futureVersion = structuredClone(withImpact); futureVersion.impact.schema_version = 2;
+assert.equal(validate(futureVersion).impact, undefined, 'unknown impact schema must be ignored, not rejected');
+for (const [name, mutate] of [
+  ['tier id', m => { m.impact.tiers[0].id = 'sparkle'; }],
+  ['duplicate tier', m => { m.impact.tiers[1].id = 'hit_point'; }],
+  ['anchor enum', m => { m.impact.tiers[0].anchor_type = 'feet'; }],
+  ['blend enum', m => { m.impact.tiers[2].recommended_blend_mode = 'MULTIPLY'; }],
+  ['z enum', m => { m.impact.tiers[1].default_z_layer = 'top'; }],
+  ['anchor point', m => { m.impact.tiers[0].anchor_point = { x: NaN, y: 0 }; }],
+  ['start frame', m => { m.impact.tiers[2].start_frame = m.frameCount; }],
+  ['missing layer', m => { m.impact.tiers[0].layers = ['nope']; }],
+  ['layer claimed twice', m => { m.impact.tiers[1].layers = m.impact.tiers[0].layers; }],
+  ['hit vector', m => { m.impact.hit_vector = { x: 1 }; }],
+  ['no tiers', m => { m.impact.tiers = []; }],
+]) { const m = structuredClone(withImpact); mutate(m); assert.throws(() => validate(m), /Invalid VFX impact block/, name); }
+console.log('Impact block validation: PASS (valid block, unknown version ignored, 11 malformed cases rejected)');
+const impactSheets = new Map();
+const impactFrame = (x, y) => [0, 0, 0, 16, 16, x, y];
+const impactManifest = (version = 1) => ({ ...empty, id: version === 1 ? 'impact' : 'impact-v2', durationMs: 300, frameCount: 3, fps: 10, scale: 1, origin: { x: 0, y: 0 }, target: { x: 360, y: 0 }, groundSquash: 0.6, anchor: 'caster', cues: [],
+  layers: [
+    { name: 'ground-feedback-base', blend: 'normal', scale: 1, sheets: ['ordered-0.png'], frames: [impactFrame(352, -8), impactFrame(352, -8), null] },
+    { name: 'base', blend: 'normal', scale: 1, sheets: ['ordered-1.png'], frames: [impactFrame(100, -20), impactFrame(120, -20), impactFrame(140, -20)] },
+    { name: 'body-residual-glow', blend: 'add', scale: 1, sheets: ['ordered-2.png'], frames: [null, impactFrame(352, -56), impactFrame(352, -56)] },
+    { name: 'hit-point-glow', blend: 'add', scale: 1, sheets: ['ordered-3.png'], frames: [impactFrame(352, -61), null, null] }],
+  impact: { ...impactBlock(), schema_version: version } });
+validate(impactManifest());
 const actors = structuredClone(feedback);
 actors.id = 'actors';
 actors.actors = { caster: { frames: [[0, 0, 0, 1], [20, 10, 30, 2]] }, target: { frames: [[0, 0, 0, 1], [-10, 4, 12, 1]] } };
@@ -137,6 +177,69 @@ async function actorSmoke(engine) {
     check(dash.pose('caster')?.x > 0, 'shipped actor track');
     dash.stop();
   } finally { player.destroy(); }
+}
+async function impactSmoke(engine) {
+  const { app, vfx: existing } = engine === 'v8' ? window.__showcase : window.__v7;
+  const Player = engine === 'v8' ? existing.constructor : window.__v7.VfxPlayer;
+  const Box = app.stage.constructor, player = new Player(app);
+  const check = (ok, message) => { if (!ok) throw Error(`${engine} impact: ${message}`); };
+  const near = (a, b) => Math.abs(a - b) < 1e-6;
+  const blend = { screen: engine === 'v8' ? 'screen' : 3, add: engine === 'v8' ? 'add' : 1 };
+  const parent = new Box(), bg = new Box(), ov = new Box(), fg = new Box(); app.stage.addChild(parent, bg, ov, fg);
+  try {
+    await player.load(['/impact.vfxb', '/impact-v2.vfxb']);
+    // Right cast, fitDistance: tiers land exactly on the target, one root per tier, bottom to top.
+    const events = []; const listener = e => events.push(e); player.on('tier', listener);
+    const from = { x: 100, y: 200 }, to = { x: 460, y: 200 };
+    let h = player.play('impact', { from, to, fitDistance: true, parent });
+    const [ground, main, body, hit] = parent.children;
+    check(parent.children.length === 4, 'one root per tier plus the pack root: ' + parent.children.length);
+    check([ground, main, body, hit].map(r => r.zIndex).join() === '-1,0,1,2', 'depth biases ' + [ground, main, body, hit].map(r => r.zIndex));
+    check(near(ground.x, 460) && near(ground.y, 200), 'ground tier on the target feet');
+    check(near(body.x, 460) && near(body.y, 152), 'body tier at the body centre');
+    check(near(hit.x, 460) && near(hit.y, 200 - 52.8), 'hit tier at the contact point');
+    check([ground, body, hit].every(r => r.scale.x === 1 && r.scale.y === 1 && r.skew.x === 0), 'tiers are not scaled or sheared');
+    check(ground.children[0].x === -8 && ground.children[0].y === -8, 'frames are drawn around the tier anchor');
+    check(main.children.length === 1 && main.children[0].x === 100 && main.x === 100, 'untagged layers keep the pack root and offsets');
+    check(hit.children[0].visible && ground.children[0].visible && !body.children[0].visible, 'frame 0 visibility');
+    check(events.map(e => e.tier).join() === 'hit_point,ground_feedback', 'tiers fire in order at their start: ' + events.map(e => e.tier));
+    check(near(events[0].point.x, 460) && near(events[0].point.y, 147.2) && events[0].normalDeg === 180 && events[0].anchorType === 'contact_normal' && events[0].zLayer === 'foreground' && events[0].tierNumber === 1, 'hit tier event');
+    check(events[1].normalDeg === undefined && events[1].blend === 'NORMAL', 'ground tier event');
+    player.update(100);
+    check(events.length === 3 && events[2].tier === 'body_residual' && events[2].startMs === 100, 'body tier fires at its start frame');
+    check(body.children[0].visible && !hit.children[0].visible, 'frame 1 visibility');
+    player.update(50); check(events.length === 3, 'a tier fires once');
+    check(body.children[0].blendMode === blend.screen && hit.children[0].blendMode === blend.add, 'recommended blend: SCREEN for the body residual, ADD for the hit');
+    h.stop(); check(parent.children.length === 0, 'stop removes every tier root');
+    const pooled = player.stats().pooled;
+    // Left cast mirrors the tiers without shearing them.
+    events.length = 0;
+    h = player.play('impact', { from: { x: 100, y: 200 }, to: { x: -260, y: 200 }, fitDistance: true, parent });
+    const [lg, , , lh] = parent.children;
+    check(lg.scale.x === -1 && near(lg.x, -260) && near(lh.x, -260), 'left cast mirrors tiers onto the target');
+    check(events[0].normalDeg === 0, 'normal is mirrored for left casts: ' + events[0].normalDeg);
+    h.stop();
+    // Depth slots, tier switches and blend advice.
+    events.length = 0;
+    h = player.play('impact', { from, to, fitDistance: true, parent, layers: { background: bg, overlay: ov, foreground: fg }, recommendedBlend: false, tiers: { hit_point: false } });
+    check(parent.children.length === 1 && bg.children.length === 1 && ov.children.length === 1 && fg.children.length === 0, 'tiers go to their slots; disabled tier is not attached');
+    player.update(1);
+    check(ov.children[0].children[0].blendMode === blend.add, 'recommendedBlend: false keeps the baked additive blend');
+    check(!events.some(e => e.tier === 'hit_point'), 'a disabled tier does not fire');
+    h.stop(); check(bg.children.length + ov.children.length + fg.children.length + parent.children.length === 0, 'slot cleanup');
+    // Loops re-fire each cycle.
+    events.length = 0;
+    h = player.play('impact', { from, to, parent, loop: true });
+    player.update(350);
+    check(events.filter(e => e.tier === 'hit_point').length === 2, 'loop fires the tiers again each cycle: ' + events.map(e => e.tier));
+    h.stop(); player.off('tier', listener);
+    // Replays reuse pooled sprites and roots; an unknown schema version plays flat.
+    for (let i = 0; i < 3; i++) { const r = player.play('impact', { from, to, parent }); r.stop(); }
+    check(player.stats().pooled === pooled, 'replay pool grew');
+    const flat = player.play('impact-v2', { from, to, parent });
+    check(parent.children.length === 1 && parent.children[0].children.length === 4 && player.getManifest('impact-v2').impact === undefined, 'unknown impact version plays as flat layers');
+    flat.stop();
+  } finally { player.destroy(); [parent, bg, ov, fg].forEach(c => c.destroy({ children: true })); }
 }
 // Independent wire fixture: JSON and WebP payloads framed with little-endian fields.
 function fixture(manifest, sheets, key) {
@@ -229,6 +332,7 @@ const server = createServer(async (req, res) => {
     if (/^\/ordered-[36]\.vfxb$/.test(path)) { res.end(fixture(orderedManifest(Number(path[9])), orderedSheets)); return; }
     if (path === '/destroy-cue.vfxb') { res.end(fixture(destroyCue, decoded.sheets)); return; }
     if (path === '/loop-cues.vfxb') { res.end(fixture(loopCues, new Map())); return; }
+    if (path === '/impact.vfxb' || path === '/impact-v2.vfxb') { res.end(fixture(impactManifest(path === '/impact.vfxb' ? 1 : 2), impactSheets)); return; }
     if (path === '/actors.vfxb') { res.end(fixture(actors, new Map())); return; }
     if (path === '/aimed.vfxb' || path === '/aimed@90.vfxb') { res.end(fixture(aimed[path === '/aimed.vfxb' ? 0 : 90], new Map())); return; }
     if (path === '/slow.vfxb') { await new Promise(resolve => setTimeout(resolve, 40)); res.end(fixture(decoded.manifest, decoded.sheets)); return; }
@@ -263,18 +367,24 @@ try {
     check(packs.length === 25, 'Expected 25 packs');
     check(packs.every(p => p.desktopBytes <= 4000000), 'Desktop pack budget exceeded');
     let cues = 0; const listener = () => cues++; vfx.on('cue', listener); vfx.hitstopEnabled = false;
+    // Packs published with an impact block must fire exactly one tier event per tier (none today: harmless until a release carries it).
+    const tierEvents = []; const tierListener = e => tierEvents.push(e.tier); vfx.on('tier', tierListener); let tiered = 0;
     for (const pack of packs) {
       await vfx.load(`./packs/free/${pack.id}.vfxb`);
+      tierEvents.length = 0;
       const first = vfx.play(pack.id, { from, to });
       for (let ms = 0; ms < 16000; ms += 34) { vfx.update(34); if (ms === 1020) app.render(); }
       await first.finished; check(vfx.stats().active === 0, `${pack.id}: cleanup`);
+      const expectedTiers = vfx.getManifest(pack.id)?.impact?.tiers.length ?? 0;
+      check(tierEvents.length === expectedTiers, `${pack.id}: expected ${expectedTiers} tier events, got ${tierEvents.length}`);
+      if (expectedTiers) tiered++;
       const pooled = vfx.stats().pooled;
       const second = vfx.play(pack.id, { from, to, speed: 2 });
       for (let ms = 0; ms < 16000; ms += 34) vfx.update(34);
       await second.finished; check(vfx.stats().pooled === pooled, `${pack.id}: pool grew`);
       vfx.unload(pack.id);
     }
-    check(cues > 25, 'No cues'); vfx.off('cue', listener);
+    check(cues > 25, 'No cues'); vfx.off('cue', listener); vfx.off('tier', tierListener);
     await vfx.load('/format-examples/hoa-fireball.vfx.json');
     const handle = vfx.play('hoa-fireball', { from: to, to: from, fitDistance: true, loop: true });
     for (let ms = 0; ms < 12000; ms += 34) vfx.update(34);
@@ -282,15 +392,18 @@ try {
     handle.stop(); await handle.finished; check(vfx.stats().active === 0, 'Stop failed');
     let rejected = false; try { vfx.play('missing', { from }); } catch { rejected = true; } check(rejected, 'Unknown id accepted');
     rejected = false; try { vfx.play('hoa-fireball', { from, speed: 0 }); } catch { rejected = true; } check(rejected, 'Invalid speed accepted');
-    return { count: packs.length, cues, pooled: vfx.stats().pooled };
+    return { count: packs.length, cues, pooled: vfx.stats().pooled, tiered };
   });
-  console.log(`Pixi v8: PASS (${result.count} packs + plain JSON, cleanup, replay pool=${result.pooled}, ${result.cues} cues, loop/stop/errors)`);
+  console.log(`Pixi v8: PASS (${result.count} packs + plain JSON, cleanup, replay pool=${result.pooled}, ${result.cues} cues, ${result.tiered} packs with impact tiers, loop/stop/errors)`);
   const pngs = await page.evaluate(({ colors, sheetSize }) => colors.map(color => {
     const c = document.createElement('canvas'); c.width = c.height = sheetSize; const ctx = c.getContext('2d');
     ctx.fillStyle = `rgba(${color[0]},${color[1]},${color[2]},${color[3] / 255})`; ctx.fillRect(0, 0, sheetSize, sheetSize); return c.toDataURL('image/png').split(',')[1];
   }), { colors: orderedColors, sheetSize: orderedSheetSize });
   pngs.forEach((png, i) => orderedSheets.set(`ordered-${i}.png`, Buffer.from(png, 'base64')));
+  pngs.forEach((png, i) => impactSheets.set(`ordered-${i}.png`, Buffer.from(png, 'base64')));
   await page.evaluate(orderedSmoke, { engine: 'v8', colors: orderedColors, sheetSize: orderedSheetSize });
+  await page.evaluate(impactSmoke, 'v8');
+  console.log('Pixi v8 impact tiers: PASS (tier roots, anchors on the target, mirror without shear, depth slots, switches, blend advice, tier events, loop, pool, unknown version)');
   await page.evaluate(actorSmoke, 'v8');
   console.log('Pixi v8 actors: PASS (validation, interpolation, mirror/fit, hitstop, stepped flags, legacy, stop/end/reset, loop)');
   console.log('Pixi v8 ordered layers: PASS (3/6 layers, pixel-checked blend order, mixed scales, null frames, replay)');
@@ -394,6 +507,8 @@ try {
   assert.deepEqual(errors, []);
   console.log('Pixi v7: PASS (WebGL render, mirror/fitDistance/parent/zIndex, target anchor/nonzero origin, cleanup/pool, custom key, unscrambled, empty pack, shake/hitstop toggles, invalid load, destroy)');
   await page.evaluate(orderedSmoke, { engine: 'v7', colors: orderedColors, sheetSize: orderedSheetSize });
+  await page.evaluate(impactSmoke, 'v7');
+  console.log('Pixi v7 impact tiers: PASS (same contract on Pixi 7)');
   await page.evaluate(actorSmoke, 'v7');
   console.log('Pixi v7 actors: PASS (interpolation, mirror/fit, hitstop, legacy, stop/end/reset, loop)');
   console.log('Pixi v7 ordered layers: PASS (3/6 layers, pixel-checked blend order, mixed scales, null frames, replay)');

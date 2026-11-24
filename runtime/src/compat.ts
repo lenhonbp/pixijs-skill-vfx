@@ -15,6 +15,7 @@ export function setMatrix(target: PIXI.Container, a: number, b: number, c: numbe
   const m = new PIXI.Matrix(a, b, c, d, x, y);
   if (v8) (target as any).setFromMatrix(m); else (target as any).transform.setFromMatrix(m);
 }
-export function setBlend(sprite: PIXI.Sprite, additive: boolean) {
-  sprite.blendMode = (v8 ? additive ? 'add' : 'normal' : additive ? 1 : 0) as any;
+export function setBlend(sprite: PIXI.Sprite, additive: boolean, screen = false) {
+  // v7 BLEND_MODES: NORMAL 0, ADD 1, SCREEN 3.
+  sprite.blendMode = (v8 ? additive ? screen ? 'screen' : 'add' : 'normal' : additive ? screen ? 3 : 1 : 0) as any;
 }

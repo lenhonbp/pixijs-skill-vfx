@@ -51,9 +51,12 @@ handles rectangle textures, blend constants and ticker differences internally.
   - `groundSquash`: camera squash (ground y / screen y) of your game view, used to
     pick a direction; defaults to the pack's baked value, else 0.6.
   - `loop`: repeat until explicitly stopped. The finished promise remains pending.
+  - `layers`, `tiers`, `recommendedBlend`: see [Impact tiers](#impact-tiers).
 - `on('cue', fn)` / `off('cue', fn)`: cue events contain manifest cue fields plus
   `packId` and the playback `handle`. Times are animation-clock milliseconds.
   Sound is only a hint; the runtime does not create audio.
+- `on('tier', fn)` / `off('tier', fn)`: fired once when an impact tier starts; see
+  [Impact tiers](#impact-tiers).
 - `unload(id)`: stop that pack's plays and free sheet/frame textures. For a
   directional family, `unload('id')` frees every loaded direction and
   `unload('id@90')` frees just that one.
@@ -150,6 +153,32 @@ vfx.play('hoa-fireball', { from: hero.position, to: enemy.position, fitDistance:
 ```
 
 Packs without `direction` metadata (all 1.0 packs) keep playing exactly as before.
+
+## Impact tiers
+
+Packs baked with an `impact` block (format v1, optional field) split a hit into three tiers:
+hit point (flash and sparks, drawn in front), ground feedback (decal and shockwave, under the
+feet) and body residual (aura and wisps on the target's body). `play()` gives each tier its own
+root and anchors it on the target instead of pasting one flat sticker:
+
+- Each tier is **translated and mirrored, never sheared or stretched**, to its anchor: the baked
+  target's feet as the pack itself places them (exactly your `to` with `fitDistance: true`, the baked
+  distance along the cast otherwise), plus the tier's own height above the feet.
+- Display order is bottom to top: ground feedback, the pack's other layers, body residual, hit point.
+  Roots share `parent` and are separated by `zIndex` (-1, 0, +1, +2 around `zIndex`), so
+  `sortableChildren` parents work. For real depth, pass `layers: { background, overlay, foreground }`:
+  put `background` under every actor, `overlay` just above the target's sprite and `foreground` above
+  everything. Missing slots fall back to `parent`.
+- `tiers: { body_residual: false }` switches tiers off (they are not even attached): handy for low-end devices.
+- A tier's additive layers use its `recommended_blend_mode` (`SCREEN` for the body residual, so it does not
+  blow out the character's own pixels; `ADD` otherwise). `recommendedBlend: false` keeps the baked additive blend.
+- `vfx.on('tier', e => ...)` fires once per tier, in cause-to-aftermath order, at its baked start frame
+  (every loop cycle): `{ tier, tierNumber, packId, handle, point, anchorType, normalDeg?, zLayer, blend, startMs }`.
+  `point` is the tier's live anchor in the parent's space; `normalDeg` (hit point only) is the contact
+  normal, mirrored for left casts. Use it for decals under logic, hit-stop, sound and damage popups.
+
+Packs without an `impact` block, or with a schema version this runtime does not know, play as flat
+layers exactly as before. A version-1 block that contradicts its pack fails to load.
 
 ## Actor tracks and playback poses
 
