@@ -174,12 +174,14 @@ document.querySelector<HTMLDivElement>('#app')!.innerHTML = `
       <p class="catalog-footnote">Every effect in this collection is free.</p>
     </aside>
     <div class="viewer">
+      <div class="dock">
       <div class="arena-header"><div class="effect-heading"><p class="eyebrow" id="category">LIVE PREVIEW</p><h2><span id="selected-name">Loading collection…</span><span id="product-badge" class="product-badge"></span></h2><p id="selected-vi"></p></div><button id="browse" class="browse" type="button">Browse <span aria-hidden="true">${arrowIcon(90, 12)}</span></button></div>
       <div class="stage-wrap">
-        <div id="stage" data-bg="stage" tabindex="0" role="group" aria-label="Effect preview arena"><div class="arena-tip">Click the floor to aim and cast <span aria-hidden="true">·</span> <kbd>SPACE</kbd> to replay<span class="tip-keys"> <span aria-hidden="true">·</span> <kbd>ARROWS</kbd> to aim</span></div></div>
+        <div id="stage" data-bg="stage" tabindex="0" role="group" aria-label="Effect preview arena"><div class="arena-tip"><span class="tip-mouse">Click</span><span class="tip-touch">Tap</span> the floor to aim and cast<span class="tip-keys"> <span aria-hidden="true">·</span> <kbd>SPACE</kbd> to replay <span aria-hidden="true">·</span> <kbd>ARROWS</kbd> to aim</span></div></div>
         <div class="stage-tools"><div class="tool-group direction-group"><span class="tool-label" aria-hidden="true">Direction</span><div class="aim-toolbar" id="aim" role="group" aria-label="Cast direction"></div></div><div class="tool-group background-group"><span class="tool-label" aria-hidden="true">Backdrop</span><div class="stage-toolbar" role="group" aria-label="Preview background"><button type="button" data-bg="stage" title="Painted stage">Stage</button><button type="button" data-bg="dark" title="Dark #0e1118">Dark</button><button type="button" data-bg="light" title="Light">Light</button><button type="button" data-bg="checker" title="Transparent checkerboard: inspect additive glow and alpha">Alpha</button></div></div></div>
       </div>
       <div class="controls"><button id="replay" type="button"><svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 10a8 8 0 1 1 1.6 7.8M4 4v6h6"/></svg>Replay</button><label><input id="loop" type="checkbox"> Loop</label><label><input id="sound" type="checkbox"> Sound</label><label><input id="shake" type="checkbox" checked> Shake</label><span id="status" role="status" aria-live="polite">Loading…</span></div>
+      </div>
       <div class="actions"><button id="download-kit" class="kit" type="button">Download kit (.zip) <span></span></button><button id="copy-url" type="button">Copy asset URL</button><button id="copy" type="button">Copy code</button></div>
       <div id="premium-preview" class="premium-preview" hidden></div>
       <div id="premium-actions" class="premium-actions" hidden>
@@ -537,6 +539,15 @@ if (activeProduct.tier === 'free') {
   if (!product) throw new Error('Unknown catalog product: ' + id);
   showProduct(product, false);
 } };
+// On phones the preview dock is pinned to the top of the screen: the backdrop choice moves into its header row, and the page
+// keeps the dock's height so anchors and keyboard focus never end up underneath it.
+const phone = matchMedia('(max-width:720px)');
+const backdropGroup = document.querySelector<HTMLElement>('.background-group')!;
+function placePreviewControls() { (phone.matches ? document.querySelector('.arena-header')! : document.querySelector('.stage-tools')!).append(backdropGroup); }
+placePreviewControls(); phone.addEventListener('change', placePreviewControls);
+const dock = document.querySelector<HTMLElement>('.dock')!;
+const updateDockHeight = () => document.documentElement.style.setProperty('--dock-h', phone.matches ? dock.getBoundingClientRect().height + 'px' : '0px');
+new ResizeObserver(updateDockHeight).observe(dock); phone.addEventListener('change', updateDockHeight);
 window.addEventListener('pagehide', event => {
   if (event.persisted) return;
   resize.disconnect(); vfx.destroy(); void audio?.close(); app.destroy(true, { children: true });

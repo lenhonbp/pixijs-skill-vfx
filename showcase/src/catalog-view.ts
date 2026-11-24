@@ -33,6 +33,9 @@ function lineIcon(paths: string[], size = 24) {
   return svg;
 }
 function scrollToPreview() {
+  // On phones the preview dock is pinned to the top of the screen, so the chosen effect is already in view: leave the page where it is.
+  const dock = document.querySelector<HTMLElement>('.dock');
+  if (dock && getComputedStyle(dock).position === 'sticky') return;
   document.querySelector<HTMLElement>('.viewer')!.scrollIntoView({
     behavior: matchMedia('(prefers-reduced-motion: reduce)').matches ? 'auto' : 'smooth', block: 'start',
   });

@@ -369,3 +369,44 @@ h1 { margin-bottom: 10px; font-size: clamp(34px, 2.9vw, 44px); line-height: 1.1;
   .aim-toolbar button { min-height: 44px; }
 }
 
+/* ---- Phones: the preview is pinned to the top and the effect list scrolls underneath it ---- */
+.tip-touch { display: none; }
+@media (pointer: coarse) { .tip-mouse { display: none; } .tip-touch { display: inline; } }
+@media (max-width: 720px) {
+  html { scroll-padding-top: var(--dock-h, 0px); }
+  .viewer { display: contents; }
+  .dock { position: sticky; top: 0; z-index: 12; background: var(--surface); border-bottom: 1px solid var(--line-strong); box-shadow: 0 12px 22px -14px #000d; }
+  /* Compact header: the name, and the backdrop choice as four small swatches. */
+  .dock .arena-header { align-items: center; padding: 2px 12px; }
+  .dock .arena-header .eyebrow, .dock #selected-vi, .dock .browse { display: none; }
+  .dock .arena-header h2 { font-size: 19px; line-height: 1.2; }
+  .dock .background-group { width: auto; gap: 0; }
+  .dock .background-group .tool-label { display: none; }
+  .dock .background-group .stage-toolbar { padding: 0; gap: 2px; border: 0; background: transparent; }
+  .dock .background-group .stage-toolbar button { position: relative; width: 40px; min-width: 0; height: 42px; min-height: 42px; padding: 0; font-size: 0; color: transparent; background: transparent; }
+  .dock .background-group .stage-toolbar button::before { content: ""; position: absolute; inset: 11px; border-radius: 50%; border: 1.5px solid #e8e3d044; background: var(--swatch); box-shadow: 0 0 0 0 #d2bd8b; }
+  .dock .background-group .stage-toolbar button[aria-pressed="true"]::before { border-color: var(--gold); box-shadow: 0 0 0 2px #d2bd8b55; }
+  .dock .stage-toolbar [data-bg="stage"] { --swatch: radial-gradient(circle at 50% 70%, #3a434d, #131a24); }
+  .dock .stage-toolbar [data-bg="dark"] { --swatch: #0e1118; }
+  .dock .stage-toolbar [data-bg="light"] { --swatch: #eef0f3; }
+  .dock .stage-toolbar [data-bg="checker"] { --swatch: conic-gradient(#c9ccd1 25%, #f4f5f7 0 50%, #c9ccd1 0 75%, #f4f5f7 0) 0 0 / 8px 8px; }
+  /* Direction row: the eight buttons share the full width. */
+  .dock .stage-tools { padding: 4px 10px; }
+  .dock .direction-group .tool-label { display: none; }
+  .dock .aim-toolbar { flex: 1; }
+  .dock .aim-toolbar button { flex: 1; width: auto; }
+  /* Playback controls on one line; the loading state floats over the corner of the stage. */
+  .dock .controls { position: static; flex-wrap: nowrap; gap: 2px 8px; padding: 2px 10px; }
+  .dock #replay { min-height: 40px; }
+  .dock .controls label { min-height: 40px; }
+  .dock #status { position: absolute; right: 8px; top: 52px; width: auto; max-width: 62%; padding: 2px 8px; border-radius: 999px; background: #0e1118cc; font-size: 11px; line-height: 1.5; pointer-events: none; z-index: 2; }
+  .dock .stage-wrap { position: relative; }
+  /* The list flows with the page under the pinned preview, in one scroll instead of two. */
+  aside { order: 1; }
+  .skill-list { max-height: none; overflow: visible; }
+  .actions { order: 2; }
+  .premium-preview, .premium-actions { order: 2; }
+  .details { order: 3; }
+}
+@media (max-width: 720px) and (max-height: 700px) { .dock .arena-header { display: none; } .dock #status { top: 8px; } }
+.arena-tip .tip-mouse, .arena-tip .tip-touch { margin: 0; color: inherit; }
