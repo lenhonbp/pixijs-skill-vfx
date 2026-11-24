@@ -7,6 +7,8 @@ import { readContainer, validate } from './format.js';
 import type { ActorName, AnchorType, BlendAdvice, Cue, ImpactTier, Manifest, TierId, ZLayer } from './format.js';
 export type { ActorName, ActorFrame, ActorTrack, AnchorType, BlendAdvice, Cue, ImpactMeta, ImpactTier, Manifest, Frame, TierId, ZLayer } from './format.js';
 export interface Point { x: number; y: number }
+export { FlowTrail, makeNoiseTexture } from './flow.js';
+export type { FlowTrailOptions } from './flow.js';
 /** Where the three depth slots of an impact draw. Missing slots fall back to `PlayOptions.parent` (or the stage). */
 export interface ImpactLayers {
   /** Ground feedback (decals, shockwaves): put it under every actor. */

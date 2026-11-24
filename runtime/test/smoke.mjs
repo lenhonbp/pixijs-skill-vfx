@@ -321,6 +321,50 @@ async function juiceSmoke(engine) {
     r.stop(); shared.destroy();
   } finally { player.destroy(); camera.destroy({ children: true }); }
 }
+async function flowSmoke(engine) {
+  const g = engine === 'v8' ? window.__v8 : window.__v7, { app, Container, FlowTrail, makeNoiseTexture } = g;
+  const check = (ok, message) => { if (!ok) throw Error(`${engine} flow: ${message}`); };
+  if (engine === 'v7') {
+    check(!FlowTrail.supported(app), 'Pixi 7 is not supported');
+    let message = ''; try { new FlowTrail({ texture: g.Texture.WHITE }); } catch (error) { message = String(error); }
+    check(/needs Pixi 8/.test(message), 'constructing on Pixi 7 throws a clear error: ' + message);
+    return;
+  }
+  check(FlowTrail.supported(app) && !FlowTrail.supported({ renderer: { name: 'webgpu' } }), 'supported only on WebGL');
+  // The shipped noise tiles: the step across the wrap seam is no bigger than a typical neighbouring step.
+  const noise = makeNoiseTexture(), pix = noise.source.resource.getContext('2d').getImageData(0, 0, 64, 64).data, at = (x, y) => pix[(y * 64 + x) * 4];
+  let seam = 0, inner = 0;
+  for (let y = 0; y < 64; y++) { seam += Math.abs(at(63, y) - at(0, y)) + Math.abs(at(y, 63) - at(y, 0)); for (let x = 0; x < 63; x++) inner += Math.abs(at(x, y) - at(x + 1, y)) + Math.abs(at(y, x) - at(y, x + 1)); }
+  check(seam / 128 <= (inner / (63 * 128)) * 1.5 + 1, `noise seam ${seam / 128} vs neighbours ${inner / (63 * 128)}`);
+  check(pix[0] !== pix[4] || pix[4] !== pix[8], 'noise has structure');
+  // Energy texture with hard bands, so scrolling visibly changes the picture.
+  const c = document.createElement('canvas'); c.width = 64; c.height = 16; const x = c.getContext('2d');
+  for (let i = 0; i < 8; i++) { x.fillStyle = i % 2 ? '#ffd890' : '#401800'; x.fillRect(i * 8, 0, 8, 16); }
+  const parent = new Container(); app.stage.addChild(parent);
+  const trail = new FlowTrail({ texture: g.Texture.from(c), width: 40, points: 16, turbulence: 0.2 });
+  parent.addChild(trail.mesh); trail.reset(20, 100);
+  for (let i = 0; i < 16; i++) { trail.push(20 + i * 12, 100); trail.update(0); }
+  const grab = () => { app.render(); const canvas = app.canvas, copy = document.createElement('canvas'); copy.width = canvas.width; copy.height = canvas.height;
+    const ctx = copy.getContext('2d'); ctx.drawImage(canvas, 0, 0); const r = app.renderer.resolution; return ctx.getImageData(0, Math.floor(70 * r), Math.floor(260 * r), Math.floor(60 * r)).data; };
+  const lit = d => { let n = 0; for (let i = 0; i < d.length; i += 4) n += d[i] + d[i + 1] + d[i + 2]; return n; };
+  const diff = (p, q) => { let n = 0; for (let i = 0; i < p.length; i += 4) n += Math.abs(p[i] - q[i]) + Math.abs(p[i + 1] - q[i + 1]); return n; };
+  const a = grab(), again = (trail.update(0), grab());
+  check(lit(a) > 1000, 'the trail draws something: ' + lit(a));
+  check(diff(a, again) === 0, 'the same time and positions give the same picture');
+  trail.update(120); const later = grab();
+  check(diff(a, later) > lit(a) * 0.02, 'the energy scrolls and warps with time: ' + diff(a, later) + ' vs ' + lit(a));
+  trail.dissolve = 0.5; trail.update(0); const half = grab();
+  check(lit(half) < lit(later) * 0.85 && lit(half) > 0, `half dissolved is dimmer but present: ${lit(half)} < ${lit(later)}`);
+  trail.dissolve = 1; trail.update(0); const gone = grab();
+  check(lit(gone) < lit(a) * 0.01, 'fully dissolved leaves nothing: ' + lit(gone));
+  trail.dissolve = 0; trail.alpha = 0.5; trail.update(0); const faint = grab();
+  check(lit(faint) < lit(later) * 0.75, 'alpha dims the trail');
+  // No per-frame allocation in the trail itself: the same typed arrays are reused through thousands of updates.
+  const positions = trail.mesh.geometry.getBuffer('aPosition').data, before = trail.points.map(p => p);
+  for (let i = 0; i < 3000; i++) { trail.push(20 + (i % 200), 100 + Math.sin(i) * 20); trail.update(16.7); }
+  check(trail.mesh.geometry.getBuffer('aPosition').data === positions && trail.points.every((p, i) => p === before[i]), 'vertex buffer and points are reused');
+  trail.destroy(); parent.destroy({ children: true });
+}
 // Independent wire fixture: JSON and WebP payloads framed with little-endian fields.
 function fixture(manifest, sheets, key) {
   const chunks = [], u32 = n => { const b = Buffer.alloc(4); b.writeUInt32LE(n); return b; };
@@ -393,11 +437,11 @@ assert.deepEqual(readContainer(buffer(custom), 'test-custom-火').manifest, deco
 assert.deepEqual(readContainer(buffer(plainContainer)).manifest, decoded.manifest);
 console.log('Format contracts: PASS (default/custom keys, unscrambled, empty layers, malformed data)');
 const v7Bundle = await build({
-  stdin: { contents: `import { Application, Container, Sprite, Texture } from 'pixi.js'; import { VfxPlayer } from './runtime/src/index'; const app = new Application({width:1000,height:580}); document.body.appendChild(app.view); const vfx = await VfxPlayer.create(app); window.__v7 = {app,vfx,Container,Sprite,Texture,VfxPlayer};`, resolveDir: root },
+  stdin: { contents: `import { Application, Container, Sprite, Texture } from 'pixi.js'; import { VfxPlayer, FlowTrail, makeNoiseTexture } from './runtime/src/index'; const app = new Application({width:1000,height:580}); document.body.appendChild(app.view); const vfx = await VfxPlayer.create(app); window.__v7 = {app,vfx,Container,Sprite,Texture,VfxPlayer,FlowTrail,makeNoiseTexture};`, resolveDir: root },
   bundle: true, format: 'esm', write: false, alias: { 'pixi.js': 'pixi7' },
 });
 const v8Bundle = await build({
-  stdin: { contents: `import { Application, Container, Sprite, Texture } from 'pixi.js'; import { VfxPlayer } from './runtime/src/index'; const app = new Application(); await app.init({ width: 1000, height: 580, preference: 'webgl' }); document.body.appendChild(app.canvas); const vfx = await VfxPlayer.create(app); window.__v8 = {app,vfx,Container,Sprite,Texture,VfxPlayer};`, resolveDir: root },
+  stdin: { contents: `import { Application, Container, Sprite, Texture } from 'pixi.js'; import { VfxPlayer, FlowTrail, makeNoiseTexture } from './runtime/src/index'; const app = new Application(); await app.init({ width: 1000, height: 580, preference: 'webgl' }); document.body.appendChild(app.canvas); const vfx = await VfxPlayer.create(app); window.__v8 = {app,vfx,Container,Sprite,Texture,VfxPlayer,FlowTrail,makeNoiseTexture};`, resolveDir: root },
   bundle: true, format: 'esm', write: false,
 });
 const catalogFixtureBundle = await build({
@@ -596,6 +640,7 @@ try {
   await page.evaluate(orderedSmoke, { engine: 'v7', colors: orderedColors, sheetSize: orderedSheetSize });
   await page.evaluate(impactSmoke, 'v7');
   await page.evaluate(juiceSmoke, 'v7');
+  await page.evaluate(flowSmoke, 'v7');
   console.log('Pixi v7 combat juice: PASS (micro-freeze, camera impulse along the blow, silhouette flash)');
   console.log('Pixi v7 impact tiers: PASS (same contract on Pixi 7)');
   await page.evaluate(actorSmoke, 'v7');
@@ -603,6 +648,8 @@ try {
   console.log('Pixi v7 ordered layers: PASS (3/6 layers, pixel-checked blend order, mixed scales, null frames, replay)');
   await page.goto(`${url}/v8.html`); await page.waitForFunction(() => window.__v8);
   await page.evaluate(juiceSmoke, 'v8');
+  await page.evaluate(flowSmoke, 'v8');
+  console.log('Pixi v8 flow trails: PASS (WebGL-only support check, seamless 64x64 noise, deterministic render, scrolling/warping over time, dissolve 0/0.5/1, alpha, reused typed arrays)');
   console.log('Pixi v8 combat juice: PASS (default target as destination, 32 ms micro-freeze replacing the pack hitstop, 2.5 px impulse along the blow and its exact restore, flat white silhouette flash then decay, opt-outs, no stacked filters, reuseEvents)');
   const mobile = await browser.newPage({ viewport: { width: 390, height: 844 }, deviceScaleFactor: 3, isMobile: true, hasTouch: true });
   mobile.on('pageerror', e => errors.push(e.message)); mobile.on('console', m => { if (m.type() === 'error') errors.push(m.text()); });
