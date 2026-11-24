@@ -26,7 +26,10 @@ jobs:
           path: showcase/public/packs/free
           key: free-packs-${{ hashFiles('showcase/public/packs/free/index.json') }}
       - run: node skills/lenhon-vfx/scripts/fetch-packs.mjs --all --out showcase/public/packs/free
-      - run: npm run build
+      - name: Build the showcase against the local restored packs
+        run: npm run build
+        env:
+          VITE_PACKS_URL: packs/free
       - run: npx playwright install --with-deps chromium
       - name: Runtime and storefront browser checks
         run: |
