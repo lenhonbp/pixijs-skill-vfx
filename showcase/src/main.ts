@@ -202,6 +202,26 @@ document.querySelector<HTMLDivElement>('#app')!.innerHTML = `
   <footer><div class="footer-main"><span class="footer-brand">LENHON <b>VFX</b><span>© 2026 lenhonbp</span></span><nav aria-label="Footer navigation"><a href="https://opensource.org/license/mit">MIT license</a><a href="https://github.com/lenhonbp/pixijs-skill-vfx">GitHub</a><a href="https://github.com/lenhonbp/pixijs-skill-vfx/issues">Report an issue</a><a href="mailto:lenhon.vfx@gmail.com">Get in touch <span aria-hidden="true">${arrowIcon(-45, 12)}</span></a></nav></div><p>All 25 effect packs and the runtime are free under MIT. Character artwork © 2026 lenhonbp is separate and excluded from the MIT license.</p></footer>
 </main>`;
 const el = <T extends HTMLElement>(id: string) => document.getElementById(id) as T;
+// Start the network work that does not need the renderer now, so it overlaps with renderer start-up
+// instead of queueing behind it: the collection index, the caster sheet and the first pack.
+const indexRequest = fetch(`${packsBase}index.json`).then(response => {
+  if (!response.ok) throw Error('Collection index unavailable');
+  return response.json() as Promise<Entry[]>;
+});
+indexRequest.catch(() => {}); // the failure is raised where the index is awaited below
+const sheetRequest = Assets.load<Spritesheet>(`${base}actors/ngu-hanh-sword/son-ha-kiem-khi-se.json`);
+sheetRequest.catch(() => {}); // handled where it is awaited below
+void indexRequest.then(list => {
+  if (location.hash.startsWith('#product/')) return;
+  const entry = list.find(p => p.id === location.hash.slice(1).split('/')[0]) ?? list.find(p => p.id === 'hoa-fireball');
+  if (!entry) return;
+  // Same file the first cast loads (direction 0, desktop or mobile tier); the browser reuses the preloaded response.
+  const mobile = matchMedia('(max-width:720px)').matches || (devicePixelRatio > 1.5 && innerWidth < 900);
+  const link = document.createElement('link');
+  link.rel = 'preload'; link.as = 'fetch'; link.crossOrigin = 'anonymous';
+  link.href = new URL(`${packsBase}${entry.id}${mobile ? '.m' : ''}.vfxb`, location.href).href;
+  document.head.append(link);
+}).catch(() => {});
 const app = new Application();
 await app.init({ width: 1000, height: 580, backgroundColor: 0x0e1118, antialias: true, resolution: Math.min(devicePixelRatio, 2) * el('stage').clientWidth / 1000, autoDensity: true });
 el('stage').prepend(app.canvas);
@@ -226,12 +246,11 @@ function placeActors() {
 placeActors();
 const scene = createStage(world, from, to, { head: heroTexture('head'), torso: heroTexture('torso'), legs: heroTexture('legs'), staff: heroTexture('staff'), dummy: dummyTexture() });
 try {
-  const sheet = await Assets.load<Spritesheet>(`${base}actors/ngu-hanh-sword/son-ha-kiem-khi-se.json`);
+  const sheet = await sheetRequest;
   scene.setCaster(sheet.animations['son-ha-kiem-khi-se']);
 } catch (error) { console.warn('Character sheet unavailable; using drawn caster.', error); }
 const vfx = await VfxPlayer.create(app, { shake: { target: world }, hitstop: true });
-const response = await fetch(`${packsBase}index.json`); if (!response.ok) throw Error('Collection index unavailable');
-const packs: Entry[] = await response.json();
+const packs = await indexRequest;
 const products = resolveCatalog(packs);
 let selected = packs.find(p => p.id === 'hoa-fireball')!, current: Playback | undefined, request = 0;
 let activeProduct = products.find(p => p.tier === 'free' && p.packId === selected.id)!;
