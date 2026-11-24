@@ -367,18 +367,24 @@ try {
     check(packs.length === 25, 'Expected 25 packs');
     check(packs.every(p => p.desktopBytes <= 4000000), 'Desktop pack budget exceeded');
     let cues = 0; const listener = () => cues++; vfx.on('cue', listener); vfx.hitstopEnabled = false;
+    // Packs published with an impact block must fire exactly one tier event per tier (none today: harmless until a release carries it).
+    const tierEvents = []; const tierListener = e => tierEvents.push(e.tier); vfx.on('tier', tierListener); let tiered = 0;
     for (const pack of packs) {
       await vfx.load(`./packs/free/${pack.id}.vfxb`);
+      tierEvents.length = 0;
       const first = vfx.play(pack.id, { from, to });
       for (let ms = 0; ms < 16000; ms += 34) { vfx.update(34); if (ms === 1020) app.render(); }
       await first.finished; check(vfx.stats().active === 0, `${pack.id}: cleanup`);
+      const expectedTiers = vfx.getManifest(pack.id)?.impact?.tiers.length ?? 0;
+      check(tierEvents.length === expectedTiers, `${pack.id}: expected ${expectedTiers} tier events, got ${tierEvents.length}`);
+      if (expectedTiers) tiered++;
       const pooled = vfx.stats().pooled;
       const second = vfx.play(pack.id, { from, to, speed: 2 });
       for (let ms = 0; ms < 16000; ms += 34) vfx.update(34);
       await second.finished; check(vfx.stats().pooled === pooled, `${pack.id}: pool grew`);
       vfx.unload(pack.id);
     }
-    check(cues > 25, 'No cues'); vfx.off('cue', listener);
+    check(cues > 25, 'No cues'); vfx.off('cue', listener); vfx.off('tier', tierListener);
     await vfx.load('/format-examples/hoa-fireball.vfx.json');
     const handle = vfx.play('hoa-fireball', { from: to, to: from, fitDistance: true, loop: true });
     for (let ms = 0; ms < 12000; ms += 34) vfx.update(34);
@@ -386,9 +392,9 @@ try {
     handle.stop(); await handle.finished; check(vfx.stats().active === 0, 'Stop failed');
     let rejected = false; try { vfx.play('missing', { from }); } catch { rejected = true; } check(rejected, 'Unknown id accepted');
     rejected = false; try { vfx.play('hoa-fireball', { from, speed: 0 }); } catch { rejected = true; } check(rejected, 'Invalid speed accepted');
-    return { count: packs.length, cues, pooled: vfx.stats().pooled };
+    return { count: packs.length, cues, pooled: vfx.stats().pooled, tiered };
   });
-  console.log(`Pixi v8: PASS (${result.count} packs + plain JSON, cleanup, replay pool=${result.pooled}, ${result.cues} cues, loop/stop/errors)`);
+  console.log(`Pixi v8: PASS (${result.count} packs + plain JSON, cleanup, replay pool=${result.pooled}, ${result.cues} cues, ${result.tiered} packs with impact tiers, loop/stop/errors)`);
   const pngs = await page.evaluate(({ colors, sheetSize }) => colors.map(color => {
     const c = document.createElement('canvas'); c.width = c.height = sheetSize; const ctx = c.getContext('2d');
     ctx.fillStyle = `rgba(${color[0]},${color[1]},${color[2]},${color[3] / 255})`; ctx.fillRect(0, 0, sheetSize, sheetSize); return c.toDataURL('image/png').split(',')[1];
