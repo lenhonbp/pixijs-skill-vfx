@@ -230,7 +230,18 @@ games: `reuseEvents: true` hands listeners one shared event object per type (val
 `handle.pose(name, out)` fills an object you own. `Playback.finished` is created on first read.
 
 Measure it with `node runtime/test/bench-gc.mjs [--mono FILE.vfxb] [--realtime]` (V8's sampling heap profiler and GC trace events;
-3600 frames = 60 s, after a warm-up so V8's optimizer has run). Numbers from the last run are in the pull request that added it.
+3600 frames = 60 s, after a warm-up so V8's optimizer has run). Measured here (headless Chromium, a Fireball cast every 20 frames, so
+about 11 overlap), 60 s of virtual playback:
+
+| | Runtime 1.1 | Runtime 1.3 |
+|---|---|---|
+| Whole page allocation | 5840 B/frame | 2144 B/frame (-63%; most of what is left is Pixi's own render bookkeeping) |
+| Scavenges in 60 s | 10 | 4 |
+| Major GCs | 0 | 0 |
+
+In 1.3, per scenario (3600 frames): sprite plays 134 B/frame of runtime-owned allocation (mostly the `play()` call itself, about 800 B per
+cast), juice 158, ramp 533, flow trail 48, with 0 major GCs and 5-7 scavenges per minute. That is low, not zero: a cast allocates a small
+playback record, and the first seconds after load allocate more until V8 has optimised the hot paths.
 Not a device benchmark: it runs in headless Chromium with a software GL, so it shows allocation and GC behaviour, not frame time on a phone.
 
 ## Impact tiers
