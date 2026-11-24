@@ -52,15 +52,40 @@ function atmosphere() {
     const light = ctx.createRadialGradient(0, 0, 30, 0, 0, 450);
     light.addColorStop(0, '#dcc99b20'); light.addColorStop(0.65, '#b9bdad0c'); light.addColorStop(1, '#c1b68a00');
     ctx.fillStyle = light; ctx.fillRect(-500, -500, 1000, 1000);
-    for (const r of [324, 332]) { ctx.strokeStyle = '#d6b47720'; ctx.lineWidth = 1.1; ctx.beginPath(); ctx.arc(0, 0, r, 0, Math.PI * 2); ctx.stroke(); }
     ctx.restore();
     const vignette = ctx.createRadialGradient(500, 320, 130, 500, 320, 580);
     vignette.addColorStop(0, '#090d1600'); vignette.addColorStop(1, '#090d16e8'); ctx.fillStyle = vignette; ctx.fillRect(0, 0, 1000, 580);
   });
 }
 
-export function createStage(world: Container, from: { x: number; y: number }, to: { x: number; y: number }, art: { head: Texture; torso: Texture; legs: Texture; staff: Texture; dummy: Texture }) {
+/** The ground the actors stand on: both always stand on opposite stations of a ring of diameter `range`, squashed by `squash`. */
+export interface Ground { centre: { x: number; y: number }; range: number; squash: number }
+export function createStage(world: Container, from: { x: number; y: number }, to: { x: number; y: number }, art: { head: Texture; torso: Texture; legs: Texture; staff: Texture; dummy: Texture }, ground: Ground) {
   const backdrop = atmosphere(); world.addChild(backdrop);
+  // Eight-way compass painted on the floor in the same projection as the actors and the baked effects.
+  const compass = new Graphics(); world.addChild(compass);
+  let sideFacing = 1; // pure up/down casts keep the last side the units faced (the art has no front or back view)
+  function updateFacing() { const dx = to.x - from.x; if (Math.abs(dx) > 1) sideFacing = dx > 0 ? 1 : -1; }
+  function drawCompass() {
+    const { centre, range, squash } = ground, radius = range / 2;
+    const station = (k: number) => ({ x: centre.x + Math.cos(k * Math.PI / 4) * radius, y: centre.y + Math.sin(k * Math.PI / 4) * radius * squash });
+    const aimStep = Math.round(Math.atan2((to.y - from.y) / squash, to.x - from.x) * 180 / Math.PI / 45);
+    const target = aimStep === -4 ? 4 : aimStep, source = target > 0 ? target - 4 : target + 4;
+    compass.clear();
+    compass.ellipse(centre.x, centre.y, radius, radius * squash).stroke({ color: 0xd6b477, width: 1.2, alpha: 0.2 });
+    for (let k = -3; k <= 4; k++) {
+      const { x, y } = station(k), on = k === target, from_ = k === source;
+      compass.ellipse(x, y, on ? 17 : 12, (on ? 17 : 12) * squash).fill({ color: 0xd6b477, alpha: on ? 0.2 : 0.06 }).stroke({ color: 0xd6b477, width: on ? 1.6 : 1, alpha: on ? 0.9 : from_ ? 0.5 : 0.24 });
+      if (on) compass.ellipse(x, y, 27, 27 * squash).stroke({ color: 0xd6b477, width: 1, alpha: 0.3 });
+    }
+    const a = station(source), b = station(target), length = Math.hypot(b.x - a.x, b.y - a.y);
+    for (let at = 14; at < length - 14; at += 14) { // dashed aim line from the caster to the target
+      const t0 = at / length, t1 = Math.min(length - 14, at + 7) / length;
+      compass.moveTo(a.x + (b.x - a.x) * t0, a.y + (b.y - a.y) * t0).lineTo(a.x + (b.x - a.x) * t1, a.y + (b.y - a.y) * t1);
+    }
+    compass.stroke({ color: 0xd6b477, width: 1.2, alpha: 0.28 });
+  }
+  updateFacing();
   const glow = painted(180, 180, ctx => {
     const g = ctx.createRadialGradient(90, 90, 0, 90, 90, 90);
     g.addColorStop(0, '#ffffffff'); g.addColorStop(0.15, '#ffffff90'); g.addColorStop(0.5, '#ffffff20'); g.addColorStop(1, '#ffffff00');
@@ -156,9 +181,8 @@ export function createStage(world: Container, from: { x: number; y: number }, to
   }
   function actor(node: Container, shadow: Sprite, home: { x: number; y: number }, p: ActorPose | null | undefined, dt: number) {
     const x = home.x + (p?.x ?? 0), y = home.y + (p?.y ?? 0), lift = Math.max(0, p?.lift ?? 0);
-    // Without an actor track, each side faces the other (caster right, dummy left at the default aim).
-    const facing = home === from ? (to.x < from.x - 1 ? -1 : 1) : (from.x > to.x + 1 ? -1 : 1);
-    node.position.set(x, y - lift); node.scale.x = p?.facing ?? facing;
+    // Without an actor track both units face the same side, towards the target's side of the stage.
+    node.position.set(x, y - lift); node.scale.x = p?.facing ?? sideFacing;
     const alpha = p?.visible === false ? 0 : 1;
     node.alpha += Math.sign(alpha - node.alpha) * Math.min(Math.abs(alpha - node.alpha), dt / 80);
     shadow.position.set(x, y + 3); shadow.scale.set(90 / shadowTexture.width / (1 + lift / 32), 32 / shadowTexture.height / (1 + lift / 32));
@@ -209,9 +233,11 @@ export function createStage(world: Container, from: { x: number; y: number }, to
     castAge = releaseAge = hitAge = Infinity;
     caster.alpha = dummy.alpha = 1; animate(0);
   }
+  drawCompass();
   animate(0);
   /** Re-reads `from`/`to` after the aim changes; the nearer unit (larger ground y) draws in front. */
   function layout() {
+    updateFacing(); drawCompass();
     const back = from.y <= to.y ? caster : dummy, front = back === caster ? dummy : caster;
     world.setChildIndex(back, Math.min(world.getChildIndex(caster), world.getChildIndex(dummy)));
     world.setChildIndex(front, Math.max(world.getChildIndex(caster), world.getChildIndex(dummy)));

@@ -176,7 +176,7 @@ document.querySelector<HTMLDivElement>('#app')!.innerHTML = `
     <div class="viewer">
       <div class="arena-header"><div class="effect-heading"><p class="eyebrow" id="category">LIVE PREVIEW</p><h2><span id="selected-name">Loading collection…</span><span id="product-badge" class="product-badge"></span></h2><p id="selected-vi"></p></div><button id="browse" class="browse" type="button">Browse <span aria-hidden="true">${arrowIcon(90, 12)}</span></button></div>
       <div class="stage-wrap">
-        <div id="stage" data-bg="stage" aria-label="Effect preview arena"><div class="arena-tip">Click the floor to cast <span aria-hidden="true">·</span> <kbd>SPACE</kbd> to replay</div></div>
+        <div id="stage" data-bg="stage" tabindex="0" role="group" aria-label="Effect preview arena"><div class="arena-tip">Click the floor to aim and cast <span aria-hidden="true">·</span> <kbd>SPACE</kbd> to replay<span class="tip-keys"> <span aria-hidden="true">·</span> <kbd>ARROWS</kbd> to aim</span></div></div>
         <div class="stage-tools"><div class="tool-group direction-group"><span class="tool-label" aria-hidden="true">Direction</span><div class="aim-toolbar" id="aim" role="group" aria-label="Cast direction"></div></div><div class="tool-group background-group"><span class="tool-label" aria-hidden="true">Backdrop</span><div class="stage-toolbar" role="group" aria-label="Preview background"><button type="button" data-bg="stage" title="Painted stage">Stage</button><button type="button" data-bg="dark" title="Dark #0e1118">Dark</button><button type="button" data-bg="light" title="Light">Light</button><button type="button" data-bg="checker" title="Transparent checkerboard: inspect additive glow and alpha">Alpha</button></div></div></div>
       </div>
       <div class="controls"><button id="replay" type="button"><svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 10a8 8 0 1 1 1.6 7.8M4 4v6h6"/></svg>Replay</button><label><input id="loop" type="checkbox"> Loop</label><label><input id="sound" type="checkbox"> Sound</label><label><input id="shake" type="checkbox" checked> Shake</label><span id="status" role="status" aria-live="polite">Loading…</span></div>
@@ -244,7 +244,7 @@ function placeActors() {
   Object.assign(to, { x: Math.round(CENTRE.x + vx / 2), y: Math.round(CENTRE.y + vy / 2) });
 }
 placeActors();
-const scene = createStage(world, from, to, { head: heroTexture('head'), torso: heroTexture('torso'), legs: heroTexture('legs'), staff: heroTexture('staff'), dummy: dummyTexture() });
+const scene = createStage(world, from, to, { head: heroTexture('head'), torso: heroTexture('torso'), legs: heroTexture('legs'), staff: heroTexture('staff'), dummy: dummyTexture() }, { centre: CENTRE, range: RANGE, squash: SQUASH });
 try {
   const sheet = await sheetRequest;
   scene.setCaster(sheet.animations['son-ha-kiem-khi-se']);
@@ -382,13 +382,25 @@ vfx.on('cue', (cue: CueEvent) => {
 app.ticker.add((ticker: any) => scene.animate(ticker.deltaMS, current?.pose('caster'), current?.pose('target'), current?.elapsedMs));
 window.addEventListener('hashchange', () => { if (readHash()) showProduct(activeProduct); });
 el('replay').onclick = () => void cast();
-el('stage').onclick = event => { if (!(event.target as HTMLElement).closest('.aim-toolbar, .stage-toolbar')) void cast(); };
+el('stage').onclick = event => {
+  if ((event.target as HTMLElement).closest('.aim-toolbar, .stage-toolbar')) return;
+  // A click on the floor aims at the nearest of the eight stations (measured on the ground, not on the screen); near the centre it replays.
+  const box = el('stage').getBoundingClientRect(), k = 1000 / box.width;
+  const dx = (event.clientX - box.left) * k - CENTRE.x, dy = ((event.clientY - box.top) * k - CENTRE.y) / SQUASH;
+  if (Math.hypot(dx, dy) < 60) return void cast();
+  const step = Math.round(Math.atan2(dy, dx) * 180 / Math.PI / 45) * 45;
+  aimAt(step === -180 ? 180 : step || 0);
+};
 const aims: [number, string][] = [[-135, 'up-left'], [-90, 'up'], [-45, 'up-right'], [180, 'left'], [0, 'right'], [135, 'down-left'], [90, 'down'], [45, 'down-right']];
+function aimAt(deg: number) {
+  if (aim === deg) return void cast();
+  aim = deg; placeActors(); scene.layout(); renderAim(); renderSelection(); void cast();
+}
 function renderAim() {
   el('aim').replaceChildren(...aims.map(([deg, name]) => {
     const button = document.createElement('button'); button.type = 'button'; button.innerHTML = arrowIcon(deg); button.title = `Cast ${name}`;
     button.setAttribute('aria-label', `Cast ${name}`); button.setAttribute('aria-pressed', String(deg === aim));
-    button.onclick = () => { if (aim === deg) return void cast(); aim = deg; placeActors(); scene.layout(); renderAim(); renderSelection(); void cast(); };
+    button.onclick = () => aimAt(deg);
     return button;
   }));
 }
@@ -488,6 +500,21 @@ document.querySelector<HTMLElement>('.stage-toolbar')!.onclick = event => {
 let savedBackground: string | null = null;
 try { savedBackground = localStorage.getItem('lenhon-vfx-bg'); } catch {}
 setBackground(savedBackground ?? 'stage');
+// Eight-way keyboard aiming: arrow keys (hold two for a diagonal) or the numpad, while the stage is hovered or focused so the page still scrolls elsewhere.
+const heldArrows = new Set<string>();
+const numpadAims: Record<string, number> = { Numpad7: -135, Numpad8: -90, Numpad9: -45, Numpad4: 180, Numpad6: 0, Numpad1: 135, Numpad2: 90, Numpad3: 45 };
+window.addEventListener('keydown', event => {
+  if (event.altKey || event.ctrlKey || event.metaKey || ['INPUT', 'TEXTAREA', 'SELECT'].includes((event.target as HTMLElement).tagName)) return;
+  if (!el('stage').matches(':hover') && !el('stage').contains(document.activeElement)) return;
+  if (event.code in numpadAims) { event.preventDefault(); if (!event.repeat) aimAt(numpadAims[event.code]); return; }
+  if (!event.code.startsWith('Arrow')) return;
+  event.preventDefault(); heldArrows.add(event.code);
+  if (event.repeat) return;
+  const x = +heldArrows.has('ArrowRight') - +heldArrows.has('ArrowLeft'), y = +heldArrows.has('ArrowDown') - +heldArrows.has('ArrowUp');
+  if (x || y) aimAt(Math.round(Math.atan2(y, x) * 180 / Math.PI));
+});
+window.addEventListener('keyup', event => heldArrows.delete(event.code));
+window.addEventListener('blur', () => heldArrows.clear());
 window.addEventListener('keydown', event => { if (event.code === 'Space' && !['INPUT', 'BUTTON', 'TEXTAREA', 'A', 'SELECT', 'VIDEO'].includes((event.target as HTMLElement).tagName)) { event.preventDefault(); void cast(); } });
 renderSelection();
 if (activeProduct.tier === 'free') {
