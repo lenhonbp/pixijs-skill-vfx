@@ -231,6 +231,11 @@ const resize = new ResizeObserver(() => {
   app.renderer.resolution = Math.min(devicePixelRatio, 2) * width / 1000;
   app.renderer.resize(1000, 580);
   app.canvas.style.width = app.canvas.style.height = '100%';
+  // On a phone-sized stage the camera moves in a little so the units and effects are larger; clicks use the same transform.
+  const zoom = width < 640 ? 1.22 : 1;
+  app.stage.scale.set(zoom);
+  app.stage.pivot.set(zoom === 1 ? 0 : CENTRE.x, zoom === 1 ? 0 : CENTRE.y - 5);
+  app.stage.position.set(zoom === 1 ? 0 : 500, zoom === 1 ? 0 : 300);
 });
 resize.observe(el('stage'));
 const world = new Container(); app.stage.addChild(world);
@@ -386,7 +391,8 @@ el('stage').onclick = event => {
   if ((event.target as HTMLElement).closest('.aim-toolbar, .stage-toolbar')) return;
   // A click on the floor aims at the nearest of the eight stations (measured on the ground, not on the screen); near the centre it replays.
   const box = el('stage').getBoundingClientRect(), k = 1000 / box.width;
-  const dx = (event.clientX - box.left) * k - CENTRE.x, dy = ((event.clientY - box.top) * k - CENTRE.y) / SQUASH;
+  const point = app.stage.toLocal({ x: (event.clientX - box.left) * k, y: (event.clientY - box.top) * k });
+  const dx = point.x - CENTRE.x, dy = (point.y - CENTRE.y) / SQUASH;
   if (Math.hypot(dx, dy) < 60) return void cast();
   const step = Math.round(Math.atan2(dy, dx) * 180 / Math.PI / 45) * 45;
   aimAt(step === -180 ? 180 : step || 0);
@@ -487,7 +493,7 @@ function backdrop(mode: string) {
 const backgrounds = ['stage', 'dark', 'light', 'checker'];
 function setBackground(mode: string) {
   if (!backgrounds.includes(mode)) mode = 'stage';
-  el('stage').dataset.bg = mode; scene.backdrop.visible = mode === 'stage';
+  el('stage').dataset.bg = mode; scene.backdrop.visible = mode === 'stage'; scene.compass.visible = mode === 'stage' || mode === 'dark';
   for (const key of Object.keys(paints)) if (key === mode || backdrops[key]) backdrop(key).visible = key === mode;
   document.querySelectorAll<HTMLButtonElement>('.stage-toolbar button').forEach(button => button.setAttribute('aria-pressed', String(button.dataset.bg === mode)));
   try { localStorage.setItem('lenhon-vfx-bg', mode); } catch {}

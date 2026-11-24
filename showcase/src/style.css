@@ -365,3 +365,7 @@ h1 { margin-bottom: 10px; font-size: clamp(34px, 2.9vw, 44px); line-height: 1.1;
 }
 .tip-keys { white-space: nowrap; }
 @media (pointer: coarse) { .tip-keys { display: none; } }
+@media (pointer: coarse) {
+  .aim-toolbar button { min-height: 44px; }
+}
+

@@ -11,57 +11,76 @@ function painted(width: number, height: number, draw: (ctx: CanvasRenderingConte
   return sprite;
 }
 
-function atmosphere() {
+/** The room and the round arena the units stand on, painted in the same ground projection as the actors and the compass. */
+function atmosphere(ground: Ground) {
+  const { centre, range, squash } = ground, radius = range / 2 + 62;
   return painted(1000, 580, ctx => {
+    const ellipse = (r: number, dy = 0) => ctx.ellipse(centre.x, centre.y + dy, r, r * squash, 0, 0, Math.PI * 2);
     const sky = ctx.createLinearGradient(0, 0, 0, 580);
-    sky.addColorStop(0, '#0b111d'); sky.addColorStop(0.5, '#25303b'); sky.addColorStop(1, '#10151e');
+    sky.addColorStop(0, '#070c15'); sky.addColorStop(0.45, '#18212c'); sky.addColorStop(1, '#0a0f17');
     ctx.fillStyle = sky; ctx.fillRect(0, 0, 1000, 580);
+    // Distant ridges, kept low in contrast: they only give the room some depth.
     for (let layer = 0; layer < 3; layer++) {
-      ctx.fillStyle = ['#19232e', '#131e29', '#101a25'][layer];
-      ctx.beginPath(); ctx.moveTo(0, 300);
-      for (let x = 0; x <= 1050; x += 35) ctx.lineTo(x, 190 + layer * 23 + Math.sin(x * 0.013 + layer) * 27 + Math.sin(x * 0.037) * 12);
-      ctx.lineTo(1000, 360); ctx.lineTo(0, 360); ctx.fill();
+      ctx.fillStyle = ['#141d28', '#101923', '#0d151e'][layer];
+      ctx.beginPath(); ctx.moveTo(0, 320);
+      for (let x = 0; x <= 1050; x += 35) ctx.lineTo(x, 205 + layer * 22 + Math.sin(x * 0.013 + layer) * 24 + Math.sin(x * 0.037) * 10);
+      ctx.lineTo(1000, 340); ctx.lineTo(0, 340); ctx.fill();
     }
-    ctx.fillStyle = '#16202b';
-    for (const x of [85, 170, 850, 930]) {
-      ctx.fillRect(x - 4, 130, 8, 155); ctx.fillRect(x - 11, 127, 22, 7);
-      ctx.beginPath(); ctx.moveTo(x - 26, 128); ctx.quadraticCurveTo(x, 121, x, 109); ctx.quadraticCurveTo(x, 121, x + 26, 128); ctx.fill();
-    }
-    const mist = ctx.createLinearGradient(0, 210, 0, 330);
-    mist.addColorStop(0, '#9faeaf00'); mist.addColorStop(0.55, '#abbcb61b'); mist.addColorStop(1, '#9faeaf00');
-    ctx.fillStyle = mist; ctx.fillRect(0, 210, 1000, 120);
-    const ground = ctx.createLinearGradient(0, 270, 0, 580);
-    ground.addColorStop(0, '#252c32'); ground.addColorStop(1, '#111722');
-    ctx.fillStyle = ground; ctx.fillRect(0, 285, 1000, 295);
-    const rows = [285, 300, 321, 350, 390, 445, 521, 626];
-    const project = (column: number, y: number) => 500 + column * 170 * (y - 230) / 350;
-    for (let row = 0; row < rows.length - 1; row++) {
-      const top = rows[row], bottom = rows[row + 1];
-      for (let col = -20; col < 20; col++) {
-        ctx.fillStyle = `rgba(165,173,175,${0.018 + ((row * 7 + col * 3 + 100) % 5) * 0.007})`;
-        ctx.beginPath(); ctx.moveTo(project(col, top), top); ctx.lineTo(project(col + 1, top), top);
-        ctx.lineTo(project(col + 1, bottom), bottom); ctx.lineTo(project(col, bottom), bottom); ctx.closePath(); ctx.fill();
-        ctx.strokeStyle = '#05091060'; ctx.lineWidth = 1; ctx.stroke();
-        ctx.strokeStyle = '#c4b18b10'; ctx.beginPath(); ctx.moveTo(project(col, top + 1), top + 1); ctx.lineTo(project(col + 1, top + 1), top + 1); ctx.stroke();
-      }
-    }
-    const floorMist = ctx.createLinearGradient(0, 285, 0, 355);
-    floorMist.addColorStop(0, '#252c32'); floorMist.addColorStop(0.35, '#29323bda'); floorMist.addColorStop(1, '#29323b00');
-    ctx.fillStyle = floorMist; ctx.fillRect(0, 285, 1000, 70);
-    ctx.save(); ctx.translate(500, 367); ctx.scale(1, 0.38);
-    const light = ctx.createRadialGradient(0, 0, 30, 0, 0, 450);
-    light.addColorStop(0, '#dcc99b20'); light.addColorStop(0.65, '#b9bdad0c'); light.addColorStop(1, '#c1b68a00');
-    ctx.fillStyle = light; ctx.fillRect(-500, -500, 1000, 1000);
+    const haze = ctx.createLinearGradient(0, 235, 0, 345);
+    haze.addColorStop(0, '#9fb0b800'); haze.addColorStop(0.6, '#9fb0b81f'); haze.addColorStop(1, '#9fb0b800');
+    ctx.fillStyle = haze; ctx.fillRect(0, 235, 1000, 110);
+    const floor = ctx.createLinearGradient(0, 292, 0, 580);
+    floor.addColorStop(0, '#1b222a'); floor.addColorStop(1, '#0b1017');
+    ctx.fillStyle = floor; ctx.fillRect(0, 292, 1000, 288);
+    // A pool of light on the floor, then the contact shadow of the arena.
+    ctx.save(); ctx.translate(centre.x, centre.y); ctx.scale(1, squash);
+    const pool = ctx.createRadialGradient(0, 0, 30, 0, 0, 430);
+    pool.addColorStop(0, '#e0cf9f2a'); pool.addColorStop(0.55, '#b9bdad0e'); pool.addColorStop(1, '#c1b68a00');
+    ctx.fillStyle = pool; ctx.fillRect(-500, -500, 1000, 1000);
+    const contact = ctx.createRadialGradient(0, 24 / squash, radius * 0.9, 0, 24 / squash, radius * 1.18);
+    contact.addColorStop(0, '#000000b8'); contact.addColorStop(1, '#00000000');
+    ctx.fillStyle = contact; ctx.fillRect(-500, -500, 1000, 1000);
     ctx.restore();
-    const vignette = ctx.createRadialGradient(500, 320, 130, 500, 320, 580);
-    vignette.addColorStop(0, '#090d1600'); vignette.addColorStop(1, '#090d16e8'); ctx.fillStyle = vignette; ctx.fillRect(0, 0, 1000, 580);
+    // The arena: a slab with a visible edge.
+    const thickness = 13;
+    ctx.beginPath(); ellipse(radius, thickness); ctx.rect(centre.x - radius, centre.y, radius * 2, thickness);
+    const side = ctx.createLinearGradient(0, centre.y, 0, centre.y + radius * squash + thickness);
+    side.addColorStop(0, '#2a323a'); side.addColorStop(1, '#0c1116');
+    ctx.fillStyle = side; ctx.fill();
+    ctx.save(); ctx.translate(centre.x, centre.y); ctx.scale(1, squash);
+    const top = ctx.createRadialGradient(0, -radius * 0.12, 10, 0, 0, radius);
+    top.addColorStop(0, '#323a43'); top.addColorStop(0.7, '#262d35'); top.addColorStop(1, '#1b2128');
+    ctx.fillStyle = top; ctx.beginPath(); ctx.arc(0, 0, radius, 0, Math.PI * 2); ctx.fill();
+    ctx.clip();
+    let seed = 7; const random = () => (seed = (seed * 16807) % 2147483647) / 2147483647;
+    for (let i = 0; i < 900; i++) { // fine stone grain, deterministic
+      const a = random() * Math.PI * 2, r = Math.sqrt(random()) * radius;
+      ctx.fillStyle = random() > 0.5 ? '#ffffff08' : '#00000012'; ctx.fillRect(Math.cos(a) * r, Math.sin(a) * r, 1.6, 1.6);
+    }
+    const sheen = ctx.createLinearGradient(-radius, -radius, radius * 0.6, radius * 0.6);
+    sheen.addColorStop(0, '#ffffff12'); sheen.addColorStop(0.5, '#ffffff00');
+    ctx.fillStyle = sheen; ctx.fillRect(-radius, -radius, radius * 2, radius * 2);
+    ctx.restore();
+    // Eight spokes and rim marks, one per cast direction, plus two faint inner rings.
+    ctx.save(); ctx.translate(centre.x, centre.y); ctx.scale(1, squash);
+    ctx.lineCap = 'round';
+    for (let k = 0; k < 8; k++) {
+      const a = k * Math.PI / 4, c = Math.cos(a), s = Math.sin(a);
+      ctx.strokeStyle = '#d6b4770f'; ctx.lineWidth = 1; ctx.beginPath(); ctx.moveTo(c * 34, s * 34); ctx.lineTo(c * (radius - 16), s * (radius - 16)); ctx.stroke();
+      ctx.strokeStyle = '#d6b47766'; ctx.lineWidth = 2; ctx.beginPath(); ctx.moveTo(c * (radius - 14), s * (radius - 14)); ctx.lineTo(c * (radius - 3), s * (radius - 3)); ctx.stroke();
+    }
+    for (const r of [range * 0.25, range / 2 + 26]) { ctx.strokeStyle = '#d6b47714'; ctx.lineWidth = 1; ctx.beginPath(); ctx.arc(0, 0, r, 0, Math.PI * 2); ctx.stroke(); }
+    ctx.strokeStyle = '#d6b4774d'; ctx.lineWidth = 1.5; ctx.beginPath(); ctx.arc(0, 0, radius, 0, Math.PI * 2); ctx.stroke();
+    ctx.strokeStyle = '#d6b47714'; ctx.lineWidth = 1; ctx.beginPath(); ctx.arc(0, 0, radius - 7, 0, Math.PI * 2); ctx.stroke();
+    ctx.restore();
+    const vignette = ctx.createRadialGradient(500, 320, 150, 500, 320, 600);
+    vignette.addColorStop(0, '#070b1200'); vignette.addColorStop(1, '#070b12e0'); ctx.fillStyle = vignette; ctx.fillRect(0, 0, 1000, 580);
   });
 }
-
 /** The ground the actors stand on: both always stand on opposite stations of a ring of diameter `range`, squashed by `squash`. */
 export interface Ground { centre: { x: number; y: number }; range: number; squash: number }
 export function createStage(world: Container, from: { x: number; y: number }, to: { x: number; y: number }, art: { head: Texture; torso: Texture; legs: Texture; staff: Texture; dummy: Texture }, ground: Ground) {
-  const backdrop = atmosphere(); world.addChild(backdrop);
+  const backdrop = atmosphere(ground); world.addChild(backdrop);
   // Eight-way compass painted on the floor in the same projection as the actors and the baked effects.
   const compass = new Graphics(); world.addChild(compass);
   let sideFacing = 1; // pure up/down casts keep the last side the units faced (the art has no front or back view)
@@ -72,10 +91,10 @@ export function createStage(world: Container, from: { x: number; y: number }, to
     const aimStep = Math.round(Math.atan2((to.y - from.y) / squash, to.x - from.x) * 180 / Math.PI / 45);
     const target = aimStep === -4 ? 4 : aimStep, source = target > 0 ? target - 4 : target + 4;
     compass.clear();
-    compass.ellipse(centre.x, centre.y, radius, radius * squash).stroke({ color: 0xd6b477, width: 1.2, alpha: 0.2 });
+    compass.ellipse(centre.x, centre.y, radius, radius * squash).stroke({ color: 0xd6b477, width: 1.3, alpha: 0.34 });
     for (let k = -3; k <= 4; k++) {
       const { x, y } = station(k), on = k === target, from_ = k === source;
-      compass.ellipse(x, y, on ? 17 : 12, (on ? 17 : 12) * squash).fill({ color: 0xd6b477, alpha: on ? 0.2 : 0.06 }).stroke({ color: 0xd6b477, width: on ? 1.6 : 1, alpha: on ? 0.9 : from_ ? 0.5 : 0.24 });
+      compass.ellipse(x, y, on ? 18 : 13, (on ? 18 : 13) * squash).fill({ color: 0xd6b477, alpha: on ? 0.24 : 0.09 }).stroke({ color: 0xd6b477, width: on ? 1.8 : 1.1, alpha: on ? 0.95 : from_ ? 0.6 : 0.34 });
       if (on) compass.ellipse(x, y, 27, 27 * squash).stroke({ color: 0xd6b477, width: 1, alpha: 0.3 });
     }
     const a = station(source), b = station(target), length = Math.hypot(b.x - a.x, b.y - a.y);
@@ -243,7 +262,7 @@ export function createStage(world: Container, from: { x: number; y: number }, to
     world.setChildIndex(front, Math.max(world.getChildIndex(caster), world.getChildIndex(dummy)));
     reset();
   }
-  return { animate, cue, reset, layout, setCaster, backdrop, prepare(value: string, timing?: { release: number; duration: number }) {
+  return { animate, cue, reset, layout, setCaster, backdrop, compass, prepare(value: string, timing?: { release: number; duration: number }) {
     category = value;
     clipRelease = timing?.release ?? 270;
     clipEnd = Math.min(timing?.duration ?? 680, clipRelease + 410);
