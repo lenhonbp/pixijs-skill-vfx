@@ -294,7 +294,16 @@ const bakedDirections = (p: Entry) => [0, ...Object.keys(p.directions ?? {}).map
 const castDirection = () => packDirection(from, to, SQUASH, bakedDirections(selected)).direction;
 const fileOf = (id: string, direction: number, mobile: boolean) => `${id}${direction ? '@' + direction : ''}${mobile ? '.m' : ''}.vfxb`;
 const variantOf = (p: Entry, direction: number): Variant => (direction ? p.directions?.[direction] : undefined) ?? p;
-async function loadSelected(id: string, token: number) {
+// A skill's direction loads run one at a time: with one resident direction, a load landing after a newer cast's would evict
+// what it shows. Another skill's load does not wait; leaving a skill cancels its pending loads.
+let directionLoad: { id: string; done: Promise<unknown> } | undefined;
+function loadSelected(id: string, token: number): Promise<boolean> {
+  const previous = directionLoad?.id === id ? directionLoad.done : undefined;
+  const next = previous ? previous.then(() => token === request ? loadDirection(id, token) : false) : loadDirection(id, token);
+  directionLoad = { id, done: next.catch(() => {}) };
+  return next;
+}
+async function loadDirection(id: string, token: number) {
   const direction = castDirection();
   resident.add(id);
   // Purge the skill's other directions before decoding the new one, so the old and new atlases never sit in memory together.

@@ -76,6 +76,11 @@ export async function showcaseSmoke({ page, browser, url, collection }) {
     }
     assert.equal(firstBytes.size, 5, `${skill} aims reached ${[...firstBytes.keys()]}`);
   }
+  // A quick re-aim while the first direction is still loading ends on the newer aim, still playing.
+  await page.evaluate(() => { document.querySelector('#aim button[aria-label="Cast up"]').click(); document.querySelector('#aim button[aria-label="Cast up-right"]').click(); });
+  await page.waitForFunction(() => { const v = window.__showcase.vfx; return v.stats().active >= 1 && v.stats().packs === 1; });
+  await page.waitForTimeout(800);
+  assert.deepEqual(await page.evaluate(() => [window.__showcase.vfx.directions('phong-whirlwind'), window.__showcase.vfx.stats().active, window.__showcase.vfx.stats().packs]), [[-45], 1, 1]);
   await page.click('#aim button[aria-label="Cast right"]');
   console.log('Showcase direction residency: PASS (thunder-domain and whirlwind cycle all 8 aims twice with one resident direction and a flat texture ceiling)');
 
