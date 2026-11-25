@@ -149,6 +149,29 @@ Cues use animation-clock milliseconds. Types include `hit`, `shake` (`amp`, `ms`
 and gameplay meaning. Unknown cue types may be forwarded without built-in action.
 Additional manifest fields may be ignored by readers.
 
+## Anchors
+
+Optional `anchors` (`schema_version: 1`) describes the cast and hit anchors the
+pack was baked with, so a game can line its own character up with the effect.
+
+- `map`: the normalized anchor table, `{ [name]: { x, y } }`. `x` is forward
+  along the unit's ground aim and `y` is up from its feet, both in unit heights;
+  `feet_ground` is `(0, 0)`. Names: `feet_ground`, `chest`, `head`, `mouth`,
+  `hand_r`, `hand_l`, `weapon_tip`, `back`, `overhead`.
+- `origin`: the caster anchor the effect leaves from.
+- `heights`: unit height in pack px per actor (`caster`, `target`).
+- `points`: frame-0 position of every anchor per actor in pack px (origin at
+  the caster's feet, y down, height folded into y). Every actor has `feet_ground`.
+- `tracks` (optional): `{ [actor]: { [name]: number[] } }`, one `x, y` pair per
+  frame (`frameCount * 2` numbers) for anchors that move during the cast.
+
+A missing anchor falls back in order: `mouth` → `head` → `chest`;
+`hand_l` → `hand_r` → `chest`; `weapon_tip` → `hand_r` → `chest`;
+`overhead` → `head` → `chest`; `head`, `hand_r`, `back` → `chest`; and every
+chain ends at `feet_ground`. Runtimes ignore an unknown `schema_version`;
+`@lenhonbp/pixijs-vfx-runtime` 1.5 reads the block through `handle.anchor()`
+and earlier versions play the pack unchanged.
+
 ## LVFX binary container
 
 All integers are unsigned, little-endian. Strings use UTF-8 byte lengths.

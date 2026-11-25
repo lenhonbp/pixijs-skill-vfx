@@ -30,6 +30,19 @@ export interface ImpactMeta {
   sequence_timing: { unit: 'frames'; fps: number; ordered?: boolean } & Partial<Record<TierId, { start_frame: number; offset_frames: number }>>;
   tiers: ImpactTier[];
 }
+/**
+ * Normalized anchor table the pack was baked with, plus where those anchors sit in pack px (origin = caster feet, y down,
+ * height folded into y). `tracks` carry one [x, y] pair per frame, flat, for anchors that move.
+ */
+export interface AnchorMeta {
+  schema_version: 1;
+  map: Record<string, { x: number; y: number }>;
+  /** The caster anchor the effect leaves from (`hand_r`, `mouth`, `chest`, ...). */
+  origin: string;
+  heights: Partial<Record<ActorName, number>>;
+  points: Partial<Record<ActorName, Record<string, [number, number]>>>;
+  tracks?: Partial<Record<ActorName, Record<string, number[]>>>;
+}
 export interface Manifest {
   format: 'lenhon-vfx'; version: 1; id: string; name: { en: string; vi: string };
   element: string; category: string; fps: number; frameCount: number; durationMs: number; scale: number;
@@ -54,6 +67,8 @@ export interface Manifest {
   /** Present on packs whose impact was baked in tiers; see ImpactMeta. Absent or unknown versions are ignored. */
   impact?: ImpactMeta;
   actors?: Partial<Record<ActorName, ActorTrack>>;
+  /** Present on packs baked with the anchor map; see AnchorMeta. Absent or unknown versions are ignored. */
+  anchors?: AnchorMeta;
 }
 const TIER_IDS = ['hit_point', 'ground_feedback', 'body_residual'];
 const ANCHORS = ['contact_normal', 'ground_center', 'body_center'];
@@ -63,6 +78,29 @@ const Z_LAYERS = ['foreground', 'target_overlay', 'background'];
  * An impact block with a schema version this runtime does not know is dropped (the pack still plays as flat
  * layers); a version-1 block that contradicts its own pack is an error.
  */
+const ANCHOR_NAMES_SET = ['feet_ground', 'chest', 'head', 'mouth', 'hand_r', 'hand_l', 'weapon_tip', 'back', 'overhead'];
+function validateAnchors(m: Manifest) {
+  const a = m.anchors as any;
+  if (!a || typeof a !== 'object' || a.schema_version !== 1) { delete m.anchors; return; }
+  const bad = (why: string): never => { throw Error(`Invalid VFX anchors block: ${why}`); };
+  const finite = (n: unknown) => typeof n === 'number' && Number.isFinite(n);
+  const obj = (o: unknown) => !!o && typeof o === 'object' && !Array.isArray(o);
+  if (!obj(a.map)) bad('map');
+  for (const k of Object.keys(a.map)) if (!ANCHOR_NAMES_SET.includes(k) || !obj(a.map[k]) || !finite(a.map[k].x) || !finite(a.map[k].y)) bad(`map.${k}`);
+  if (!ANCHOR_NAMES_SET.includes(a.origin)) bad('origin');
+  if (!obj(a.heights) || !obj(a.points) || !obj(a.points.caster)) bad('heights/points');
+  for (const actor of Object.keys(a.points)) {
+    if (!['caster', 'target'].includes(actor) || !(a.heights[actor] > 0) || !obj(a.points[actor]) || !a.points[actor].feet_ground) bad(`points.${actor}`);
+    for (const k of Object.keys(a.points[actor])) { const p = a.points[actor][k]; if (!ANCHOR_NAMES_SET.includes(k) || !Array.isArray(p) || p.length !== 2 || !finite(p[0]) || !finite(p[1])) bad(`points.${actor}.${k}`); }
+  }
+  if (a.tracks !== undefined) {
+    if (!obj(a.tracks)) bad('tracks');
+    for (const actor of Object.keys(a.tracks)) {
+      if (!a.points[actor] || !obj(a.tracks[actor])) bad(`tracks.${actor}`);
+      for (const k of Object.keys(a.tracks[actor])) { const t = a.tracks[actor][k]; if (!a.points[actor][k] || !Array.isArray(t) || t.length !== m.frameCount * 2 || !t.every(finite)) bad(`tracks.${actor}.${k}`); }
+    }
+  }
+}
 function validateImpact(m: Manifest) {
   const i = m.impact as any;
   if (!i || typeof i !== 'object' || i.schema_version !== 1) { delete m.impact; return; }
@@ -122,6 +160,7 @@ export function validate(value: unknown): Manifest {
   }
   if (m.color !== undefined) validateColor(m);
   if (m.impact !== undefined) validateImpact(m);
+  if (m.anchors !== undefined) validateAnchors(m);
   validateLayerDepth(m);
   if (m.actors !== undefined) {
     if (!m.actors || typeof m.actors !== 'object' || Array.isArray(m.actors)) throw Error('Invalid VFX actors');
