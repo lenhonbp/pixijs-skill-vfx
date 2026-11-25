@@ -416,9 +416,9 @@ export class VfxPlayer {
     let x: number, y: number;
     if (track) {
       const j = i * 2, k = Math.min(i + 1, m.frameCount - 1) * 2;
-      x = track[j] + (track[k] - track[j]) * t - m.origin.x; y = track[j + 1] + (track[k + 1] - track[j + 1]) * t - m.origin.y;
+      x = track[j] + (track[k] - track[j]) * t; y = track[j + 1] + (track[k + 1] - track[j + 1]) * t;
     } else {
-      x = p[0] - m.origin.x; y = p[1] - m.origin.y;
+      x = p[0]; y = p[1];
       const frames = m.actors?.[actor]?.frames;
       if (frames) {
         const f = frames[i], n = frames[Math.min(i + 1, frames.length - 1)], f0 = frames[0];
@@ -433,8 +433,9 @@ export class VfxPlayer {
       const dx = (own.x - base.x) * h0 * dir;
       x += Math.cos(ang) * dx; y += Math.sin(ang) * dx * sq - (own.y - base.y) * h0;
     }
-    // Fresh transform: a cue listener may ask before this frame's draw refreshes `a.matrix`.
-    const mx = this.anchorMatrix, result = out ?? { x: 0, y: 0 }, tx = m.target.x - m.origin.x, ty = m.target.y - m.origin.y;
+    // Points share the layers' frame-offset space (placed like tierPoint). Fresh transform: a cue listener may ask
+    // before this frame's draw refreshes `a.matrix`.
+    const mx = this.anchorMatrix, result = out ?? { x: 0, y: 0 }, tx = m.target.x, ty = m.target.y;
     this.matrix(a, mx);
     let ox = a.options.from.x, oy = a.options.from.y;
     if (m.anchor === 'target') { ox = a.dest.x - (mx[0] * tx + mx[2] * ty); oy = a.dest.y - (mx[1] * tx + mx[3] * ty); }
