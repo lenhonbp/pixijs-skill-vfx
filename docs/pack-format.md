@@ -85,6 +85,17 @@ layer through it reproduces the baked look; any other 1D ramp (black at 0, hotte
 A `ramp` layer must be additive. Readers that do not know `color.mode` should ignore the block and play the layers as they are.
 `@lenhonbp/pixijs-vfx-runtime` 1.3 colours ramp layers on the GPU (see its README).
 
+### Ground layers (optional)
+
+Sprites on the factory's `ground` layer that are not part of an impact tier (runes, rings, floor glows, scorch) are kept apart
+in layers named `ground-under-*` (`ground-under-glow-back`, `ground-under-base`, `ground-under-glow`) and marked
+`"default_z_layer": "background"`. A reader draws such a layer beneath the characters, in its own root, instead of in the
+pack's own depth slot, which would paint the decal over their feet. Layers are ordered bottom to top: ground feedback,
+ground under, untagged, body residual, hit point. A layer owned by an impact tier takes its depth from the tier and never
+carries the field. `background` is the only value a plain layer may use today; a reader should ignore any other string. The field is
+additive: `version` stays 1, and readers that ignore it still draw every layer in array order.
+`@lenhonbp/pixijs-vfx-runtime` 1.4 places these layers (see its README).
+
 ### Impact tiers (optional)
 
 Impact sprites tagged by the factory are kept in their own layers (`hit-point-*`, `ground-feedback-*`,

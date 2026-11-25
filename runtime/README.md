@@ -248,6 +248,15 @@ to hand out the pooled handle instead (no allocation at all in `play()`); then d
 because a later `play()` may be using the same object. The first seconds after load allocate more until V8 has optimised the hot paths.
 Not a device benchmark: it runs in headless Chromium with a software GL, so it shows allocation and GC behaviour, not frame time on a phone.
 
+## Ground layers
+
+Packs baked since the factory split its ground sprites out keep floor decals (runes, rings, glows, scorch) in layers marked
+`default_z_layer: 'background'`. `play()` draws them in their own root **beneath** the pack: one more root at `zIndex - 1`, with the
+pack's matrix (mirror, fit and direction), so a ring or scorch mark never lies over the caster's or the target's feet. Put it
+under every actor with `layers: { background }`; without that slot it sits in `parent` just below the pack, and with impact tiers it sits
+above the ground-feedback tier and below the rest. The near half of a floor ring stays in the pack's own layers by design: it passes in
+front of the feet while its far half is under them. Packs without the field play exactly as before.
+
 ## Impact tiers
 
 Packs baked with an `impact` block (format v1, optional field) split a hit into three tiers:
