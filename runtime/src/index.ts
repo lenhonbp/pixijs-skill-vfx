@@ -64,6 +64,13 @@ export interface PlayerOptions {
    */
   reuseEvents?: boolean;
   /**
+   * Hand out the same `Playback` object every time a pooled playback record is reused, so `play()` allocates nothing.
+   * The handle then belongs to the play that is running: once it has finished (or been stopped) do not call it again, because a
+   * later `play()` may be using the same object. Default false: each `play()` returns a fresh handle (one small object) that stays
+   * safely inert after its play ends.
+   */
+  recycleHandles?: boolean;
+  /**
    * Pixi's `ColorMatrixFilter` class (`import { ColorMatrixFilter } from 'pixi.js'`). With it the target flash is an exact flat
    * silhouette of any Sprite or Container; without it the flash is two additive overlay sprites that burn a Sprite out towards the
    * flash colour. It is passed in rather than imported so games that never flash do not pay for Pixi's filter system (~140 KB).
@@ -137,7 +144,22 @@ interface Active {
   tiers: TierPlan[]; tierOf: (TierPlan | undefined)[]; tierOrder: TierPlan[]; tierCursor: number;
   /** Juice requested for this play (resolved once at play time). */
   juice: boolean; freezeMs: number; impulsePx: number; flashColor: number; flashFrames: number; flashDecayMs: number;
-  done: boolean; poseResets: number; handle: Playback; promise: Promise<void> | null; resolve: (() => void) | null;
+  /** Bumped every time the record is reused, so a stale handle can tell its play is over. */
+  done: boolean; gen: number; handle: Handle;
+  /** Reusable quad refs per layer (kept across plays; `quads[li]` points at the live prefix). */
+  quadStore: QuadRef[][];
+}
+/** The object `play()` returns. Reads the pooled record only while its own play is still the record's current one. */
+class Handle implements Playback {
+  gen = 0; poseResets = 0; promise: Promise<void> | null = null; resolve: (() => void) | null = null;
+  constructor(private player: VfxPlayer, public a: Active, public pack: Pack) {}
+  private get over(): boolean { return this.gen !== this.a.gen || this.a.done; }
+  get finished(): Promise<void> { if (!this.promise) this.promise = this.over ? Promise.resolve() : new Promise<void>(done => { this.resolve = done; }); return this.promise; }
+  pose(name: ActorName, out?: ActorPose): ActorPose | null { return this.player.poseOf(this, name, out); }
+  get manifest(): Manifest { return structuredClone(this.pack.manifest); }
+  get elapsedMs(): number { return this.over ? 0 : this.a.time; }
+  stop(): void { if (!this.over) this.player.finishPlay(this.a); }
+  get isOver(): boolean { return this.over; }
 }
 /** One running silhouette flash: the filter lives on the target until the flash ends. */
 interface Flash { target: Container | null; filter: any; list: any[]; prev: any; overlays: Sprite[]; age: number; color: number; hold: number; decay: number }
@@ -148,6 +170,11 @@ export class VfxPlayer {
   private packs = new Map<string, Pack>();
   private families = new Map<string, Pack[]>();
   private list: Active[] = [];
+  private actives: Pool<Active> | null = null;
+  private plans: TierPlan[] = [];
+  private spent: Active[] = [];
+  private dirs = new Map<string, number[]>();
+  private aimPack!: Pack; private aimLegacy = false;
   private live = 0;
   private updating = false;
   private sprites = new Pool<Sprite>(() => { const sprite = new Sprite(); sprite.anchor.set(0); return sprite; });
@@ -249,28 +276,34 @@ export class VfxPlayer {
       const pack: Pack = { manifest, sheets: [...textures.values()], frames, rampSheets, nativeRow };
       this.packs.set(key, pack);
       this.families.set(manifest.id, [...(this.families.get(manifest.id) ?? []), pack]);
+      this.dirs.delete(manifest.id);
     } catch (error) { frames.flat().forEach(t => t?.destroy()); textures.forEach(t => t.destroy(true)); throw error; }
   }
   play(id: string, options: PlayOptions): Playback {
     if (this.dead) throw Error('VfxPlayer is destroyed');
     if (!this.families.get(id)?.length) throw Error(`Pack not loaded: ${id}`);
     if (!options?.from || !Number.isFinite(options.from.x) || !Number.isFinite(options.from.y) || (options.to && (!Number.isFinite(options.to.x) || !Number.isFinite(options.to.y))) || (options.speed !== undefined && (!Number.isFinite(options.speed) || options.speed <= 0))) throw Error('Invalid playback options');
-    const { pack, legacy } = this.aim(id, options);
+    this.aim(id, options);
+    const pack = this.aimPack, legacy = this.aimLegacy;
     const manifest = pack.manifest, base = options.zIndex ?? 0, parent = options.parent ?? this.app.stage;
+    const a = (this.actives ??= new Pool<Active>(() => this.makeActive())).acquire();
+    a.gen++;
     const root = this.roots.acquire();
     root.zIndex = base;
     // Impact tiers get a root each so they can sit in their own depth slot; everything else stays in `root`.
-    const impactTiers = manifest.impact?.tiers, tiers: TierPlan[] = [];
+    const impactTiers = manifest.impact?.tiers, tiers = a.tiers;
     if (impactTiers) for (let i = 0; i < impactTiers.length; i++) {
       const tier = impactTiers[i], tierRoot = this.roots.acquire();
       tierRoot.zIndex = base + Z_BIAS[tier.default_z_layer];
-      tiers.push({ tier, root: tierRoot, enabled: options.tiers?.[tier.id] !== false, startMs: tier.start_frame * 1000 / manifest.fps });
+      const plan = this.plans.pop() ?? { tier, root: tierRoot, enabled: true, startMs: 0 };
+      plan.tier = tier; plan.root = tierRoot; plan.enabled = options.tiers?.[tier.id] !== false; plan.startMs = tier.start_frame * 1000 / manifest.fps;
+      tiers.push(plan);
     }
     // Ramp layers (energy stored as a luminance mask) take their colour from a ramp row: the requested element, else the
     // pack's native ramp, else its suggested preset.
     const colored = manifest.color?.mode === 'ramp';
     const rampRow = !colored ? -1 : options.element !== undefined ? this.ramps().rowOf(options.element) : pack.nativeRow >= 0 ? pack.nativeRow : this.ramps().rowOf(manifest.color!.ramp ?? 'hoa');
-    const tierOf: (TierPlan | undefined)[] = [], sprites: (Sprite | null)[] = [], quads: (QuadRef[] | null)[] = [];
+    const tierOf = a.tierOf, sprites = a.sprites, quads = a.quads;
     for (let li = 0; li < manifest.layers.length; li++) {
       const layer = manifest.layers[li];
       let plan: TierPlan | undefined;
@@ -297,40 +330,48 @@ export class VfxPlayer {
       const sheets = pack.rampSheets[li]; if (!sheets) continue;
       const plan = tierOf[li], z = plan?.tier.default_z_layer;
       const home = (z === 'background' ? options.layers?.background : z === 'target_overlay' ? options.layers?.overlay : z === 'foreground' ? options.layers?.foreground : undefined) ?? parent;
-      const refs: QuadRef[] = [];
-      for (let si = 0; si < sheets.length; si++) { const batch = this.batchSet().get(home, sheets[si], true); refs.push({ batch, slot: batch.alloc() }); }
+      const refs = a.quadStore[li] ??= [];
+      for (let si = 0; si < sheets.length; si++) {
+        const batch = this.batchSet().get(home, sheets[si], true), ref = refs[si];
+        if (ref) { ref.batch = batch; ref.slot = batch.alloc(); } else refs[si] = { batch, slot: batch.alloc() };
+      }
+      refs.length = sheets.length;
       quads[li] = refs;
     }
     const target = options.target, targetOk = !!target && Number.isFinite(target.x) && Number.isFinite(target.y);
     const juice = options.hitstop !== undefined && options.hitstop !== false || targetOk;
     const flash = options.flash === false ? null : options.flash ?? {};
-    const player = this;
-    const a: Active = { pack, options, legacy, matrix: new Float64Array([1, 0, 0, 1]), root, sprites, quads, rampRow, time: 0, cue: 0, dest: options.to ?? (targetOk ? target as Point : options.from),
-      tiers, tierOf, tierOrder: tiers.slice().sort((x, y) => x.tier.start_frame - y.tier.start_frame), tierCursor: 0,
-      juice, freezeMs: options.hitstop === true ? 32 : typeof options.hitstop === 'number' ? Math.max(0, Math.min(100, options.hitstop)) : 0,
-      impulsePx: options.impulse === false ? 0 : options.impulse ?? (juice ? 2.5 : 0),
-      flashColor: flash?.color ?? 0xffffff, flashFrames: flash ? Math.max(0, flash.frames ?? 2) : 0, flashDecayMs: flash?.decayMs ?? 80,
-      done: false, poseResets: 0, promise: null, resolve: null,
-      handle: {
-        get finished() { if (!a.promise) a.promise = a.done ? Promise.resolve() : new Promise<void>(done => { a.resolve = done; }); return a.promise; },
-        pose(name: ActorName, out?: ActorPose): ActorPose | null { return player.pose(a, name, out); },
-        get manifest() { return structuredClone(pack.manifest); },
-        get elapsedMs() { return a.done ? 0 : a.time; },
-        stop: () => this.finish(a),
-      } as Playback };
+        a.pack = pack; a.options = options; a.legacy = legacy; a.root = root; a.rampRow = rampRow; a.time = 0; a.cue = 0; a.done = false;
+    a.matrix[0] = 1; a.matrix[1] = 0; a.matrix[2] = 0; a.matrix[3] = 1;
+    a.dest = options.to ?? (targetOk ? target as Point : options.from);
+    a.tierCursor = 0; a.juice = juice;
+    // Tiers by start time, into the record's own array (insertion sort: a handful of items, no allocation).
+    const order = a.tierOrder; order.length = 0;
+    for (let t = 0; t < tiers.length; t++) { let k = order.length; order.push(tiers[t]); while (k > 0 && order[k - 1].tier.start_frame > tiers[t].tier.start_frame) { order[k] = order[k - 1]; k--; } order[k] = tiers[t]; }
+    a.freezeMs = options.hitstop === true ? 32 : typeof options.hitstop === 'number' ? Math.max(0, Math.min(100, options.hitstop)) : 0;
+    a.impulsePx = options.impulse === false ? 0 : options.impulse ?? (juice ? 2.5 : 0);
+    a.flashColor = flash?.color ?? 0xffffff; a.flashFrames = flash ? Math.max(0, flash.frames ?? 2) : 0; a.flashDecayMs = flash?.decayMs ?? 80;
+    const handle = this.options.recycleHandles ? a.handle : a.handle = new Handle(this, a, pack);
+    handle.gen = a.gen; handle.pack = pack; handle.poseResets = 0; handle.promise = null; handle.resolve = null;
     this.list.push(a); this.live++; this.draw(a); this.emitCues(a);
     this.batchSet_?.flush();
-    return a.handle;
+    return handle;
+  }
+  private makeActive(): Active {
+    const a = { matrix: new Float64Array(4), sprites: [], quads: [], tiers: [], tierOf: [], tierOrder: [], quadStore: [], gen: 0, done: true, tierCursor: 0 } as unknown as Active;
+    a.handle = new Handle(this, a, null as unknown as Pack);
+    return a;
   }
   /** Actor pose for a playback; see `Playback.pose`. */
-  private pose(a: Active, name: ActorName, out?: ActorPose): ActorPose | null {
-    const manifest = a.pack.manifest, track = manifest.actors?.[name];
+  /** @internal used by Handle */
+  poseOf(h: Handle, name: ActorName, out?: ActorPose): ActorPose | null {
+    const a = h.a, manifest = h.pack.manifest, track = manifest.actors?.[name];
     if (!track) return null;
     const result = out ?? { x: 0, y: 0, lift: 0, visible: true, facing: 1 };
-    if (a.done) {
+    if (h.isOver) {
       const bit = name === 'caster' ? 1 : 2;
-      if (a.poseResets & bit) return null;
-      a.poseResets |= bit;
+      if (h.poseResets & bit) return null;
+      h.poseResets |= bit;
       result.x = 0; result.y = 0; result.lift = 0; result.visible = true; result.facing = 1;
       return result;
     }
@@ -361,12 +402,14 @@ export class VfxPlayer {
    * Picks the loaded bake nearest the cast's ground direction. Packs without a bake direction
    * (all 1.0 packs) are "legacy": they keep the left/right mirror from 1.0.
    */
-  private aim(id: string, o: PlayOptions): { pack: Pack; legacy: boolean } {
+  private aim(id: string, o: PlayOptions): void {
     const list = this.families.get(id)!, to = o.to ?? o.from, base = list.find(p => !p.manifest.direction) ?? list[0];
-    if (base.manifest.direction === undefined && list.length === 1) return { pack: base, legacy: true };
+    if (base.manifest.direction === undefined && list.length === 1) { this.aimPack = base; this.aimLegacy = true; return; }
     const squash = o.groundSquash ?? base.manifest.groundSquash ?? 0.6;
-    const { direction } = packDirection(o.from, to, squash, list.map(p => p.manifest.direction ?? 0));
-    return { pack: list.find(p => (p.manifest.direction ?? 0) === direction)!, legacy: false };
+    let dirs = this.dirs.get(id);
+    if (!dirs) this.dirs.set(id, dirs = list.map(p => p.manifest.direction ?? 0));
+    const { direction } = packDirection(o.from, to, squash, dirs);
+    this.aimPack = list.find(p => (p.manifest.direction ?? 0) === direction)!; this.aimLegacy = false;
   }
   /**
    * Root transform landing the pack's baked target on `to` right now: x mirrored for left casts,
@@ -602,6 +645,15 @@ export class VfxPlayer {
     let w = 0;
     for (let r = 0; r < this.list.length; r++) { const a = this.list[r]; if (!a.done) this.list[w++] = a; }
     this.list.length = w;
+    // Finished records go back to the pool only now, when nothing is iterating the list any more.
+    for (let r = this.spent.length - 1; r >= 0; r--) {
+      const a = this.spent[r];
+      for (let i = 0; i < a.tiers.length; i++) this.plans.push(a.tiers[i]);
+      a.tiers.length = 0; a.tierOf.length = 0; a.sprites.length = 0; a.quads.length = 0; a.tierOrder.length = 0;
+      (a as any).options = null; (a as any).pack = null; (a as any).root = null;
+      this.actives!.release(a);
+    }
+    this.spent.length = 0;
   }
   private updateShake(dt: number) {
     const target = this.options.shake?.target, s = this.shake, im = this.impulse;
@@ -621,6 +673,8 @@ export class VfxPlayer {
     }
     target.x += s.x + im.x; target.y += s.y + im.y;
   }
+  /** @internal used by Handle */
+  finishPlay(a: Active): void { this.finish(a); }
   private finish(a: Active) {
     if (a.done) return;
     a.done = true; this.live--;
@@ -630,12 +684,14 @@ export class VfxPlayer {
       if (sprite) { sprite.visible = false; sprite.texture = Texture.EMPTY; this.sprites.release(sprite); }
       if (refs) for (let q = 0; q < refs.length; q++) refs[q].batch.release(refs[q].slot);
     }
-    if (a.resolve) a.resolve();
+    const h = a.handle; if (h.resolve) h.resolve();
+    this.spent.push(a);
     if (!this.updating) { this.compact(); this.batchSet_?.flush(); }
   }
   unload(id: string) {
     const at = id.indexOf('@'), family = at < 0 ? id : id.slice(0, at);
     if (at < 0) this.cancelledLoads.set(family, this.requestSerial);
+    this.dirs.delete(family);
     const doomed = at < 0 ? this.families.get(id) ?? [] : [this.packs.get(id)].filter((p): p is Pack => !!p);
     for (const pack of doomed) {
       for (let i = this.list.length - 1; i >= 0; i--) if (this.list[i].pack === pack) this.finish(this.list[i]);

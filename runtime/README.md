@@ -239,9 +239,13 @@ about 11 overlap), 60 s of virtual playback:
 | Scavenges in 60 s | 10 | 4 |
 | Major GCs | 0 | 0 |
 
-In 1.3, per scenario (3600 frames): sprite plays 134 B/frame of runtime-owned allocation (mostly the `play()` call itself, about 800 B per
-cast), juice 158, ramp 533, flow trail 48, with 0 major GCs and 5-7 scavenges per minute. That is low, not zero: a cast allocates a small
-playback record, and the first seconds after load allocate more until V8 has optimised the hot paths.
+`play()` reuses its playback record (its arrays, matrix, tier plans and quad refs) from a pool and caches the per-family direction lists,
+so a cast no longer builds them. Per scenario (3600 frames): sprite plays 93 B/frame of runtime-owned allocation (`play()` itself no
+longer shows up; it was 42 B/frame, about 800 B per cast), juice 126, ramp 437-456, flow trail 46-48, with 0 major GCs and 5-9
+scavenges per minute. That is close to zero but not zero: by default each `play()` still returns one small handle object, and ramp
+plays still allocate in `draw()`. The handle stays inert after its play ends, so holding it is always safe. Pass `recycleHandles: true`
+to hand out the pooled handle instead (no allocation at all in `play()`); then do not call a handle after its play has finished,
+because a later `play()` may be using the same object. The first seconds after load allocate more until V8 has optimised the hot paths.
 Not a device benchmark: it runs in headless Chromium with a software GL, so it shows allocation and GC behaviour, not frame time on a phone.
 
 ## Impact tiers

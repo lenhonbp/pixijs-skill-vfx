@@ -30,7 +30,7 @@ const bundle = await build({
       document.body.appendChild(app.canvas);
       const stage = new Container(), camera = new Container(); app.stage.addChild(camera); camera.addChild(stage);
       const target = new Sprite(Texture.WHITE); target.width = target.height = 24; target.anchor.set(0.5); target.position.set(520, 280); stage.addChild(target);
-      const vfx = new VfxPlayer(app, { shake: { target: camera }, hitstop: true, colorMatrixFilter: ColorMatrixFilter });
+      const vfx = new VfxPlayer(app, { shake: { target: camera }, hitstop: true, colorMatrixFilter: ColorMatrixFilter, recycleHandles: ${args.includes('--recycle')} });
       for (const [id, url] of Object.entries(urls)) if (url) await vfx.load(url);
       const gl = app.renderer.gl; window.draws = 0;
       for (const fn of ['drawElements', 'drawArrays']) { const orig = gl[fn].bind(gl); gl[fn] = (...a) => { window.draws++; return orig(...a); }; }

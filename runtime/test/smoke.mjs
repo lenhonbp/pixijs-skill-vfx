@@ -342,6 +342,22 @@ async function juiceSmoke({ engine, mode }) {
     const tiers = seen.filter(e => e.tier), cues = seen.filter(e => e.type);
     check(tiers.length >= 2 && tiers.every(e => e === tiers[0]) && cues.length >= 1 && cues.every(e => e === cues[0]), 'reuseEvents shares one object per type');
     r.stop(); shared.destroy();
+    // Playback records are pooled: a handle that is over stays inert even after its record is reused.
+    const pooled = new VfxPlayer(app), plain = { from, to: { x: 460, y: 200 }, fitDistance: true, parent: stage };
+    await pooled.load('/juice.vfxb');
+    const first = pooled.play('juice', plain); first.stop();
+    const second = pooled.play('juice', plain);
+    first.stop();
+    check(first !== second && first.elapsedMs === 0 && pooled.stats().active === 1, 'a stale handle cannot stop the play that reused its record: ' + pooled.stats().active);
+    await first.finished;
+    second.stop(); pooled.destroy();
+    const recycled = new VfxPlayer(app, { recycleHandles: true });
+    await recycled.load('/juice.vfxb');
+    const one = recycled.play('juice', plain); one.stop();
+    const two = recycled.play('juice', plain);
+    check(one === two && recycled.stats().active === 1 && two.elapsedMs === 0, 'recycleHandles reuses one handle object');
+    two.stop(); recycled.update(16); const three = recycled.play('juice', plain);
+    check(three === one, 'recycled handle comes back after the record is released'); three.stop(); recycled.destroy();
   } finally { player.destroy(); camera.destroy({ children: true }); }
 }
 async function flowSmoke(engine) {
@@ -739,7 +755,7 @@ try {
   await page.evaluate(rampSmoke, 'v8');
   console.log('Pixi v8 ramp packs: PASS (element/preset/custom/native ramps on one atlas, mirror, one batch for six plays, few draw calls, row reuse)');
   console.log('Pixi v8 flow trails: PASS (WebGL-only support check, seamless 64x64 noise, deterministic render, scrolling/warping over time, dissolve 0/0.5/1, alpha, reused typed arrays)');
-  console.log('Pixi v8 combat juice: PASS (default target as destination, 32 ms micro-freeze replacing the pack hitstop, 2.5 px impulse along the blow and its exact restore, flat white silhouette flash then decay, opt-outs, no stacked filters, reuseEvents)');
+  console.log('Pixi v8 combat juice: PASS (default target as destination, 32 ms micro-freeze replacing the pack hitstop, 2.5 px impulse along the blow and its exact restore, flat white silhouette flash then decay, opt-outs, no stacked filters, reuseEvents, pooled playback records with stale-handle safety, recycleHandles)');
   const mobile = await browser.newPage({ viewport: { width: 390, height: 844 }, deviceScaleFactor: 3, isMobile: true, hasTouch: true });
   mobile.on('pageerror', e => errors.push(e.message)); mobile.on('console', m => { if (m.type() === 'error') errors.push(m.text()); });
   const requests = [];
