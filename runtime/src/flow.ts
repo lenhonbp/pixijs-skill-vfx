@@ -81,7 +81,11 @@ export function makeNoiseTexture(seed = 1, size = 64): Texture {
   repeat(texture);
   return texture;
 }
-function repeat(texture: Texture) { const style = (texture.source as any)?.style; if (style) style.addressMode = 'repeat'; }
+/** @internal Switches a texture to repeat addressing, so its UVs can scroll forever. */
+export function repeat(texture: Texture) { const style = (texture.source as any)?.style; if (style) style.addressMode = 'repeat'; }
+let sharedNoise: Texture | null = null;
+/** @internal The one procedural noise texture FlowTrail and GroundDissolveFilter share when given none. */
+export function sharedNoiseTexture(): Texture { return sharedNoise ??= makeNoiseTexture(); }
 
 export interface FlowTrailOptions {
   /** Energy texture: stretches along the ribbon (x) and across it (y). Should tile in x (it scrolls). */
@@ -113,7 +117,6 @@ export interface FlowTrailOptions {
   blend?: 'add' | 'normal';
 }
 
-let sharedNoise: Texture | null = null;
 /**
  * A trail you feed with positions (`push`) and tick (`update`). One quad strip, one draw call, no per-frame allocation:
  * positions are written into a preallocated Float32Array and the only uniforms touched are two floats.
@@ -134,7 +137,7 @@ export class FlowTrail {
 
   constructor(options: FlowTrailOptions) {
     if (!v8) throw Error('FlowTrail needs Pixi 8');
-    const { texture } = options, noise = options.noise ?? (sharedNoise ??= makeNoiseTexture());
+    const { texture } = options, noise = options.noise ?? sharedNoiseTexture();
     repeat(texture); repeat(noise);
     this.points = Array.from({ length: Math.max(2, options.points ?? 24) }, () => new Point());
     this.geometry = new RopeGeometry({ width: options.width ?? 40, points: this.points, textureScale: 0 });

@@ -2,7 +2,7 @@
 // SPDX-License-Identifier: MIT
 import { Application, Assets, Container, Sprite, Texture } from 'pixi.js';
 import type { Spritesheet } from 'pixi.js';
-import { VfxPlayer, packDirection } from '../../runtime/src/index';
+import { GroundDissolveFilter, VfxPlayer, packDirection } from '../../runtime/src/index';
 import type { Playback, CueEvent } from '../../runtime/src/index';
 import './style.css';
 import { createStage } from './stage';
@@ -263,7 +263,11 @@ try {
   scene.setCaster(sheet.animations['son-ha-kiem-khi-se']);
 } catch (error) { console.warn('Character sheet unavailable; using drawn caster.', error); }
 // One bake direction of the selected skill stays in GPU memory: cycling the eight aims keeps a flat texture ceiling on phones.
-const vfx = await VfxPlayer.create(app, { shake: { target: world }, hitstop: true, maxResidentDirections: 1 });
+// Ground decals erode along noise with a burning rim as they expire (Pixi 8 + WebGL; elsewhere they keep their baked fade).
+const vfx = await VfxPlayer.create(app, {
+  shake: { target: world }, hitstop: true, maxResidentDirections: 1,
+  groundDissolve: GroundDissolveFilter.supported(app) ? { filter: GroundDissolveFilter } : undefined
+});
 const packs = await indexRequest;
 const products = resolveCatalog(packs);
 let selected = packs.find(p => p.id === 'hoa-fireball')!, current: Playback | undefined, request = 0;
