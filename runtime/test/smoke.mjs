@@ -685,7 +685,7 @@ try {
     await vfx.load('/collection/packs/free/hoa-fireball.vfxb');
     const h = vfx.play('hoa-fireball', { from, to, parent, fitDistance: true, zIndex: 7 });
     vfx.update(500); app.render();
-    const root = parent.children[0];
+    const root = parent.children.find(c => c.zIndex === 7) ?? parent.children[0];   // packs with an impact block add tier roots at 6, 8 and 9
     if (root.scale.x !== -2 || root.zIndex !== 7 || root.x !== 100 || !root.children.some(s => s.visible)) throw Error('v7 placement/render failed');
     h.stop(); await h.finished; const pooled = vfx.stats().pooled;
     const replay = vfx.play('hoa-fireball', { from }); vfx.update(16000); await replay.finished;
