@@ -223,13 +223,14 @@ const vfx = new VfxPlayer(app, {
 });
 ```
 
-For each ground root the player takes the last `ms` of the ground layers' visible span (at most 40% of it), holds the baked frame at
+For each ground root (the under root and each background tier) the player takes the last `ms` of the ground layers' visible span (at most 40% of it), holds the baked frame at
 the start of that window and erodes it: `uProgress` runs 0 to 1 across the window, pixels whose noise value falls under the
 threshold are cut (`smoothstep(threshold - uEdgeWidth, threshold, noise)`), and the band just above it is tinted with
 `uEdgeColor * uEdgeIntensity`. The threshold is `uProgress * (1 + uEdgeWidth)`, so the decal is fully gone at 1. The noise is the same
 shared 64x64 texture `FlowTrail` uses, offset per play so neighbouring decals erode differently.
 
-Filters are pooled: one per decal currently dissolving, reused across plays and returned on finish, stop or unload. The per-frame
+Filters are pooled: one per ground layer currently dissolving, composited with that layer's blend mode (an additive glow keeps
+adding light), reused across plays and returned on finish, stop or unload. The per-frame
 cost is one uniform write; nothing is allocated while a decal erodes. `stats().dissolving` counts the active ones.
 
 `new GroundDissolveFilter(options)` also works on its own on any Pixi 8 container: set `filter.progress` from 0 to 1.

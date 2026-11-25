@@ -99,7 +99,8 @@ export interface PlayerOptions {
    * Erode ground layers with noise as they expire instead of fading them out: `{ filter: GroundDissolveFilter }` (exported by
    * this package; passed in like `colorMatrixFilter`, so games without it do not pay for Pixi's filter system). The last `ms`
    * (default 600, at most 40% of their run) of a pack's ground layers (`default_z_layer: 'background'`, and background impact
-   * tiers) hold the frame they reached and dissolve through one pooled filter per play. Pixi 8 + WebGL only; elsewhere, and for
+   * tiers) hold the frame they reached and dissolve through one pooled filter per ground layer, composited with that
+   * layer's own blend mode. Pixi 8 + WebGL only; elsewhere, and for
    * ramp layers drawn by the batched shader, ground layers keep their baked fade.
    */
   groundDissolve?: GroundDissolveSettings;
@@ -112,7 +113,7 @@ export interface GroundDissolveSettings {
   edgeWidth?: number; edgeColor?: number; edgeIntensity?: number; noiseScale?: number;
 }
 /** What the player needs from a dissolve filter: GroundDissolveFilter, or your own with the same members. */
-export interface DissolveFilter { progress: number; seed(value: number): void; destroy(): void }
+export interface DissolveFilter { progress: number; blendMode: unknown; seed(value: number): void; destroy(): void }
 export interface ActorPose { x: number; y: number; lift: number; visible: boolean; facing: number }
 export interface Playback {
   stop(): void;
@@ -150,9 +151,9 @@ interface Pack {
 /**
  * Where a pack's ground layers dissolve. Slot 0 is the under root, slot 1 + i impact tier i (background tiers only).
  * `window[2s]..window[2s + 1]` are the first and last frames of slot s's erosion (-1 when it has none). A layer with
- * `holdFrom[li] >= 0` shows that frame through `holdTo[li]` instead of its baked fade.
+ * `holdFrom[li] >= 0` shows that frame through `holdTo[li]` instead of its baked fade, eroding over its slot `slot[li]`'s window.
  */
-interface GroundPlan { window: Int32Array; holdFrom: Int32Array; holdTo: Int32Array }
+interface GroundPlan { window: Int32Array; holdFrom: Int32Array; holdTo: Int32Array; slot: Int32Array }
 /** A quad of a ramp layer: one per sheet of the layer, only the sheet the current frame uses is visible. */
 interface QuadRef { batch: QuadBatch; slot: number }
 /** Ground-plane directions (degrees) the free packs are baked in; left-facing casts mirror them. */
@@ -174,7 +175,7 @@ interface TierPlan { tier: ImpactTier; root: Container; enabled: boolean; startM
 /** Dissolve windows of a pack's ground layers (see GroundPlan), or null when it has none worth dissolving. */
 function groundPlan(m: Manifest, rampSheets: (Texture[] | null)[], ms: number): GroundPlan | null {
   const tiers = m.impact?.tiers ?? [], slots = 1 + tiers.length, layers = m.layers;
-  const window = new Int32Array(2 * slots).fill(-1), holdFrom = new Int32Array(layers.length).fill(-1), holdTo = new Int32Array(layers.length).fill(-1);
+  const window = new Int32Array(2 * slots).fill(-1), holdFrom = new Int32Array(layers.length).fill(-1), holdTo = new Int32Array(layers.length).fill(-1), slot = new Int32Array(layers.length).fill(-1);
   const slotOf = (li: number) => {
     const t = tiers.findIndex(tier => tier.layers.includes(layers[li].name));
     if (t >= 0) return tiers[t].default_z_layer === 'background' ? 1 + t : -1;
@@ -190,9 +191,9 @@ function groundPlan(m: Manifest, rampSheets: (Texture[] | null)[], ms: number): 
     if (frames < 2) continue;
     const from = last + 1 - frames;
     window[2 * s] = from; window[2 * s + 1] = last; any = true;
-    for (let li = 0; li < layers.length; li++) if (!rampSheets[li] && slotOf(li) === s && layers[li].frames[from]) { holdFrom[li] = from; holdTo[li] = last; }
+    for (let li = 0; li < layers.length; li++) if (!rampSheets[li] && slotOf(li) === s && layers[li].frames[from]) { holdFrom[li] = from; holdTo[li] = last; slot[li] = s; }
   }
-  return any ? { window, holdFrom, holdTo } : null;
+  return any ? { window, holdFrom, holdTo, slot } : null;
 }
 const Z_BIAS: Record<ZLayer, number> = { background: -1, target_overlay: 1, foreground: 2 };
 /**
@@ -224,8 +225,8 @@ interface Active {
   done: boolean; gen: number; handle: Handle;
   /** Reusable quad refs per layer (kept across plays; `quads[li]` points at the live prefix). */
   quadStore: QuadRef[][];
-  /** Dissolve filter running on each ground slot (see GroundPlan), null where none is. */
-  dissolves: (DissolveFilter | null)[];
+  /** Dissolve filter running on each layer's sprite (see GroundPlan), null where none is; and this play's noise seed. */
+  dissolves: (DissolveFilter | null)[]; dissolveSeed: number;
 }
 /** The object `play()` returns. Reads the pooled record only while its own play is still the record's current one. */
 class Handle implements Playback {
@@ -457,8 +458,9 @@ export class VfxPlayer {
     const target = options.target, targetOk = !!target && Number.isFinite(target.x) && Number.isFinite(target.y);
     const juice = options.hitstop !== undefined && options.hitstop !== false || targetOk;
     const flash = options.flash === false ? null : options.flash ?? {};
-        const slots = pack.ground ? pack.ground.window.length >> 1 : 0, dissolves = a.dissolves;
+    const dissolves = a.dissolves, slots = pack.ground ? manifest.layers.length : 0;
     dissolves.length = slots; for (let s = 0; s < slots; s++) dissolves[s] = null;
+    if (pack.ground) a.dissolveSeed = ++this.dissolve!.seed;
     a.pack = pack; a.options = options; a.legacy = legacy; a.root = root; a.under = under; a.rampRow = rampRow; a.time = 0; a.cue = 0; a.done = false;
     a.matrix[0] = 1; a.matrix[1] = 0; a.matrix[2] = 0; a.matrix[3] = 1;
     a.dest = options.to ?? (targetOk ? target as Point : options.from);
@@ -476,7 +478,7 @@ export class VfxPlayer {
     return handle;
   }
   private makeActive(): Active {
-    const a = { matrix: new Float64Array(4), sprites: [], quads: [], tiers: [], tierOf: [], tierOrder: [], quadStore: [], dissolves: [], under: null, gen: 0, done: true, tierCursor: 0 } as unknown as Active;
+    const a = { matrix: new Float64Array(4), sprites: [], quads: [], tiers: [], tierOf: [], tierOrder: [], quadStore: [], dissolves: [], dissolveSeed: 0, under: null, gen: 0, done: true, tierCursor: 0 } as unknown as Active;
     a.handle = new Handle(this, a, null as unknown as Pack);
     return a;
   }
@@ -618,7 +620,6 @@ export class VfxPlayer {
     const s = Math.sign(mx[0]) || 1;
     for (let i = 0; i < a.tiers.length; i++) { const plan = a.tiers[i]; this.tierPoint(a, plan, mx, this.point); setMatrix(plan.root, s, 0, 0, 1, this.point.x, this.point.y); }
     const index = Math.min(m.frameCount - 1, Math.floor(a.time * m.fps / 1000)), layers = m.layers, ground = a.pack.ground;
-    if (ground) this.drawDissolves(a, ground);
     for (let li = 0; li < a.sprites.length; li++) {
       const sprite = a.sprites[li], plan = a.tierOf[li];
       if (!sprite) { this.drawQuads(a, li, layers[li].frames[index], plan, mx, anchor); continue; }
@@ -632,29 +633,32 @@ export class VfxPlayer {
         if (plan) sprite.position.set(f[5] - plan.tier.anchor_point.x, f[6] - plan.tier.anchor_point.y); else sprite.position.set(f[5], f[6]);
         const k = 1 / (layers[li].scale ?? m.scale); sprite.scale.set(k, k);
       }
+      if (ground && ground.slot[li] >= 0) this.drawDissolve(a, ground, li, sprite, index);
     }
   }
-  /** Runs, advances or ends the dissolve filter of each ground slot of a play, for its current time. */
-  private drawDissolves(a: Active, ground: GroundPlan) {
-    const d = this.dissolve!, w = ground.window, frameMs = 1000 / a.pack.manifest.fps, index = Math.floor(a.time / frameMs);
-    for (let s = 0; s < a.dissolves.length; s++) {
-      const from = w[2 * s], to = w[2 * s + 1], root = s === 0 ? a.under : a.tiers[s - 1].enabled ? a.tiers[s - 1].root : null;
-      let filter = a.dissolves[s];
-      if (from < 0 || !root || index < from || index > to) { if (filter) this.endDissolve(a, s); continue; }
-      if (!filter) {
-        filter = a.dissolves[s] = d.pool.acquire();
-        filter.seed(++d.seed);
-        let list = d.lists.get(filter);
-        if (!list) d.lists.set(filter, list = [filter]);
-        (root as any).filters = list;
-      }
-      filter.progress = (a.time - from * frameMs) / ((to + 1 - from) * frameMs);
+  /**
+   * Runs, advances or ends the dissolve filter of one ground layer. The filter sits on the sprite, not its root, so each
+   * layer composites with its own blend mode: an additive glow keeps adding light instead of covering the ground.
+   */
+  private drawDissolve(a: Active, ground: GroundPlan, li: number, sprite: Sprite, index: number) {
+    const s = ground.slot[li], from = ground.window[2 * s], to = ground.window[2 * s + 1];
+    let filter = a.dissolves[li];
+    if (!sprite.visible || index < from || index > to) { if (filter) this.endDissolve(a, li); return; }
+    if (!filter) {
+      const d = this.dissolve!;
+      filter = a.dissolves[li] = d.pool.acquire();
+      filter.seed(a.dissolveSeed); filter.blendMode = sprite.blendMode;
+      let list = d.lists.get(filter);
+      if (!list) d.lists.set(filter, list = [filter]);
+      (sprite as any).filters = list;
     }
+    const frameMs = 1000 / a.pack.manifest.fps;
+    filter.progress = (a.time - from * frameMs) / ((to + 1 - from) * frameMs);
   }
-  private endDissolve(a: Active, s: number) {
-    const filter = a.dissolves[s]!, root = s === 0 ? a.under : a.tiers[s - 1]?.root;
-    if (root) (root as any).filters = null;
-    filter.progress = 0; a.dissolves[s] = null; this.dissolve!.pool.release(filter);
+  private endDissolve(a: Active, li: number) {
+    const filter = a.dissolves[li]!, sprite = a.sprites[li];
+    if (sprite) (sprite as any).filters = null;
+    filter.progress = 0; a.dissolves[li] = null; this.dissolve!.pool.release(filter);
   }
   /** Writes a ramp layer's quad for the current frame: into the tier's anchored space, or through the pack matrix. */
   private drawQuads(a: Active, li: number, f: Frame, plan: TierPlan | undefined, mx: Float64Array, anchor: Point) {
