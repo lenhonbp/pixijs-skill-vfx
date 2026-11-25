@@ -274,7 +274,7 @@ export class VfxPlayer {
     if (this.dead) throw Error('VfxPlayer is destroyed');
     const key = keyOf(manifest);
     if ((this.cancelledLoads.get(manifest.id) ?? 0) >= request) throw Error(`VFX load cancelled: ${manifest.id}`);
-    if (this.packs.has(key)) return;
+    if (this.touch(key)) return;
     const textures = new Map<string, Texture>(), frames: (Texture | null)[][] = [];
     try {
       for (const name of new Set(manifest.layers.flatMap(l => l.sheets))) {
@@ -303,7 +303,7 @@ export class VfxPlayer {
       }
       if (this.dead) throw Error('VfxPlayer is destroyed');
       if ((this.cancelledLoads.get(manifest.id) ?? 0) >= request) throw Error(`VFX load cancelled: ${manifest.id}`);
-      if (this.packs.has(key)) { frames.flat().forEach(t => t?.destroy()); textures.forEach(t => t.destroy(true)); return; }
+      if (this.touch(key)) { frames.flat().forEach(t => t?.destroy()); textures.forEach(t => t.destroy(true)); return; }
       let nativeRow = -1;
       if (manifest.color?.lut) nativeRow = this.ramps().addLut(`native:${key}`, Uint8Array.from(atob(manifest.color.lut), ch => ch.charCodeAt(0)));
       const pack: Pack = { manifest, sheets: [...textures.values()], frames, rampSheets, nativeRow, lastUsed: ++this.useClock };
@@ -312,6 +312,12 @@ export class VfxPlayer {
       this.dirs.delete(manifest.id);
     } catch (error) { frames.flat().forEach(t => t?.destroy()); textures.forEach(t => t.destroy(true)); throw error; }
     this.evictOver(manifest.id);
+  }
+  /** Marks a resident pack as just used, so loading it again protects it from eviction. */
+  private touch(key: string): boolean {
+    const pack = this.packs.get(key);
+    if (pack) pack.lastUsed = ++this.useClock;
+    return !!pack;
   }
   /** Evicts the least recently used directions of a family until it fits `maxResidentDirections`. */
   private evictOver(id: string): void {

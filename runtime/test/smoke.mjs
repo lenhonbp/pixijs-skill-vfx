@@ -226,6 +226,9 @@ async function residencySmoke(engine) {
     check(JSON.stringify(pair.directions(id)) === '[0]', `unload(id, 90) left ${pair.directions(id)}`);
     await pair.load(url(id, -45)); pair.unload(`${id}@0`);
     check(JSON.stringify(pair.directions(id)) === '[-45]', `unload('id@0') left ${pair.directions(id)}`);
+    // Loading a resident direction again counts as using it.
+    await pair.load(url(id, 0)); await pair.load(url(id, -45)); await pair.load(url(id, 90));
+    check(JSON.stringify(pair.directions(id)) === '[-45,90]', `reloaded direction was evicted: ${pair.directions(id)}`);
   } finally { pair.destroy(); }
 }
 async function actorSmoke(engine) {
