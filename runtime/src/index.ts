@@ -191,7 +191,13 @@ function groundPlan(m: Manifest, rampSheets: (Texture[] | null)[], ms: number): 
     if (frames < 2) continue;
     const from = last + 1 - frames;
     window[2 * s] = from; window[2 * s + 1] = last; any = true;
-    for (let li = 0; li < layers.length; li++) if (!rampSheets[li] && slotOf(li) === s && layers[li].frames[from]) { holdFrom[li] = from; holdTo[li] = last; slot[li] = s; }
+    // Each layer holds the first frame it shows inside the window: one that only appears later erodes from then on.
+    for (let li = 0; li < layers.length; li++) {
+      if (rampSheets[li] || slotOf(li) !== s) continue;
+      const f = layers[li].frames; let hold = from;
+      while (hold <= last && !f[hold]) hold++;
+      if (hold <= last) { holdFrom[li] = hold; holdTo[li] = last; slot[li] = s; }
+    }
   }
   return any ? { window, holdFrom, holdTo, slot } : null;
 }

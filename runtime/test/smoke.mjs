@@ -135,7 +135,8 @@ const dissolveManifest = () => ({ ...empty, id: 'dissolve', durationMs: 1200, fr
   layers: [
     { name: 'base', blend: 'normal', scale: 1, sheets: ['decal.png'], frames: Array.from({ length: 12 }, () => [0, 0, 0, 4, 4, 0, -200]) },
     { name: 'ground-under-base', blend: 'normal', scale: 1, sheets: ['decal.png'], default_z_layer: 'background', frames: Array.from({ length: 12 }, (_, i) => i < 10 ? [0, 0, 0, 48, 48, i, -24] : null) },
-    { name: 'ground-under-glow', blend: 'add', scale: 1, sheets: ['decal.png'], default_z_layer: 'background', frames: Array.from({ length: 12 }, (_, i) => i < 9 ? [0, 0, 0, 48, 48, i, -24] : null) }] });
+    { name: 'ground-under-glow', blend: 'add', scale: 1, sheets: ['decal.png'], default_z_layer: 'background', frames: Array.from({ length: 12 }, (_, i) => i < 9 ? [0, 0, 0, 48, 48, i, -24] : null) },
+    { name: 'ground-under-spark', blend: 'normal', scale: 1, sheets: ['decal.png'], default_z_layer: 'background', frames: Array.from({ length: 12 }, (_, i) => i >= 7 && i < 10 ? [0, 0, 0, 8, 8, -300 + i, 0] : null) }] });
 const greenLut = Buffer.from(Uint8Array.from({ length: 768 }, (_, i) => i % 3 === 1 ? Math.floor(i / 3) : 0)).toString('base64');
 const rampManifest = (id = 'ramped') => ({ ...empty, id, durationMs: 200, frameCount: 2, fps: 10, scale: 1, origin: { x: 0, y: 0 }, target: { x: 360, y: 0 }, groundSquash: 0.6, anchor: 'caster', cues: [],
   layers: [
@@ -458,7 +459,7 @@ async function dissolveSmoke(engine) {
       const ctx = copy.getContext('2d'); ctx.drawImage(canvas, 0, 0); return ctx.getImageData(Math.floor(200 * r), Math.floor(170 * r), Math.floor(60 * r), Math.floor(60 * r)).data; };
     const lit = d => { let n = 0; for (let i = 0; i < d.length; i += 4) if (d[i] > 60) n++; return n; };
     const rim = d => { let n = 0; for (let i = 0; i < d.length; i += 4) if (d[i] > d[i + 2] + 40) n++; return n; };
-    const h = player.play('dissolve', { from, parent }), under = parent.children[0], decal = under.children[0], glow = under.children[1];
+    const h = player.play('dissolve', { from, parent }), under = parent.children[0], decal = under.children[0], glow = under.children[1], spark = under.children[2];
     // 10 ground frames, 600 ms asked, capped at 40% of the run: frames 6-9 (600-1000 ms) erode, holding frame 6.
     player.update(550);
     check(!decal.filters?.length && !under.filters?.length && player.stats().dissolving === 0 && decal.x === 5, 'before the window the layer plays its baked frames');
@@ -469,6 +470,7 @@ async function dissolveSmoke(engine) {
     check(filter instanceof GroundDissolveFilter && glowFilter instanceof GroundDissolveFilter && filter !== glowFilter && !under.filters?.length && player.stats().dissolving === 2,
       'the window starts one filter per ground layer');
     // Each filter composites with its layer's blend: an additive glow keeps adding light instead of covering the ground.
+    check(!spark.visible && !spark.filters?.length, 'a layer that appears later is not filtered yet');
     check(filter.blendMode === 'normal' && glowFilter.blendMode === 'add', 'filters keep the layer blend: ' + [filter.blendMode, glowFilter.blendMode]);
     const oa0 = filter.resources.dissolve.uniforms.uNoiseOffset, og = glowFilter.resources.dissolve.uniforms.uNoiseOffset;
     check(oa0[0] === og[0] && oa0[1] === og[1], 'layers of one play erode along the same noise');
@@ -476,6 +478,9 @@ async function dissolveSmoke(engine) {
     const early = grab();
     player.update(200);
     check(decal.x === 6 && Math.abs(filter.progress - 0.625) < 1e-6, 'the held frame stays: ' + [decal.x, filter.progress]);
+    const sparkFilter = spark.filters?.[0];
+    check(sparkFilter instanceof GroundDissolveFilter && sparkFilter.progress === filter.progress && spark.x === -293 && player.stats().dissolving === 3,
+      'a layer appearing inside the window erodes with the rest, holding its first frame: ' + [spark.x, sparkFilter?.progress]);
     const mid = grab();
     player.update(100);
     const late = grab();
@@ -489,8 +494,8 @@ async function dissolveSmoke(engine) {
     // Pooled: the next play reuses the same filter; stopping mid-dissolve hands it back.
     const again = player.play('dissolve', { from, parent }), d2 = parent.children[0].children;
     player.update(700);
-    const reused = [d2[0].filters?.[0], d2[1].filters?.[0]];
-    check(reused.includes(filter) && reused.includes(glowFilter), 'the pooled filters are reused');
+    const reused = [d2[0].filters?.[0], d2[1].filters?.[0], d2[2].filters?.[0]];
+    check([filter, glowFilter, sparkFilter].every((f) => reused.includes(f)), 'the pooled filters are reused');
     again.stop();
     check(!d2.length && !decal.filters?.length && !glow.filters?.length && player.stats().dissolving === 0, 'stop takes the filters off the pooled sprites');
     // A looping play leaves the window when it wraps; thousands of frames never grow the pool.
@@ -498,13 +503,13 @@ async function dissolveSmoke(engine) {
     player.update(700); check(d3.filters?.[0] instanceof GroundDissolveFilter, 'loop: in the window');
     player.update(600); check(!d3.filters?.length && player.stats().dissolving === 0, 'loop: wrapping ends the dissolve');
     for (let i = 0; i < 3000; i++) player.update(1000 / 60);
-    check(player.dissolve.lists.size === 2 && player.dissolve.pool.size + player.stats().dissolving === 2, 'two filters serve every loop');
+    check(player.dissolve.lists.size === 3 && player.dissolve.pool.size + player.stats().dissolving === 3, 'three filters serve every loop');
     loop.stop();
     // Two plays dissolving at once each get their own filter, with a different noise offset.
     const a = player.play('dissolve', { from, parent }), b = player.play('dissolve', { from: { x: 400, y: 200 }, parent });
     player.update(700);
     const fa = parent.children[0].children[0].filters?.[0], fb = parent.children[2].children[0].filters?.[0];
-    check(fa && fb && fa !== fb && player.stats().dissolving === 4, 'own filters per dissolving play');
+    check(fa && fb && fa !== fb && player.stats().dissolving === 6, 'own filters per dissolving play');
     const oa = fa.resources.dissolve.uniforms.uNoiseOffset, ob = fb.resources.dissolve.uniforms.uNoiseOffset;
     check(oa[0] !== ob[0] || oa[1] !== ob[1], 'side-by-side decals erode differently');
     a.stop(); b.stop();
@@ -1015,7 +1020,7 @@ try {
   for (const mode of ['overlay', 'filter']) await page.evaluate(juiceSmoke, { engine: 'v8', mode });
   await page.evaluate(flowSmoke, 'v8');
   await page.evaluate(dissolveSmoke, 'v8');
-  console.log('Pixi v8 ground dissolve: PASS (window from the ground span, held frame, progress, pixel-checked erosion and rim, one filter per layer keeping its blend, pooled filters, stop, loop wrap, per-play noise offset)');
+  console.log('Pixi v8 ground dissolve: PASS (window from the ground span, held frame, progress, pixel-checked erosion and rim, one filter per layer keeping its blend, late layers held from their first frame, pooled filters, stop, loop wrap, per-play noise offset)');
   await page.evaluate(residencySmoke, 'v8');
   console.log('Pixi v8 direction residency: PASS (thunder-domain and whirlwind cycle 5 directions twice at a flat texture ceiling, LRU keeps the played direction, granular unload, sheets destroyed and out of Pixi caches)');
   await page.evaluate(rampSmoke, 'v8');
