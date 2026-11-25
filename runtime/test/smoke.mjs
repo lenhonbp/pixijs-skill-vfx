@@ -55,7 +55,7 @@ const loopCues = structuredClone(empty);
 loopCues.durationMs = 100; loopCues.frameCount = 1; loopCues.fps = 10;
 loopCues.layers.forEach(l => { l.frames = [null]; });
 loopCues.cues = [{ t: 0, type: 'hit' }, { t: 50, type: 'hit' }];
-const offset = structuredClone(decoded.manifest);
+const offset = structuredClone(decoded.manifest); delete offset.impact;
 offset.origin = { x: 100, y: 50 }; offset.target = { x: 460, y: 50 }; offset.anchor = 'target';
 offset.durationMs = 1000; offset.frameCount = 1; offset.fps = 1; offset.cues = [];
 offset.layers.forEach(l => { l.frames = [l.frames.find(f => f !== null)]; });
