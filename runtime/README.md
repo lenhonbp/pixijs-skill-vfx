@@ -283,6 +283,32 @@ root and anchors it on the target instead of pasting one flat sticker:
 Packs without an `impact` block, or with a schema version this runtime does not know, play as flat
 layers exactly as before. A version-1 block that contradicts its pack fails to load.
 
+## Cast anchors
+
+Packs baked with the anchor map carry an optional `anchors` block (see
+docs/pack-format.md#anchors). `handle.anchor(name, actor = 'caster', out?)` returns
+where that anchor is right now in the parent's local space, after the same
+mirroring, `fitDistance` and direction transform as the VFX, or null when the
+pack has no anchors or the playback is over. Names are `feet_ground`, `chest`,
+`head`, `mouth`, `hand_r`, `hand_l`, `weapon_tip`, `back` and `overhead`; a
+name the pack lacks falls back along `ANCHOR_FALLBACKS` (ending at
+`feet_ground`). Pass your own `out` point to read it every frame without
+allocating.
+
+Characters that are not the default humanoid pass their own normalized table
+(x forward along the aim and y up from the feet, both in unit heights):
+`play(id, { anchors: { hand_r: { x: 0.42, y: 0.7 } } })`. `anchor()` then moves
+the caster's points by the difference to the table the pack was baked with.
+`anchorsFromSkeleton({ bones, feet, height, facing })` builds that table from a
+posed 2D rig (Spine, DragonBones, Mixamo or Blender bone names, or your own
+`aliases`). Older runtimes ignore the block.
+
+```ts
+const handle = player.play('hoa-fireball', { from: home, to: target, anchors: anchorsFromSkeleton(rigPose) });
+const muzzle = { x: 0, y: 0 };
+app.ticker.add(() => { if (handle.anchor('hand_r', 'caster', muzzle)) flare.position.copyFrom(muzzle); });
+```
+
 ## Actor tracks and playback poses
 
 Optional `actors` is an object with `caster` and/or `target` tracks. Each track

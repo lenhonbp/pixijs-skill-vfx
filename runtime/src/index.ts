@@ -7,10 +7,14 @@ import { BatchSet, QuadBatch } from './batch.js';
 import { RAMP_PRESETS, RampSet } from './ramp.js';
 import type { RampStops } from './ramp.js';
 import { readContainer, validate } from './format.js';
+import { resolveAnchorName } from './anchors.js';
+import type { AnchorName, NormalizedAnchor } from './anchors.js';
 import type { ActorName, AnchorType, BlendAdvice, Cue, Frame, ImpactTier, Manifest, TierId, ZLayer } from './format.js';
-export type { ActorName, ActorFrame, ActorTrack, AnchorType, BlendAdvice, Cue, ImpactMeta, ImpactTier, Manifest, Frame, TierId, ZLayer } from './format.js';
+export type { ActorName, ActorFrame, ActorTrack, AnchorMeta, AnchorType, BlendAdvice, Cue, ImpactMeta, ImpactTier, Manifest, Frame, TierId, ZLayer } from './format.js';
 export interface Point { x: number; y: number }
 export { FlowTrail, makeNoiseTexture } from './flow.js';
+export { ANCHOR_FALLBACKS, ANCHOR_MAP, ANCHOR_NAMES, SKELETON_ALIASES, anchorsFromSkeleton, resolveAnchorName } from './anchors.js';
+export type { AnchorName, NormalizedAnchor, SkeletonPose } from './anchors.js';
 export { RAMP_PRESETS, RampSet } from './ramp.js';
 export type { RampPreset, RampStops } from './ramp.js';
 export type { FlowTrailOptions } from './flow.js';
@@ -53,6 +57,11 @@ export interface PlayOptions {
   impulse?: false | number;
   /** Your camera's ground squash (ground y / screen y). Defaults to the pack's bake value. */
   groundSquash?: number;
+  /**
+   * Your caster's own anchor table (normalized: x forward in heights, y up in heights), e.g. from `anchorsFromSkeleton`.
+   * `Playback.anchor()` moves the pack's caster anchors by the difference to the table the pack was baked with.
+   */
+  anchors?: Partial<Record<AnchorName, NormalizedAnchor>>;
 }
 /** Anything with a position that can carry a filter: a Sprite, or a Container holding sprites. */
 export type FlashTarget = Container & { x: number; y: number };
@@ -87,6 +96,11 @@ export interface Playback {
   readonly elapsedMs: number; readonly manifest: Manifest;
   /** Pose of a tracked actor. Pass `out` (a reusable object) to avoid allocating one per call. */
   pose(name: ActorName, out?: ActorPose): ActorPose | null;
+  /**
+   * Where an anchor of an actor (`'hand_r'`, `'mouth'`, `'chest'`, ...; falls back like ANCHOR_FALLBACKS) is in the
+   * parent's space right now, or null when the pack has no anchors or the playback is over. Pass `out` to avoid allocating.
+   */
+  anchor(name: AnchorName | string, actor?: ActorName, out?: Point): Point | null;
 }
 export type CueEvent = Cue & { packId: string; handle: Playback };
 /** Fired once when an impact tier starts. `point` is where the tier is anchored in the parent's space, right now. */
@@ -158,6 +172,7 @@ class Handle implements Playback {
   private get over(): boolean { return this.gen !== this.a.gen || this.a.done; }
   get finished(): Promise<void> { if (!this.promise) this.promise = this.over ? Promise.resolve() : new Promise<void>(done => { this.resolve = done; }); return this.promise; }
   pose(name: ActorName, out?: ActorPose): ActorPose | null { return this.player.poseOf(this, name, out); }
+  anchor(name: string, actor: ActorName = 'caster', out?: Point): Point | null { return this.player.anchorOf(this, name, actor, out); }
   get manifest(): Manifest { return structuredClone(this.pack.manifest); }
   get elapsedMs(): number { return this.over ? 0 : this.a.time; }
   stop(): void { if (!this.over) this.player.finishPlay(this.a); }
@@ -386,6 +401,41 @@ export class VfxPlayer {
     const x = f[0] + (next[0] - f[0]) * t, y = f[1] + (next[1] - f[1]) * t, m = a.matrix;
     result.x = m[0] * x + m[2] * y; result.y = m[1] * x + m[3] * y; result.lift = f[2] + (next[2] - f[2]) * t;
     result.visible = !!(f[3] & 1); result.facing = (f[3] & 2 ? -1 : 1) * Math.sign(m[0] || 1);
+    return result;
+  }
+  /** Anchor of an actor for a playback; see `Playback.anchor`. */
+  /** @internal used by Handle */
+  anchorOf(h: Handle, name: string, actor: ActorName, out?: Point): Point | null {
+    const a = h.a, m = h.pack.manifest, meta = m.anchors, points = meta?.points[actor];
+    if (!meta || !points || h.isOver) return null;
+    const key = resolveAnchorName(points, name);
+    if (!key) return null;
+    const frame = Math.min(m.frameCount - 1, a.time * m.fps / 1000), i = Math.floor(frame), t = frame - i;
+    const track = meta.tracks?.[actor]?.[key], p = points[key];
+    let x: number, y: number;
+    if (track) {
+      const j = i * 2, k = Math.min(i + 1, m.frameCount - 1) * 2;
+      x = track[j] + (track[k] - track[j]) * t; y = track[j + 1] + (track[k + 1] - track[j + 1]) * t;
+    } else {
+      x = p[0]; y = p[1];
+      const frames = m.actors?.[actor]?.frames;
+      if (frames) {
+        const f = frames[i], n = frames[Math.min(i + 1, frames.length - 1)], f0 = frames[0];
+        x += f[0] + (n[0] - f[0]) * t - f0[0];
+        y += f[1] + (n[1] - f[1]) * t - f0[1] - (f[2] + (n[2] - f[2]) * t - f0[2]);
+      }
+    }
+    // A rig override moves the anchor by its offset from the baked table, forward along the actor's baked aim.
+    const own = actor === 'caster' ? a.options.anchors?.[key as AnchorName] : undefined, base = meta.map[key], h0 = meta.heights[actor] ?? 0;
+    if (own && base) {
+      const sq = m.groundSquash ?? 0.6, ang = Math.atan2(m.target.y / sq, m.target.x), dir = actor === 'caster' ? 1 : -1;
+      const dx = (own.x - base.x) * h0 * dir;
+      x += Math.cos(ang) * dx; y += Math.sin(ang) * dx * sq - (own.y - base.y) * h0;
+    }
+    const mx = a.matrix, result = out ?? { x: 0, y: 0 };
+    let ox = a.options.from.x, oy = a.options.from.y;
+    if (m.anchor === 'target') { ox = a.dest.x - (mx[0] * m.target.x + mx[2] * m.target.y); oy = a.dest.y - (mx[1] * m.target.x + mx[3] * m.target.y); }
+    result.x = ox + mx[0] * x + mx[2] * y; result.y = oy + mx[1] * x + mx[3] * y;
     return result;
   }
   on(type: 'cue', listener: (event: CueEvent) => void): this;

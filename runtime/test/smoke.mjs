@@ -56,6 +56,8 @@ loopCues.durationMs = 100; loopCues.frameCount = 1; loopCues.fps = 10;
 loopCues.layers.forEach(l => { l.frames = [null]; });
 loopCues.cues = [{ t: 0, type: 'hit' }, { t: 50, type: 'hit' }];
 const offset = structuredClone(decoded.manifest); delete offset.impact;
+// Keep every layer under the pack root so sprite order matches manifest order (ground-under layers otherwise draw in their own root).
+for (const layer of offset.layers) delete layer.default_z_layer;
 offset.origin = { x: 100, y: 50 }; offset.target = { x: 460, y: 50 }; offset.anchor = 'target';
 offset.durationMs = 1000; offset.frameCount = 1; offset.fps = 1; offset.cues = [];
 offset.layers.forEach(l => { l.frames = [l.frames.find(f => f !== null)]; });
@@ -69,6 +71,8 @@ const impactBlock = () => ({ schema_version: 1, hit_vector: { x: 1, y: 0, angle_
   tier('ground_feedback', 2, { type: 'ground_center', point: { x: 360, y: 0 }, blend: 'NORMAL', z: 'background' }, 0, ['ground-feedback-base']),
   tier('body_residual', 3, { type: 'body_center', point: { x: 360, y: -48 }, blend: 'SCREEN', z: 'target_overlay' }, 1, ['body-residual-glow'])] });
 const flat = structuredClone(decoded.manifest);
+// Live packs carry ground-under layers (default_z_layer: 'background'), which no tier may own: build the fixture tiers from the others.
+flat.layers.sort((a, b) => Number(!!a.default_z_layer) - Number(!!b.default_z_layer));
 const withImpact = structuredClone(flat);
 withImpact.impact = { ...impactBlock(), tiers: [
   tier('hit_point', 1, { type: 'contact_normal', point: { x: 360, y: -52.8 }, blend: 'ADD', z: 'foreground' }, 0, [flat.layers[0].name]),
@@ -145,7 +149,21 @@ const rampSheets = new Map();
 const actors = structuredClone(feedback);
 actors.id = 'actors';
 actors.actors = { caster: { frames: [[0, 0, 0, 1], [20, 10, 30, 2]] }, target: { frames: [[0, 0, 0, 1], [-10, 4, 12, 1]] } };
+actors.anchors = {
+  schema_version: 1, map: { feet_ground: { x: 0, y: 0 }, chest: { x: 0.05, y: 0.55 }, hand_r: { x: 0.3, y: 0.62 } }, origin: 'hand_r',
+  heights: { caster: 100, target: 100 },
+  points: { caster: { feet_ground: [0, 0], chest: [5, -55], hand_r: [30, -62] }, target: { feet_ground: [actors.target.x, actors.target.y], chest: [actors.target.x - 5, actors.target.y - 55] } },
+  tracks: { caster: { hand_r: Array.from({ length: actors.frameCount }, (_, i) => [30 + i * 20, -62]).flat() } },
+};
 validate(actors);
+{
+  const future = structuredClone(actors); future.anchors.schema_version = 2;
+  assert.equal(validate(future).anchors, undefined, 'unknown anchors schema is dropped, pack still plays');
+  const old = structuredClone(actors); delete old.anchors; validate(old);
+  for (const anchors of [{ ...actors.anchors, origin: 'tail' }, { ...actors.anchors, map: { wing: { x: 0, y: 0 } } }, { ...actors.anchors, points: { target: actors.anchors.points.target } },
+    { ...actors.anchors, points: { caster: { chest: [0, 0] } } }, { ...actors.anchors, heights: { caster: 0, target: 100 } }, { ...actors.anchors, tracks: { caster: { hand_r: [1, 2, 3] } } }])
+    assert.throws(() => validate({ ...structuredClone(actors), anchors }), /anchors/);
+}
 for (const value of [null, [], { stranger: { frames: [[0, 0, 0, 1], [0, 0, 0, 1]] } }, { caster: null }, { caster: { frames: [] } }, { caster: { frames: [[0, 0, 0, 4], [0, 0, 0, 1]] } }, { caster: { frames: [[NaN, 0, 0, 1], [0, 0, 0, 1]] } }, { caster: { frames: [[0, 0, 0], [0, 0, 0, 1]] } }]) {
   assert.throws(() => validate({ ...actors, actors: value }));
 }
@@ -181,6 +199,24 @@ async function actorSmoke(engine) {
     check(h.elapsedMs === 0, 'stopped clock did not reset');
     check(JSON.stringify(h.pose('caster')) === JSON.stringify({ x: 0, y: 0, lift: 0, visible: true, facing: 1 }), 'stopped home pose');
     check(h.pose('caster') === null && h.pose('target')?.x === 0 && h.pose('target') === null, 'one reset per tracked actor');
+    {
+      const plain = new Player(app, {});
+      await plain.load('/actors.vfxb');
+      const m = plain.getManifest('actors'), p = { x: 0, y: 0 };
+      const a = plain.play('actors', { from: { x: 100, y: 50 } });
+      check(a.anchor('hand_r', 'caster', p) === p && p.x === 130 && p.y === -12, 'cast origin at frame 0 ' + JSON.stringify(p));
+      check(JSON.stringify(a.anchor('mouth')) === JSON.stringify({ x: 105, y: -5 }), 'mouth falls back to chest');
+      const tc = a.anchor('chest', 'target');
+      check(tc.x === 100 + m.target.x - 5 && tc.y === 50 + m.target.y - 55, 'target chest');
+      plain.update(1000 / m.fps / 2);
+      check(Math.abs(a.anchor('hand_r', 'caster', p).x - 140) < 1e-6, 'tracked anchor interpolates ' + p.x);
+      const rig = plain.play('actors', { from: { x: 0, y: 0 }, anchors: { hand_r: { x: 0.4, y: 0.72 } } });
+      const ang = Math.atan2(m.target.y / (m.groundSquash ?? 0.6), m.target.x), r = rig.anchor('hand_r');
+      check(Math.abs(r.x - (30 + Math.cos(ang) * 10)) < 1e-6 && Math.abs(r.y - (-62 + Math.sin(ang) * 10 * (m.groundSquash ?? 0.6) - 10)) < 1e-6, 'rig override ' + JSON.stringify(r));
+      rig.stop(); a.stop();
+      check(a.anchor('hand_r') === null, 'no anchor after stop');
+      plain.destroy();
+    }
     const end = player.play('actors', { from: { x: 0, y: 0 } });
     player.update(100); player.update(200); await end.finished;
     check(end.pose('caster')?.visible && end.pose('caster') === null, 'natural end reset');
