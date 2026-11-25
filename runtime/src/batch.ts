@@ -125,11 +125,13 @@ export class BatchSet {
   flush(): void { for (let i = 0; i < this.list.length; i++) this.list[i].flush(); }
   /** Drops the batches that draw `sheet` (its pack was unloaded). */
   dropSheet(sheet: Texture): void {
-    for (const bySource of this.batches.values()) {
+    for (const [parent, bySource] of this.batches) {
       const pair = bySource.get(sheet.source);
       if (!pair) continue;
       for (const batch of pair) if (batch) { batch.destroy(); this.list.splice(this.list.indexOf(batch), 1); }
       bySource.delete(sheet.source);
+      // Forget the parent with its last sheet, so a container the game has dropped is not kept alive here.
+      if (!bySource.size) this.batches.delete(parent);
     }
   }
   /** Draw calls the batches would issue right now (one per batch holding live quads). */
