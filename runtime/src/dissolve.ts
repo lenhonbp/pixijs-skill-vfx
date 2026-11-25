@@ -33,13 +33,12 @@ uniform sampler2D uTexture;
 uniform sampler2D uNoise;
 uniform vec4 uInputSize;
 uniform vec4 uOutputFrame;
-uniform float uProgress;
-uniform float uEdgeWidth;
+// x: progress, y: edge width, z: edge intensity, w: noise scale (one vec4, so the player can write progress into a typed array).
+uniform vec4 uParams;
 uniform vec3 uEdgeColor;
-uniform float uEdgeIntensity;
-uniform float uNoiseScale;
 uniform vec2 uNoiseOffset;
 void main(void) {
+  float uProgress = uParams.x, uEdgeWidth = uParams.y, uEdgeIntensity = uParams.z, uNoiseScale = uParams.w;
   vec4 color = texture(uTexture, vTextureCoord);
   vec2 screen = vTextureCoord * uInputSize.xy + uOutputFrame.xy;
   float noiseVal = texture(uNoise, screen / uNoiseScale + uNoiseOffset).r;
@@ -71,6 +70,8 @@ export interface GroundDissolveOptions {
  */
 export class GroundDissolveFilter extends (PIXI.Filter as unknown as new (options: any) => PIXI.Filter) {
   private readonly u: any;
+  /** The shader's `uParams`: progress (0-1), edge width, edge intensity, noise scale. Writing `params[0]` is `progress` without the clamp. */
+  readonly params!: Float32Array;
 
   /** True when the renderer can run the shader: Pixi 8 on WebGL. Elsewhere ground layers keep their baked fade. */
   static supported(app: { renderer: { name?: string } }): boolean { return v8 && app.renderer.name === 'webgl'; }
@@ -84,28 +85,28 @@ export class GroundDissolveFilter extends (PIXI.Filter as unknown as new (option
       glProgram,
       resources: {
         dissolve: {
-          uProgress: { value: 0, type: 'f32' }, uEdgeWidth: { value: 0.12, type: 'f32' },
-          uEdgeColor: { value: new Float32Array(3), type: 'vec3<f32>' }, uEdgeIntensity: { value: 1.5, type: 'f32' },
-          uNoiseScale: { value: 96, type: 'f32' }, uNoiseOffset: { value: new Float32Array(2), type: 'vec2<f32>' },
+          uParams: { value: new Float32Array([0, 0.12, 1.5, 96]), type: 'vec4<f32>' },
+          uEdgeColor: { value: new Float32Array(3), type: 'vec3<f32>' }, uNoiseOffset: { value: new Float32Array(2), type: 'vec2<f32>' },
         },
         uNoise: noise.source,
       },
     });
     this.u = (this as any).resources.dissolve.uniforms;
+    this.params = this.u.uParams;
     this.edgeWidth = options.edgeWidth ?? 0.12;
     this.edgeColor = options.edgeColor ?? 0xff8a2a;
     this.edgeIntensity = options.edgeIntensity ?? 1.5;
     this.noiseScale = options.noiseScale ?? 96;
   }
   /** Erosion, 0 (untouched) to 1 (gone). */
-  get progress(): number { return this.u.uProgress; }
-  set progress(value: number) { this.u.uProgress = value < 0 ? 0 : value > 1 ? 1 : value; }
-  get edgeWidth(): number { return this.u.uEdgeWidth; }
-  set edgeWidth(value: number) { this.u.uEdgeWidth = Math.max(1e-3, Math.min(1, value)); }
-  get edgeIntensity(): number { return this.u.uEdgeIntensity; }
-  set edgeIntensity(value: number) { this.u.uEdgeIntensity = Math.max(0, value); }
-  get noiseScale(): number { return this.u.uNoiseScale; }
-  set noiseScale(value: number) { this.u.uNoiseScale = Math.max(1, value); }
+  get progress(): number { return this.params[0]; }
+  set progress(value: number) { this.params[0] = value < 0 ? 0 : value > 1 ? 1 : value; }
+  get edgeWidth(): number { return this.params[1]; }
+  set edgeWidth(value: number) { this.params[1] = Math.max(1e-3, Math.min(1, value)); }
+  get edgeIntensity(): number { return this.params[2]; }
+  set edgeIntensity(value: number) { this.params[2] = Math.max(0, value); }
+  get noiseScale(): number { return this.params[3]; }
+  set noiseScale(value: number) { this.params[3] = Math.max(1, value); }
   set edgeColor(value: number) { const c = this.u.uEdgeColor; c[0] = (value >> 16 & 255) / 255; c[1] = (value >> 8 & 255) / 255; c[2] = (value & 255) / 255; }
   /** Shifts the noise so decals that dissolve side by side do not erode in the same pattern. Any number; only its fraction matters. */
   seed(value: number): void { const o = this.u.uNoiseOffset; o[0] = value * 0.618034 % 1; o[1] = value * 0.414214 % 1; }

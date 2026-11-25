@@ -59,6 +59,9 @@ node skills/lenhon-vfx/scripts/fetch-packs.mjs hoa-fireball --out public/vfx
   skill, and releases the previous pack.
 - **Gameplay feedback** — pooling, cue events, optional screen shake and
   hit-stop. The showcase adds sound hints, looping and a release-synchronized sword cast.
+- **Measured zero-GC** — 50-100 concurrent skills at 60 and 120 FPS stay under
+  100 B/frame of runtime allocation with no major GC; `npm run bench` gates it
+  and writes [benchmarks/latest.md](benchmarks/latest.md).
 - **Spritesheet demo caster** — a feet-anchored swordsman with a 24-frame,
   680 ms source clip, time-warped to align its 270 ms release with each effect.
   The drawn caster is retained only if the character sheet fails to load.
