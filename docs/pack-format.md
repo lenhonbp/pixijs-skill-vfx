@@ -71,6 +71,20 @@ approximation. Stone Skin (`tho-stone-skin`) instead preserves consecutive
 same-blend runs in exact draw order (five layers, within its eight-layer cap). The runtime supports arbitrary ordered layer counts,
 not only this collection's three-role layout.
 
+### Grayscale ramp mode (optional)
+
+A pack baked with `--mono true` stores each **energy** layer (additive blend) as a luminance mask (`R = G = B = max(r, g, b)`) and flags
+it `ramp: true`; material layers keep their colours. An optional `color` object describes how to colour the masks:
+
+```json
+"color": { "mode": "ramp", "channel": "value", "ramp": "hoa", "lut": "<base64, 768 bytes>" }
+```
+
+`lut` is the pack's native ramp: 256 RGB triples, the mean original colour of every mask level, fitted at bake time. Playing a ramp
+layer through it reproduces the baked look; any other 1D ramp (black at 0, hottest colour at 1) restyles it. `ramp` suggests a preset id.
+A `ramp` layer must be additive. Readers that do not know `color.mode` should ignore the block and play the layers as they are.
+`@lenhonbp/pixijs-vfx-runtime` 1.3 colours ramp layers on the GPU (see its README).
+
 ### Impact tiers (optional)
 
 Impact sprites tagged by the factory are kept in their own layers (`hit-point-*`, `ground-feedback-*`,

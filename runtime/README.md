@@ -52,6 +52,8 @@ handles rectangle textures, blend constants and ticker differences internally.
     pick a direction; defaults to the pack's baked value, else 0.6.
   - `loop`: repeat until explicitly stopped. The finished promise remains pending.
   - `layers`, `tiers`, `recommendedBlend`: see [Impact tiers](#impact-tiers).
+  - `hitstop`, `target`, `flash`, `impulse`: see [Combat juice](#combat-juice).
+  - `element`: recolour the pack's energy layers, see [Gradient ramps](#gradient-ramps).
 - `on('cue', fn)` / `off('cue', fn)`: cue events contain manifest cue fields plus
   `packId` and the playback `handle`. Times are animation-clock milliseconds.
   Sound is only a hint; the runtime does not create audio.
@@ -153,6 +155,98 @@ vfx.play('hoa-fireball', { from: hero.position, to: enemy.position, fitDistance:
 ```
 
 Packs without `direction` metadata (all 1.0 packs) keep playing exactly as before.
+
+## Combat juice
+
+Three cheap effects that make a hit feel like one, switched on per play:
+
+```ts
+const vfx = await VfxPlayer.create(app, { shake: { target: camera }, colorMatrixFilter: ColorMatrixFilter });
+vfx.play('hoa-fireball', { from: hero, hitstop: true, target: enemySprite });   // `to` defaults to the target
+```
+
+At every contact (each `hit` cue of the pack):
+
+- **Hit-stop.** `hitstop: true` freezes the whole player for 2 frames (32 ms); a number is the freeze in ms (0-100). It freezes
+  every playback, not only this one, and sets `vfx.frozen`: pause your own game logic on it so everything stops together.
+  `vfx.freeze(ms)` does the same by hand. It replaces the pack's own longer hit-stop cue for that play.
+- **Directional impulse.** The camera (`shake: { target }`) is kicked 2.5 px along the blow (the pack's hit vector, mirrored for left
+  casts, else `from` to `to`) and rings out over about 200 ms, returning to exactly where it started. `impulse: 4` changes the size,
+  `impulse: false` turns it off. It replaces the pack's non-directional jitter shake for that play.
+- **Flash.** `target` is flashed at full strength for 2 frames, then decays over 80 ms (`flash: { color, frames, decayMs }`,
+  `flash: false` to skip). By default two additive overlay sprites burn a **Sprite** out towards the flash colour. Pass Pixi's
+  `ColorMatrixFilter` class as `colorMatrixFilter` for an exact flat silhouette of any Sprite or Container. It is injected rather
+  than imported so pages that never flash do not download Pixi's filter system (about 140 KB). Flashing never stacks: a second hit
+  restarts the flash.
+
+Plays without these options behave as before. A pack without `hit` cues has no contact to react to.
+
+## Flow trails
+
+`FlowTrail` draws high-velocity energy, flame and wind ribbons from one small energy texture and one 64x64 wrapping noise texture,
+animated on the GPU instead of baked into dozens of frames (Pixi 8 on WebGL; `FlowTrail.supported(app)` tells you).
+
+```ts
+const trail = new FlowTrail({ texture: energyTexture, width: 40, speed: 1.6, turbulence: 0.25 });
+stage.addChild(trail.mesh); trail.reset(x, y);
+app.ticker.add(t => { trail.push(x, y); trail.dissolve = age / life; trail.update(t.deltaMS); });
+```
+
+The energy texture scrolls along the ribbon and its UVs are warped by scrolling noise (more towards the tail, so the head stays
+attached). `dissolve` 0 to 1 eats the ribbon from its tail along the noise, with a bright rim. `makeNoiseTexture(seed, size)` builds the
+seamless default (16 KB). One quad strip, one draw call, no per-frame allocation.
+
+## Gradient ramps
+
+A pack baked with the factory's `--mono true` stores its energy (additive) layers as a luminance mask. The runtime colours the mask
+through a 1D gradient ramp, so one atlas plays as any element and any custom colour:
+
+```ts
+vfx.play('hoa-fireball', { from, to, element: 'fire' });   // the pack's own look when `element` is omitted
+vfx.play('hoa-fireball', { from, to, element: 'cyan' });   // the same atlas, recoloured
+```
+
+- Ramps: `kim`, `moc`, `thuy`, `hoa`, `tho`, `loi`, `phong` (aliases `metal`, `wood`, `water`, `fire`, `earth`, `lightning`, `wind`, ...)
+  and the looks `gold`, `crimson`, `cyan` (`RAMP_PRESETS`). Add your own with `new VfxPlayer(app, { ramps: { ice: [[0, 0x000000], [0.5, 0x2040ff], [1, 0xffffff]] } })`
+  or `vfx.addRamp(id, stops)`; a registered id beats an alias of the same name. Stops run from black at 0 to the hottest colour at 1.
+- With no `element`, a pack plays through its **native ramp** (shipped in the manifest), which reproduces the baked look; an element
+  ramp is a restyle (it colours by intensity, so it is not identical to the original colours).
+- All ramps are rows of one 256 x 64 texture (64 KB). Quads carry their row as a vertex attribute, so different elements share a draw call.
+- Every active play of a pack shares **one mesh per atlas sheet** and parent; `vfx.stats().quadBatches` is how many that is. Energy
+  layers draw above the pack's material layers in the same parent. Materials (normal-blend layers) keep their own colours.
+- Pixi 8 on WebGL runs the shader. On Pixi 7 and WebGPU the energy layers fall back to ordinary sprites tinted with the ramp's hue.
+- Ramps and the batched mesh work with impact tiers (`layers`, `tiers`) too.
+
+Honest limits: a mono pack uses the **same GPU memory** as the RGB one (a grey sheet still uploads as RGBA); the gain is that one atlas
+serves every element. Packs currently use one sheet per layer, so a pack costs about one draw call per layer however many times it plays;
+a shared atlas per pack would make that two.
+
+## Allocation and pooling
+
+Steady-state playback allocates nothing in the runtime itself: sprites and root containers come from pools (`Pool<T>`:
+`acquire()` / `release()`, exported), the per-frame transforms write into preallocated typed arrays, ramp and trail vertices are
+written into fixed buffers, and no closures, iterators or spreads run in `update()`. Two options go further for thermal-sensitive
+games: `reuseEvents: true` hands listeners one shared event object per type (valid only inside the callback), and
+`handle.pose(name, out)` fills an object you own. `Playback.finished` is created on first read.
+
+Measure it with `node runtime/test/bench-gc.mjs [--mono FILE.vfxb] [--realtime]` (V8's sampling heap profiler and GC trace events;
+3600 frames = 60 s, after a warm-up so V8's optimizer has run). Measured here (headless Chromium, a Fireball cast every 20 frames, so
+about 11 overlap), 60 s of virtual playback:
+
+| | Runtime 1.1 | Runtime 1.3 |
+|---|---|---|
+| Whole page allocation | 5840 B/frame | 2144 B/frame (-63%; most of what is left is Pixi's own render bookkeeping) |
+| Scavenges in 60 s | 10 | 4 |
+| Major GCs | 0 | 0 |
+
+`play()` reuses its playback record (its arrays, matrix, tier plans and quad refs) from a pool and caches the per-family direction lists,
+so a cast no longer builds them. Per scenario (3600 frames): sprite plays 93 B/frame of runtime-owned allocation (`play()` itself no
+longer shows up; it was 42 B/frame, about 800 B per cast), juice 126, ramp 437-456, flow trail 46-48, with 0 major GCs and 5-9
+scavenges per minute. That is close to zero but not zero: by default each `play()` still returns one small handle object, and ramp
+plays still allocate in `draw()`. The handle stays inert after its play ends, so holding it is always safe. Pass `recycleHandles: true`
+to hand out the pooled handle instead (no allocation at all in `play()`); then do not call a handle after its play has finished,
+because a later `play()` may be using the same object. The first seconds after load allocate more until V8 has optimised the hot paths.
+Not a device benchmark: it runs in headless Chromium with a software GL, so it shows allocation and GC behaviour, not frame time on a phone.
 
 ## Impact tiers
 

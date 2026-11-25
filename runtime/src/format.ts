@@ -38,8 +38,15 @@ export interface Manifest {
   direction?: number;
   /** Camera squash (ground y / screen y) the pack was baked with. */
   groundSquash?: number;
-  layers: { name: string; blend: 'normal' | 'add'; scale?: number; sheets: string[]; frames: Frame[] }[];
+  /** `ramp: true` marks an energy layer stored as a luminance mask (see `color`). */
+  layers: { name: string; blend: 'normal' | 'add'; scale?: number; sheets: string[]; frames: Frame[]; ramp?: boolean }[];
   cues: Cue[];
+  /**
+   * Present on packs baked with grayscale energy layers: the masks are coloured through a gradient ramp.
+   * `lut` is the pack's native ramp (256 RGB triples, base64) that reproduces the baked look; `ramp` suggests a preset.
+   * An unknown `mode` is ignored (the pack plays as plain layers).
+   */
+  color?: { mode: 'ramp'; channel: 'value'; ramp?: string; lut?: string };
   /** Present on packs whose impact was baked in tiers; see ImpactMeta. Absent or unknown versions are ignored. */
   impact?: ImpactMeta;
   actors?: Partial<Record<ActorName, ActorTrack>>;
@@ -74,6 +81,16 @@ function validateImpact(m: Manifest) {
     }
   }
 }
+/** A ramp block of a mode this runtime does not know is dropped; a ramp block that contradicts its layers is an error. */
+function validateColor(m: Manifest) {
+  const c = m.color as any;
+  if (!c || typeof c !== 'object' || c.mode !== 'ramp') { delete m.color; return; }
+  const bad = (why: string): never => { throw Error(`Invalid VFX colour mode: ${why}`); };
+  if (c.channel !== 'value') bad('channel');
+  if (c.ramp !== undefined && (typeof c.ramp !== 'string' || !/^[a-z][a-z0-9-]{0,31}$/.test(c.ramp))) bad('ramp id');
+  if (c.lut !== undefined && (typeof c.lut !== 'string' || !/^[A-Za-z0-9+/]{1024}$/.test(c.lut))) bad('lut');
+  for (const layer of m.layers) if (layer.ramp !== undefined && (layer.ramp !== true || layer.blend !== 'add')) bad(`layer ${layer.name} must be additive to be a ramp layer`);
+}
 export function validate(value: unknown): Manifest {
   const m = value as Manifest;
   const point = (p: { x: number; y: number }) => p && Number.isFinite(p.x) && Number.isFinite(p.y);
@@ -88,6 +105,7 @@ export function validate(value: unknown): Manifest {
     if (!['normal', 'add'].includes(l.blend) || !Array.isArray(l.sheets) || !l.sheets.every(s => typeof s === 'string' && s.length) || !Array.isArray(l.frames) || l.frames.length !== m.frameCount) throw Error('Invalid VFX layer');
     for (const f of l.frames) if (f !== null && (!Array.isArray(f) || f.length !== 7 || !f.every(Number.isFinite) || !Number.isInteger(f[0]) || f[0] < 0 || f[0] >= l.sheets.length || f[1] < 0 || f[2] < 0 || f[3] <= 0 || f[4] <= 0)) throw Error('Invalid VFX frame');
   }
+  if (m.color !== undefined) validateColor(m);
   if (m.impact !== undefined) validateImpact(m);
   if (m.actors !== undefined) {
     if (!m.actors || typeof m.actors !== 'object' || Array.isArray(m.actors)) throw Error('Invalid VFX actors');

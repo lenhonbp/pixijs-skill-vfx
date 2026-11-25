@@ -7,15 +7,18 @@ export function frameTexture(sheet: PIXI.Texture, x: number, y: number, width: n
   const Texture = PIXI.Texture as any;
   return v8 ? new Texture({ source: sheet.source, frame: rect }) : new Texture((sheet as any).baseTexture, rect);
 }
+/** Reused for every sheared root: nothing is allocated per frame. */
+const scratch = new PIXI.Matrix();
 export function setMatrix(target: PIXI.Container, a: number, b: number, c: number, d: number, x: number, y: number) {
   if (b === 0 && c === 0) {
     target.position.set(x, y); target.scale.set(a, d); target.rotation = 0; target.skew.set(0, 0);
     return;
   }
-  const m = new PIXI.Matrix(a, b, c, d, x, y);
-  if (v8) (target as any).setFromMatrix(m); else (target as any).transform.setFromMatrix(m);
+  scratch.set(a, b, c, d, x, y);
+  if (v8) (target as any).setFromMatrix(scratch); else (target as any).transform.setFromMatrix(scratch);
 }
 export function setBlend(sprite: PIXI.Sprite, additive: boolean, screen = false) {
   // v7 BLEND_MODES: NORMAL 0, ADD 1, SCREEN 3.
   sprite.blendMode = (v8 ? additive ? screen ? 'screen' : 'add' : 'normal' : additive ? screen ? 3 : 1 : 0) as any;
 }
+
