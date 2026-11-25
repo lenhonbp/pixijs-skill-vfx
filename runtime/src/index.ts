@@ -202,6 +202,7 @@ export class VfxPlayer {
   private cueEvent = { t: 0, type: '', id: undefined, amp: undefined, ms: undefined, packId: '', handle: null } as unknown as CueEvent;
   private tierEvent = { tier: 'hit_point', tierNumber: 1, packId: '', handle: null, point: { x: 0, y: 0 }, anchorType: 'contact_normal', normalDeg: undefined, zLayer: 'foreground', blend: 'ADD', startMs: 0 } as unknown as TierEvent;
   private scratch = new Float64Array([1, 0, 0, 1]);
+  private anchorMatrix = new Float64Array([1, 0, 0, 1]);
   private point: Point = { x: 0, y: 0 };
   private freezeLeft = 0;
   /** Freeze requested by a pack's own hitstop cue: switched off together with `hitstopEnabled`. */
@@ -415,9 +416,9 @@ export class VfxPlayer {
     let x: number, y: number;
     if (track) {
       const j = i * 2, k = Math.min(i + 1, m.frameCount - 1) * 2;
-      x = track[j] + (track[k] - track[j]) * t; y = track[j + 1] + (track[k + 1] - track[j + 1]) * t;
+      x = track[j] + (track[k] - track[j]) * t - m.origin.x; y = track[j + 1] + (track[k + 1] - track[j + 1]) * t - m.origin.y;
     } else {
-      x = p[0]; y = p[1];
+      x = p[0] - m.origin.x; y = p[1] - m.origin.y;
       const frames = m.actors?.[actor]?.frames;
       if (frames) {
         const f = frames[i], n = frames[Math.min(i + 1, frames.length - 1)], f0 = frames[0];
@@ -428,13 +429,15 @@ export class VfxPlayer {
     // A rig override moves the anchor by its offset from the baked table, forward along the actor's baked aim.
     const own = actor === 'caster' ? a.options.anchors?.[key as AnchorName] : undefined, base = meta.map[key], h0 = meta.heights[actor] ?? 0;
     if (own && base) {
-      const sq = m.groundSquash ?? 0.6, ang = Math.atan2(m.target.y / sq, m.target.x), dir = actor === 'caster' ? 1 : -1;
+      const sq = m.groundSquash ?? 0.6, ang = Math.atan2((m.target.y - m.origin.y) / sq, m.target.x - m.origin.x), dir = actor === 'caster' ? 1 : -1;
       const dx = (own.x - base.x) * h0 * dir;
       x += Math.cos(ang) * dx; y += Math.sin(ang) * dx * sq - (own.y - base.y) * h0;
     }
-    const mx = a.matrix, result = out ?? { x: 0, y: 0 };
+    // Fresh transform: a cue listener may ask before this frame's draw refreshes `a.matrix`.
+    const mx = this.anchorMatrix, result = out ?? { x: 0, y: 0 }, tx = m.target.x - m.origin.x, ty = m.target.y - m.origin.y;
+    this.matrix(a, mx);
     let ox = a.options.from.x, oy = a.options.from.y;
-    if (m.anchor === 'target') { ox = a.dest.x - (mx[0] * m.target.x + mx[2] * m.target.y); oy = a.dest.y - (mx[1] * m.target.x + mx[3] * m.target.y); }
+    if (m.anchor === 'target') { ox = a.dest.x - (mx[0] * tx + mx[2] * ty); oy = a.dest.y - (mx[1] * tx + mx[3] * ty); }
     result.x = ox + mx[0] * x + mx[2] * y; result.y = oy + mx[1] * x + mx[3] * y;
     return result;
   }
