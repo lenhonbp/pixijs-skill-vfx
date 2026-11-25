@@ -33,7 +33,7 @@ export const SKELETON_ALIASES: Readonly<Record<AnchorName, readonly string[]>> =
   feet_ground: ['root', 'feet', 'ground'],
   chest: ['chest', 'spine2', 'spine_02', 'mixamorig:spine2', 'upperchest', 'torso'],
   head: ['head', 'mixamorig:head'],
-  mouth: ['mouth', 'jaw', 'mixamorig:headtop_end'],
+  mouth: ['mouth', 'jaw'],
   hand_r: ['hand_r', 'hand.r', 'r_hand', 'righthand', 'mixamorig:righthand', 'hand_right'],
   hand_l: ['hand_l', 'hand.l', 'l_hand', 'lefthand', 'mixamorig:lefthand', 'hand_left'],
   weapon_tip: ['weapon_tip', 'weapon', 'sword_tip', 'blade_tip', 'staff_tip'],
