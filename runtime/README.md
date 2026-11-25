@@ -40,6 +40,8 @@ handles rectangle textures, blend constants and ticker differences internally.
     default 1. Loading another direction of a skill at the limit evicts its least
     recently loaded or played direction: its plays stop and its atlas textures are
     destroyed. Use 2 to cross-fade between directions, `Infinity` to keep them all.
+  - `groundDissolve`: `{ filter: GroundDissolveFilter, ms?, edgeWidth?, edgeColor?, edgeIntensity?, noiseScale? }` erodes expiring ground decals along noise
+    (see [Ground dissolve](#ground-dissolve)). Off by default.
 - `load(url | url[])` → `Promise<void>` accepts `.vfx.json` and `.vfxb`, including
   default-scrambled and unscrambled containers. Concurrent identical URLs share
   loading work. A loaded pack ID is not replaced; unload first to replace it.
@@ -204,6 +206,34 @@ app.ticker.add(t => { trail.push(x, y); trail.dissolve = age / life; trail.updat
 The energy texture scrolls along the ribbon and its UVs are warped by scrolling noise (more towards the tail, so the head stays
 attached). `dissolve` 0 to 1 eats the ribbon from its tail along the noise, with a bright rim. `makeNoiseTexture(seed, size)` builds the
 seamless default (16 KB). One quad strip, one draw call, no per-frame allocation.
+
+## Ground dissolve
+
+Ground decals (fissures, runes, scorch and impact marks on `background` layers and background impact tiers) are baked with a
+uniform alpha fade. With `groundDissolve` set, the player replaces the tail of that fade with procedural noise erosion and a burning
+rim (Pixi 8 on WebGL; `GroundDissolveFilter.supported(app)` tells you, elsewhere leave the option off and the baked fade plays).
+
+```ts
+import { VfxPlayer, GroundDissolveFilter } from '@lenhonbp/pixijs-vfx-runtime';
+
+const vfx = new VfxPlayer(app, {
+  groundDissolve: GroundDissolveFilter.supported(app)
+    ? { filter: GroundDissolveFilter, ms: 600, edgeColor: 0xff8a2a, edgeIntensity: 1.5, edgeWidth: 0.12 }
+    : undefined
+});
+```
+
+For each ground root (the under root and each background tier) the player takes the last `ms` of the ground layers' visible span (at most 40% of it), holds the baked frame at
+the start of that window and erodes it: `uProgress` runs 0 to 1 across the window, pixels whose noise value falls under the
+threshold are cut (`smoothstep(threshold - uEdgeWidth, threshold, noise)`), and the band just above it is tinted with
+`uEdgeColor * uEdgeIntensity`. The threshold is `uProgress * (1 + uEdgeWidth)`, so the decal is fully gone at 1. The noise is the same
+shared 64x64 texture `FlowTrail` uses, offset per play so neighbouring decals erode differently.
+
+Filters are pooled: one per ground layer currently dissolving, composited with that layer's blend mode (an additive glow keeps
+adding light), reused across plays and returned on finish, stop or unload. The per-frame
+cost is one uniform write; nothing is allocated while a decal erodes. `stats().dissolving` counts the active ones.
+
+`new GroundDissolveFilter(options)` also works on its own on any Pixi 8 container: set `filter.progress` from 0 to 1.
 
 ## Gradient ramps
 

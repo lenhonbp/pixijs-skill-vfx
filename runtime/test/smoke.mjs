@@ -129,6 +129,14 @@ const floorTierManifest = () => ({ ...impactManifest(), id: 'floor-tier',
   console.log('Layer depth validation: PASS (background kept, unknown depth dropped, 3 malformed cases rejected)');
 }
 // Ramp (grayscale + gradient) packs: validation, then a fixture whose mask is a left-to-right gradient.
+// Ground dissolve: a 48x48 ground decal visible on frames 0-9 of 12 (10 fps), moving 1 px per frame so a held frame shows.
+const dissolveSheets = new Map();
+const dissolveManifest = () => ({ ...empty, id: 'dissolve', durationMs: 1200, frameCount: 12, fps: 10, scale: 1, origin: { x: 0, y: 0 }, target: { x: 360, y: 0 }, groundSquash: 0.6, anchor: 'caster', cues: [],
+  layers: [
+    { name: 'base', blend: 'normal', scale: 1, sheets: ['decal.png'], frames: Array.from({ length: 12 }, () => [0, 0, 0, 4, 4, 0, -200]) },
+    { name: 'ground-under-base', blend: 'normal', scale: 1, sheets: ['decal.png'], default_z_layer: 'background', frames: Array.from({ length: 12 }, (_, i) => i < 10 ? [0, 0, 0, 48, 48, i, -24] : null) },
+    { name: 'ground-under-glow', blend: 'add', scale: 1, sheets: ['decal.png'], default_z_layer: 'background', frames: Array.from({ length: 12 }, (_, i) => i < 9 ? [0, 0, 0, 48, 48, i, -24] : null) },
+    { name: 'ground-under-spark', blend: 'normal', scale: 1, sheets: ['decal.png'], default_z_layer: 'background', frames: Array.from({ length: 12 }, (_, i) => i >= 7 && i < 10 ? [0, 0, 0, 8, 8, -300 + i, 0] : null) }] });
 const greenLut = Buffer.from(Uint8Array.from({ length: 768 }, (_, i) => i % 3 === 1 ? Math.floor(i / 3) : 0)).toString('base64');
 const rampManifest = (id = 'ramped') => ({ ...empty, id, durationMs: 200, frameCount: 2, fps: 10, scale: 1, origin: { x: 0, y: 0 }, target: { x: 360, y: 0 }, groundSquash: 0.6, anchor: 'caster', cues: [],
   layers: [
@@ -424,6 +432,89 @@ async function floorSmoke(engine) {
     app.render();
   } finally { player.destroy(); [parent, bg].forEach(c => c.destroy({ children: true })); }
 }
+async function dissolveSmoke(engine) {
+  const g = engine === 'v8' ? window.__v8 : window.__v7, { app, Container, VfxPlayer, GroundDissolveFilter } = g;
+  const check = (ok, message) => { if (!ok) throw Error(`${engine} dissolve: ${message}`); };
+  for (const bad of [{ filter: 1 }, { filter: GroundDissolveFilter, ms: 0 }]) {
+    let threw = false; try { new VfxPlayer(app, { groundDissolve: bad }).destroy(); } catch { threw = true; }
+    check(threw, 'invalid groundDissolve throws: ' + JSON.stringify(bad));
+  }
+  const parent = new Container(); app.stage.addChild(parent);
+  const player = new VfxPlayer(app, { groundDissolve: { filter: GroundDissolveFilter } });
+  try {
+    await player.load('/dissolve.vfxb');
+    const from = { x: 200, y: 200 };
+    if (engine === 'v7') {
+      check(!GroundDissolveFilter.supported(app), 'Pixi 7 is not supported');
+      let message = ''; try { new GroundDissolveFilter(); } catch (error) { message = String(error); }
+      check(/needs Pixi 8/.test(message), 'constructing on Pixi 7 throws a clear error: ' + message);
+      const h = player.play('dissolve', { from, parent }), under = parent.children[0];
+      player.update(850);
+      check(!under.children[0].filters?.length && player.stats().dissolving === 0 && under.children[0].x === 8, 'Pixi 7 keeps the baked frames');
+      h.stop(); return;
+    }
+    check(GroundDissolveFilter.supported(app) && !GroundDissolveFilter.supported({ renderer: { name: 'webgpu' } }), 'supported only on WebGL');
+    const r = app.renderer.resolution;
+    const grab = () => { app.render(); const canvas = app.canvas, copy = document.createElement('canvas'); copy.width = canvas.width; copy.height = canvas.height;
+      const ctx = copy.getContext('2d'); ctx.drawImage(canvas, 0, 0); return ctx.getImageData(Math.floor(200 * r), Math.floor(170 * r), Math.floor(60 * r), Math.floor(60 * r)).data; };
+    const lit = d => { let n = 0; for (let i = 0; i < d.length; i += 4) if (d[i] > 60) n++; return n; };
+    const rim = d => { let n = 0; for (let i = 0; i < d.length; i += 4) if (d[i] > d[i + 2] + 40) n++; return n; };
+    const h = player.play('dissolve', { from, parent }), under = parent.children[0], decal = under.children[0], glow = under.children[1], spark = under.children[2];
+    // 10 ground frames, 600 ms asked, capped at 40% of the run: frames 6-9 (600-1000 ms) erode, holding frame 6.
+    player.update(550);
+    check(!decal.filters?.length && !under.filters?.length && player.stats().dissolving === 0 && decal.x === 5, 'before the window the layer plays its baked frames');
+    const full = lit(grab());
+    check(full > 1500 * r * r, 'the decal draws: ' + full);
+    player.update(100);
+    const filter = decal.filters?.[0], glowFilter = glow.filters?.[0];
+    check(filter instanceof GroundDissolveFilter && glowFilter instanceof GroundDissolveFilter && filter !== glowFilter && !under.filters?.length && player.stats().dissolving === 2,
+      'the window starts one filter per ground layer');
+    // Each filter composites with its layer's blend: an additive glow keeps adding light instead of covering the ground.
+    check(!spark.visible && !spark.filters?.length, 'a layer that appears later is not filtered yet');
+    check(filter.blendMode === 'normal' && glowFilter.blendMode === 'add', 'filters keep the layer blend: ' + [filter.blendMode, glowFilter.blendMode]);
+    const oa0 = filter.resources.dissolve.uniforms.uNoiseOffset, og = glowFilter.resources.dissolve.uniforms.uNoiseOffset;
+    check(oa0[0] === og[0] && oa0[1] === og[1], 'layers of one play erode along the same noise');
+    check(Math.abs(filter.progress - 0.125) < 1e-6 && decal.x === 6, 'progress follows time; frame 6 is held: ' + [filter.progress, decal.x]);
+    const early = grab();
+    player.update(200);
+    check(decal.x === 6 && Math.abs(filter.progress - 0.625) < 1e-6, 'the held frame stays: ' + [decal.x, filter.progress]);
+    const sparkFilter = spark.filters?.[0];
+    check(sparkFilter instanceof GroundDissolveFilter && sparkFilter.progress === filter.progress && spark.x === -293 && player.stats().dissolving === 3,
+      'a layer appearing inside the window erodes with the rest, holding its first frame: ' + [spark.x, sparkFilter?.progress]);
+    const mid = grab();
+    player.update(100);
+    const late = grab();
+    check(lit(early) > full * 0.8, `barely eroded at 12.5%: ${lit(early)} of ${full}`);
+    check(lit(mid) < full * 0.75 && lit(mid) > 0, `eroded at 62.5%: ${lit(mid)} of ${full}`);
+    check(lit(late) < lit(mid), `more eroded at 87.5%: ${lit(late)} < ${lit(mid)}`);
+    check(rim(mid) > 0 && rim(early) <= rim(mid) + full, 'the eroding boundary burns orange: ' + rim(mid));
+    player.update(100);
+    check(!decal.filters?.length && !glow.filters?.length && player.stats().dissolving === 0 && !decal.visible, 'the window ends: filters off, layers gone');
+    h.stop();
+    // Pooled: the next play reuses the same filter; stopping mid-dissolve hands it back.
+    const again = player.play('dissolve', { from, parent }), d2 = parent.children[0].children;
+    player.update(700);
+    const reused = [d2[0].filters?.[0], d2[1].filters?.[0], d2[2].filters?.[0]];
+    check([filter, glowFilter, sparkFilter].every((f) => reused.includes(f)), 'the pooled filters are reused');
+    again.stop();
+    check(!d2.length && !decal.filters?.length && !glow.filters?.length && player.stats().dissolving === 0, 'stop takes the filters off the pooled sprites');
+    // A looping play leaves the window when it wraps; thousands of frames never grow the pool.
+    const loop = player.play('dissolve', { from, parent, loop: true }), d3 = parent.children[0].children[0];
+    player.update(700); check(d3.filters?.[0] instanceof GroundDissolveFilter, 'loop: in the window');
+    player.update(600); check(!d3.filters?.length && player.stats().dissolving === 0, 'loop: wrapping ends the dissolve');
+    for (let i = 0; i < 3000; i++) player.update(1000 / 60);
+    check(player.dissolve.lists.size === 3 && player.dissolve.pool.size + player.stats().dissolving === 3, 'three filters serve every loop');
+    loop.stop();
+    // Two plays dissolving at once each get their own filter, with a different noise offset.
+    const a = player.play('dissolve', { from, parent }), b = player.play('dissolve', { from: { x: 400, y: 200 }, parent });
+    player.update(700);
+    const fa = parent.children[0].children[0].filters?.[0], fb = parent.children[2].children[0].filters?.[0];
+    check(fa && fb && fa !== fb && player.stats().dissolving === 6, 'own filters per dissolving play');
+    const oa = fa.resources.dissolve.uniforms.uNoiseOffset, ob = fb.resources.dissolve.uniforms.uNoiseOffset;
+    check(oa[0] !== ob[0] || oa[1] !== ob[1], 'side-by-side decals erode differently');
+    a.stop(); b.stop();
+  } finally { player.destroy(); parent.destroy({ children: true }); }
+}
 async function juiceSmoke({ engine, mode }) {
   // mode 'filter': Pixi's ColorMatrixFilter is handed to the player (exact flat silhouette); 'overlay': the default, two additive sprites.
   const g = engine === 'v8' ? window.__v8 : window.__v7, { app, Container, Sprite, Texture, VfxPlayer } = g;
@@ -695,11 +786,11 @@ assert.deepEqual(readContainer(buffer(custom), 'test-custom-火').manifest, deco
 assert.deepEqual(readContainer(buffer(plainContainer)).manifest, decoded.manifest);
 console.log('Format contracts: PASS (default/custom keys, unscrambled, empty layers, malformed data)');
 const v7Bundle = await build({
-  stdin: { contents: `import * as PIXI from 'pixi.js'; import { Application, Container, Sprite, Texture } from 'pixi.js'; import { VfxPlayer, FlowTrail, makeNoiseTexture } from './runtime/src/index'; const app = new Application({width:1000,height:580}); document.body.appendChild(app.view); const vfx = await VfxPlayer.create(app); window.__v7 = {app,vfx,Container,Sprite,Texture,VfxPlayer,FlowTrail,makeNoiseTexture,ColorMatrixFilter: PIXI.ColorMatrixFilter ?? PIXI.filters.ColorMatrixFilter,utils: PIXI.utils};`, resolveDir: root },
+  stdin: { contents: `import * as PIXI from 'pixi.js'; import { Application, Container, Sprite, Texture } from 'pixi.js'; import { VfxPlayer, FlowTrail, makeNoiseTexture, GroundDissolveFilter } from './runtime/src/index'; const app = new Application({width:1000,height:580}); document.body.appendChild(app.view); const vfx = await VfxPlayer.create(app); window.__v7 = {app,vfx,Container,Sprite,Texture,VfxPlayer,FlowTrail,makeNoiseTexture,GroundDissolveFilter,ColorMatrixFilter: PIXI.ColorMatrixFilter ?? PIXI.filters.ColorMatrixFilter,utils: PIXI.utils};`, resolveDir: root },
   bundle: true, format: 'esm', write: false, alias: { 'pixi.js': 'pixi7' },
 });
 const v8Bundle = await build({
-  stdin: { contents: `import { Application, Container, Sprite, Texture, ColorMatrixFilter, Cache } from 'pixi.js'; import { VfxPlayer, FlowTrail, makeNoiseTexture } from './runtime/src/index'; const app = new Application(); await app.init({ width: 1000, height: 580, preference: 'webgl' }); document.body.appendChild(app.canvas); const vfx = await VfxPlayer.create(app); window.__v8 = {app,vfx,Container,Sprite,Texture,VfxPlayer,FlowTrail,makeNoiseTexture,ColorMatrixFilter,Cache};`, resolveDir: root },
+  stdin: { contents: `import { Application, Container, Sprite, Texture, ColorMatrixFilter, Cache } from 'pixi.js'; import { VfxPlayer, FlowTrail, makeNoiseTexture, GroundDissolveFilter } from './runtime/src/index'; const app = new Application(); await app.init({ width: 1000, height: 580, preference: 'webgl' }); document.body.appendChild(app.canvas); const vfx = await VfxPlayer.create(app); window.__v8 = {app,vfx,Container,Sprite,Texture,VfxPlayer,FlowTrail,makeNoiseTexture,GroundDissolveFilter,ColorMatrixFilter,Cache};`, resolveDir: root },
   bundle: true, format: 'esm', write: false,
 });
 const catalogFixtureBundle = await build({
@@ -712,6 +803,7 @@ const server = createServer(async (req, res) => {
     if (path === '/catalog-fixture.js') { res.setHeader('Content-Type', 'text/javascript'); res.end(catalogFixtureBundle.outputFiles[0].contents); return; }
     if (path === '/v8.html') { res.setHeader('Content-Type', 'text/html'); res.end('<link rel="icon" href="data:,"><script type="module" src="/v8.js"></script>'); return; }
     if (path === '/v8.js') { res.setHeader('Content-Type', 'text/javascript'); res.end(v8Bundle.outputFiles[0].contents); return; }
+    if (path === '/dissolve.vfxb') { res.end(fixture(dissolveManifest(), dissolveSheets)); return; }
     if (path === '/ramped.vfxb') { res.end(fixture(rampManifest(), rampSheets)); return; }
     if (path === '/juice.vfxb') { res.end(fixture(juiceManifest, impactSheets)); return; }
     if (path === '/v7.html') { res.setHeader('Content-Type', 'text/html'); res.end('<link rel="icon" href="data:,"><script type="module" src="/v7.js"></script>'); return; }
@@ -793,6 +885,9 @@ try {
   pngs.forEach((png, i) => orderedSheets.set(`ordered-${i}.png`, Buffer.from(png, 'base64')));
   pngs.forEach((png, i) => impactSheets.set(`ordered-${i}.png`, Buffer.from(png, 'base64')));
   pngs.forEach((png, i) => rampSheets.set(`ordered-${i}.png`, Buffer.from(png, 'base64')));
+  dissolveSheets.set('decal.png', Buffer.from(await page.evaluate(() => { // 48x48 mid grey: the burning rim shows against it
+    const c = document.createElement('canvas'); c.width = c.height = 48; const x = c.getContext('2d'); x.fillStyle = '#707070'; x.fillRect(0, 0, 48, 48);
+    return c.toDataURL('image/png').split(',')[1]; }), 'base64'));
   rampSheets.set('ramp-mask.png', Buffer.from(await page.evaluate(() => { // 16x16 mask, level 0 at the left edge up to 255 at the right edge
     const c = document.createElement('canvas'); c.width = c.height = 16; const x = c.getContext('2d');
     for (let i = 0; i < 16; i++) { x.fillStyle = `rgb(${i * 17},${i * 17},${i * 17})`; x.fillRect(i, 0, 1, 16); }
@@ -910,6 +1005,8 @@ try {
   console.log('Pixi v7 ground layers: PASS (same contract on Pixi 7)');
   for (const mode of ['overlay', 'filter']) await page.evaluate(juiceSmoke, { engine: 'v7', mode });
   await page.evaluate(flowSmoke, 'v7');
+  await page.evaluate(dissolveSmoke, 'v7');
+  console.log('Pixi v7 ground dissolve: PASS (unsupported: clear error, baked frames kept)');
   await page.evaluate(rampSmoke, 'v7');
   console.log('Pixi v7 ramp packs: PASS (tinted-sprite fallback, no batches, unknown element)');
   console.log('Pixi v7 combat juice: PASS (micro-freeze, camera impulse along the blow, silhouette flash)');
@@ -922,6 +1019,8 @@ try {
   await page.goto(`${url}/v8.html`); await page.waitForFunction(() => window.__v8);
   for (const mode of ['overlay', 'filter']) await page.evaluate(juiceSmoke, { engine: 'v8', mode });
   await page.evaluate(flowSmoke, 'v8');
+  await page.evaluate(dissolveSmoke, 'v8');
+  console.log('Pixi v8 ground dissolve: PASS (window from the ground span, held frame, progress, pixel-checked erosion and rim, one filter per layer keeping its blend, late layers held from their first frame, pooled filters, stop, loop wrap, per-play noise offset)');
   await page.evaluate(residencySmoke, 'v8');
   console.log('Pixi v8 direction residency: PASS (thunder-domain and whirlwind cycle 5 directions twice at a flat texture ceiling, LRU keeps the played direction, granular unload, sheets destroyed and out of Pixi caches)');
   await page.evaluate(rampSmoke, 'v8');

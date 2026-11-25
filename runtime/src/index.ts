@@ -13,6 +13,8 @@ import type { ActorName, AnchorType, BlendAdvice, Cue, Frame, ImpactTier, Manife
 export type { ActorName, ActorFrame, ActorTrack, AnchorMeta, AnchorType, BlendAdvice, Cue, ImpactMeta, ImpactTier, Manifest, Frame, TierId, ZLayer } from './format.js';
 export interface Point { x: number; y: number }
 export { FlowTrail, makeNoiseTexture } from './flow.js';
+export { GroundDissolveFilter } from './dissolve.js';
+export type { GroundDissolveOptions } from './dissolve.js';
 export { ANCHOR_FALLBACKS, ANCHOR_MAP, ANCHOR_NAMES, SKELETON_ALIASES, anchorsFromSkeleton, resolveAnchorName } from './anchors.js';
 export type { AnchorName, NormalizedAnchor, SkeletonPose } from './anchors.js';
 export { RAMP_PRESETS, RampSet } from './ramp.js';
@@ -93,7 +95,25 @@ export interface PlayerOptions {
    * direction being cast stays resident. Use 2 to cross-fade between directions, `Infinity` to keep every loaded direction.
    */
   maxResidentDirections?: number;
+  /**
+   * Erode ground layers with noise as they expire instead of fading them out: `{ filter: GroundDissolveFilter }` (exported by
+   * this package; passed in like `colorMatrixFilter`, so games without it do not pay for Pixi's filter system). The last `ms`
+   * (default 600, at most 40% of their run) of a pack's ground layers (`default_z_layer: 'background'`, and background impact
+   * tiers) hold the frame they reached and dissolve through one pooled filter per ground layer, composited with that
+   * layer's own blend mode. Pixi 8 + WebGL only; elsewhere, and for
+   * ramp layers drawn by the batched shader, ground layers keep their baked fade.
+   */
+  groundDissolve?: GroundDissolveSettings;
 }
+/** The player's ground dissolve: the filter class plus its look. See `PlayerOptions.groundDissolve`. */
+export interface GroundDissolveSettings {
+  filter: new (options?: { edgeWidth?: number; edgeColor?: number; edgeIntensity?: number; noiseScale?: number }) => DissolveFilter;
+  /** Length of the erosion in ms. Default 600. */
+  ms?: number;
+  edgeWidth?: number; edgeColor?: number; edgeIntensity?: number; noiseScale?: number;
+}
+/** What the player needs from a dissolve filter: GroundDissolveFilter, or your own with the same members. */
+export interface DissolveFilter { progress: number; blendMode: unknown; seed(value: number): void; destroy(): void }
 export interface ActorPose { x: number; y: number; lift: number; visible: boolean; facing: number }
 export interface Playback {
   stop(): void;
@@ -125,7 +145,15 @@ interface Pack {
   manifest: Manifest; sheets: Texture[]; frames: (Texture | null)[][]; rampSheets: (Texture[] | null)[]; nativeRow: number;
   /** Residency clock value of the last load or play: the lowest one in a family is evicted first. */
   lastUsed: number;
+  /** Ground dissolve windows; null when the player does not dissolve or the pack has no ground layers to dissolve. */
+  ground: GroundPlan | null;
 }
+/**
+ * Where a pack's ground layers dissolve. Slot 0 is the under root, slot 1 + i impact tier i (background tiers only).
+ * `window[2s]..window[2s + 1]` are the first and last frames of slot s's erosion (-1 when it has none). A layer with
+ * `holdFrom[li] >= 0` shows that frame through `holdTo[li]` instead of its baked fade, eroding over its slot `slot[li]`'s window.
+ */
+interface GroundPlan { window: Int32Array; holdFrom: Int32Array; holdTo: Int32Array; slot: Int32Array }
 /** A quad of a ramp layer: one per sheet of the layer, only the sheet the current frame uses is visible. */
 interface QuadRef { batch: QuadBatch; slot: number }
 /** Ground-plane directions (degrees) the free packs are baked in; left-facing casts mirror them. */
@@ -144,6 +172,35 @@ export function packDirection(from: Point, to: Point, groundSquash = 0.6, availa
 }
 /** One impact tier of a playing pack: its own root, so it can sit in a different depth slot than the rest. */
 interface TierPlan { tier: ImpactTier; root: Container; enabled: boolean; startMs: number }
+/** Dissolve windows of a pack's ground layers (see GroundPlan), or null when it has none worth dissolving. */
+function groundPlan(m: Manifest, rampSheets: (Texture[] | null)[], ms: number): GroundPlan | null {
+  const tiers = m.impact?.tiers ?? [], slots = 1 + tiers.length, layers = m.layers;
+  const window = new Int32Array(2 * slots).fill(-1), holdFrom = new Int32Array(layers.length).fill(-1), holdTo = new Int32Array(layers.length).fill(-1), slot = new Int32Array(layers.length).fill(-1);
+  const slotOf = (li: number) => {
+    const t = tiers.findIndex(tier => tier.layers.includes(layers[li].name));
+    if (t >= 0) return tiers[t].default_z_layer === 'background' ? 1 + t : -1;
+    return layers[li].default_z_layer === 'background' ? 0 : -1;
+  };
+  const span = (li: number) => { const f = layers[li].frames; let first = -1, last = -1; for (let i = 0; i < f.length; i++) if (f[i]) { if (first < 0) first = i; last = i; } return [first, last]; };
+  let any = false;
+  for (let s = 0; s < slots; s++) {
+    let first = Infinity, last = -1;
+    for (let li = 0; li < layers.length; li++) if (!rampSheets[li] && slotOf(li) === s) { const [a, b] = span(li); if (a >= 0) { first = Math.min(first, a); last = Math.max(last, b); } }
+    if (last < 0) continue;
+    const frames = Math.min(Math.round(ms * m.fps / 1000), Math.floor((last - first + 1) * 0.4));
+    if (frames < 2) continue;
+    const from = last + 1 - frames;
+    window[2 * s] = from; window[2 * s + 1] = last; any = true;
+    // Each layer holds the first frame it shows inside the window: one that only appears later erodes from then on.
+    for (let li = 0; li < layers.length; li++) {
+      if (rampSheets[li] || slotOf(li) !== s) continue;
+      const f = layers[li].frames; let hold = from;
+      while (hold <= last && !f[hold]) hold++;
+      if (hold <= last) { holdFrom[li] = hold; holdTo[li] = last; slot[li] = s; }
+    }
+  }
+  return any ? { window, holdFrom, holdTo, slot } : null;
+}
 const Z_BIAS: Record<ZLayer, number> = { background: -1, target_overlay: 1, foreground: 2 };
 /**
  * Minimal object pool. `acquire()` hands back a released item (or makes one the first time) and `release()` takes it
@@ -174,6 +231,8 @@ interface Active {
   done: boolean; gen: number; handle: Handle;
   /** Reusable quad refs per layer (kept across plays; `quads[li]` points at the live prefix). */
   quadStore: QuadRef[][];
+  /** Dissolve filter running on each layer's sprite (see GroundPlan), null where none is; and this play's noise seed. */
+  dissolves: (DissolveFilter | null)[]; dissolveSeed: number;
 }
 /** The object `play()` returns. Reads the pooled record only while its own play is still the record's current one. */
 class Handle implements Playback {
@@ -227,6 +286,7 @@ export class VfxPlayer {
   /** The ramp shader runs on Pixi 8 + WebGL only; elsewhere ramp layers are drawn as tinted sprites. */
   private rampGpu: boolean;
   private dead = false;
+  private dissolve: { settings: GroundDissolveSettings; ms: number; pool: Pool<DissolveFilter>; lists: Map<DissolveFilter, DissolveFilter[]>; seed: number } | null = null;
   private loading = new Map<string, Promise<void>>();
   private requestSerial = 0;
   private cancelledLoads = new Map<string, number>();
@@ -238,6 +298,14 @@ export class VfxPlayer {
     if (!(limit >= 1)) throw Error(`Invalid maxResidentDirections: ${limit}`);
     this.residentLimit = Math.floor(limit);
     this.rampGpu = v8 && (app.renderer as any).name === 'webgl';
+    const dissolve = options.groundDissolve;
+    if (dissolve) {
+      if (typeof dissolve.filter !== 'function' || (dissolve.ms !== undefined && !(dissolve.ms > 0))) throw Error('Invalid groundDissolve');
+      if (this.rampGpu) {
+        const { filter: Filter, ms, ...look } = dissolve;
+        this.dissolve = { settings: dissolve, ms: ms ?? 600, pool: new Pool(() => new Filter(look)), lists: new Map(), seed: 0 };
+      }
+    }
     app.ticker.add(this.tick);
     if (options.ramps) for (const id of Object.keys(options.ramps)) this.addRamp(id, options.ramps[id]);
   }
@@ -306,7 +374,7 @@ export class VfxPlayer {
       if (this.touch(key)) { frames.flat().forEach(t => t?.destroy()); textures.forEach(t => t.destroy(true)); return; }
       let nativeRow = -1;
       if (manifest.color?.lut) nativeRow = this.ramps().addLut(`native:${key}`, Uint8Array.from(atob(manifest.color.lut), ch => ch.charCodeAt(0)));
-      const pack: Pack = { manifest, sheets: [...textures.values()], frames, rampSheets, nativeRow, lastUsed: ++this.useClock };
+      const pack: Pack = { manifest, sheets: [...textures.values()], frames, rampSheets, nativeRow, lastUsed: ++this.useClock, ground: this.dissolve ? groundPlan(manifest, rampSheets, this.dissolve.ms) : null };
       this.packs.set(key, pack);
       this.families.set(manifest.id, [...(this.families.get(manifest.id) ?? []), pack]);
       this.dirs.delete(manifest.id);
@@ -396,7 +464,10 @@ export class VfxPlayer {
     const target = options.target, targetOk = !!target && Number.isFinite(target.x) && Number.isFinite(target.y);
     const juice = options.hitstop !== undefined && options.hitstop !== false || targetOk;
     const flash = options.flash === false ? null : options.flash ?? {};
-        a.pack = pack; a.options = options; a.legacy = legacy; a.root = root; a.under = under; a.rampRow = rampRow; a.time = 0; a.cue = 0; a.done = false;
+    const dissolves = a.dissolves, slots = pack.ground ? manifest.layers.length : 0;
+    dissolves.length = slots; for (let s = 0; s < slots; s++) dissolves[s] = null;
+    if (pack.ground) a.dissolveSeed = ++this.dissolve!.seed;
+    a.pack = pack; a.options = options; a.legacy = legacy; a.root = root; a.under = under; a.rampRow = rampRow; a.time = 0; a.cue = 0; a.done = false;
     a.matrix[0] = 1; a.matrix[1] = 0; a.matrix[2] = 0; a.matrix[3] = 1;
     a.dest = options.to ?? (targetOk ? target as Point : options.from);
     a.tierCursor = 0; a.juice = juice;
@@ -413,7 +484,7 @@ export class VfxPlayer {
     return handle;
   }
   private makeActive(): Active {
-    const a = { matrix: new Float64Array(4), sprites: [], quads: [], tiers: [], tierOf: [], tierOrder: [], quadStore: [], under: null, gen: 0, done: true, tierCursor: 0 } as unknown as Active;
+    const a = { matrix: new Float64Array(4), sprites: [], quads: [], tiers: [], tierOf: [], tierOrder: [], quadStore: [], dissolves: [], dissolveSeed: 0, under: null, gen: 0, done: true, tierCursor: 0 } as unknown as Active;
     a.handle = new Handle(this, a, null as unknown as Pack);
     return a;
   }
@@ -490,7 +561,9 @@ export class VfxPlayer {
   stats() {
     let sheets = 0, textureBytes = 0;
     for (const pack of this.packs.values()) for (const t of pack.sheets) { sheets++; textureBytes += t.width * t.height * 4; }
-    return { active: this.live, pooled: this.sprites.size, packs: this.packs.size, quadBatches: this.batchSet_?.activeBatches ?? 0, sheets, textureBytes };
+    let dissolving = 0;
+    for (let i = 0; i < this.list.length; i++) { const d = this.list[i].dissolves; if (!this.list[i].done) for (let s = 0; s < d.length; s++) if (d[s]) dissolving++; }
+    return { active: this.live, pooled: this.sprites.size, packs: this.packs.size, quadBatches: this.batchSet_?.activeBatches ?? 0, sheets, textureBytes, dissolving };
   }
   /** True while a hit-stop freeze is running. Pause your own game logic on it so everything stops together. */
   get frozen(): boolean { return this.freezeLeft > 0 || (this.hitstopEnabled && this.cueFreeze > 0); }
@@ -552,11 +625,13 @@ export class VfxPlayer {
     if (a.under) setMatrix(a.under, mx[0], mx[1], mx[2], mx[3], anchor.x, anchor.y);
     const s = Math.sign(mx[0]) || 1;
     for (let i = 0; i < a.tiers.length; i++) { const plan = a.tiers[i]; this.tierPoint(a, plan, mx, this.point); setMatrix(plan.root, s, 0, 0, 1, this.point.x, this.point.y); }
-    const index = Math.min(m.frameCount - 1, Math.floor(a.time * m.fps / 1000)), layers = m.layers;
+    const index = Math.min(m.frameCount - 1, Math.floor(a.time * m.fps / 1000)), layers = m.layers, ground = a.pack.ground;
     for (let li = 0; li < a.sprites.length; li++) {
-      const sprite = a.sprites[li], f = layers[li].frames[index], plan = a.tierOf[li];
-      if (!sprite) { this.drawQuads(a, li, f, plan, mx, anchor); continue; }
-      const t = a.pack.frames[li][index];
+      const sprite = a.sprites[li], plan = a.tierOf[li];
+      if (!sprite) { this.drawQuads(a, li, layers[li].frames[index], plan, mx, anchor); continue; }
+      // A dissolving ground layer holds the frame its erosion started on.
+      const fi = ground && ground.holdFrom[li] >= 0 && index >= ground.holdFrom[li] && index <= ground.holdTo[li] ? ground.holdFrom[li] : index;
+      const f = layers[li].frames[fi], t = a.pack.frames[li][fi];
       sprite.visible = !!f && (!plan || plan.enabled);
       // A tier's frames are drawn around its anchor, so the tier root alone decides where the impact lands.
       if (f && t) {
@@ -564,7 +639,32 @@ export class VfxPlayer {
         if (plan) sprite.position.set(f[5] - plan.tier.anchor_point.x, f[6] - plan.tier.anchor_point.y); else sprite.position.set(f[5], f[6]);
         const k = 1 / (layers[li].scale ?? m.scale); sprite.scale.set(k, k);
       }
+      if (ground && ground.slot[li] >= 0) this.drawDissolve(a, ground, li, sprite, index);
     }
+  }
+  /**
+   * Runs, advances or ends the dissolve filter of one ground layer. The filter sits on the sprite, not its root, so each
+   * layer composites with its own blend mode: an additive glow keeps adding light instead of covering the ground.
+   */
+  private drawDissolve(a: Active, ground: GroundPlan, li: number, sprite: Sprite, index: number) {
+    const s = ground.slot[li], from = ground.window[2 * s], to = ground.window[2 * s + 1];
+    let filter = a.dissolves[li];
+    if (!sprite.visible || index < from || index > to) { if (filter) this.endDissolve(a, li); return; }
+    if (!filter) {
+      const d = this.dissolve!;
+      filter = a.dissolves[li] = d.pool.acquire();
+      filter.seed(a.dissolveSeed); filter.blendMode = sprite.blendMode;
+      let list = d.lists.get(filter);
+      if (!list) d.lists.set(filter, list = [filter]);
+      (sprite as any).filters = list;
+    }
+    const frameMs = 1000 / a.pack.manifest.fps;
+    filter.progress = (a.time - from * frameMs) / ((to + 1 - from) * frameMs);
+  }
+  private endDissolve(a: Active, li: number) {
+    const filter = a.dissolves[li]!, sprite = a.sprites[li];
+    if (sprite) (sprite as any).filters = null;
+    filter.progress = 0; a.dissolves[li] = null; this.dissolve!.pool.release(filter);
   }
   /** Writes a ramp layer's quad for the current frame: into the tier's anchored space, or through the pack matrix. */
   private drawQuads(a: Active, li: number, f: Frame, plan: TierPlan | undefined, mx: Float64Array, anchor: Point) {
@@ -779,6 +879,7 @@ export class VfxPlayer {
   private finish(a: Active) {
     if (a.done) return;
     a.done = true; this.live--;
+    for (let s = 0; s < a.dissolves.length; s++) if (a.dissolves[s]) this.endDissolve(a, s);
     for (let i = -2; i < a.tiers.length; i++) {
       const root = i === -2 ? a.under : i < 0 ? a.root : a.tiers[i].root;
       if (root) { root.removeFromParent(); root.removeChildren(); this.roots.release(root); }
@@ -832,6 +933,7 @@ export class VfxPlayer {
     this.batchSet_?.destroy(); this.rampSet_?.destroy();
     this.sprites.drain(s => s.destroy()); this.roots.drain(r => r.destroy());
     this.flashPool.drain(f => f.filter?.destroy?.());
+    if (this.dissolve) { this.dissolve.pool.drain(f => f.destroy()); this.dissolve.lists.clear(); }
     this.listeners = []; this.tierListeners = [];
   }
 }
