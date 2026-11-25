@@ -60,6 +60,25 @@ export async function showcaseSmoke({ page, browser, url, collection }) {
   assert.equal(await pressed(), 'Cast right');
   await page.mouse.move(5, 5);
 
+  // Cycling every aim of a heavy directional skill keeps one direction resident: texture memory stays at a flat ceiling.
+  const aims = ['right', 'up-right', 'up', 'up-left', 'left', 'down-left', 'down', 'down-right'];
+  for (const skill of ['loi-thunder-domain', 'phong-whirlwind']) {
+    await page.evaluate(skill => window.__showcase.select(skill), skill);
+    const firstBytes = new Map(); let ceiling = 0;
+    for (let lap = 0; lap < 2; lap++) for (const name of aims) {
+      await page.click(`#aim button[aria-label="Cast ${name}"]`);
+      await page.waitForFunction(skill => { const v = window.__showcase.vfx; return v.directions(skill).length === 1 && v.stats().active >= 1; }, skill);
+      const { direction, packs, textureBytes } = await page.evaluate(skill => ({ direction: window.__showcase.vfx.directions(skill)[0], ...window.__showcase.vfx.stats() }), skill);
+      assert.equal(packs, 1, `${skill} ${name}: ${packs} packs resident`);
+      if (!lap && !firstBytes.has(direction)) { firstBytes.set(direction, textureBytes); ceiling = Math.max(ceiling, textureBytes); }
+      assert.equal(textureBytes, firstBytes.get(direction), `${skill} ${name}: texture memory drifted to ${textureBytes} B`);
+      assert.ok(textureBytes <= ceiling, `${skill} ${name}: ${textureBytes} B over the ${ceiling} B ceiling`);
+    }
+    assert.equal(firstBytes.size, 5, `${skill} aims reached ${[...firstBytes.keys()]}`);
+  }
+  await page.click('#aim button[aria-label="Cast right"]');
+  console.log('Showcase direction residency: PASS (thunder-domain and whirlwind cycle all 8 aims twice with one resident direction and a flat texture ceiling)');
+
   await page.evaluate(() => { window.__copied = []; Object.defineProperty(navigator, 'clipboard', { configurable: true, value: { writeText: async t => { window.__copied.push(t); } } }); });
   await page.click('#copy-url'); await page.click('#copy');
   const copied = await page.evaluate(() => window.__copied), id = await page.evaluate(() => location.hash.slice(1));

@@ -87,6 +87,12 @@ export interface PlayerOptions {
   colorMatrixFilter?: new () => any;
   /** Extra ramps by id, as `[position, 0xRRGGBB]` stops from black (0) to the hottest colour (1). Usable as `play(id, { element })`. */
   ramps?: Record<string, RampStops>;
+  /**
+   * Bake directions of one skill kept in GPU memory at once. Loading another direction of a skill that is at the limit evicts
+   * the least recently used one (loaded or played longest ago), stops its plays and destroys its textures. Default 1: only the
+   * direction being cast stays resident. Use 2 to cross-fade between directions, `Infinity` to keep every loaded direction.
+   */
+  maxResidentDirections?: number;
 }
 export interface ActorPose { x: number; y: number; lift: number; visible: boolean; facing: number }
 export interface Playback {
@@ -115,7 +121,11 @@ export interface TierEvent {
  * Per layer: the sheet textures of a ramp layer drawn by the batched shader (null for layers drawn as sprites), and the row of
  * the pack's native ramp when it ships one.
  */
-interface Pack { manifest: Manifest; sheets: Texture[]; frames: (Texture | null)[][]; rampSheets: (Texture[] | null)[]; nativeRow: number }
+interface Pack {
+  manifest: Manifest; sheets: Texture[]; frames: (Texture | null)[][]; rampSheets: (Texture[] | null)[]; nativeRow: number;
+  /** Residency clock value of the last load or play: the lowest one in a family is evicted first. */
+  lastUsed: number;
+}
 /** A quad of a ramp layer: one per sheet of the layer, only the sheet the current frame uses is visible. */
 interface QuadRef { batch: QuadBatch; slot: number }
 /** Ground-plane directions (degrees) the free packs are baked in; left-facing casts mirror them. */
@@ -191,6 +201,8 @@ export class VfxPlayer {
   private plans: TierPlan[] = [];
   private spent: Active[] = [];
   private dirs = new Map<string, number[]>();
+  private residentLimit: number;
+  private useClock = 0;
   private aimPack!: Pack; private aimLegacy = false;
   private live = 0;
   private updating = false;
@@ -222,6 +234,9 @@ export class VfxPlayer {
   private tick = (ticker: any) => this.update(v8 ? ticker.deltaMS : (this.app.ticker as any).deltaMS);
   constructor(private app: Application, private options: PlayerOptions = {}) {
     this.shakeEnabled = !!options.shake; this.hitstopEnabled = !!options.hitstop;
+    const limit = options.maxResidentDirections ?? 1;
+    if (!(limit >= 1)) throw Error(`Invalid maxResidentDirections: ${limit}`);
+    this.residentLimit = Math.floor(limit);
     this.rampGpu = v8 && (app.renderer as any).name === 'webgl';
     app.ticker.add(this.tick);
     if (options.ramps) for (const id of Object.keys(options.ramps)) this.addRamp(id, options.ramps[id]);
@@ -291,11 +306,22 @@ export class VfxPlayer {
       if (this.packs.has(key)) { frames.flat().forEach(t => t?.destroy()); textures.forEach(t => t.destroy(true)); return; }
       let nativeRow = -1;
       if (manifest.color?.lut) nativeRow = this.ramps().addLut(`native:${key}`, Uint8Array.from(atob(manifest.color.lut), ch => ch.charCodeAt(0)));
-      const pack: Pack = { manifest, sheets: [...textures.values()], frames, rampSheets, nativeRow };
+      const pack: Pack = { manifest, sheets: [...textures.values()], frames, rampSheets, nativeRow, lastUsed: ++this.useClock };
       this.packs.set(key, pack);
       this.families.set(manifest.id, [...(this.families.get(manifest.id) ?? []), pack]);
       this.dirs.delete(manifest.id);
     } catch (error) { frames.flat().forEach(t => t?.destroy()); textures.forEach(t => t.destroy(true)); throw error; }
+    this.evictOver(manifest.id);
+  }
+  /** Evicts the least recently used directions of a family until it fits `maxResidentDirections`. */
+  private evictOver(id: string): void {
+    let list = this.families.get(id);
+    while (list && list.length > this.residentLimit) {
+      let lru = list[0];
+      for (let i = 1; i < list.length; i++) if (list[i].lastUsed < lru.lastUsed) lru = list[i];
+      this.evict(lru);
+      list = this.families.get(id);
+    }
   }
   play(id: string, options: PlayOptions): Playback {
     if (this.dead) throw Error('VfxPlayer is destroyed');
@@ -303,6 +329,7 @@ export class VfxPlayer {
     if (!options?.from || !Number.isFinite(options.from.x) || !Number.isFinite(options.from.y) || (options.to && (!Number.isFinite(options.to.x) || !Number.isFinite(options.to.y))) || (options.speed !== undefined && (!Number.isFinite(options.speed) || options.speed <= 0))) throw Error('Invalid playback options');
     this.aim(id, options);
     const pack = this.aimPack, legacy = this.aimLegacy;
+    pack.lastUsed = ++this.useClock;
     const manifest = pack.manifest, base = options.zIndex ?? 0, parent = options.parent ?? this.app.stage;
     const a = (this.actives ??= new Pool<Active>(() => this.makeActive())).acquire();
     a.gen++;
@@ -450,8 +477,15 @@ export class VfxPlayer {
   off(type: 'cue', listener: (event: CueEvent) => void): this;
   off(type: 'tier', listener: (event: TierEvent) => void): this;
   off(type: 'cue' | 'tier', listener: any): this { if (type === 'cue') this.listeners = this.listeners.filter(l => l !== listener); else this.tierListeners = this.tierListeners.filter(l => l !== listener); return this; }
-  /** `quadBatches`: draw calls the ramp shader costs right now, one per atlas sheet however many plays are active. */
-  stats() { return { active: this.live, pooled: this.sprites.size, packs: this.packs.size, quadBatches: this.batchSet_?.activeBatches ?? 0 }; }
+  /**
+   * `quadBatches`: draw calls the ramp shader costs right now, one per atlas sheet however many plays are active.
+   * `sheets` / `textureBytes`: resident atlas sheets and their decoded size in GPU memory (width x height x 4).
+   */
+  stats() {
+    let sheets = 0, textureBytes = 0;
+    for (const pack of this.packs.values()) for (const t of pack.sheets) { sheets++; textureBytes += t.width * t.height * 4; }
+    return { active: this.live, pooled: this.sprites.size, packs: this.packs.size, quadBatches: this.batchSet_?.activeBatches ?? 0, sheets, textureBytes };
+  }
   /** True while a hit-stop freeze is running. Pause your own game logic on it so everything stops together. */
   get frozen(): boolean { return this.freezeLeft > 0 || (this.hitstopEnabled && this.cueFreeze > 0); }
   /** Freezes every playback for `ms` (0-1000); overlapping freezes keep the longest. Playback resumes where it stopped. */
@@ -752,19 +786,36 @@ export class VfxPlayer {
     this.spent.push(a);
     if (!this.updating) { this.compact(); this.batchSet_?.flush(); }
   }
-  unload(id: string) {
+  /**
+   * Stops a pack's plays and destroys its textures. `unload('id')` frees every loaded direction of the skill (and cancels its
+   * pending loads); `unload('id', 90)` or `unload('id@90')` frees only that direction, keeping the others resident.
+   */
+  unload(id: string, direction?: number) {
     const at = id.indexOf('@'), family = at < 0 ? id : id.slice(0, at);
-    if (at < 0) this.cancelledLoads.set(family, this.requestSerial);
-    this.dirs.delete(family);
-    const doomed = at < 0 ? this.families.get(id) ?? [] : [this.packs.get(id)].filter((p): p is Pack => !!p);
-    for (const pack of doomed) {
-      for (let i = this.list.length - 1; i >= 0; i--) if (this.list[i].pack === pack) this.finish(this.list[i]);
-      if (this.batchSet_) for (const sheet of pack.sheets) this.batchSet_.dropSheet(sheet);
-      this.rampSet_?.remove(`native:${keyOf(pack.manifest)}`);
-      pack.frames.flat().forEach(t => t?.destroy()); pack.sheets.forEach(t => t.destroy(true)); this.packs.delete(keyOf(pack.manifest));
+    const dir = direction ?? (at < 0 ? undefined : Number(id.slice(at + 1)));
+    const list = this.families.get(family);
+    if (dir === undefined) {
+      this.cancelledLoads.set(family, this.requestSerial);
+      if (list) for (const pack of [...list]) this.evict(pack);
+      return;
     }
-    const rest = (this.families.get(family) ?? []).filter(p => !doomed.includes(p));
-    if (rest.length) this.families.set(family, rest); else this.families.delete(family);
+    const pack = list?.find(p => (p.manifest.direction ?? 0) === dir);
+    if (pack) this.evict(pack);
+  }
+  /** Drops one direction pack: its plays end, and its sheets leave the GPU and Pixi's texture caches. */
+  private evict(pack: Pack): void {
+    const id = pack.manifest.id;
+    for (let i = this.list.length - 1; i >= 0; i--) if (this.list[i].pack === pack) this.finish(this.list[i]);
+    if (this.batchSet_) for (const sheet of pack.sheets) this.batchSet_.dropSheet(sheet);
+    this.rampSet_?.remove(`native:${keyOf(pack.manifest)}`);
+    for (const row of pack.frames) for (const t of row) t?.destroy();
+    for (const sheet of pack.sheets) sheet.destroy(true);
+    // A stale handle may still reference the pack: let go of the destroyed textures so they can be collected.
+    pack.frames.length = 0; pack.sheets.length = 0; pack.rampSheets.length = 0;
+    this.packs.delete(keyOf(pack.manifest));
+    this.dirs.delete(id);
+    const rest = (this.families.get(id) ?? []).filter(p => p !== pack);
+    if (rest.length) this.families.set(id, rest); else this.families.delete(id);
   }
   destroy() {
     if (this.dead) return;

@@ -262,7 +262,8 @@ try {
   const sheet = await sheetRequest;
   scene.setCaster(sheet.animations['son-ha-kiem-khi-se']);
 } catch (error) { console.warn('Character sheet unavailable; using drawn caster.', error); }
-const vfx = await VfxPlayer.create(app, { shake: { target: world }, hitstop: true });
+// One bake direction of the selected skill stays in GPU memory: cycling the eight aims keeps a flat texture ceiling on phones.
+const vfx = await VfxPlayer.create(app, { shake: { target: world }, hitstop: true, maxResidentDirections: 1 });
 const packs = await indexRequest;
 const products = resolveCatalog(packs);
 let selected = packs.find(p => p.id === 'hoa-fireball')!, current: Playback | undefined, request = 0;
@@ -296,6 +297,8 @@ const variantOf = (p: Entry, direction: number): Variant => (direction ? p.direc
 async function loadSelected(id: string, token: number) {
   const direction = castDirection();
   resident.add(id);
+  // Purge the skill's other directions before decoding the new one, so the old and new atlases never sit in memory together.
+  for (const other of vfx.directions(id)) if (other !== direction) vfx.unload(id, other);
   if (!vfx.directions(id).includes(direction)) {
     try { await vfx.load(packUrl(id, direction)); }
     catch (error) {
