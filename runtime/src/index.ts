@@ -113,7 +113,8 @@ export interface GroundDissolveSettings {
   edgeWidth?: number; edgeColor?: number; edgeIntensity?: number; noiseScale?: number;
 }
 /** What the player needs from a dissolve filter: GroundDissolveFilter, or your own with the same members. */
-export interface DissolveFilter { progress: number; blendMode: unknown; seed(value: number): void; destroy(): void }
+/** `params`, when present, is a typed array whose [0] the player writes progress into (no setter call per frame). */
+export interface DissolveFilter { progress: number; params?: Float32Array; blendMode: unknown; seed(value: number): void; destroy(): void }
 export interface ActorPose { x: number; y: number; lift: number; visible: boolean; facing: number }
 export interface Playback {
   stop(): void;
@@ -147,6 +148,9 @@ interface Pack {
   lastUsed: number;
   /** Ground dissolve windows; null when the player does not dissolve or the pack has no ground layers to dissolve. */
   ground: GroundPlan | null;
+  /** Event numbers held as heap numbers, so copying one into a reused event allocates nothing: per impact tier its normal
+   *  facing right then left, per cue its amp then ms (undefined where the pack has none). */
+  tierNormals: (number | undefined)[]; cueNums: (number | undefined)[];
 }
 /**
  * Where a pack's ground layers dissolve. Slot 0 is the under root, slot 1 + i impact tier i (background tiers only).
@@ -164,14 +168,61 @@ const keyOf = (m: Manifest) => m.direction ? `${m.id}@${m.direction}` : m.id;
  * Load `<id>@<direction>.vfxb` (or `<id>.vfxb` for 0) before playing, if the pack ships directions.
  */
 export function packDirection(from: Point, to: Point, groundSquash = 0.6, available: readonly number[] = PACK_DIRECTIONS): { direction: number; mirror: boolean } {
+  return { direction: nearestDirection(from, to, groundSquash, available), mirror: to.x - from.x < 0 && Math.sqrt((to.x - from.x) ** 2 + ((to.y - from.y) / groundSquash) ** 2) >= 1e-6 };
+}
+/** The direction of packDirection() without its result object, for play(). */
+function nearestDirection(from: Point, to: Point, groundSquash: number, available: readonly number[]): number {
   const dx = to.x - from.x, dy = (to.y - from.y) / groundSquash;
-  if (Math.hypot(dx, dy) < 1e-6) return { direction: available.includes(0) ? 0 : available[0], mirror: false };
+  if (Math.sqrt(dx * dx + dy * dy) < 1e-6) { for (let i = 0; i < available.length; i++) if (available[i] === 0) return 0; return available[0]; }
   const angle = Math.atan2(dy, Math.abs(dx)) * 180 / Math.PI;
-  const direction = available.reduce((best, d) => Math.abs(d - angle) < Math.abs(best - angle) ? d : best, available[0]);
-  return { direction, mirror: dx < 0 };
+  let best = available[0];
+  for (let i = 1; i < available.length; i++) if (Math.abs(available[i] - angle) < Math.abs(best - angle)) best = available[i];
+  return best;
+}
+/** Shortens an array in place. `length = 0` would let V8 drop the backing store, so the next push allocates a new one; pop() keeps it. */
+/** Shrinks an array to `length` (at least 1: V8 frees the backing store of an array emptied to length 0). */
+function truncate(list: unknown[], length: number): void { while (list.length > length) list.pop(); }
+/** Writes `list[i]`, growing the array by one when `i` is its length. */
+function put<T>(list: T[], i: number, value: T): void { if (i < list.length) list[i] = value; else list.push(value); }
+/** Sets an array to `length` copies of `value` in place, without shrinking its backing store. */
+function resize<T>(list: T[], length: number, value: T): void {
+  truncate(list, length);
+  for (let i = 0; i < list.length; i++) list[i] = value;
+  while (list.length < length) list.push(value);
+}
+/**
+ * Clears number-or-undefined fields of a reused event. Starting as a number and then undefined gives the field a
+ * representation that takes both; a field that starts undefined takes only objects and deoptimizes on every small integer.
+ */
+function untag<T extends object>(o: T, ...keys: (keyof T)[]): T { for (const k of keys) (o as any)[k] = undefined; return o; }
+/** An array of tagged elements: a fractional number stored in it stays a heap number instead of turning the array into raw doubles. */
+function tagged(length: number): (number | undefined)[] { return new Array(length).fill(undefined); }
+const NO_FLASH_OPTIONS: { color?: number; frames?: number; decayMs?: number } = Object.freeze({});
+/** Adds the enabled tiers of one depth slot to the container the play's options give that slot. */
+function attachTiers(tiers: TierPlan[], count: number, z: ZLayer, options: PlayOptions, parent: Container): void {
+  for (let i = 0; i < count; i++) {
+    const plan = tiers[i];
+    if (plan.tier.default_z_layer !== z || !plan.enabled) continue;
+    ((z === 'background' ? options.layers?.background : z === 'target_overlay' ? options.layers?.overlay : options.layers?.foreground) ?? parent).addChild(plan.root);
+  }
 }
 /** One impact tier of a playing pack: its own root, so it can sit in a different depth slot than the rest. */
-interface TierPlan { tier: ImpactTier; root: Container; enabled: boolean; startMs: number }
+interface TierPlan { tier: ImpactTier; index: number; root: Container; enabled: boolean; startMs: number }
+/** See Pack.tierNormals. */
+function tierNormals(m: Manifest): (number | undefined)[] {
+  const tiers = m.impact?.tiers ?? [], out = tagged(2 * tiers.length);
+  for (let i = 0; i < tiers.length; i++) {
+    const n = tiers[i].normal_deg;
+    if (n !== undefined) { out[2 * i] = (n % 360 + 360) % 360; out[2 * i + 1] = ((180 - n) % 360 + 360) % 360; }
+  }
+  return out;
+}
+/** See Pack.cueNums. */
+function cueNums(m: Manifest): (number | undefined)[] {
+  const out = tagged(2 * m.cues.length);
+  for (let k = 0; k < m.cues.length; k++) { out[2 * k] = m.cues[k].amp; out[2 * k + 1] = m.cues[k].ms; }
+  return out;
+}
 /** Dissolve windows of a pack's ground layers (see GroundPlan), or null when it has none worth dissolving. */
 function groundPlan(m: Manifest, rampSheets: (Texture[] | null)[], ms: number): GroundPlan | null {
   const tiers = m.impact?.tiers ?? [], slots = 1 + tiers.length, layers = m.layers;
@@ -207,16 +258,21 @@ const Z_BIAS: Record<ZLayer, number> = { background: -1, target_overlay: 1, fore
  * back, so steady-state play allocates nothing. The player pools every sprite and root container this way.
  */
 export class Pool<T> {
+  // A count over a never-shrinking array: V8 drops an array's backing store whenever its length reaches 0, so a pool that
+  // emptied with pop() would reallocate on the next release.
   private items: T[] = [];
+  private n = 0;
   constructor(private make: () => T) {}
-  acquire(): T { return this.items.length ? this.items.pop() as T : this.make(); }
-  release(item: T): void { this.items.push(item); }
-  get size(): number { return this.items.length; }
+  acquire(): T { return this.n ? this.items[--this.n] : this.make(); }
+  release(item: T): void { put(this.items, this.n++, item); }
+  get size(): number { return this.n; }
   /** Empties the pool, optionally disposing each item first. */
-  drain(each?: (item: T) => void): void { if (each) for (let i = 0; i < this.items.length; i++) each(this.items[i]); this.items.length = 0; }
+  drain(each?: (item: T) => void): void { if (each) for (let i = 0; i < this.n; i++) each(this.items[i]); this.items.length = 0; this.n = 0; }
 }
 interface Active {
   pack: Pack; options: PlayOptions; legacy: boolean; matrix: Float64Array; root: Container;
+  /** The matrix, `from` and `dest` the roots were last placed with (NaN forces a placement), and the frame each layer last drew (-1: none). */
+  placed: Float64Array; shown: number[];
   /** Root of the pack's `default_z_layer: 'background'` layers (ground decals and floor glows); null when it has none. Shares `root`'s transform. */
   under: Container | null; sprites: (Sprite | null)[]; time: number; cue: number;
   /** Ramp layers: their quads, and the ramp row they are coloured with (-1 when the pack has no ramp layers). */
@@ -224,7 +280,8 @@ interface Active {
   /** Where the blow lands: `to`, else the live target, else `from`. */
   dest: Point;
   /** Impact tiers (empty for packs without an impact block), the plan owning each layer, tiers by start time, next tier to fire. */
-  tiers: TierPlan[]; tierOf: (TierPlan | undefined)[]; tierOrder: TierPlan[]; tierCursor: number;
+  /** `tiers` and `tierOrder` hold `tierCount` entries; past that are stale plans of an earlier play. */
+  tiers: TierPlan[]; tierCount: number; tierOf: (TierPlan | undefined)[]; tierOrder: TierPlan[]; tierCursor: number;
   /** Juice requested for this play (resolved once at play time). */
   juice: boolean; freezeMs: number; impulsePx: number; flashColor: number; flashFrames: number; flashDecayMs: number;
   /** Bumped every time the record is reused, so a stale handle can tell its play is over. */
@@ -257,8 +314,10 @@ export class VfxPlayer {
   private families = new Map<string, Pack[]>();
   private list: Active[] = [];
   private actives: Pool<Active> | null = null;
-  private plans: TierPlan[] = [];
+  private plans = new Pool<TierPlan>(() => ({ tier: null as unknown as ImpactTier, index: 0, root: null as unknown as Container, enabled: true, startMs: 0.5 }));
+  private quadRefs = new Pool<QuadRef>(() => ({ batch: null as unknown as QuadBatch, slot: 0 }));
   private spent: Active[] = [];
+  private spentCount = 0;
   private dirs = new Map<string, number[]>();
   private residentLimit: number;
   private useClock = 0;
@@ -270,8 +329,8 @@ export class VfxPlayer {
   private listeners: ((event: CueEvent) => void)[] = [];
   private tierListeners: ((event: TierEvent) => void)[] = [];
   // Event objects are reused for every emit: read them inside the listener, do not keep them.
-  private cueEvent = { t: 0, type: '', id: undefined, amp: undefined, ms: undefined, packId: '', handle: null } as unknown as CueEvent;
-  private tierEvent = { tier: 'hit_point', tierNumber: 1, packId: '', handle: null, point: { x: 0, y: 0 }, anchorType: 'contact_normal', normalDeg: undefined, zLayer: 'foreground', blend: 'ADD', startMs: 0 } as unknown as TierEvent;
+  private cueEvent = untag({ t: 0, type: '', id: undefined, amp: 0, ms: 0, packId: '', handle: null }, 'amp', 'ms') as unknown as CueEvent;
+  private tierEvent = untag({ tier: 'hit_point', tierNumber: 1, packId: '', handle: null, point: { x: 0, y: 0 }, anchorType: 'contact_normal', normalDeg: 0, zLayer: 'foreground', blend: 'ADD', startMs: 0 }, 'normalDeg') as unknown as TierEvent;
   private scratch = new Float64Array([1, 0, 0, 1]);
   private anchorMatrix = new Float64Array([1, 0, 0, 1]);
   private point: Point = { x: 0, y: 0 };
@@ -374,7 +433,8 @@ export class VfxPlayer {
       if (this.touch(key)) { frames.flat().forEach(t => t?.destroy()); textures.forEach(t => t.destroy(true)); return; }
       let nativeRow = -1;
       if (manifest.color?.lut) nativeRow = this.ramps().addLut(`native:${key}`, Uint8Array.from(atob(manifest.color.lut), ch => ch.charCodeAt(0)));
-      const pack: Pack = { manifest, sheets: [...textures.values()], frames, rampSheets, nativeRow, lastUsed: ++this.useClock, ground: this.dissolve ? groundPlan(manifest, rampSheets, this.dissolve.ms) : null };
+      const pack: Pack = { manifest, sheets: [...textures.values()], frames, rampSheets, nativeRow, lastUsed: ++this.useClock, ground: this.dissolve ? groundPlan(manifest, rampSheets, this.dissolve.ms) : null,
+        tierNormals: tierNormals(manifest), cueNums: cueNums(manifest) };
       this.packs.set(key, pack);
       this.families.set(manifest.id, [...(this.families.get(manifest.id) ?? []), pack]);
       this.dirs.delete(manifest.id);
@@ -411,13 +471,15 @@ export class VfxPlayer {
     root.zIndex = base;
     // Impact tiers get a root each so they can sit in their own depth slot; everything else stays in `root`.
     const impactTiers = manifest.impact?.tiers, tiers = a.tiers;
+    let tc = 0;
     if (impactTiers) for (let i = 0; i < impactTiers.length; i++) {
       const tier = impactTiers[i], tierRoot = this.roots.acquire();
       tierRoot.zIndex = base + Z_BIAS[tier.default_z_layer];
-      const plan = this.plans.pop() ?? { tier, root: tierRoot, enabled: true, startMs: 0 };
-      plan.tier = tier; plan.root = tierRoot; plan.enabled = options.tiers?.[tier.id] !== false; plan.startMs = tier.start_frame * 1000 / manifest.fps;
-      tiers.push(plan);
+      const plan = this.plans.acquire();
+      plan.tier = tier; plan.index = i; plan.root = tierRoot; plan.enabled = options.tiers?.[tier.id] !== false; plan.startMs = tier.start_frame * 1000 / manifest.fps;
+      put(tiers, tc++, plan);
     }
+    a.tierCount = tc;
     // Ramp layers (energy stored as a luminance mask) take their colour from a ramp row: the requested element, else the
     // pack's native ramp, else its suggested preset.
     const colored = manifest.color?.mode === 'ramp';
@@ -428,26 +490,21 @@ export class VfxPlayer {
     for (let li = 0; li < manifest.layers.length; li++) {
       const layer = manifest.layers[li];
       let plan: TierPlan | undefined;
-      for (let t = 0; t < tiers.length && !plan; t++) if (tiers[t].tier.layers.includes(layer.name)) plan = tiers[t];
+      for (let t = 0; t < tc && !plan; t++) if (tiers[t].tier.layers.includes(layer.name)) plan = tiers[t];
       const floor = !plan && layer.default_z_layer === 'background';
       if (floor && !under) { under = this.roots.acquire(); under.zIndex = base + Z_BIAS.background; }
-      tierOf.push(plan); quads.push(null);
-      if (pack.rampSheets[li]) { sprites.push(null); continue; }       // drawn by the batched shader below
+      put(tierOf, li, plan); put(quads, li, null);
+      if (pack.rampSheets[li]) { put(sprites, li, null); continue; }       // drawn by the batched shader below
       const sprite = this.sprites.acquire(); sprite.visible = false;
       setBlend(sprite, layer.blend === 'add', !!plan && options.recommendedBlend !== false && plan.tier.recommended_blend_mode === 'SCREEN');
       // Where the shader is unavailable (Pixi 7, WebGPU) a ramp layer degrades to its mask tinted with the ramp's hue.
       sprite.tint = colored && layer.ramp ? this.ramps().colorAt(rampRow, 0.75) : 0xffffff;
-      (plan ? plan.root : floor ? under! : root).addChild(sprite); sprites.push(sprite);
+      (plan ? plan.root : floor ? under! : root).addChild(sprite); put(sprites, li, sprite);
     }
+    truncate(tierOf, manifest.layers.length); truncate(quads, manifest.layers.length); truncate(sprites, manifest.layers.length);
     // Display order bottom to top: background tiers, the pack's own layers, target overlay, foreground.
-    const attach = (z: ZLayer) => {
-      for (let i = 0; i < tiers.length; i++) {
-        const plan = tiers[i];
-        if (plan.tier.default_z_layer !== z || !plan.enabled) continue;
-        ((z === 'background' ? options.layers?.background : z === 'target_overlay' ? options.layers?.overlay : options.layers?.foreground) ?? parent).addChild(plan.root);
-      }
-    };
-    attach('background'); if (under) (options.layers?.background ?? parent).addChild(under); parent.addChild(root); attach('target_overlay'); attach('foreground');
+    attachTiers(tiers, tc, 'background', options, parent); if (under) (options.layers?.background ?? parent).addChild(under); parent.addChild(root);
+    attachTiers(tiers, tc, 'target_overlay', options, parent); attachTiers(tiers, tc, 'foreground', options, parent);
     // Batched ramp quads are added last, so each batch mesh ends on top of the materials in its parent.
     for (let li = 0; li < manifest.layers.length; li++) {
       const sheets = pack.rampSheets[li]; if (!sheets) continue;
@@ -455,25 +512,29 @@ export class VfxPlayer {
       const home = (z === 'background' ? options.layers?.background : z === 'target_overlay' ? options.layers?.overlay : z === 'foreground' ? options.layers?.foreground : undefined) ?? parent;
       const refs = a.quadStore[li] ??= [];
       for (let si = 0; si < sheets.length; si++) {
-        const batch = this.batchSet().get(home, sheets[si], true), ref = refs[si];
-        if (ref) { ref.batch = batch; ref.slot = batch.alloc(); } else refs[si] = { batch, slot: batch.alloc() };
+        const batch = this.batchSet().get(home, sheets[si], true);
+        let ref = refs[si];
+        if (!ref) refs.push(ref = this.quadRefs.acquire());
+        ref.batch = batch; ref.slot = batch.alloc();
       }
-      refs.length = sheets.length;
+      // Refs this pack does not need go back to the player, so a record that plays packs of different sheet counts reuses them.
+      while (refs.length > sheets.length) this.quadRefs.release(refs.pop()!);
       quads[li] = refs;
     }
     const target = options.target, targetOk = !!target && Number.isFinite(target.x) && Number.isFinite(target.y);
     const juice = options.hitstop !== undefined && options.hitstop !== false || targetOk;
-    const flash = options.flash === false ? null : options.flash ?? {};
+    const flash = options.flash === false ? null : options.flash ?? NO_FLASH_OPTIONS;
     const dissolves = a.dissolves, slots = pack.ground ? manifest.layers.length : 0;
-    dissolves.length = slots; for (let s = 0; s < slots; s++) dissolves[s] = null;
+    resize(dissolves, slots, null);
     if (pack.ground) a.dissolveSeed = ++this.dissolve!.seed;
+    resize(a.shown, manifest.layers.length, -1); a.placed[0] = NaN;
     a.pack = pack; a.options = options; a.legacy = legacy; a.root = root; a.under = under; a.rampRow = rampRow; a.time = 0; a.cue = 0; a.done = false;
     a.matrix[0] = 1; a.matrix[1] = 0; a.matrix[2] = 0; a.matrix[3] = 1;
     a.dest = options.to ?? (targetOk ? target as Point : options.from);
     a.tierCursor = 0; a.juice = juice;
     // Tiers by start time, into the record's own array (insertion sort: a handful of items, no allocation).
-    const order = a.tierOrder; order.length = 0;
-    for (let t = 0; t < tiers.length; t++) { let k = order.length; order.push(tiers[t]); while (k > 0 && order[k - 1].tier.start_frame > tiers[t].tier.start_frame) { order[k] = order[k - 1]; k--; } order[k] = tiers[t]; }
+    const order = a.tierOrder;
+    for (let t = 0; t < tc; t++) { let k = t; put(order, t, tiers[t]); while (k > 0 && order[k - 1].tier.start_frame > tiers[t].tier.start_frame) { order[k] = order[k - 1]; k--; } order[k] = tiers[t]; }
     a.freezeMs = options.hitstop === true ? 32 : typeof options.hitstop === 'number' ? Math.max(0, Math.min(100, options.hitstop)) : 0;
     a.impulsePx = options.impulse === false ? 0 : options.impulse ?? (juice ? 2.5 : 0);
     a.flashColor = flash?.color ?? 0xffffff; a.flashFrames = flash ? Math.max(0, flash.frames ?? 2) : 0; a.flashDecayMs = flash?.decayMs ?? 80;
@@ -484,7 +545,10 @@ export class VfxPlayer {
     return handle;
   }
   private makeActive(): Active {
-    const a = { matrix: new Float64Array(4), sprites: [], quads: [], tiers: [], tierOf: [], tierOrder: [], quadStore: [], dissolves: [], dissolveSeed: 0, under: null, gen: 0, done: true, tierCursor: 0 } as unknown as Active;
+    // Every field exists from the start, so all records share one shape and numeric fields keep an unboxed representation.
+    const a = { pack: null, options: null, legacy: false, matrix: new Float64Array(4), placed: new Float64Array(8), shown: [], root: null, under: null, sprites: [],
+      time: 0, cue: 0, quads: [], rampRow: -1, dest: null, tiers: [], tierCount: 0, tierOf: [], tierOrder: [], tierCursor: 0, juice: false, freezeMs: 0, impulsePx: 0,
+      flashColor: 0, flashFrames: 0, flashDecayMs: 0, done: true, gen: 0, handle: null, quadStore: [], dissolves: [], dissolveSeed: 0 } as unknown as Active;
     a.handle = new Handle(this, a, null as unknown as Pack);
     return a;
   }
@@ -558,6 +622,8 @@ export class VfxPlayer {
    * `quadBatches`: draw calls the ramp shader costs right now, one per atlas sheet however many plays are active.
    * `sheets` / `textureBytes`: resident atlas sheets and their decoded size in GPU memory (width x height x 4).
    */
+  /** Plays running right now (stats().active without building the stats object). */
+  get playing(): number { return this.live; }
   stats() {
     let sheets = 0, textureBytes = 0;
     for (const pack of this.packs.values()) for (const t of pack.sheets) { sheets++; textureBytes += t.width * t.height * 4; }
@@ -576,13 +642,16 @@ export class VfxPlayer {
    * (all 1.0 packs) are "legacy": they keep the left/right mirror from 1.0.
    */
   private aim(id: string, o: PlayOptions): void {
-    const list = this.families.get(id)!, to = o.to ?? o.from, base = list.find(p => !p.manifest.direction) ?? list[0];
+    const list = this.families.get(id)!, to = o.to ?? o.from;
+    let base = list[0];
+    for (let i = 0; i < list.length; i++) if (!list[i].manifest.direction) { base = list[i]; break; }
     if (base.manifest.direction === undefined && list.length === 1) { this.aimPack = base; this.aimLegacy = true; return; }
     const squash = o.groundSquash ?? base.manifest.groundSquash ?? 0.6;
     let dirs = this.dirs.get(id);
     if (!dirs) this.dirs.set(id, dirs = list.map(p => p.manifest.direction ?? 0));
-    const { direction } = packDirection(o.from, to, squash, dirs);
-    this.aimPack = list.find(p => (p.manifest.direction ?? 0) === direction)!; this.aimLegacy = false;
+    const direction = nearestDirection(o.from, to, squash, dirs);
+    for (let i = 0; i < list.length; i++) if ((list[i].manifest.direction ?? 0) === direction) { this.aimPack = list[i]; break; }
+    this.aimLegacy = false;
   }
   /**
    * Root transform landing the pack's baked target on `to` right now: x mirrored for left casts,
@@ -602,9 +671,9 @@ export class VfxPlayer {
     const squash = o.groundSquash ?? m.groundSquash ?? 0.6, s = to.x < o.from.x ? -1 : 1;
     const tx = m.target.x - m.origin.x, ty = m.target.y - m.origin.y, t2 = tx * tx + ty * ty;
     let dx = s * (to.x - o.from.x), dy = to.y - o.from.y;
-    const dLen = Math.hypot(dx, dy / squash);
+    const dLen = Math.sqrt(dx * dx + dy * dy / (squash * squash));
     if (t2 === 0 || dLen < 1e-6) { out[0] = s; out[1] = 0; out[2] = 0; out[3] = 1; return; }
-    if (!o.fitDistance) { const k = Math.hypot(tx, ty / squash) / dLen; dx *= k; dy *= k; }
+    if (!o.fitDistance) { const k = Math.sqrt(tx * tx + ty * ty / (squash * squash)) / dLen; dx *= k; dy *= k; }
     const dot = dx * tx + dy * ty;
     if (dot <= 0.3 * Math.sqrt((dx * dx + dy * dy) * t2)) {
       const p = dot / t2, q = (dx * ty - dy * tx) / t2;
@@ -619,22 +688,32 @@ export class VfxPlayer {
     return manifest ? structuredClone(manifest) : undefined;
   }
   private draw(a: Active) {
-    const m = a.pack.manifest, o = a.options, to = a.dest, anchor = m.anchor === 'target' ? to : o.from, mx = a.matrix;
+    const m = a.pack.manifest, o = a.options, to = a.dest, anchor = m.anchor === 'target' ? to : o.from, mx = a.matrix, p = a.placed;
     this.matrix(a, mx);
-    setMatrix(a.root, mx[0], mx[1], mx[2], mx[3], anchor.x, anchor.y);
-    if (a.under) setMatrix(a.under, mx[0], mx[1], mx[2], mx[3], anchor.x, anchor.y);
-    const s = Math.sign(mx[0]) || 1;
-    for (let i = 0; i < a.tiers.length; i++) { const plan = a.tiers[i]; this.tierPoint(a, plan, mx, this.point); setMatrix(plan.root, s, 0, 0, 1, this.point.x, this.point.y); }
-    const index = Math.min(m.frameCount - 1, Math.floor(a.time * m.fps / 1000)), layers = m.layers, ground = a.pack.ground;
+    // Placement and frames are only rewritten when they change: at 120 FPS a 30 FPS pack holds each frame for 4 updates.
+    const moved = p[0] !== mx[0] || p[1] !== mx[1] || p[2] !== mx[2] || p[3] !== mx[3] || p[4] !== o.from.x || p[5] !== o.from.y || p[6] !== to.x || p[7] !== to.y;
+    if (moved) {
+      p[0] = mx[0]; p[1] = mx[1]; p[2] = mx[2]; p[3] = mx[3]; p[4] = o.from.x; p[5] = o.from.y; p[6] = to.x; p[7] = to.y;
+      setMatrix(a.root, mx[0], mx[1], mx[2], mx[3], anchor.x, anchor.y);
+      if (a.under) setMatrix(a.under, mx[0], mx[1], mx[2], mx[3], anchor.x, anchor.y);
+      const s = Math.sign(mx[0]) || 1;
+      for (let i = 0; i < a.tierCount; i++) { const plan = a.tiers[i]; this.tierPoint(a, plan, mx, this.point); setMatrix(plan.root, s, 0, 0, 1, this.point.x, this.point.y); }
+    }
+    const index = Math.min(m.frameCount - 1, Math.floor(a.time * m.fps / 1000)), layers = m.layers, ground = a.pack.ground, shown = a.shown;
     for (let li = 0; li < a.sprites.length; li++) {
       const sprite = a.sprites[li], plan = a.tierOf[li];
-      if (!sprite) { this.drawQuads(a, li, layers[li].frames[index], plan, mx, anchor); continue; }
+      if (!sprite) {
+        const f = layers[li].frames[index], key = !f || (plan && !plan.enabled) ? -2 : index;
+        if (moved || key !== shown[li]) { shown[li] = key; this.drawQuads(a, li, f, plan, mx, anchor); }
+        continue;
+      }
       // A dissolving ground layer holds the frame its erosion started on.
       const fi = ground && ground.holdFrom[li] >= 0 && index >= ground.holdFrom[li] && index <= ground.holdTo[li] ? ground.holdFrom[li] : index;
       const f = layers[li].frames[fi], t = a.pack.frames[li][fi];
       sprite.visible = !!f && (!plan || plan.enabled);
       // A tier's frames are drawn around its anchor, so the tier root alone decides where the impact lands.
-      if (f && t) {
+      if (f && t && fi !== shown[li]) {
+        shown[li] = fi;
         sprite.texture = t;
         if (plan) sprite.position.set(f[5] - plan.tier.anchor_point.x, f[6] - plan.tier.anchor_point.y); else sprite.position.set(f[5], f[6]);
         const k = 1 / (layers[li].scale ?? m.scale); sprite.scale.set(k, k);
@@ -658,8 +737,10 @@ export class VfxPlayer {
       if (!list) d.lists.set(filter, list = [filter]);
       (sprite as any).filters = list;
     }
-    const frameMs = 1000 / a.pack.manifest.fps;
-    filter.progress = (a.time - from * frameMs) / ((to + 1 - from) * frameMs);
+    const frameMs = 1000 / a.pack.manifest.fps, t = (a.time - from * frameMs) / ((to + 1 - from) * frameMs);
+    // A typed-array write: a setter call with a fractional argument boxes it when the call site is not inlined.
+    const params = filter.params, progress = t < 0 ? 0 : t > 1 ? 1 : t;
+    if (params) params[0] = progress; else filter.progress = progress;
   }
   private endDissolve(a: Active, li: number) {
     const filter = a.dissolves[li]!, sprite = a.sprites[li];
@@ -699,7 +780,7 @@ export class VfxPlayer {
     out.x = fx + s * (at.x - m.target.x); out.y = fy + (at.y - m.target.y);
   }
   private emitTiers(a: Active): boolean {
-    while (a.tierCursor < a.tierOrder.length && a.tierOrder[a.tierCursor].startMs <= a.time) {
+    while (a.tierCursor < a.tierCount && a.tierOrder[a.tierCursor].startMs <= a.time) {
       const plan = a.tierOrder[a.tierCursor++], ls = this.tierListeners;
       if (!plan.enabled || !ls.length) continue;
       const mx = this.scratch, t = plan.tier, s = (this.matrix(a, mx), Math.sign(mx[0]) || 1);
@@ -707,7 +788,7 @@ export class VfxPlayer {
       this.tierPoint(a, plan, mx, ev.point);
       ev.tier = t.id; ev.tierNumber = t.tier; ev.packId = a.pack.manifest.id; ev.handle = a.handle; ev.anchorType = t.anchor_type;
       ev.zLayer = t.default_z_layer; ev.blend = t.recommended_blend_mode; ev.startMs = plan.startMs;
-      ev.normalDeg = t.normal_deg === undefined ? undefined : ((s < 0 ? 180 - t.normal_deg : t.normal_deg) % 360 + 360) % 360;
+      ev.normalDeg = a.pack.tierNormals[2 * plan.index + (s < 0 ? 1 : 0)];
       for (let i = 0; i < ls.length; i++) ls[i](ev);
       if (this.dead || a.done) return false;
     }
@@ -717,13 +798,13 @@ export class VfxPlayer {
     if (!this.emitTiers(a)) return false;
     const cues = a.pack.manifest.cues, camera = this.options.shake?.target;
     while (a.cue < cues.length && cues[a.cue].t <= a.time) {
-      const cue = cues[a.cue++];
+      const k = a.cue++, cue = cues[k], nums = a.pack.cueNums;
       if (cue.type === 'hit' && a.juice) this.juiceHit(a);
       // A play that asks for juice owns the freeze and the shake: the pack's own cues would double up.
       if (cue.type === 'hitstop' && this.hitstopEnabled && !(a.juice && a.freezeMs > 0)) this.cueFreeze = Math.max(this.cueFreeze, Math.min(cue.ms ?? 0, 1000));
       if (cue.type === 'shake' && this.shakeEnabled && !(a.juice && a.impulsePx > 0 && camera)) { const s = this.shake; s.age = 0; s.duration = cue.ms ?? 0; s.amp = cue.amp ?? 0; }
       const ev = this.options.reuseEvents ? this.cueEvent : { t: 0, type: '', packId: '' } as CueEvent, ls = this.listeners;
-      ev.t = cue.t; ev.type = cue.type; ev.id = cue.id; ev.amp = cue.amp; ev.ms = cue.ms; ev.packId = a.pack.manifest.id; ev.handle = a.handle;
+      ev.t = cue.t; ev.type = cue.type; ev.id = cue.id; ev.amp = nums[2 * k]; ev.ms = nums[2 * k + 1]; ev.packId = a.pack.manifest.id; ev.handle = a.handle;
       for (let i = 0; i < ls.length; i++) ls[i](ev);
       if (this.dead || a.done) return false;
     }
@@ -738,7 +819,7 @@ export class VfxPlayer {
       let dx: number, dy: number;
       if (hv) { this.matrix(a, mx); dx = hv.x * (Math.sign(mx[0]) || 1); dy = hv.y; }
       else { dx = a.dest.x - a.options.from.x; dy = a.dest.y - a.options.from.y; }
-      const len = Math.hypot(dx, dy), im = this.impulse;
+      const len = Math.sqrt(dx * dx + dy * dy), im = this.impulse;
       camera.x -= im.x; camera.y -= im.y;   // a kick still ringing out is replaced, not stacked
       im.age = 0; im.duration = 220; im.amp = a.impulsePx; im.dx = len > 1e-6 ? dx / len : 1; im.dy = len > 1e-6 ? dy / len : 0;
       // The first frame of the kick lands at the moment of contact; updateShake carries it from there.
@@ -757,7 +838,7 @@ export class VfxPlayer {
     if (Filter) {
       if (!f.filter) f.filter = new Filter();
       f.prev = target.filters;
-      f.list.length = 0;
+      truncate(f.list, 0);
       if (Array.isArray(f.prev)) for (let i = 0; i < f.prev.length; i++) f.list.push(f.prev[i]); else if (f.prev) f.list.push(f.prev);
       f.list.push(f.filter);
       target.filters = f.list;
@@ -792,11 +873,11 @@ export class VfxPlayer {
   }
   private endFlash(index: number) {
     const f = this.flashes[index], last = this.flashes.length - 1;
-    if (f.list.length) { f.target!.filters = f.prev ?? null; f.list.length = 0; f.prev = null; }
+    if (f.list.length) { f.target!.filters = f.prev ?? null; truncate(f.list, 0); f.prev = null; }
     for (let i = 0; i < f.overlays.length; i++) { const o = f.overlays[i]; o.removeFromParent(); o.texture = Texture.EMPTY; o.visible = false; o.alpha = 1; o.tint = 0xffffff; this.sprites.release(o); }
-    f.overlays.length = 0;
+    truncate(f.overlays, 0);
     f.target = null;
-    this.flashes[index] = this.flashes[last]; this.flashes.length = last;
+    this.flashes[index] = this.flashes[last]; truncate(this.flashes, last);
     this.flashPool.release(f);
   }
   private updateFlashes(dt: number) {
@@ -845,23 +926,25 @@ export class VfxPlayer {
   private compact() {
     let w = 0;
     for (let r = 0; r < this.list.length; r++) { const a = this.list[r]; if (!a.done) this.list[w++] = a; }
-    this.list.length = w;
+    truncate(this.list, w);
     // Finished records go back to the pool only now, when nothing is iterating the list any more.
-    for (let r = this.spent.length - 1; r >= 0; r--) {
+    // Record arrays keep their length and backing store; the next play overwrites them (see Pool for why nothing empties to 0).
+    for (let r = this.spentCount - 1; r >= 0; r--) {
       const a = this.spent[r];
-      for (let i = 0; i < a.tiers.length; i++) this.plans.push(a.tiers[i]);
-      a.tiers.length = 0; a.tierOf.length = 0; a.sprites.length = 0; a.quads.length = 0; a.tierOrder.length = 0;
+      for (let i = 0; i < a.tierCount; i++) this.plans.release(a.tiers[i]);
+      a.tierCount = 0;
       (a as any).options = null; (a as any).pack = null; (a as any).root = null; a.under = null;
       this.actives!.release(a);
     }
-    this.spent.length = 0;
+    this.spentCount = 0;
   }
   private updateShake(dt: number) {
     const target = this.options.shake?.target, s = this.shake, im = this.impulse;
     if (!target) return;
     // Nothing shaking and nothing to undo: leave the camera alone (writing its position would mark it dirty every frame).
     if (s.x === 0 && s.y === 0 && im.x === 0 && im.y === 0 && s.age >= s.duration && im.age >= im.duration) { s.age += dt; im.age += dt; return; }
-    target.x -= s.x + im.x; target.y -= s.y + im.y; s.x = s.y = im.x = im.y = 0;
+    // The camera is written once per axis (each write of a fractional value to Pixi's setter boxes a number).
+    const ox = s.x + im.x, oy = s.y + im.y; s.x = s.y = im.x = im.y = 0;
     s.age += dt; im.age += dt;
     if (this.shakeEnabled && s.age < s.duration) {
       const amp = s.amp * (1 - s.age / s.duration);
@@ -872,7 +955,10 @@ export class VfxPlayer {
       const k = im.amp * Math.exp(-im.age / 70) * Math.cos(im.age * 0.0880);
       im.x = im.dx * k; im.y = im.dy * k;
     }
-    target.x += s.x + im.x; target.y += s.y + im.y;
+    // Old offset off, new one on, in that order: once the shake settles the camera lands exactly where it was.
+    const nx = s.x + im.x, ny = s.y + im.y;
+    if (nx !== ox) target.x = target.x - ox + nx;
+    if (ny !== oy) target.y = target.y - oy + ny;
   }
   /** @internal used by Handle */
   finishPlay(a: Active): void { this.finish(a); }
@@ -880,7 +966,7 @@ export class VfxPlayer {
     if (a.done) return;
     a.done = true; this.live--;
     for (let s = 0; s < a.dissolves.length; s++) if (a.dissolves[s]) this.endDissolve(a, s);
-    for (let i = -2; i < a.tiers.length; i++) {
+    for (let i = -2; i < a.tierCount; i++) {
       const root = i === -2 ? a.under : i < 0 ? a.root : a.tiers[i].root;
       if (root) { root.removeFromParent(); root.removeChildren(); this.roots.release(root); }
     }
@@ -890,7 +976,7 @@ export class VfxPlayer {
       if (refs) for (let q = 0; q < refs.length; q++) refs[q].batch.release(refs[q].slot);
     }
     const h = a.handle; if (h.resolve) h.resolve();
-    this.spent.push(a);
+    put(this.spent, this.spentCount++, a);
     if (!this.updating) { this.compact(); this.batchSet_?.flush(); }
   }
   /**

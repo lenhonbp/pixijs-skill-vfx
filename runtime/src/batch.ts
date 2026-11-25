@@ -107,25 +107,30 @@ export class QuadBatch {
 
 /** Finds or creates the batch for (parent, sheet, blend) and flushes them all once per update. */
 export class BatchSet {
-  private batches = new Map<string, QuadBatch>();
+  /** parent → sheet source → [normal, additive] batch. Keyed by object, so a lookup builds no key string. */
+  private batches = new Map<object, Map<object, (QuadBatch | undefined)[]>>();
   private list: QuadBatch[] = [];
-  private uids = new WeakMap<object, number>();
-  private serial = 0;
   constructor(private ramps: RampSet) {}
-  private uid(o: object): number { let id = this.uids.get(o); if (id === undefined) { id = ++this.serial; this.uids.set(o, id); } return id; }
   /** The batch drawing `sheet` additively (or normally) inside `parent`; moved on top of its siblings so energy draws above materials. */
   get(parent: Container, sheet: Texture, additive: boolean): QuadBatch {
-    const key = `${this.uid(parent)}|${this.uid(sheet.source)}|${additive ? 1 : 0}`;
-    let batch = this.batches.get(key);
-    if (!batch) { batch = new QuadBatch(sheet, this.ramps, additive); this.batches.set(key, batch); this.list.push(batch); }
+    let bySource = this.batches.get(parent);
+    if (!bySource) this.batches.set(parent, bySource = new Map());
+    let pair = bySource.get(sheet.source);
+    if (!pair) bySource.set(sheet.source, pair = [undefined, undefined]);
+    let batch = pair[additive ? 1 : 0];
+    if (!batch) { batch = pair[additive ? 1 : 0] = new QuadBatch(sheet, this.ramps, additive); this.list.push(batch); }
     parent.addChild(batch.mesh);
     return batch;
   }
   flush(): void { for (let i = 0; i < this.list.length; i++) this.list[i].flush(); }
   /** Drops the batches that draw `sheet` (its pack was unloaded). */
   dropSheet(sheet: Texture): void {
-    const id = this.uid(sheet.source);
-    for (const [key, batch] of this.batches) if (key.split('|')[1] === String(id)) { batch.destroy(); this.batches.delete(key); this.list.splice(this.list.indexOf(batch), 1); }
+    for (const bySource of this.batches.values()) {
+      const pair = bySource.get(sheet.source);
+      if (!pair) continue;
+      for (const batch of pair) if (batch) { batch.destroy(); this.list.splice(this.list.indexOf(batch), 1); }
+      bySource.delete(sheet.source);
+    }
   }
   /** Draw calls the batches would issue right now (one per batch holding live quads). */
   get activeBatches(): number { let n = 0; for (let i = 0; i < this.list.length; i++) if (this.list[i].live > 0) n++; return n; }

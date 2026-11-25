@@ -210,7 +210,7 @@ async function residencySmoke(engine) {
         else check(stats.textureBytes === firstBytes.get(d), `${id}@${d}: ${stats.textureBytes} B after a full cycle, ${firstBytes.get(d)} B the first time`);
         check(stats.textureBytes <= ceiling, `${id}: texture memory grew to ${stats.textureBytes} B over a ${ceiling} B ceiling`);
         const h = player.play(id, { from: { x: 200, y: 300 }, to: { x: 200 + Math.cos(d * Math.PI / 180) * 300, y: 300 + Math.sin(d * Math.PI / 180) * 300 }, parent: app.stage });
-        check(player.stats().active === 1 && (h.manifest.direction ?? 0) === d, `${id}@${d} did not play its own direction`);
+        check(player.stats().active === 1 && player.playing === 1 && (h.manifest.direction ?? 0) === d, `${id}@${d} did not play its own direction`);
         player.update(100); h.stop();
       }
       player.unload(id);

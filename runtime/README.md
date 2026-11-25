@@ -78,6 +78,7 @@ handles rectangle textures, blend constants and ticker differences internally.
   plays, available pooled sprites, loaded packs, ramp draw calls, resident atlas
   sheets and their decoded GPU size (width × height × 4 bytes). Sprites and effect containers are reused on subsequent plays;
   frame textures are prepared on load, not on play.
+- `playing` → the number of running plays, like `stats().active` without building the stats object (safe to read every frame).
 - `update(dtMs)`: explicit deterministic stepping in real milliseconds, useful
   with a stopped application ticker for tests. Do not also auto-tick the same time.
 - `getManifest(id)` returns a detached metadata snapshot of the loaded base bake,
@@ -268,24 +269,30 @@ written into fixed buffers, and no closures, iterators or spreads run in `update
 games: `reuseEvents: true` hands listeners one shared event object per type (valid only inside the callback), and
 `handle.pose(name, out)` fills an object you own. `Playback.finished` is created on first read.
 
-Measure it with `node runtime/test/bench-gc.mjs [--mono FILE.vfxb] [--realtime]` (V8's sampling heap profiler and GC trace events;
-3600 frames = 60 s, after a warm-up so V8's optimizer has run). Measured here (headless Chromium, a Fireball cast every 20 frames, so
-about 11 overlap), 60 s of virtual playback:
-
-| | Runtime 1.1 | Runtime 1.3 |
-|---|---|---|
-| Whole page allocation | 5840 B/frame | 2144 B/frame (-63%; most of what is left is Pixi's own render bookkeeping) |
-| Scavenges in 60 s | 10 | 4 |
-| Major GCs | 0 | 0 |
-
 `play()` reuses its playback record (its arrays, matrix, tier plans and quad refs) from a pool and caches the per-family direction lists,
-so a cast no longer builds them. Per scenario (3600 frames): sprite plays 93 B/frame of runtime-owned allocation (`play()` itself no
-longer shows up; it was 42 B/frame, about 800 B per cast), juice 126, ramp 437-456, flow trail 46-48, with 0 major GCs and 5-9
-scavenges per minute. That is close to zero but not zero: by default each `play()` still returns one small handle object, and ramp
-plays still allocate in `draw()`. The handle stays inert after its play ends, so holding it is always safe. Pass `recycleHandles: true`
-to hand out the pooled handle instead (no allocation at all in `play()`); then do not call a handle after its play has finished,
-because a later `play()` may be using the same object. The first seconds after load allocate more until V8 has optimised the hot paths.
-Not a device benchmark: it runs in headless Chromium with a software GL, so it shows allocation and GC behaviour, not frame time on a phone.
+and `update()` rewrites a play's transforms and sprite frames only when they change (at 120 FPS a 30 FPS pack holds each frame for four
+updates). By default each `play()` still returns one small handle object; it stays inert after its play ends, so holding it is always
+safe. Pass `recycleHandles: true` to hand out the pooled handle instead (no allocation at all in `play()`); then do not call a handle
+after its play has finished, because a later `play()` may be using the same object. The first seconds after load allocate more until
+V8 has optimised the hot paths.
+
+### Benchmark
+
+`npm run bench` (`runtime/test/bench-gc.mjs`) keeps 50 and 100 skill instances casting at once in virtual 60 and 120 FPS loops,
+rendering every frame in headless Chromium, and gates the result: at most 100 B/frame allocated by the runtime's own source (V8's
+sampling heap profiler), at most 100 B/frame of retained heap growth across the run (forced GC before and after), and no major GC.
+It also reports page-wide allocation (Pixi's render bookkeeping included), scavenges and the longest GC pause, frame time p50/p95/p99
+and stalls (frames over twice the frame budget). The exit code is 1 when a run misses the gate; `--strict` also fails on stalls.
+Scenarios: `sprites`, `juice` (hitstop, impulse and flash on every hit), `ramp` (mono pack, 4 elements) and `mixed` (Thunder Domain,
+Whirlwind, Fissure with ground dissolve, Fireball). The latest results are in [`benchmarks/latest.md`](../benchmarks/latest.md).
+
+```sh
+node skills/lenhon-vfx/scripts/fetch-packs.mjs --all --out showcase/public/packs/free   # the packs it plays
+npm run bench                                   # full matrix, writes benchmarks/latest.md (about 30 minutes)
+npm run bench -- --scenarios juice --instances 100 --fps 120 --frames 1200 --no-write
+```
+
+Not a device benchmark: it runs with a software GL, so frame times show stalls and regressions, not frame time on a phone.
 
 ## Ground layers
 
