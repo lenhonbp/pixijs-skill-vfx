@@ -262,7 +262,8 @@ try {
   const sheet = await sheetRequest;
   scene.setCaster(sheet.animations['son-ha-kiem-khi-se']);
 } catch (error) { console.warn('Character sheet unavailable; using drawn caster.', error); }
-const vfx = await VfxPlayer.create(app, { shake: { target: world }, hitstop: true });
+// One bake direction of the selected skill stays in GPU memory: cycling the eight aims keeps a flat texture ceiling on phones.
+const vfx = await VfxPlayer.create(app, { shake: { target: world }, hitstop: true, maxResidentDirections: 1 });
 const packs = await indexRequest;
 const products = resolveCatalog(packs);
 let selected = packs.find(p => p.id === 'hoa-fireball')!, current: Playback | undefined, request = 0;
@@ -293,9 +294,20 @@ const bakedDirections = (p: Entry) => [0, ...Object.keys(p.directions ?? {}).map
 const castDirection = () => packDirection(from, to, SQUASH, bakedDirections(selected)).direction;
 const fileOf = (id: string, direction: number, mobile: boolean) => `${id}${direction ? '@' + direction : ''}${mobile ? '.m' : ''}.vfxb`;
 const variantOf = (p: Entry, direction: number): Variant => (direction ? p.directions?.[direction] : undefined) ?? p;
-async function loadSelected(id: string, token: number) {
+// A skill's direction loads run one at a time: with one resident direction, a load landing after a newer cast's would evict
+// what it shows. Another skill's load does not wait; leaving a skill cancels its pending loads.
+let directionLoad: { id: string; done: Promise<unknown> } | undefined;
+function loadSelected(id: string, token: number): Promise<boolean> {
+  const previous = directionLoad?.id === id ? directionLoad.done : undefined;
+  const next = previous ? previous.then(() => token === request ? loadDirection(id, token) : false) : loadDirection(id, token);
+  directionLoad = { id, done: next.catch(() => {}) };
+  return next;
+}
+async function loadDirection(id: string, token: number) {
   const direction = castDirection();
   resident.add(id);
+  // Purge the skill's other directions before decoding the new one, so the old and new atlases never sit in memory together.
+  for (const other of vfx.directions(id)) if (other !== direction) vfx.unload(id, other);
   if (!vfx.directions(id).includes(direction)) {
     try { await vfx.load(packUrl(id, direction)); }
     catch (error) {

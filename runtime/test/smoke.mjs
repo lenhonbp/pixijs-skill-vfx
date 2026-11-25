@@ -174,10 +174,67 @@ const aimed = Object.fromEntries([0, 90].map(direction => {
 }));
 for (const value of [91, -91, NaN]) assert.throws(() => validate({ ...aimed[0], direction: value }));
 assert.throws(() => validate({ ...aimed[0], groundSquash: 0 }));
+async function residencySmoke(engine) {
+  const pixi = engine === 'v8' ? window.__v8 : window.__v7, { app, VfxPlayer: Player } = pixi;
+  const check = (ok, message) => { if (!ok) throw Error(`${engine} residency: ${message}`); };
+  const url = (id, d) => `/packs/free/${id}${d ? '@' + d : ''}.vfxb`;
+  const sheetsOf = (player, id, d) => player.packs.get(d ? `${id}@${d}` : id).sheets.map(sheet => ({ sheet, base: engine === 'v8' ? sheet.source : sheet.baseTexture }));
+  // A sheet is gone when its GPU source is destroyed and no Pixi cache can hand it back.
+  const freed = ({ sheet, base }) => {
+    const cached = engine === 'v8' ? [...pixi.Cache._cache.values()] : [...Object.values(pixi.utils.TextureCache), ...Object.values(pixi.utils.BaseTextureCache)];
+    return sheet.destroyed !== false && base.destroyed && !cached.includes(sheet) && !cached.includes(base) && !cached.includes(base.resource);
+  };
+  const directions = [0, 45, 90, -45, -90];
+  check((() => { try { new Player(app, { maxResidentDirections: 0 }); return false; } catch { return true; } })(), 'invalid limit accepted');
+  const player = new Player(app);
+  try {
+    for (const id of ['loi-thunder-domain', 'phong-whirlwind']) {
+      const firstBytes = new Map(); let ceiling = 0, previous;
+      for (let lap = 0; lap < 2; lap++) for (const d of directions) {
+        await player.load(url(id, d));
+        const stats = player.stats();
+        check(JSON.stringify(player.directions(id)) === JSON.stringify([d]), `${id}@${d} kept ${player.directions(id)}`);
+        check(stats.packs === 1, `${id}@${d}: ${stats.packs} packs resident`);
+        if (previous) check(previous.every(freed), `${id}: evicted sheets left in GPU memory or Pixi caches`);
+        previous = sheetsOf(player, id, d);
+        check(previous.length > 0 && !previous.some(freed), `${id}@${d}: resident sheets missing`);
+        if (!lap) { firstBytes.set(d, stats.textureBytes); ceiling = Math.max(ceiling, stats.textureBytes); }
+        else check(stats.textureBytes === firstBytes.get(d), `${id}@${d}: ${stats.textureBytes} B after a full cycle, ${firstBytes.get(d)} B the first time`);
+        check(stats.textureBytes <= ceiling, `${id}: texture memory grew to ${stats.textureBytes} B over a ${ceiling} B ceiling`);
+        const h = player.play(id, { from: { x: 200, y: 300 }, to: { x: 200 + Math.cos(d * Math.PI / 180) * 300, y: 300 + Math.sin(d * Math.PI / 180) * 300 }, parent: app.stage });
+        check(player.stats().active === 1 && (h.manifest.direction ?? 0) === d, `${id}@${d} did not play its own direction`);
+        player.update(100); h.stop();
+      }
+      player.unload(id);
+      check(previous.every(freed) && player.stats().packs === 0 && player.stats().textureBytes === 0, `${id}: family unload left textures`);
+    }
+  } finally { player.destroy(); }
+  // Two resident directions: playing a direction refreshes it, so the untouched one is evicted first.
+  const pair = new Player(app, { maxResidentDirections: 2 }), id = 'loi-thunder-domain';
+  try {
+    await pair.load([url(id, 0), url(id, 45)]);
+    check(JSON.stringify(pair.directions(id)) === '[0,45]', `limit 2 kept ${pair.directions(id)}`);
+    const h = pair.play(id, { from: { x: 200, y: 300 }, to: { x: 500, y: 300 }, parent: app.stage });
+    const stale = sheetsOf(pair, id, 45);
+    await pair.load(url(id, 90));
+    check(JSON.stringify(pair.directions(id)) === '[0,90]', `LRU evicted the played direction: ${pair.directions(id)}`);
+    check(stale.every(freed) && pair.stats().active === 1, 'LRU eviction did not free the idle direction or stopped the live play');
+    pair.update(50); h.stop();
+    const playing = pair.play(id, { from: { x: 200, y: 300 }, to: { x: 200, y: 600 }, parent: app.stage });
+    pair.unload(id, 90);
+    check(playing.isOver && pair.stats().active === 0, 'evicting a direction did not stop its plays');
+    check(JSON.stringify(pair.directions(id)) === '[0]', `unload(id, 90) left ${pair.directions(id)}`);
+    await pair.load(url(id, -45)); pair.unload(`${id}@0`);
+    check(JSON.stringify(pair.directions(id)) === '[-45]', `unload('id@0') left ${pair.directions(id)}`);
+    // Loading a resident direction again counts as using it.
+    await pair.load(url(id, 0)); await pair.load(url(id, -45)); await pair.load(url(id, 90));
+    check(JSON.stringify(pair.directions(id)) === '[-45,90]', `reloaded direction was evicted: ${pair.directions(id)}`);
+  } finally { pair.destroy(); }
+}
 async function actorSmoke(engine) {
   const { app, vfx: existing } = engine === 'v8' ? window.__showcase : window.__v7;
   const Player = engine === 'v8' ? existing.constructor : window.__v7.VfxPlayer;
-  const player = new Player(app, { hitstop: true });
+  const player = new Player(app, { hitstop: true, maxResidentDirections: 2 });
   const check = (ok, message) => { if (!ok) throw Error(engine + ': ' + message); };
   try {
     await player.load('/actors.vfxb');
@@ -638,11 +695,11 @@ assert.deepEqual(readContainer(buffer(custom), 'test-custom-火').manifest, deco
 assert.deepEqual(readContainer(buffer(plainContainer)).manifest, decoded.manifest);
 console.log('Format contracts: PASS (default/custom keys, unscrambled, empty layers, malformed data)');
 const v7Bundle = await build({
-  stdin: { contents: `import * as PIXI from 'pixi.js'; import { Application, Container, Sprite, Texture } from 'pixi.js'; import { VfxPlayer, FlowTrail, makeNoiseTexture } from './runtime/src/index'; const app = new Application({width:1000,height:580}); document.body.appendChild(app.view); const vfx = await VfxPlayer.create(app); window.__v7 = {app,vfx,Container,Sprite,Texture,VfxPlayer,FlowTrail,makeNoiseTexture,ColorMatrixFilter: PIXI.ColorMatrixFilter ?? PIXI.filters.ColorMatrixFilter};`, resolveDir: root },
+  stdin: { contents: `import * as PIXI from 'pixi.js'; import { Application, Container, Sprite, Texture } from 'pixi.js'; import { VfxPlayer, FlowTrail, makeNoiseTexture } from './runtime/src/index'; const app = new Application({width:1000,height:580}); document.body.appendChild(app.view); const vfx = await VfxPlayer.create(app); window.__v7 = {app,vfx,Container,Sprite,Texture,VfxPlayer,FlowTrail,makeNoiseTexture,ColorMatrixFilter: PIXI.ColorMatrixFilter ?? PIXI.filters.ColorMatrixFilter,utils: PIXI.utils};`, resolveDir: root },
   bundle: true, format: 'esm', write: false, alias: { 'pixi.js': 'pixi7' },
 });
 const v8Bundle = await build({
-  stdin: { contents: `import { Application, Container, Sprite, Texture, ColorMatrixFilter } from 'pixi.js'; import { VfxPlayer, FlowTrail, makeNoiseTexture } from './runtime/src/index'; const app = new Application(); await app.init({ width: 1000, height: 580, preference: 'webgl' }); document.body.appendChild(app.canvas); const vfx = await VfxPlayer.create(app); window.__v8 = {app,vfx,Container,Sprite,Texture,VfxPlayer,FlowTrail,makeNoiseTexture,ColorMatrixFilter};`, resolveDir: root },
+  stdin: { contents: `import { Application, Container, Sprite, Texture, ColorMatrixFilter, Cache } from 'pixi.js'; import { VfxPlayer, FlowTrail, makeNoiseTexture } from './runtime/src/index'; const app = new Application(); await app.init({ width: 1000, height: 580, preference: 'webgl' }); document.body.appendChild(app.canvas); const vfx = await VfxPlayer.create(app); window.__v8 = {app,vfx,Container,Sprite,Texture,VfxPlayer,FlowTrail,makeNoiseTexture,ColorMatrixFilter,Cache};`, resolveDir: root },
   bundle: true, format: 'esm', write: false,
 });
 const catalogFixtureBundle = await build({
@@ -858,11 +915,15 @@ try {
   console.log('Pixi v7 combat juice: PASS (micro-freeze, camera impulse along the blow, silhouette flash)');
   console.log('Pixi v7 impact tiers: PASS (same contract on Pixi 7)');
   await page.evaluate(actorSmoke, 'v7');
+  await page.evaluate(residencySmoke, 'v7');
+  console.log('Pixi v7 direction residency: PASS (one direction resident, LRU eviction, sheets destroyed and out of Pixi caches, flat texture memory)');
   console.log('Pixi v7 actors: PASS (interpolation, mirror/fit, hitstop, legacy, stop/end/reset, loop)');
   console.log('Pixi v7 ordered layers: PASS (3/6 layers, pixel-checked blend order, mixed scales, null frames, replay)');
   await page.goto(`${url}/v8.html`); await page.waitForFunction(() => window.__v8);
   for (const mode of ['overlay', 'filter']) await page.evaluate(juiceSmoke, { engine: 'v8', mode });
   await page.evaluate(flowSmoke, 'v8');
+  await page.evaluate(residencySmoke, 'v8');
+  console.log('Pixi v8 direction residency: PASS (thunder-domain and whirlwind cycle 5 directions twice at a flat texture ceiling, LRU keeps the played direction, granular unload, sheets destroyed and out of Pixi caches)');
   await page.evaluate(rampSmoke, 'v8');
   console.log('Pixi v8 ramp packs: PASS (element/preset/custom/native ramps on one atlas, mirror, one batch for six plays, few draw calls, row reuse)');
   console.log('Pixi v8 flow trails: PASS (WebGL-only support check, seamless 64x64 noise, deterministic render, scrolling/warping over time, dissolve 0/0.5/1, alpha, reused typed arrays)');

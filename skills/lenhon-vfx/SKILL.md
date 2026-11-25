@@ -90,14 +90,18 @@ Effects mirror automatically when the target is left of the caster.
 Directional packs come as a family: `<id>.vfxb` (cast right), `<id>@45.vfxb`
 (down-right), `<id>@90.vfxb` (down), `<id>@-45.vfxb` (up-right), `<id>@-90.vfxb`
 (up); mobile adds `.m` before `.vfxb`. Left-hand casts mirror these. Load the
-directions the scene can cast in under the same id; `play` picks the nearest one
+direction a cast needs under the same id; `play` picks the nearest loaded one
 for the real caster–target ground angle and corrects the rest. `packDirection(from, to)`
 returns which file a cast needs. Self buffs ship only `<id>.vfxb`. Check
 `directions` in the public `index.json` for which files a skill has.
 `fetch-packs.mjs` downloads every baked direction of a requested id by default;
 append `@<dir>` (e.g. `hoa-fireball@90`) to fetch one direction only.
 `vfx.getManifest(id)` returns duration and cues for syncing animations;
-`vfx.stats()` reports active plays, pooled sprites and loaded packs.
+`vfx.stats()` reports active plays, pooled sprites, loaded packs and resident
+texture bytes. A player keeps one direction of each skill in GPU memory by
+default: loading another evicts the least recently used one
+(`new VfxPlayer(app, { maxResidentDirections: 2 })` keeps two).
+`vfx.unload('id@90')` frees one direction, `vfx.unload('id')` all of them.
 
 ## Pitfalls
 

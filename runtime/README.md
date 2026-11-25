@@ -36,6 +36,10 @@ handles rectangle textures, blend constants and ticker differences internally.
 
 - `VfxPlayer.create(app, options?)` → `Promise<VfxPlayer>`; loads `options.packs`.
   `new VfxPlayer(app, options?)` is also available for explicit loading.
+  - `maxResidentDirections`: baked directions of one skill kept in GPU memory,
+    default 1. Loading another direction of a skill at the limit evicts its least
+    recently loaded or played direction: its plays stop and its atlas textures are
+    destroyed. Use 2 to cross-fade between directions, `Infinity` to keep them all.
 - `load(url | url[])` → `Promise<void>` accepts `.vfx.json` and `.vfxb`, including
   default-scrambled and unscrambled containers. Concurrent identical URLs share
   loading work. A loaded pack ID is not replaced; unload first to replace it.
@@ -61,15 +65,16 @@ handles rectangle textures, blend constants and ticker differences internally.
   [Impact tiers](#impact-tiers).
 - `unload(id)`: stop that pack's plays and free sheet/frame textures. For a
   directional family, `unload('id')` frees every loaded direction and
-  `unload('id@90')` frees just that one.
+  `unload('id@90')` (or `unload('id', 90)`) frees just that one.
 - `directions(id)` → loaded ground directions of a pack family, e.g. `[0, 90]`.
 - `packDirection(from, to, groundSquash?, available?)` (named export) →
   `{ direction, mirror }`: the canonical direction (0, 45, 90, -45 or -90) whose
   file a cast toward `to` needs, and whether it plays mirrored. Use it to load
   only the directions a scene needs.
 - `destroy()`: stop all plays, detach ticker, restore shake offset, free resources.
-- `stats()` → `{ active, pooled, packs }`: active plays, available pooled sprites,
-  loaded packs. Sprites and effect containers are reused on subsequent plays;
+- `stats()` → `{ active, pooled, packs, quadBatches, sheets, textureBytes }`: active
+  plays, available pooled sprites, loaded packs, ramp draw calls, resident atlas
+  sheets and their decoded GPU size (width × height × 4 bytes). Sprites and effect containers are reused on subsequent plays;
   frame textures are prepared on load, not on play.
 - `update(dtMs)`: explicit deterministic stepping in real milliseconds, useful
   with a stopped application ticker for tests. Do not also auto-tick the same time.
@@ -123,7 +128,8 @@ loads a plain manifest and tests the runtime bundled against Pixi v7 too.
 Plain format examples are in `docs/format-examples/`, not the deployed showcase.
 
 The showcase loads only its index and initially selected pack, then lazily loads
-on selection and unloads the previous pack. It does not prefetch. Canvas backing
+on selection and unloads the previous pack. Changing the aim unloads the skill's
+previous direction before loading the new one, so one direction stays resident. It does not prefetch. Canvas backing
 resolution follows the displayed width with DPR capped at 2, including on phones.
 
 See [pack-format.md](https://github.com/lenhonbp/pixijs-skill-vfx/blob/main/docs/pack-format.md). Scrambling is an anti-scrape
@@ -139,7 +145,10 @@ right), `<id>@45.vfxb` (down-right), `<id>@90.vfxb` (down), `<id>@-45.vfxb`
 file mirrored. Their manifests carry `direction` and `groundSquash`. Skills that
 look the same from every side (self buffs) ship only `<id>.vfxb`.
 
-Load any subset of a family; the files share one id. `play` picks the nearest
+Load any subset of a family; the files share one id. A player keeps
+`maxResidentDirections` of them (default 1), evicting the least recently used, so
+load the direction a cast needs right before it, or raise the limit to keep more
+resident at once. `play` picks the nearest
 loaded direction for the actual caster–target angle, mirrors it when the target
 is to the left, and skews it the remaining few degrees onto the real target, so
 the effect lands on the target at any angle. With only `<id>.vfxb` loaded it falls
