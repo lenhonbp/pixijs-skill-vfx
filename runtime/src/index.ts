@@ -135,7 +135,9 @@ export class Pool<T> {
   drain(each?: (item: T) => void): void { if (each) for (let i = 0; i < this.items.length; i++) each(this.items[i]); this.items.length = 0; }
 }
 interface Active {
-  pack: Pack; options: PlayOptions; legacy: boolean; matrix: Float64Array; root: Container; sprites: (Sprite | null)[]; time: number; cue: number;
+  pack: Pack; options: PlayOptions; legacy: boolean; matrix: Float64Array; root: Container;
+  /** Root of the pack's `default_z_layer: 'background'` layers (ground decals and floor glows); null when it has none. Shares `root`'s transform. */
+  under: Container | null; sprites: (Sprite | null)[]; time: number; cue: number;
   /** Ramp layers: their quads, and the ramp row they are coloured with (-1 when the pack has no ramp layers). */
   quads: (QuadRef[] | null)[]; rampRow: number;
   /** Where the blow lands: `to`, else the live target, else `from`. */
@@ -304,17 +306,21 @@ export class VfxPlayer {
     const colored = manifest.color?.mode === 'ramp';
     const rampRow = !colored ? -1 : options.element !== undefined ? this.ramps().rowOf(options.element) : pack.nativeRow >= 0 ? pack.nativeRow : this.ramps().rowOf(manifest.color!.ramp ?? 'hoa');
     const tierOf = a.tierOf, sprites = a.sprites, quads = a.quads;
+    // Ground layers go into their own root, below the characters, whatever tiers the pack has; they move with the pack matrix like `root`.
+    let under: Container | null = null;
     for (let li = 0; li < manifest.layers.length; li++) {
       const layer = manifest.layers[li];
       let plan: TierPlan | undefined;
       for (let t = 0; t < tiers.length && !plan; t++) if (tiers[t].tier.layers.includes(layer.name)) plan = tiers[t];
+      const floor = !plan && layer.default_z_layer === 'background';
+      if (floor && !under) { under = this.roots.acquire(); under.zIndex = base + Z_BIAS.background; }
       tierOf.push(plan); quads.push(null);
       if (pack.rampSheets[li]) { sprites.push(null); continue; }       // drawn by the batched shader below
       const sprite = this.sprites.acquire(); sprite.visible = false;
       setBlend(sprite, layer.blend === 'add', !!plan && options.recommendedBlend !== false && plan.tier.recommended_blend_mode === 'SCREEN');
       // Where the shader is unavailable (Pixi 7, WebGPU) a ramp layer degrades to its mask tinted with the ramp's hue.
       sprite.tint = colored && layer.ramp ? this.ramps().colorAt(rampRow, 0.75) : 0xffffff;
-      (plan ? plan.root : root).addChild(sprite); sprites.push(sprite);
+      (plan ? plan.root : floor ? under! : root).addChild(sprite); sprites.push(sprite);
     }
     // Display order bottom to top: background tiers, the pack's own layers, target overlay, foreground.
     const attach = (z: ZLayer) => {
@@ -324,11 +330,11 @@ export class VfxPlayer {
         ((z === 'background' ? options.layers?.background : z === 'target_overlay' ? options.layers?.overlay : options.layers?.foreground) ?? parent).addChild(plan.root);
       }
     };
-    attach('background'); parent.addChild(root); attach('target_overlay'); attach('foreground');
+    attach('background'); if (under) (options.layers?.background ?? parent).addChild(under); parent.addChild(root); attach('target_overlay'); attach('foreground');
     // Batched ramp quads are added last, so each batch mesh ends on top of the materials in its parent.
     for (let li = 0; li < manifest.layers.length; li++) {
       const sheets = pack.rampSheets[li]; if (!sheets) continue;
-      const plan = tierOf[li], z = plan?.tier.default_z_layer;
+      const plan = tierOf[li], z = plan ? plan.tier.default_z_layer : manifest.layers[li].default_z_layer;
       const home = (z === 'background' ? options.layers?.background : z === 'target_overlay' ? options.layers?.overlay : z === 'foreground' ? options.layers?.foreground : undefined) ?? parent;
       const refs = a.quadStore[li] ??= [];
       for (let si = 0; si < sheets.length; si++) {
@@ -341,7 +347,7 @@ export class VfxPlayer {
     const target = options.target, targetOk = !!target && Number.isFinite(target.x) && Number.isFinite(target.y);
     const juice = options.hitstop !== undefined && options.hitstop !== false || targetOk;
     const flash = options.flash === false ? null : options.flash ?? {};
-        a.pack = pack; a.options = options; a.legacy = legacy; a.root = root; a.rampRow = rampRow; a.time = 0; a.cue = 0; a.done = false;
+        a.pack = pack; a.options = options; a.legacy = legacy; a.root = root; a.under = under; a.rampRow = rampRow; a.time = 0; a.cue = 0; a.done = false;
     a.matrix[0] = 1; a.matrix[1] = 0; a.matrix[2] = 0; a.matrix[3] = 1;
     a.dest = options.to ?? (targetOk ? target as Point : options.from);
     a.tierCursor = 0; a.juice = juice;
@@ -358,7 +364,7 @@ export class VfxPlayer {
     return handle;
   }
   private makeActive(): Active {
-    const a = { matrix: new Float64Array(4), sprites: [], quads: [], tiers: [], tierOf: [], tierOrder: [], quadStore: [], gen: 0, done: true, tierCursor: 0 } as unknown as Active;
+    const a = { matrix: new Float64Array(4), sprites: [], quads: [], tiers: [], tierOf: [], tierOrder: [], quadStore: [], under: null, gen: 0, done: true, tierCursor: 0 } as unknown as Active;
     a.handle = new Handle(this, a, null as unknown as Pack);
     return a;
   }
@@ -449,6 +455,7 @@ export class VfxPlayer {
     const m = a.pack.manifest, o = a.options, to = a.dest, anchor = m.anchor === 'target' ? to : o.from, mx = a.matrix;
     this.matrix(a, mx);
     setMatrix(a.root, mx[0], mx[1], mx[2], mx[3], anchor.x, anchor.y);
+    if (a.under) setMatrix(a.under, mx[0], mx[1], mx[2], mx[3], anchor.x, anchor.y);
     const s = Math.sign(mx[0]) || 1;
     for (let i = 0; i < a.tiers.length; i++) { const plan = a.tiers[i]; this.tierPoint(a, plan, mx, this.point); setMatrix(plan.root, s, 0, 0, 1, this.point.x, this.point.y); }
     const index = Math.min(m.frameCount - 1, Math.floor(a.time * m.fps / 1000)), layers = m.layers;
@@ -650,7 +657,7 @@ export class VfxPlayer {
       const a = this.spent[r];
       for (let i = 0; i < a.tiers.length; i++) this.plans.push(a.tiers[i]);
       a.tiers.length = 0; a.tierOf.length = 0; a.sprites.length = 0; a.quads.length = 0; a.tierOrder.length = 0;
-      (a as any).options = null; (a as any).pack = null; (a as any).root = null;
+      (a as any).options = null; (a as any).pack = null; (a as any).root = null; a.under = null;
       this.actives!.release(a);
     }
     this.spent.length = 0;
@@ -678,7 +685,10 @@ export class VfxPlayer {
   private finish(a: Active) {
     if (a.done) return;
     a.done = true; this.live--;
-    for (let i = -1; i < a.tiers.length; i++) { const root = i < 0 ? a.root : a.tiers[i].root; root.removeFromParent(); root.removeChildren(); this.roots.release(root); }
+    for (let i = -2; i < a.tiers.length; i++) {
+      const root = i === -2 ? a.under : i < 0 ? a.root : a.tiers[i].root;
+      if (root) { root.removeFromParent(); root.removeChildren(); this.roots.release(root); }
+    }
     for (let i = 0; i < a.sprites.length; i++) {
       const sprite = a.sprites[i], refs = a.quads[i];
       if (sprite) { sprite.visible = false; sprite.texture = Texture.EMPTY; this.sprites.release(sprite); }

@@ -39,7 +39,11 @@ export interface Manifest {
   /** Camera squash (ground y / screen y) the pack was baked with. */
   groundSquash?: number;
   /** `ramp: true` marks an energy layer stored as a luminance mask (see `color`). */
-  layers: { name: string; blend: 'normal' | 'add'; scale?: number; sheets: string[]; frames: Frame[]; ramp?: boolean }[];
+  /**
+   * `default_z_layer: 'background'` marks ground decals, runes and floor glows: draw the layer beneath the characters, in its own root,
+   * instead of in the pack's depth slot. Layers owned by an impact tier take their depth from the tier. Other values are reserved.
+   */
+  layers: { name: string; blend: 'normal' | 'add'; scale?: number; sheets: string[]; frames: Frame[]; ramp?: boolean; default_z_layer?: 'background' }[];
   cues: Cue[];
   /**
    * Present on packs baked with grayscale energy layers: the masks are coloured through a gradient ramp.
@@ -91,6 +95,17 @@ function validateColor(m: Manifest) {
   if (c.lut !== undefined && (typeof c.lut !== 'string' || !/^[A-Za-z0-9+/]{1024}$/.test(c.lut))) bad('lut');
   for (const layer of m.layers) if (layer.ramp !== undefined && (layer.ramp !== true || layer.blend !== 'add')) bad(`layer ${layer.name} must be additive to be a ramp layer`);
 }
+/** A depth hint this runtime does not know is dropped (the layer then keeps the pack's depth); a malformed one, or one on a tier's layer, is an error. */
+function validateLayerDepth(m: Manifest) {
+  const owned = new Set((m.impact?.tiers ?? []).flatMap(t => t.layers));
+  for (const layer of m.layers) {
+    const z = layer.default_z_layer as unknown;
+    if (z === undefined) continue;
+    if (typeof z !== 'string') throw Error(`Invalid VFX layer depth: layer ${layer.name}`);
+    if (z !== 'background') { delete layer.default_z_layer; continue; }
+    if (owned.has(layer.name)) throw Error(`Invalid VFX layer depth: layer ${layer.name} belongs to an impact tier`);
+  }
+}
 export function validate(value: unknown): Manifest {
   const m = value as Manifest;
   const point = (p: { x: number; y: number }) => p && Number.isFinite(p.x) && Number.isFinite(p.y);
@@ -107,6 +122,7 @@ export function validate(value: unknown): Manifest {
   }
   if (m.color !== undefined) validateColor(m);
   if (m.impact !== undefined) validateImpact(m);
+  validateLayerDepth(m);
   if (m.actors !== undefined) {
     if (!m.actors || typeof m.actors !== 'object' || Array.isArray(m.actors)) throw Error('Invalid VFX actors');
     for (const [name, track] of Object.entries(m.actors)) {

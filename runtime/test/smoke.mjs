@@ -103,6 +103,27 @@ const impactManifest = (version = 1) => ({ ...empty, id: version === 1 ? 'impact
 validate(impactManifest());
 const juiceManifest = { ...impactManifest(), id: 'juice', cues: [{ t: 100, type: 'hit' }, { t: 100, type: 'hitstop', ms: 100 }, { t: 100, type: 'shake', amp: 6, ms: 200 }] };
 validate(juiceManifest);
+// Ground layers: `default_z_layer: 'background'` puts a layer under the characters, whatever tiers the pack has.
+const floorLayer = (name, blend, sheet, frames, extra = {}) => ({ name, blend, scale: 1, sheets: [sheet], frames, ...extra });
+const floorManifest = (id = 'floor') => ({ ...empty, id, durationMs: 200, frameCount: 2, fps: 10, scale: 1, origin: { x: 0, y: 0 }, target: { x: 360, y: 0 }, groundSquash: 0.6, anchor: 'caster', cues: [],
+  layers: [
+    floorLayer('base', 'normal', 'ordered-0.png', [impactFrame(100, -20), impactFrame(100, -20)]),
+    floorLayer('ground-under-base', 'normal', 'ordered-1.png', [impactFrame(100, -20), null], { default_z_layer: 'background' }),
+    floorLayer('ground-under-glow', 'add', 'ordered-2.png', [impactFrame(90, -10), impactFrame(90, -10)], { default_z_layer: 'background' })] });
+const floorTierManifest = () => ({ ...impactManifest(), id: 'floor-tier',
+  layers: [...impactManifest().layers, floorLayer('ground-under-base', 'normal', 'ordered-0.png', [impactFrame(100, -20), impactFrame(100, -20), null], { default_z_layer: 'background' })] });
+{
+  assert.equal(validate(floorManifest()).layers[1].default_z_layer, 'background');
+  assert.equal(validate(floorTierManifest()).layers.at(-1).default_z_layer, 'background');
+  const other = floorManifest(); other.layers[1].default_z_layer = 'foreground';
+  assert.equal(validate(other).layers[1].default_z_layer, undefined, 'a depth this runtime does not know is dropped');
+  for (const [name, mutate] of [['number', m => { m.layers[1].default_z_layer = 7; }], ['object', m => { m.layers[1].default_z_layer = {}; }],
+    ['tier-owned', m => { m.layers[0].default_z_layer = 'background'; }]]) {
+    const m = name === 'tier-owned' ? floorTierManifest() : floorManifest(); mutate(m);
+    assert.throws(() => validate(m), /Invalid VFX layer depth/, name);
+  }
+  console.log('Layer depth validation: PASS (background kept, unknown depth dropped, 3 malformed cases rejected)');
+}
 // Ramp (grayscale + gradient) packs: validation, then a fixture whose mask is a left-to-right gradient.
 const greenLut = Buffer.from(Uint8Array.from({ length: 768 }, (_, i) => i % 3 === 1 ? Math.floor(i / 3) : 0)).toString('base64');
 const rampManifest = (id = 'ramped') => ({ ...empty, id, durationMs: 200, frameCount: 2, fps: 10, scale: 1, origin: { x: 0, y: 0 }, target: { x: 360, y: 0 }, groundSquash: 0.6, anchor: 'caster', cues: [],
@@ -260,6 +281,55 @@ async function impactSmoke(engine) {
     check(parent.children.length === 1 && parent.children[0].children.length === 4 && player.getManifest('impact-v2').impact === undefined, 'unknown impact version plays as flat layers');
     flat.stop();
   } finally { player.destroy(); [parent, bg, ov, fg].forEach(c => c.destroy({ children: true })); }
+}
+async function floorSmoke(engine) {
+  const { app, vfx: existing } = engine === 'v8' ? window.__showcase : window.__v7;
+  const Player = engine === 'v8' ? existing.constructor : window.__v7.VfxPlayer;
+  const Box = app.stage.constructor, player = new Player(app);
+  const check = (ok, message) => { if (!ok) throw Error(`${engine} floor: ${message}`); };
+  const near = (a, b) => Math.abs(a - b) < 1e-6;
+  const parent = new Box(), bg = new Box(); app.stage.addChild(parent, bg);
+  try {
+    await player.load(['/floor.vfxb', '/floor-tier.vfxb']);
+    // The ground layers get their own root beneath the pack root, with its transform, whatever order the manifest lists them in.
+    const from = { x: 100, y: 200 }, to = { x: 460, y: 200 };
+    let h = player.play('floor', { from, to, fitDistance: true, parent });
+    const [under, main] = parent.children;
+    check(parent.children.length === 2, 'an under root and the pack root: ' + parent.children.length);
+    check(under.zIndex === -1 && main.zIndex === 0, 'depth biases ' + [under.zIndex, main.zIndex]);
+    check(under.children.length === 2 && main.children.length === 1, 'ground layers move out of the pack root: ' + [under.children.length, main.children.length]);
+    check(near(under.x, main.x) && near(under.y, main.y) && near(under.scale.x, main.scale.x) && near(under.scale.y, main.scale.y) && near(under.skew.x, main.skew.x), 'the under root shares the pack matrix');
+    check(under.children[0].visible && under.children[1].visible && main.children[0].visible, 'frame 0 visibility');
+    player.update(100.001);
+    check(!under.children[0].visible && under.children[1].visible && main.children[0].visible, 'frame 1: the null ground frame hides, the rest stays');
+    // A mirrored left cast flips the under root exactly like the pack root.
+    const left = player.play('floor', { from: { x: 500, y: 200 }, to: { x: 140, y: 200 }, fitDistance: true, parent });
+    const lu = parent.children[2], lm = parent.children[3];
+    check(lu.scale.x < 0 && Math.sign(lu.scale.x) === Math.sign(lm.scale.x) && near(lu.scale.x, lm.scale.x), 'mirror matches the pack root');
+    left.stop(); h.stop(); await h.finished;
+    check(parent.children.length === 0, 'both roots leave the parent when the play ends: ' + parent.children.length);
+    // Pooled: replaying neither grows the pool nor leaves a stale root behind.
+    const pooled = player.stats().pooled;
+    const again = player.play('floor', { from, parent }); again.stop();
+    check(player.stats().pooled === pooled && parent.children.length === 0, 'replay reuses the pool');
+    // An explicit background container takes the under root; the pack root stays in the parent.
+    h = player.play('floor', { from, to, parent, layers: { background: bg } });
+    check(bg.children.length === 1 && bg.children[0].children.length === 2 && parent.children.length === 1, 'options.layers.background receives the under root');
+    h.stop();
+    // With impact tiers, the ground-feedback tier sits lowest, then the ground layers, then the pack, then the other tiers.
+    h = player.play('floor-tier', { from, to, fitDistance: true, parent });
+    const order = parent.children.map(c => c.zIndex).join();
+    check(parent.children.length === 5 && order === '-1,-1,0,1,2', 'tier roots and under root: ' + order);
+    const [ground, floor, pack] = parent.children;
+    check(ground.children.length === 1 && floor.children.length === 1 && pack.children.length === 1, 'each root holds its own layers: ' + [ground.children.length, floor.children.length, pack.children.length]);
+    check(near(floor.x, pack.x) && near(floor.y, pack.y), 'the under root follows the pack, not the tier anchor');
+    h.stop();
+    // A tier off still hides its layers, and the under root is unaffected.
+    h = player.play('floor-tier', { from, to, fitDistance: true, parent, tiers: { ground_feedback: false } });
+    check(parent.children.length === 4, 'a disabled tier root is not attached, the under root is: ' + parent.children.length);
+    h.stop();
+    app.render();
+  } finally { player.destroy(); [parent, bg].forEach(c => c.destroy({ children: true })); }
 }
 async function juiceSmoke({ engine, mode }) {
   // mode 'filter': Pixi's ColorMatrixFilter is handed to the player (exact flat silhouette); 'overlay': the default, two additive sprites.
@@ -559,6 +629,7 @@ const server = createServer(async (req, res) => {
     if (/^\/ordered-[36]\.vfxb$/.test(path)) { res.end(fixture(orderedManifest(Number(path[9])), orderedSheets)); return; }
     if (path === '/destroy-cue.vfxb') { res.end(fixture(destroyCue, decoded.sheets)); return; }
     if (path === '/loop-cues.vfxb') { res.end(fixture(loopCues, new Map())); return; }
+    if (path === '/floor.vfxb' || path === '/floor-tier.vfxb') { res.end(fixture(path === '/floor.vfxb' ? floorManifest() : floorTierManifest(), impactSheets)); return; }
     if (path === '/impact.vfxb' || path === '/impact-v2.vfxb') { res.end(fixture(impactManifest(path === '/impact.vfxb' ? 1 : 2), impactSheets)); return; }
     if (path === '/actors.vfxb') { res.end(fixture(actors, new Map())); return; }
     if (path === '/aimed.vfxb' || path === '/aimed@90.vfxb') { res.end(fixture(aimed[path === '/aimed.vfxb' ? 0 : 90], new Map())); return; }
@@ -635,6 +706,8 @@ try {
     return c.toDataURL('image/png').split(',')[1]; }), 'base64'));
   await page.evaluate(orderedSmoke, { engine: 'v8', colors: orderedColors, sheetSize: orderedSheetSize });
   await page.evaluate(impactSmoke, 'v8');
+  await page.evaluate(floorSmoke, 'v8');
+  console.log('Pixi v8 ground layers: PASS (under root below the pack with its matrix, mirror, pool, explicit background container, tiers keep their slots)');
   console.log('Pixi v8 impact tiers: PASS (tier roots, anchors on the target, mirror without shear, depth slots, switches, blend advice, tier events, loop, pool, unknown version)');
   await page.evaluate(actorSmoke, 'v8');
   console.log('Pixi v8 actors: PASS (validation, interpolation, mirror/fit, hitstop, stepped flags, legacy, stop/end/reset, loop)');
@@ -740,6 +813,8 @@ try {
   console.log('Pixi v7: PASS (WebGL render, mirror/fitDistance/parent/zIndex, target anchor/nonzero origin, cleanup/pool, custom key, unscrambled, empty pack, shake/hitstop toggles, invalid load, destroy)');
   await page.evaluate(orderedSmoke, { engine: 'v7', colors: orderedColors, sheetSize: orderedSheetSize });
   await page.evaluate(impactSmoke, 'v7');
+  await page.evaluate(floorSmoke, 'v7');
+  console.log('Pixi v7 ground layers: PASS (same contract on Pixi 7)');
   for (const mode of ['overlay', 'filter']) await page.evaluate(juiceSmoke, { engine: 'v7', mode });
   await page.evaluate(flowSmoke, 'v7');
   await page.evaluate(rampSmoke, 'v7');
