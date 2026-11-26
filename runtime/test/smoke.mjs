@@ -455,6 +455,32 @@ async function dissolveSmoke(engine) {
     }
     check(GroundDissolveFilter.supported(app) && !GroundDissolveFilter.supported({ renderer: { name: 'webgpu' } }), 'supported only on WebGL');
     const r = app.renderer.resolution;
+    {
+      // Radial mask on an opaque 120x72 quad, with noise that never erodes it below 0.6 progress (no cut, no rim).
+      const white = document.createElement('canvas'); white.width = white.height = 4; const wctx = white.getContext('2d'); wctx.fillStyle = '#fff'; wctx.fillRect(0, 0, 4, 4);
+      const quad = new g.Sprite(g.Texture.WHITE), mask = new GroundDissolveFilter({ noise: g.Texture.from(white) });
+      quad.anchor.set(0.5); quad.width = 120; quad.height = 72; quad.filters = [mask]; app.stage.addChild(quad);
+      const red = (x, y) => { app.render(); const c = document.createElement('canvas'); c.width = app.canvas.width; c.height = app.canvas.height;
+        const ctx = c.getContext('2d'); ctx.drawImage(app.canvas, 0, 0); return ctx.getImageData(Math.floor(x * r), Math.floor(y * r), 1, 1).data[0]; };
+      check(Math.abs(mask.maskFalloff - 0.7) < 1e-6 && mask.maskSquash === 1 && mask.sprite === null, 'mask defaults: ' + [mask.maskFalloff, mask.maskSquash, mask.sprite]);
+      for (const sprite of [null, quad]) {
+        mask.sprite = sprite; quad.rotation = 0; quad.position.set(100, 76); mask.progress = 0.5;
+        const centre = red(100, 76), corner = red(42, 42), side = red(41, 76), inner = red(100 - 0.6 * 60, 76), tag = sprite ? 'sprite' : 'bounds';
+        check(centre > 250 && inner > 250 && corner === 0 && side < 8, `${tag}: the mask clears the quad border: ` + [centre, inner, corner, side]);
+        mask.maskSquash = 0.6; const squashed = red(100, 76 - 0.8 * 36); mask.maskSquash = 1;
+        check(squashed === 0 && red(100, 76 - 0.8 * 36) > 0, `${tag}: maskSquash narrows the ellipse: ` + squashed);
+        mask.progress = 0; const unmasked = red(42, 42); mask.progress = 0.125; const easing = red(42, 42);
+        check(unmasked > 250 && easing > 0 && easing < unmasked, `${tag}: the decal eases into the mask, no pop at the window start: ` + [unmasked, easing]);
+      }
+      // On the sprite, the mask follows a rotated quad and stays on its centre when the quad is half off screen.
+      mask.progress = 0.5; quad.position.set(0, 76);
+      check(red(1, 76) > 250, 'a quad half off screen keeps the mask on its own centre: ' + red(1, 76));
+      quad.position.set(300, 200); quad.rotation = Math.PI / 4;
+      const edge = red(300 + 58.2 * Math.SQRT1_2, 200 + 58.2 * Math.SQRT1_2), mid = red(300, 200);
+      mask.sprite = null; const boundsEdge = red(300 + 58.2 * Math.SQRT1_2, 200 + 58.2 * Math.SQRT1_2);
+      check(mid > 250 && edge < 20 && boundsEdge > 60, 'the mask follows the rotated frame, not its screen bounds: ' + [mid, edge, boundsEdge]);
+      quad.destroy(); mask.destroy();
+    }
     const grab = () => { app.render(); const canvas = app.canvas, copy = document.createElement('canvas'); copy.width = canvas.width; copy.height = canvas.height;
       const ctx = copy.getContext('2d'); ctx.drawImage(canvas, 0, 0); return ctx.getImageData(Math.floor(200 * r), Math.floor(170 * r), Math.floor(60 * r), Math.floor(60 * r)).data; };
     const lit = d => { let n = 0; for (let i = 0; i < d.length; i += 4) if (d[i] > 60) n++; return n; };
@@ -469,6 +495,7 @@ async function dissolveSmoke(engine) {
     const filter = decal.filters?.[0], glowFilter = glow.filters?.[0];
     check(filter instanceof GroundDissolveFilter && glowFilter instanceof GroundDissolveFilter && filter !== glowFilter && !under.filters?.length && player.stats().dissolving === 2,
       'the window starts one filter per ground layer');
+    check(filter.sprite === decal && glowFilter.sprite === glow, 'each filter masks in its own sprite\'s frame');
     // Each filter composites with its layer's blend: an additive glow keeps adding light instead of covering the ground.
     check(!spark.visible && !spark.filters?.length, 'a layer that appears later is not filtered yet');
     check(filter.blendMode === 'normal' && glowFilter.blendMode === 'add', 'filters keep the layer blend: ' + [filter.blendMode, glowFilter.blendMode]);
@@ -490,6 +517,7 @@ async function dissolveSmoke(engine) {
     check(rim(mid) > 0 && rim(early) <= rim(mid) + full, 'the eroding boundary burns orange: ' + rim(mid));
     player.update(100);
     check(!decal.filters?.length && !glow.filters?.length && player.stats().dissolving === 0 && !decal.visible, 'the window ends: filters off, layers gone');
+    check(filter.sprite === null && glowFilter.sprite === null, 'ended filters let go of their sprites');
     h.stop();
     // Pooled: the next play reuses the same filter; stopping mid-dissolve hands it back.
     const again = player.play('dissolve', { from, parent }), d2 = parent.children[0].children;

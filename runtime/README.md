@@ -40,7 +40,7 @@ handles rectangle textures, blend constants and ticker differences internally.
     default 1. Loading another direction of a skill at the limit evicts its least
     recently loaded or played direction: its plays stop and its atlas textures are
     destroyed. Use 2 to cross-fade between directions, `Infinity` to keep them all.
-  - `groundDissolve`: `{ filter: GroundDissolveFilter, ms?, edgeWidth?, edgeColor?, edgeIntensity?, noiseScale? }` erodes expiring ground decals along noise
+  - `groundDissolve`: `{ filter: GroundDissolveFilter, ms?, edgeWidth?, edgeColor?, edgeIntensity?, noiseScale?, maskFalloff?, maskSquash? }` erodes expiring ground decals along noise
     (see [Ground dissolve](#ground-dissolve)). Off by default.
 - `load(url | url[])` → `Promise<void>` accepts `.vfx.json` and `.vfxb`, including
   default-scrambled and unscrambled containers. Concurrent identical URLs share
@@ -230,11 +230,21 @@ threshold are cut (`smoothstep(threshold - uEdgeWidth, threshold, noise)`), and 
 `uEdgeColor * uEdgeIntensity`. The threshold is `uProgress * (1 + uEdgeWidth)`, so the decal is fully gone at 1. The noise is the same
 shared 64x64 texture `FlowTrail` uses, offset per play so neighbouring decals erode differently.
 
+An elliptical falloff mask then keeps the quad's border at zero alpha: with the layer's frame mapped to -1..1 on both axes, the
+mask is `1 - smoothstep(maskFalloff, 1, length(vec2(x, y / maskSquash)))`. It applies to the burning rim at once, so faint texels at a
+frame's edges never burn its rectangle, and eases onto the decal over the first quarter of the erosion, so the held frame does not
+lose its corners in one step. The player sets `filter.sprite` to the layer's sprite, so the mask follows the frame through the cast's
+rotation, shear and mirroring and stays centred when the decal is partly off screen; with `sprite` null it is measured in the
+filtered bounds. `maskFalloff` (default 0.7) is where the fade starts; `maskSquash` (default 1) narrows the ellipse vertically.
+Baked ground frames already carry the camera's ground squash (they are about 0.6 as tall as wide), so the default ellipse fills the
+frame; lower values crop the top and bottom of the decal.
+
 Filters are pooled: one per ground layer currently dissolving, composited with that layer's blend mode (an additive glow keeps
 adding light), reused across plays and returned on finish, stop or unload. The per-frame
 cost is one uniform write; nothing is allocated while a decal erodes. `stats().dissolving` counts the active ones.
 
-`new GroundDissolveFilter(options)` also works on its own on any Pixi 8 container: set `filter.progress` from 0 to 1.
+`new GroundDissolveFilter(options)` also works on its own on any Pixi 8 container: set `filter.progress` from 0 to 1 (and
+`filter.sprite` when it is on a sprite).
 
 ## Gradient ramps
 
