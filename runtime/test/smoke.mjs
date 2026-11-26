@@ -541,6 +541,14 @@ async function dissolveSmoke(engine) {
     const oa = fa.resources.dissolve.uniforms.uNoiseOffset, ob = fb.resources.dissolve.uniforms.uNoiseOffset;
     check(oa[0] !== ob[0] || oa[1] !== ob[1], 'side-by-side decals erode differently');
     a.stop(); b.stop();
+    // A pack's ground_dissolve.edge_color tints the pooled filter while it is on that pack, then the player's own colour returns.
+    await player.load('/dissolve-ember.vfxb');
+    const ember = player.play('dissolve-ember', { from, parent });
+    player.update(700);
+    const fe = parent.children[0].children[0].filters?.[0];
+    check(fe instanceof GroundDissolveFilter && fe.edgeColor === 0x7a2410, 'the pack\'s edge colour tints its filter: ' + fe?.edgeColor?.toString(16));
+    ember.stop();
+    check(fe.edgeColor === 0xff8a2a, 'the filter gets its own edge colour back: ' + fe.edgeColor.toString(16));
   } finally { player.destroy(); parent.destroy({ children: true }); }
 }
 async function juiceSmoke({ engine, mode }) {
@@ -832,6 +840,7 @@ const server = createServer(async (req, res) => {
     if (path === '/v8.html') { res.setHeader('Content-Type', 'text/html'); res.end('<link rel="icon" href="data:,"><script type="module" src="/v8.js"></script>'); return; }
     if (path === '/v8.js') { res.setHeader('Content-Type', 'text/javascript'); res.end(v8Bundle.outputFiles[0].contents); return; }
     if (path === '/dissolve.vfxb') { res.end(fixture(dissolveManifest(), dissolveSheets)); return; }
+    if (path === '/dissolve-ember.vfxb') { res.end(fixture({ ...dissolveManifest(), id: 'dissolve-ember', ground_dissolve: { edge_color: '#7a2410' } }, dissolveSheets)); return; }
     if (path === '/ramped.vfxb') { res.end(fixture(rampManifest(), rampSheets)); return; }
     if (path === '/juice.vfxb') { res.end(fixture(juiceManifest, impactSheets)); return; }
     if (path === '/v7.html') { res.setHeader('Content-Type', 'text/html'); res.end('<link rel="icon" href="data:,"><script type="module" src="/v7.js"></script>'); return; }

@@ -145,6 +145,7 @@ export class GroundDissolveFilter extends (PIXI.Filter as unknown as new (option
   set maskFalloff(value: number) { this.u.uMask[0] = Math.max(0, Math.min(0.999, value)); }
   get maskSquash(): number { return this.u.uMask[1]; }
   set maskSquash(value: number) { this.u.uMask[1] = Math.max(0.05, Math.min(1, value)); }
+  get edgeColor(): number { const c = this.u.uEdgeColor; return Math.round(c[0] * 255) << 16 | Math.round(c[1] * 255) << 8 | Math.round(c[2] * 255); }
   set edgeColor(value: number) { const c = this.u.uEdgeColor; c[0] = (value >> 16 & 255) / 255; c[1] = (value >> 8 & 255) / 255; c[2] = (value & 255) / 255; }
   /** Shifts the noise so decals that dissolve side by side do not erode in the same pattern. Any number; only its fraction matters. */
   seed(value: number): void { const o = this.u.uNoiseOffset; o[0] = value * 0.618034 % 1; o[1] = value * 0.414214 % 1; }

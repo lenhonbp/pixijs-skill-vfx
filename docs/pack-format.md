@@ -96,6 +96,12 @@ carries the field. `background` is the only value a plain layer may use today; a
 additive: `version` stays 1, and readers that ignore it still draw every layer in array order.
 `@lenhonbp/pixijs-vfx-runtime` 1.4 places these layers (see its README).
 
+### Ground dissolve colour (optional)
+
+`"ground_dissolve": { "edge_color": "#7a2410" }` gives the rim colour a reader's ground dissolve (noise erosion of expiring
+ground layers) burns this pack's decals with, instead of the reader's own colour. Readers without a ground dissolve ignore it.
+`@lenhonbp/pixijs-vfx-runtime` 2.3 sets it on `GroundDissolveFilter.edgeColor` while the filter is on that pack.
+
 ### Impact tiers (optional)
 
 Impact sprites tagged by the factory are kept in their own layers (`hit-point-*`, `ground-feedback-*`,

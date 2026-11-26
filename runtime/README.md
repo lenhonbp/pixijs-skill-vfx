@@ -224,6 +224,9 @@ const vfx = new VfxPlayer(app, {
 });
 ```
 
+A pack whose manifest has `ground_dissolve.edge_color` (see the [pack format](../docs/pack-format.md)) overrides `edgeColor` for its own
+decals; the filter gets the player's colour back when it is released.
+
 For each ground root (the under root and each background tier) the player takes the last `ms` of the ground layers' visible span (at most 40% of it), holds the baked frame at
 the start of that window and erodes it: `uProgress` runs 0 to 1 across the window, pixels whose noise value falls under the
 threshold are cut (`smoothstep(threshold - uEdgeWidth, threshold, noise)`), and the band just above it is tinted with

@@ -69,6 +69,8 @@ export interface Manifest {
   actors?: Partial<Record<ActorName, ActorTrack>>;
   /** Present on packs baked with the anchor map; see AnchorMeta. Absent or unknown versions are ignored. */
   anchors?: AnchorMeta;
+  /** Rim colour (`#rrggbb`) the player's ground dissolve filter burns this pack's ground layers with, instead of its own. */
+  ground_dissolve?: { edge_color: string };
 }
 const TIER_IDS = ['hit_point', 'ground_feedback', 'body_residual'];
 const ANCHORS = ['contact_normal', 'ground_center', 'body_center'];
@@ -133,6 +135,12 @@ function validateColor(m: Manifest) {
   if (c.lut !== undefined && (typeof c.lut !== 'string' || !/^[A-Za-z0-9+/]{1024}$/.test(c.lut))) bad('lut');
   for (const layer of m.layers) if (layer.ramp !== undefined && (layer.ramp !== true || layer.blend !== 'add')) bad(`layer ${layer.name} must be additive to be a ramp layer`);
 }
+/** A ground dissolve block that is not an object is dropped; one with a malformed edge colour is an error. */
+function validateGroundDissolve(m: Manifest) {
+  const g = m.ground_dissolve as any;
+  if (!g || typeof g !== 'object' || Array.isArray(g)) { delete m.ground_dissolve; return; }
+  if (typeof g.edge_color !== 'string' || !/^#[0-9a-fA-F]{6}$/.test(g.edge_color)) throw Error('Invalid VFX ground dissolve: edge_color');
+}
 /** A depth hint this runtime does not know is dropped (the layer then keeps the pack's depth); a malformed one, or one on a tier's layer, is an error. */
 function validateLayerDepth(m: Manifest) {
   const owned = new Set((m.impact?.tiers ?? []).flatMap(t => t.layers));
@@ -161,6 +169,7 @@ export function validate(value: unknown): Manifest {
   if (m.color !== undefined) validateColor(m);
   if (m.impact !== undefined) validateImpact(m);
   if (m.anchors !== undefined) validateAnchors(m);
+  if (m.ground_dissolve !== undefined) validateGroundDissolve(m);
   validateLayerDepth(m);
   if (m.actors !== undefined) {
     if (!m.actors || typeof m.actors !== 'object' || Array.isArray(m.actors)) throw Error('Invalid VFX actors');

@@ -115,7 +115,8 @@ export interface GroundDissolveSettings {
 /** What the player needs from a dissolve filter: GroundDissolveFilter, or your own with the same members. */
 /** `params`, when present, is a typed array whose [0] the player writes progress into (no setter call per frame). */
 /** `sprite`, when present, is set to the ground layer's sprite while the filter is on it and back to null after. */
-export interface DissolveFilter { progress: number; params?: Float32Array; sprite?: Sprite | null; blendMode: unknown; seed(value: number): void; destroy(): void }
+/** `edgeColor`, when readable and writable, is set to a pack's `ground_dissolve.edge_color` while the filter is on that pack. */
+export interface DissolveFilter { progress: number; params?: Float32Array; sprite?: Sprite | null; edgeColor?: number; blendMode: unknown; seed(value: number): void; destroy(): void }
 export interface ActorPose { x: number; y: number; lift: number; visible: boolean; facing: number }
 export interface Playback {
   stop(): void;
@@ -149,6 +150,8 @@ interface Pack {
   lastUsed: number;
   /** Ground dissolve windows; null when the player does not dissolve or the pack has no ground layers to dissolve. */
   ground: GroundPlan | null;
+  /** The manifest's ground dissolve rim colour, -1 when it has none. */
+  edgeColor: number;
   /** Event numbers held as heap numbers, so copying one into a reused event allocates nothing: per impact tier its normal
    *  facing right then left, per cue its amp then ms (undefined where the pack has none). */
   tierNormals: (number | undefined)[]; cueNums: (number | undefined)[];
@@ -346,7 +349,7 @@ export class VfxPlayer {
   /** The ramp shader runs on Pixi 8 + WebGL only; elsewhere ramp layers are drawn as tinted sprites. */
   private rampGpu: boolean;
   private dead = false;
-  private dissolve: { settings: GroundDissolveSettings; ms: number; pool: Pool<DissolveFilter>; lists: Map<DissolveFilter, DissolveFilter[]>; seed: number } | null = null;
+  private dissolve: { settings: GroundDissolveSettings; ms: number; pool: Pool<DissolveFilter>; lists: Map<DissolveFilter, DissolveFilter[]>; seed: number; edgeColor?: number } | null = null;
   private loading = new Map<string, Promise<void>>();
   private requestSerial = 0;
   private cancelledLoads = new Map<string, number>();
@@ -363,7 +366,12 @@ export class VfxPlayer {
       if (typeof dissolve.filter !== 'function' || (dissolve.ms !== undefined && !(dissolve.ms > 0))) throw Error('Invalid groundDissolve');
       if (this.rampGpu) {
         const { filter: Filter, ms, ...look } = dissolve;
-        this.dissolve = { settings: dissolve, ms: ms ?? 600, pool: new Pool(() => new Filter(look)), lists: new Map(), seed: 0 };
+        const d = this.dissolve = { settings: dissolve, ms: ms ?? 600, pool: new Pool<DissolveFilter>(() => {
+          const filter = new Filter(look);
+          // The filter's own rim colour, restored after a pack with its own colour lets the filter go.
+          if (d.edgeColor === undefined && typeof filter.edgeColor === 'number') d.edgeColor = filter.edgeColor;
+          return filter;
+        }), lists: new Map(), seed: 0, edgeColor: undefined as number | undefined };
       }
     }
     app.ticker.add(this.tick);
@@ -435,6 +443,7 @@ export class VfxPlayer {
       let nativeRow = -1;
       if (manifest.color?.lut) nativeRow = this.ramps().addLut(`native:${key}`, Uint8Array.from(atob(manifest.color.lut), ch => ch.charCodeAt(0)));
       const pack: Pack = { manifest, sheets: [...textures.values()], frames, rampSheets, nativeRow, lastUsed: ++this.useClock, ground: this.dissolve ? groundPlan(manifest, rampSheets, this.dissolve.ms) : null,
+        edgeColor: manifest.ground_dissolve ? parseInt(manifest.ground_dissolve.edge_color.slice(1), 16) : -1,
         tierNormals: tierNormals(manifest), cueNums: cueNums(manifest) };
       this.packs.set(key, pack);
       this.families.set(manifest.id, [...(this.families.get(manifest.id) ?? []), pack]);
@@ -734,6 +743,7 @@ export class VfxPlayer {
       const d = this.dissolve!;
       filter = a.dissolves[li] = d.pool.acquire();
       filter.seed(a.dissolveSeed); filter.blendMode = sprite.blendMode; if ('sprite' in filter) filter.sprite = sprite;
+      if (a.pack.edgeColor >= 0 && d.edgeColor !== undefined) filter.edgeColor = a.pack.edgeColor;
       let list = d.lists.get(filter);
       if (!list) d.lists.set(filter, list = [filter]);
       (sprite as any).filters = list;
@@ -746,7 +756,9 @@ export class VfxPlayer {
   private endDissolve(a: Active, li: number) {
     const filter = a.dissolves[li]!, sprite = a.sprites[li];
     if (sprite) (sprite as any).filters = null;
-    filter.progress = 0; if ('sprite' in filter) filter.sprite = null; a.dissolves[li] = null; this.dissolve!.pool.release(filter);
+    const d = this.dissolve!;
+    if (a.pack.edgeColor >= 0 && d.edgeColor !== undefined) filter.edgeColor = d.edgeColor;
+    filter.progress = 0; if ('sprite' in filter) filter.sprite = null; a.dissolves[li] = null; d.pool.release(filter);
   }
   /** Writes a ramp layer's quad for the current frame: into the tier's anchored space, or through the pack matrix. */
   private drawQuads(a: Active, li: number, f: Frame, plan: TierPlan | undefined, mx: Float64Array, anchor: Point) {
