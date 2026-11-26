@@ -49,6 +49,24 @@ no longer the live one or a rollback target.
 6. Only after a release has been live and checked: remove `showcase/public/packs/free/*.vfxb` from
    the tree, keeping `index.json`.
 
+## Uploading a staged release yourself
+
+When a release is staged outside the factory's hosted workflow (its id already in `showcase/public/packs-release.json`
+and its `index.json` already committed), push it with [`scripts/upload-r2-release.sh`](../scripts/upload-r2-release.sh).
+It needs the AWS CLI, Node and an R2 API token's S3 credentials in the environment; no secret is stored in the repo.
+
+```sh
+export AWS_ACCESS_KEY_ID=... AWS_SECRET_ACCESS_KEY=... R2_ENDPOINT=https://<account-id>.r2.cloudflarestorage.com
+scripts/upload-r2-release.sh --stage /path/to/stage --previous <live release id>           # dry run
+scripts/upload-r2-release.sh --stage /path/to/stage --previous <live release id> --apply   # upload
+node scripts/verify-remote-packs.mjs <base>/<new release id>
+```
+
+The stage directory holds the re-baked `.vfxb` files, the release's `index.json` and an optional `SHA256SUMS`. The script
+checks them against the committed index, refuses an existing release id, copies the previous release server side into
+`lenhon-vfx-packs/free/<release-id>/` (`R2_BUCKET` / `R2_PREFIX` override), uploads the staged containers and uploads
+`index.json` last. Merge the pointer PR only after the verifier passes.
+
 ## Known limits
 
 - Per-pack download buttons use `Content-Disposition: attachment`, which the factory sets on every object.
