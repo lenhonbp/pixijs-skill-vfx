@@ -62,6 +62,20 @@ for (const n of names) {
   if (sizes.get(n) !== bytes) throw Error(`${n}: ${bytes} bytes, index says ${sizes.get(n)}`);
 }
 console.log(`${names.length} staged containers match the index`);' "$stage" "$index"
+# Every file the previous release does not already hold at its indexed size must be staged, or index.json would list a
+# stale container and the release (immutable once its index is up) could not be retried.
+base="$(node -e 'const p = JSON.parse(require("fs").readFileSync(process.argv[1], "utf8")); process.stdout.write(p.base.replace(/\/+$/, ""))' "$pointer")"
+node -e '
+const fs = require("fs"), [stage, index, url] = process.argv.slice(1);
+const flat = list => { const m = new Map(); for (const p of list) for (const v of [p, ...Object.values(p.directions ?? {})]) for (const f of v.files) m.set(f.name, f.bytes); return m; };
+(async () => {
+  const response = await fetch(url);
+  if (!response.ok) throw Error(`${url}: HTTP ${response.status}`);
+  const previous = flat(await response.json()), staged = new Set(fs.readdirSync(stage));
+  const missing = [...flat(JSON.parse(fs.readFileSync(index, "utf8")))].filter(([n, b]) => !staged.has(n) && previous.get(n) !== b).map(([n]) => n);
+  if (missing.length) throw Error(`not staged and not in the previous release at the indexed size: ${missing.join(", ")}`);
+  console.log("every other indexed file is in the previous release at its indexed size");
+})().catch(e => { console.error("error: " + e.message); process.exit(1); });' "$stage" "$index" "$base/$previous/index.json"
 if [ -f "$stage/SHA256SUMS" ]; then (cd "$stage" && sha256sum --quiet -c SHA256SUMS) || fail 'SHA256SUMS check failed'; fi
 
 common=(--endpoint-url "$R2_ENDPOINT" --only-show-errors)
@@ -84,6 +98,5 @@ run s3 sync "s3://$bucket/$prefix/$previous/" "$dest" "${common[@]}" --exclude i
 for file in "$stage"/*.vfxb; do put "$file"; done
 put "$stage/index.json"
 
-base="$(node -e 'const p = JSON.parse(require("fs").readFileSync(process.argv[1], "utf8")); process.stdout.write(p.base.replace(/\/+$/, ""))' "$pointer")"
 if [ "$apply" = 1 ]; then echo "Uploaded $release. Verify:"; else echo "Dry run (add --apply to upload). After uploading, verify:"; fi
 echo "  node scripts/verify-remote-packs.mjs $base/$release"
