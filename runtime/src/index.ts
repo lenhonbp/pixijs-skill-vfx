@@ -114,7 +114,8 @@ export interface GroundDissolveSettings {
 }
 /** What the player needs from a dissolve filter: GroundDissolveFilter, or your own with the same members. */
 /** `params`, when present, is a typed array whose [0] the player writes progress into (no setter call per frame). */
-export interface DissolveFilter { progress: number; params?: Float32Array; blendMode: unknown; seed(value: number): void; destroy(): void }
+/** `sprite`, when present, is set to the ground layer's sprite while the filter is on it and back to null after. */
+export interface DissolveFilter { progress: number; params?: Float32Array; sprite?: Sprite | null; blendMode: unknown; seed(value: number): void; destroy(): void }
 export interface ActorPose { x: number; y: number; lift: number; visible: boolean; facing: number }
 export interface Playback {
   stop(): void;
@@ -732,7 +733,7 @@ export class VfxPlayer {
     if (!filter) {
       const d = this.dissolve!;
       filter = a.dissolves[li] = d.pool.acquire();
-      filter.seed(a.dissolveSeed); filter.blendMode = sprite.blendMode;
+      filter.seed(a.dissolveSeed); filter.blendMode = sprite.blendMode; if ('sprite' in filter) filter.sprite = sprite;
       let list = d.lists.get(filter);
       if (!list) d.lists.set(filter, list = [filter]);
       (sprite as any).filters = list;
@@ -745,7 +746,7 @@ export class VfxPlayer {
   private endDissolve(a: Active, li: number) {
     const filter = a.dissolves[li]!, sprite = a.sprites[li];
     if (sprite) (sprite as any).filters = null;
-    filter.progress = 0; a.dissolves[li] = null; this.dissolve!.pool.release(filter);
+    filter.progress = 0; if ('sprite' in filter) filter.sprite = null; a.dissolves[li] = null; this.dissolve!.pool.release(filter);
   }
   /** Writes a ramp layer's quad for the current frame: into the tier's anchored space, or through the pack matrix. */
   private drawQuads(a: Active, li: number, f: Frame, plan: TierPlan | undefined, mx: Float64Array, anchor: Point) {
