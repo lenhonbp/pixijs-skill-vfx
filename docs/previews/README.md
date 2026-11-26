@@ -348,3 +348,18 @@ before (main cd12ac2): row-to-row luminance step image (a seam shows as a bright
 before (main cd12ac2): ground-under-glow-back layer only, 4x zoom (yellow dashes = feet line).
 
 ![seal-silence_before_seam-zoom.png](seal-silence_before_seam-zoom.png)
+
+## kim-golden-bell: third blocked hit shatters the bell
+
+Before = factory `main`; after = the Golden Bell shatter PR. The baker casts with one attacker, so on `main` only one
+projectile fired, the bell rang once and never broke. After: three blocked attacks (ring, ring + cracks, shatter).
+Desktop preset, aim 0°.
+
+![Golden Bell shatter sheet](sheet_golden-bell-shatter.png)
+
+| Frame | Before (main) | After (this PR) |
+|---|---|---|
+| 1300 ms, aim 0°, hit 1: bell rings | ![](golden-bell-shatter_before_1300ms.png) | ![](golden-bell-shatter_after_1300ms.png) |
+| 1850 ms, aim 0°, hit 2: rings, crack overlay appears | ![](golden-bell-shatter_before_1850ms.png) | ![](golden-bell-shatter_after_1850ms.png) |
+| 2417 ms, aim 0°, hit 3: bell shatters into fragments | ![](golden-bell-shatter_before_2420ms.png) | ![](golden-bell-shatter_after_2420ms.png) |
+| 2750 ms, aim 0°, fragments fall and bounce | ![](golden-bell-shatter_before_2750ms.png) | ![](golden-bell-shatter_after_2750ms.png) |
