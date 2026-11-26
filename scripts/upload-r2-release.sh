@@ -65,17 +65,22 @@ console.log(`${names.length} staged containers match the index`);' "$stage" "$in
 # Every file the previous release does not already hold at its indexed size must be staged, or index.json would list a
 # stale container and the release (immutable once its index is up) could not be retried.
 base="$(node -e 'const p = JSON.parse(require("fs").readFileSync(process.argv[1], "utf8")); process.stdout.write(p.base.replace(/\/+$/, ""))' "$pointer")"
+# The previous index comes from the bucket itself with --apply, else (dry run, no credentials) from the public base URL.
+previous_index="$(mktemp)"; trap 'rm -f "$previous_index"' EXIT
+if [ "$apply" = 1 ]; then
+  aws s3 cp "s3://$bucket/$prefix/$previous/index.json" "$previous_index" --endpoint-url "$R2_ENDPOINT" --only-show-errors || fail "previous release $previous not found"
+else
+  curl -fsS "$base/$previous/index.json" -o "$previous_index" || fail "cannot read $base/$previous/index.json"
+fi
 node -e '
-const fs = require("fs"), [stage, index, url] = process.argv.slice(1);
+const fs = require("fs"), [stage, index, previousIndex] = process.argv.slice(1);
 const flat = list => { const m = new Map(); for (const p of list) for (const v of [p, ...Object.values(p.directions ?? {})]) for (const f of v.files) m.set(f.name, f.bytes); return m; };
-(async () => {
-  const response = await fetch(url);
-  if (!response.ok) throw Error(`${url}: HTTP ${response.status}`);
-  const previous = flat(await response.json()), staged = new Set(fs.readdirSync(stage));
+{
+  const previous = flat(JSON.parse(fs.readFileSync(previousIndex, "utf8"))), staged = new Set(fs.readdirSync(stage));
   const missing = [...flat(JSON.parse(fs.readFileSync(index, "utf8")))].filter(([n, b]) => !staged.has(n) && previous.get(n) !== b).map(([n]) => n);
-  if (missing.length) throw Error(`not staged and not in the previous release at the indexed size: ${missing.join(", ")}`);
+  if (missing.length) { console.error(`error: not staged and not in the previous release at the indexed size: ${missing.join(", ")}`); process.exit(1); }
   console.log("every other indexed file is in the previous release at its indexed size");
-})().catch(e => { console.error("error: " + e.message); process.exit(1); });' "$stage" "$index" "$base/$previous/index.json"
+}' "$stage" "$index" "$previous_index"
 if [ -f "$stage/SHA256SUMS" ]; then (cd "$stage" && sha256sum --quiet -c SHA256SUMS) || fail 'SHA256SUMS check failed'; fi
 
 common=(--endpoint-url "$R2_ENDPOINT" --only-show-errors)
