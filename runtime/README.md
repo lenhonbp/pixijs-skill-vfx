@@ -40,7 +40,7 @@ handles rectangle textures, blend constants and ticker differences internally.
     default 1. Loading another direction of a skill at the limit evicts its least
     recently loaded or played direction: its plays stop and its atlas textures are
     destroyed. Use 2 to cross-fade between directions, `Infinity` to keep them all.
-  - `groundDissolve`: `{ filter: GroundDissolveFilter, ms?, edgeWidth?, edgeColor?, edgeIntensity?, noiseScale? }` erodes expiring ground decals along noise
+  - `groundDissolve`: `{ filter: GroundDissolveFilter, ms?, edgeWidth?, edgeColor?, edgeIntensity?, noiseScale?, maskFalloff?, maskSquash? }` erodes expiring ground decals along noise
     (see [Ground dissolve](#ground-dissolve)). Off by default.
 - `load(url | url[])` → `Promise<void>` accepts `.vfx.json` and `.vfxb`, including
   default-scrambled and unscrambled containers. Concurrent identical URLs share
@@ -229,6 +229,13 @@ the start of that window and erodes it: `uProgress` runs 0 to 1 across the windo
 threshold are cut (`smoothstep(threshold - uEdgeWidth, threshold, noise)`), and the band just above it is tinted with
 `uEdgeColor * uEdgeIntensity`. The threshold is `uProgress * (1 + uEdgeWidth)`, so the decal is fully gone at 1. The noise is the same
 shared 64x64 texture `FlowTrail` uses, offset per play so neighbouring decals erode differently.
+
+The result, rim included, then goes through an elliptical falloff mask measured in the layer's quad: with the quad mapped to
+-1..1 on both axes, alpha is scaled by `1 - smoothstep(maskFalloff, 1, length(vec2(x, y / maskSquash)))`, so it reaches zero
+before the quad's border and faint texels at a frame's edges never show its rectangle. `maskFalloff` (default 0.7) is where the
+fade starts; `maskSquash` (default 1) narrows the ellipse vertically. Baked ground frames already carry the camera's ground squash
+(they are about 0.6 as tall as wide), so the default ellipse fills the quad; lower values crop the top and bottom of the decal.
+The filter keeps `clipToViewport` off so a decal partly off screen keeps its mask centred on the whole quad.
 
 Filters are pooled: one per ground layer currently dissolving, composited with that layer's blend mode (an additive glow keeps
 adding light), reused across plays and returned on finish, stop or unload. The per-frame

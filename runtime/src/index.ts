@@ -107,10 +107,10 @@ export interface PlayerOptions {
 }
 /** The player's ground dissolve: the filter class plus its look. See `PlayerOptions.groundDissolve`. */
 export interface GroundDissolveSettings {
-  filter: new (options?: { edgeWidth?: number; edgeColor?: number; edgeIntensity?: number; noiseScale?: number }) => DissolveFilter;
+  filter: new (options?: { edgeWidth?: number; edgeColor?: number; edgeIntensity?: number; noiseScale?: number; maskFalloff?: number; maskSquash?: number }) => DissolveFilter;
   /** Length of the erosion in ms. Default 600. */
   ms?: number;
-  edgeWidth?: number; edgeColor?: number; edgeIntensity?: number; noiseScale?: number;
+  edgeWidth?: number; edgeColor?: number; edgeIntensity?: number; noiseScale?: number; maskFalloff?: number; maskSquash?: number;
 }
 /** What the player needs from a dissolve filter: GroundDissolveFilter, or your own with the same members. */
 /** `params`, when present, is a typed array whose [0] the player writes progress into (no setter call per frame). */
