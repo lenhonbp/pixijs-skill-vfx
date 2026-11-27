@@ -209,6 +209,30 @@
       "tier": "free",
       "status": "available",
       "description": "A spreading hex binds and weighs down enemies, leaving a sickly, draining curse."
+    },
+    {
+      "id": "moc-combo-bind",
+      "packId": "moc-combo-bind",
+      "collectionId": "free-collection",
+      "tier": "free",
+      "status": "available",
+      "description": "A jade rune roots thorny vines that creep to the target, bind it and plant the first parasite seed."
+    },
+    {
+      "id": "moc-combo-spores",
+      "packId": "moc-combo-spores",
+      "collectionId": "free-collection",
+      "tier": "free",
+      "status": "available",
+      "description": "Two volleys of virulent moss spores burst on the target and grow the parasite to three seeds."
+    },
+    {
+      "id": "moc-combo-rupture",
+      "packId": "moc-combo-rupture",
+      "collectionId": "free-collection",
+      "tier": "free",
+      "status": "available",
+      "description": "Ironwood brambles erupt under the target; at three parasite seeds they detonate in a storm of thorn shards."
     }
   ]
 }

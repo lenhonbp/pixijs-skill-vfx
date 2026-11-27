@@ -206,7 +206,7 @@ export async function showcaseSmoke({ page, browser, url, collection }) {
     assert.equal(await linkPage.locator('#selected-vi').textContent(), collection.find(p => p.id === 'phong-tailwind').name.vi);
     assert.match(await linkPage.locator('#description').textContent(), /.+/);
     assert.equal(await linkPage.locator('[data-tier]').count(), 0);
-    assert.equal(await linkPage.locator('.skill').count(), 25);
+    assert.equal(await linkPage.locator('.skill').count(), 28);
     await linkPage.locator('.skill').filter({ hasText: 'Golden Edge' }).click();
     await linkPage.waitForFunction(() => location.hash === '#kim-golden-edge' && document.getElementById('status').textContent.startsWith('Playing'));
     assert.equal(await linkPage.evaluate(() => window.__showcase.vfx.stats().packs), 1);
