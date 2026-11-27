@@ -26,7 +26,8 @@ jobs:
         with:
           path: showcase/public/packs/free
           key: free-packs-${{ hashFiles('showcase/public/packs/free/index.json') }}
-      - run: node skills/lenhon-vfx/scripts/fetch-packs.mjs --all --out showcase/public/packs/free
+      # Test the release this commit points to, not the one the live site serves (they differ on a pointer PR).
+      - run: node skills/lenhon-vfx/scripts/fetch-packs.mjs --all --out showcase/public/packs/free --source "$(node -p "const p=require('./showcase/public/packs-release.json');p.base.replace(/\/+$/,'')+'/'+p.release+'/'")"
       - name: Build the showcase against the local restored packs
         run: npm run build
         env:

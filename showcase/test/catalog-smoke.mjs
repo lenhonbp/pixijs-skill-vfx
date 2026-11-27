@@ -25,14 +25,14 @@ function observePublicRequests(page) {
 }
 
 async function expectFreeCatalog(page, collection) {
-  assert.equal(collection.length, 25);
+  assert.equal(collection.length, 28);
   assert.deepEqual(await page.locator('#list .skill').evaluateAll(nodes => nodes.map(node => node.dataset.productId).sort()), collection.map(pack => pack.id).sort());
   assert.equal(await page.locator('#list .product-entry, #premium-grid > *, #purchase-links a, video').count(), 0);
   assert.equal(await page.locator('a[href*="itch.io/"], a[href*="gumroad.com/"]').count(), 0);
   for (const selector of ['#catalog-access', '#collection-filter', 'label[for="collection-filter"]', '#premium-preview', '#premium-actions']) {
     assert.equal(await page.locator(selector).isVisible(), false, `${selector} is unnecessary for the Free library`);
   }
-  assert.equal(await page.locator('#catalog-count').textContent(), '25 effects · All free');
+  assert.equal(await page.locator('#catalog-count').textContent(), '28 effects · All free');
   assert.match(await page.locator('#product-badge').textContent(), /Free/i);
   assert.match(await page.locator('#product-status').textContent(), /Available/i);
   assert.match(await page.locator('#product-includes').textContent(), /\.vfxb/);
@@ -70,7 +70,7 @@ export async function catalogSmoke({ browser, url, collection }) {
     const fire = collection.filter(pack => pack.element === 'hoa');
     await page.locator('#filters [data-element="hoa"]').click();
     assert.deepEqual(await page.locator('#list .skill').evaluateAll(nodes => nodes.map(node => node.dataset.productId).sort()), fire.map(pack => pack.id).sort());
-    assert.equal(await page.locator('#catalog-count').textContent(), `${fire.length} of 25 effects`);
+    assert.equal(await page.locator('#catalog-count').textContent(), `${fire.length} of 28 effects`);
     assert.equal(await page.locator('#filters [data-element="hoa"]').getAttribute('aria-pressed'), 'true');
     for (const query of ['Fireball', 'Hỏa Cầu Thuật', 'hoa cau thuat']) {
       await page.locator('#search').fill(query);
@@ -80,7 +80,7 @@ export async function catalogSmoke({ browser, url, collection }) {
     await page.locator('#search').fill('zz-no-such-vfx');
     assert.equal(await page.locator('#list [data-product-id]').count(), 0);
     assert.match(await page.locator('#list').textContent(), /No effects found/);
-    assert.equal(await page.locator('#catalog-count').textContent(), '0 of 25 effects');
+    assert.equal(await page.locator('#catalog-count').textContent(), '0 of 28 effects');
     await page.getByRole('button', { name: 'Reset filters', exact: true }).click();
     assert.equal(await page.locator('#search').inputValue(), '');
     assert.equal(await page.locator('#filters [data-element="all"]').getAttribute('aria-pressed'), 'true');
@@ -296,5 +296,5 @@ export async function catalogSmoke({ browser, url, collection }) {
     assert.ok(external.every(request => new URL(request).hostname === 'media.test'), 'store links never trigger requests before purchase');
     assert.deepEqual(fixturePacks, []); assert.deepEqual(fixtureErrors, []);
   } finally { await fixture.close(); }
-  console.log('Storefront catalog: PASS (25 Free effects, search/filters/reset, eight directions/downloads, history, cancelled loads, mobile browse/selection at 390 and 360, short landscape controls, no public Premium requests, synthetic purchase/video/error/cleanup gates)');
+  console.log('Storefront catalog: PASS (28 Free effects, search/filters/reset, eight directions/downloads, history, cancelled loads, mobile browse/selection at 390 and 360, short landscape controls, no public Premium requests, synthetic purchase/video/error/cleanup gates)');
 }

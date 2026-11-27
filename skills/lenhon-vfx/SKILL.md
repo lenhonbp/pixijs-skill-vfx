@@ -143,6 +143,9 @@ default: loading another evicts the least recently used one
 | `sunder-mark` | Sundering Mark / Phá Giáp Ấn | neutral | debuff | 1.06 / 0.33 |
 | `war-cry` | War Cry / Chiến Hống | neutral | buff | 2.09 / 0.78 |
 | `curse-weaken` | Curse of Frailty / Suy Nhược Chú | neutral | debuff | 2.65 / 0.95 |
+| `moc-combo-bind` | Parasite Vine Bind / Ký Sinh Đằng Phược | moc | control | 1.67 / 0.54 |
+| `moc-combo-spores` | Parasite Spores / Ký Sinh Độc Bào | moc | debuff | 0.45 / 0.24 |
+| `moc-combo-rupture` | Thorn Rupture / Vạn Gai Bạo Phá | moc | attack | 0.94 / 0.52 |
 
 The runtime and free packs are MIT and may be used commercially; keep the
 copyright and license notice. The showcase's character artwork is not part of

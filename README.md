@@ -3,7 +3,7 @@
 [![Live demo](https://img.shields.io/badge/Live_demo-Cast_a_spell-d6b477?style=flat-square)](https://vfx-store.pages.dev/)
 [![License: MIT](https://img.shields.io/badge/License-MIT-83bfd6?style=flat-square)](LICENSE)
 
-**Free runtime. Instant magic.** 25 ready-to-play skills.
+**Free runtime. Instant magic.** 28 ready-to-play skills.
 A lightweight, zero-runtime-dependency atlas player for **PixiJS v7 and v8**,
 with a responsive, interactive showcase. Commercial use welcome.
 
@@ -47,7 +47,7 @@ node skills/lenhon-vfx/scripts/fetch-packs.mjs hoa-fireball --out public/vfx
 
 ## Built for your game
 
-- **25 free skills** — fire, ice, lightning, wind, metal, wood, earth and
+- **28 free skills** — fire, ice, lightning, wind, metal, wood, earth and
   utility, each with a desktop and a mobile pack.
 - **Actor tracks** — `handle.pose('caster')` / `handle.pose('target')` provide
   interpolated movement, lift, visibility and facing. Dashes and flight move
@@ -78,8 +78,8 @@ keeps browsing and playback together, with technical details below the library.
 
 ## Collection size and loading
 
-The 25 skills include **226 desktop/mobile containers across their baked
-directions**: 272,854,709 bytes desktop + 97,535,753 bytes mobile = **370,390,462
+The 28 skills include **256 desktop/mobile containers across their baked
+directions**: 296,395,974 bytes desktop + 104,670,426 bytes mobile = **401,066,400
 bytes**. The binaries live outside git on the pack host (see
 [docs/pack-hosting.md](docs/pack-hosting.md)); `showcase/public/packs/free/` keeps
 only the index. You only need the packs selected for your game; the showcase
@@ -103,7 +103,7 @@ for the full breakdown.
 
 ## Current collection and future releases
 
-**All 25 effects in the current collection are Free.** The current priority is a
+**All 28 effects in the current collection are Free.** The current priority is a
 polished, useful showcase for those effects. Premium VFX will be developed later;
 there are no Premium product listings, trailers, prices or checkout links in the
 production catalog.

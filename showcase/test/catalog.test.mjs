@@ -36,10 +36,10 @@ function mutatePremium(change) {
 }
 const resolveFixture = definitions => resolveCatalog(packs, definitions, fixtureCollections);
 
-test('catalog references all 25 delivered free packs without duplicating their names', () => {
+test('catalog references all 28 delivered free packs without duplicating their names', () => {
   const products = resolveCatalog(packs);
   const free = products.filter(p => p.tier === 'free');
-  assert.equal(free.length, 25);
+  assert.equal(free.length, 28);
   assert.deepEqual(free.map(p => p.packId), packs.map(p => p.id));
   for (const product of free) {
     assert.deepEqual(product.name, packs.find(p => p.id === product.packId).name);
@@ -54,7 +54,7 @@ test('catalog references all 25 delivered free packs without duplicating their n
 test('imported catalog data validates version, collection identity and supported fields', () => {
   const valid = validateCatalogData(catalogData);
   assert.equal(valid.version, 1);
-  assert.equal(valid.products.length, 25);
+  assert.equal(valid.products.length, 28);
   assert.throws(() => validateCatalogData({ ...catalogData, version: 2 }), /unsupported data version/);
   assert.throws(() => validateCatalogData({ ...catalogData, version: '1' }), /unsupported data version/);
   assert.throws(() => validateCatalogData({ ...catalogData, sourcePath: '/private/recipes' }), /unsupported fields/);
@@ -90,12 +90,12 @@ test('a data-only export update reaches the default catalog without editing Type
   assert.deepEqual(product.name, packs.find(p => p.id === 'hoa-fireball').name);
   assert.equal(product.element, packs.find(p => p.id === 'hoa-fireball').element);
   assert.equal(imported.getProductAction(product).kind, 'download');
-  assert.equal(imported.resolveCatalog(packs).length, 25);
+  assert.equal(imported.resolveCatalog(packs).length, 28);
 });
 
-test('the published catalog contains only the 25 Free effects and their used collection', () => {
+test('the published catalog contains only the 28 Free effects and their used collection', () => {
   const products = resolveCatalog(packs);
-  assert.equal(products.length, 25);
+  assert.equal(products.length, 28);
   assert.deepEqual([...new Set(products.map(product => product.tier))], ['free']);
   assert.deepEqual(collections.map(collection => collection.id), ['free-collection']);
   for (const product of products) {
@@ -161,7 +161,7 @@ test('invalid product metadata is rejected and discovery supports tier, collecti
   const products = resolveCatalog(packs);
   assert.equal(filterProducts(products, { tier: 'premium' }).length, 0);
   assert.equal(filterProducts(products, { tier: 'free', element: 'hoa' }).length, 4);
-  assert.equal(filterProducts(products, { collectionId: 'free-collection' }).length, 25);
+  assert.equal(filterProducts(products, { collectionId: 'free-collection' }).length, 28);
   assert.equal(filterProducts(products, { query: 'hoa cau' })[0].id, 'hoa-fireball');
   assert.equal(filterProducts(products, { query: 'dia liet' })[0].id, 'tho-fissure');
   assert.deepEqual(filterProducts(products, { query: 'Golden Edge' }).map(product => product.id), ['kim-golden-edge']);

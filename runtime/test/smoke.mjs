@@ -19,7 +19,7 @@ const buffer = b => b.buffer.slice(b.byteOffset, b.byteOffset + b.byteLength);
 const decoded = readContainer(buffer(example));
 const collection = JSON.parse(await readFile(resolve(dist, 'packs/free/index.json'), 'utf8'));
 let verifiedFiles = 0;
-assert.equal(collection.length, 25);
+assert.equal(collection.length, 28);
 assert.ok(collection.every(p => !('evolved' in p) && p.files.length === 2 && Object.values(p.directions ?? {}).every(d => d.files.length === 2)));
 for (const pack of collection) for (const file of [...pack.files, ...Object.values(pack.directions ?? {}).flatMap(d => d.files)]) {
   const bytes = await readFile(resolve(dist, 'packs/free', file.name));
@@ -884,7 +884,7 @@ try {
   const result = await page.evaluate(async () => {
     const { vfx, app, packs, from, to } = window.__showcase; app.stop();
     const check = (condition, message) => { if (!condition) throw Error(message); };
-    check(packs.length === 25, 'Expected 25 packs');
+    check(packs.length === 28, 'Expected 28 packs');
     check(packs.every(p => p.desktopBytes <= 4000000), 'Desktop pack budget exceeded');
     let cues = 0; const listener = () => cues++; vfx.on('cue', listener); vfx.hitstopEnabled = false;
     // Packs published with an impact block must fire exactly one tier event per tier (none today: harmless until a release carries it).

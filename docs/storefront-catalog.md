@@ -9,7 +9,7 @@ The catalog references existing pack IDs. It does not replace the delivery index
 
 ## Current products
 
-The production catalog lists exactly the existing **25 available Free effects**.
+The production catalog lists exactly the existing **28 available Free effects** (the 25 originals plus the three Mộc combo packs `moc-combo-bind`, `moc-combo-spores` and `moc-combo-rupture`).
 Premium VFX will be developed later. No Premium products, named collections,
 trailers, prices or checkout links are currently advertised. The previous Kiếm
 Hiệp marketing entries and public media have been removed to reflect this scope.

@@ -12,7 +12,7 @@ collection's quality presets. The Free collection and these public format exampl
 the showcase's character artwork is separate and is not covered by that licence.
 Only baked output is needed to play an effect. No factory or baker is distributed here.
 Future Premium deliveries have their own customer terms, announced at release.
-The current public catalog contains only the 25 Free effects.
+The current public catalog contains only the 28 Free effects.
 
 ## Manifest
 

@@ -2331,5 +2331,304 @@
         "mobileBytes": 834948
       }
     }
+  },
+  {
+    "id": "moc-combo-bind",
+    "name": {
+      "en": "Parasite Vine Bind",
+      "vi": "Ký Sinh Đằng Phược"
+    },
+    "element": "moc",
+    "category": "control",
+    "frameCount": 150,
+    "files": [
+      {
+        "name": "moc-combo-bind.vfxb",
+        "bytes": 1673845
+      },
+      {
+        "name": "moc-combo-bind.m.vfxb",
+        "bytes": 542146
+      }
+    ],
+    "bytes": 1673845,
+    "desktopBytes": 1673845,
+    "mobileBytes": 542146,
+    "desktopScales": {
+      "ground-under-glow-back": 0.75,
+      "ground-under-base": 1.5,
+      "ground-under-glow": 0.75,
+      "glow-back": 0.75,
+      "base": 1.5,
+      "glow": 0.75
+    },
+    "mobileScales": {
+      "ground-under-glow-back": 0.5,
+      "ground-under-base": 0.75,
+      "ground-under-glow": 0.5,
+      "glow-back": 0.5,
+      "base": 0.75,
+      "glow": 0.5
+    },
+    "directions": {
+      "45": {
+        "files": [
+          {
+            "name": "moc-combo-bind@45.vfxb",
+            "bytes": 1799772
+          },
+          {
+            "name": "moc-combo-bind@45.m.vfxb",
+            "bytes": 560247
+          }
+        ],
+        "bytes": 1799772,
+        "desktopBytes": 1799772,
+        "mobileBytes": 560247
+      },
+      "90": {
+        "files": [
+          {
+            "name": "moc-combo-bind@90.vfxb",
+            "bytes": 1655640
+          },
+          {
+            "name": "moc-combo-bind@90.m.vfxb",
+            "bytes": 536923
+          }
+        ],
+        "bytes": 1655640,
+        "desktopBytes": 1655640,
+        "mobileBytes": 536923
+      },
+      "-90": {
+        "files": [
+          {
+            "name": "moc-combo-bind@-90.vfxb",
+            "bytes": 1681427
+          },
+          {
+            "name": "moc-combo-bind@-90.m.vfxb",
+            "bytes": 539023
+          }
+        ],
+        "bytes": 1681427,
+        "desktopBytes": 1681427,
+        "mobileBytes": 539023
+      },
+      "-45": {
+        "files": [
+          {
+            "name": "moc-combo-bind@-45.vfxb",
+            "bytes": 1827425
+          },
+          {
+            "name": "moc-combo-bind@-45.m.vfxb",
+            "bytes": 575074
+          }
+        ],
+        "bytes": 1827425,
+        "desktopBytes": 1827425,
+        "mobileBytes": 575074
+      }
+    }
+  },
+  {
+    "id": "moc-combo-spores",
+    "name": {
+      "en": "Parasite Spores",
+      "vi": "Ký Sinh Độc Bào"
+    },
+    "element": "moc",
+    "category": "debuff",
+    "frameCount": 134,
+    "files": [
+      {
+        "name": "moc-combo-spores.vfxb",
+        "bytes": 449067
+      },
+      {
+        "name": "moc-combo-spores.m.vfxb",
+        "bytes": 237231
+      }
+    ],
+    "bytes": 449067,
+    "desktopBytes": 449067,
+    "mobileBytes": 237231,
+    "desktopScales": {
+      "ground-under-glow-back": 0.5,
+      "ground-under-base": 1,
+      "glow-back": 0.5,
+      "base": 1,
+      "glow": 0.5
+    },
+    "mobileScales": {
+      "ground-under-glow-back": 0.36,
+      "ground-under-base": 0.6,
+      "glow-back": 0.36,
+      "base": 0.6,
+      "glow": 0.36
+    },
+    "directions": {
+      "45": {
+        "files": [
+          {
+            "name": "moc-combo-spores@45.vfxb",
+            "bytes": 493944
+          },
+          {
+            "name": "moc-combo-spores@45.m.vfxb",
+            "bytes": 234135
+          }
+        ],
+        "bytes": 493944,
+        "desktopBytes": 493944,
+        "mobileBytes": 234135
+      },
+      "90": {
+        "files": [
+          {
+            "name": "moc-combo-spores@90.vfxb",
+            "bytes": 451880
+          },
+          {
+            "name": "moc-combo-spores@90.m.vfxb",
+            "bytes": 234423
+          }
+        ],
+        "bytes": 451880,
+        "desktopBytes": 451880,
+        "mobileBytes": 234423
+      },
+      "-90": {
+        "files": [
+          {
+            "name": "moc-combo-spores@-90.vfxb",
+            "bytes": 457358
+          },
+          {
+            "name": "moc-combo-spores@-90.m.vfxb",
+            "bytes": 236603
+          }
+        ],
+        "bytes": 457358,
+        "desktopBytes": 457358,
+        "mobileBytes": 236603
+      },
+      "-45": {
+        "files": [
+          {
+            "name": "moc-combo-spores@-45.vfxb",
+            "bytes": 457361
+          },
+          {
+            "name": "moc-combo-spores@-45.m.vfxb",
+            "bytes": 239511
+          }
+        ],
+        "bytes": 457361,
+        "desktopBytes": 457361,
+        "mobileBytes": 239511
+      }
+    }
+  },
+  {
+    "id": "moc-combo-rupture",
+    "name": {
+      "en": "Thorn Rupture",
+      "vi": "Vạn Gai Bạo Phá"
+    },
+    "element": "moc",
+    "category": "attack",
+    "frameCount": 88,
+    "files": [
+      {
+        "name": "moc-combo-rupture.vfxb",
+        "bytes": 939055
+      },
+      {
+        "name": "moc-combo-rupture.m.vfxb",
+        "bytes": 517273
+      }
+    ],
+    "bytes": 939055,
+    "desktopBytes": 939055,
+    "mobileBytes": 517273,
+    "desktopScales": {
+      "ground-under-base": 1,
+      "ground-under-glow": 0.5,
+      "glow-back": 0.5,
+      "base": 1,
+      "glow": 0.5
+    },
+    "mobileScales": {
+      "ground-under-base": 0.7,
+      "ground-under-glow": 0.36,
+      "glow-back": 0.36,
+      "base": 0.7,
+      "glow": 0.36
+    },
+    "directions": {
+      "45": {
+        "files": [
+          {
+            "name": "moc-combo-rupture@45.vfxb",
+            "bytes": 946240
+          },
+          {
+            "name": "moc-combo-rupture@45.m.vfxb",
+            "bytes": 515548
+          }
+        ],
+        "bytes": 946240,
+        "desktopBytes": 946240,
+        "mobileBytes": 515548
+      },
+      "90": {
+        "files": [
+          {
+            "name": "moc-combo-rupture@90.vfxb",
+            "bytes": 939049
+          },
+          {
+            "name": "moc-combo-rupture@90.m.vfxb",
+            "bytes": 515876
+          }
+        ],
+        "bytes": 939049,
+        "desktopBytes": 939049,
+        "mobileBytes": 515876
+      },
+      "-90": {
+        "files": [
+          {
+            "name": "moc-combo-rupture@-90.vfxb",
+            "bytes": 939322
+          },
+          {
+            "name": "moc-combo-rupture@-90.m.vfxb",
+            "bytes": 514876
+          }
+        ],
+        "bytes": 939322,
+        "desktopBytes": 939322,
+        "mobileBytes": 514876
+      },
+      "-45": {
+        "files": [
+          {
+            "name": "moc-combo-rupture@-45.vfxb",
+            "bytes": 945490
+          },
+          {
+            "name": "moc-combo-rupture@-45.m.vfxb",
+            "bytes": 516217
+          }
+        ],
+        "bytes": 945490,
+        "desktopBytes": 945490,
+        "mobileBytes": 516217
+      }
+    }
   }
 ]
