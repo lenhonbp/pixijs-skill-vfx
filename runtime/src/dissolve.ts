@@ -61,12 +61,22 @@ void main(void) {
   finalColor.rgb += uEdgeColor * (uEdgeIntensity * rim * color.a * radialMask);
 }`;
 
+/** Rim colour of neutral ground (cracks, soil): GroundDissolveFilter's default and the fallback for elements without a palette. */
+export const NEUTRAL_GROUND_EDGE = 0x2b231a;
+/**
+ * Element-strict ground rims, the factory's ground palettes: what a pack's ground layers burn with when its manifest has no
+ * `ground_dissolve` and the player sets no `edgeColor`. Only Hỏa burns ember; no element falls back to an orange rim.
+ */
+export const GROUND_EDGE_COLORS: Readonly<Record<string, number>> = Object.freeze({
+  moc: 0x3ccf8e, hoa: 0x7a2410, thuy: 0x4fc3ff, phong: 0x8ff0d0, loi: 0x8a7dff, kim: 0xdfe8ff, tho: NEUTRAL_GROUND_EDGE, neutral: NEUTRAL_GROUND_EDGE,
+});
+
 export interface GroundDissolveOptions {
   /** Wrapping greyscale noise (red channel). Default: the 64x64 procedural texture FlowTrail also uses. */
   noise?: Texture;
   /** Width of the soft eroding band, in noise units 0-1. Default 0.12. */
   edgeWidth?: number;
-  /** Colour of the burning rim. Default 0xff8a2a. */
+  /** Colour of the burning rim. Default NEUTRAL_GROUND_EDGE (0x2b231a, dark soil). */
   edgeColor?: number;
   /** Brightness of the rim added on top of the decal. Default 1.5. */
   edgeIntensity?: number;
@@ -120,7 +130,7 @@ export class GroundDissolveFilter extends (PIXI.Filter as unknown as new (option
     this.params = this.u.uParams;
     this.sprite = null;
     this.edgeWidth = options.edgeWidth ?? 0.12;
-    this.edgeColor = options.edgeColor ?? 0xff8a2a;
+    this.edgeColor = options.edgeColor ?? NEUTRAL_GROUND_EDGE;
     this.edgeIntensity = options.edgeIntensity ?? 1.5;
     this.noiseScale = options.noiseScale ?? 96;
     this.maskFalloff = options.maskFalloff ?? 0.7;

@@ -440,7 +440,7 @@ async function dissolveSmoke(engine) {
     check(threw, 'invalid groundDissolve throws: ' + JSON.stringify(bad));
   }
   const parent = new Container(); app.stage.addChild(parent);
-  const player = new VfxPlayer(app, { groundDissolve: { filter: GroundDissolveFilter } });
+  const player = new VfxPlayer(app, { groundDissolve: { filter: GroundDissolveFilter, edgeColor: 0xff2a2a } });
   try {
     await player.load('/dissolve.vfxb');
     const from = { x: 200, y: 200 };
@@ -514,7 +514,7 @@ async function dissolveSmoke(engine) {
     check(lit(early) > full * 0.8, `barely eroded at 12.5%: ${lit(early)} of ${full}`);
     check(lit(mid) < full * 0.75 && lit(mid) > 0, `eroded at 62.5%: ${lit(mid)} of ${full}`);
     check(lit(late) < lit(mid), `more eroded at 87.5%: ${lit(late)} < ${lit(mid)}`);
-    check(rim(mid) > 0 && rim(early) <= rim(mid) + full, 'the eroding boundary burns orange: ' + rim(mid));
+    check(rim(mid) > 0 && rim(early) <= rim(mid) + full, 'the eroding boundary burns the rim colour: ' + rim(mid));
     player.update(100);
     check(!decal.filters?.length && !glow.filters?.length && player.stats().dissolving === 0 && !decal.visible, 'the window ends: filters off, layers gone');
     check(filter.sprite === null && glowFilter.sprite === null, 'ended filters let go of their sprites');
@@ -548,7 +548,20 @@ async function dissolveSmoke(engine) {
     const fe = parent.children[0].children[0].filters?.[0];
     check(fe instanceof GroundDissolveFilter && fe.edgeColor === 0x7a2410, 'the pack\'s edge colour tints its filter: ' + fe?.edgeColor?.toString(16));
     ember.stop();
-    check(fe.edgeColor === 0xff8a2a, 'the filter gets its own edge colour back: ' + fe.edgeColor.toString(16));
+    check(fe.edgeColor === 0xff2a2a, 'the filter gets its own edge colour back: ' + fe.edgeColor.toString(16));
+    // Without a pack colour or a player colour, the rim is the pack element's palette; unknown elements get neutral soil, never orange.
+    const strict = new VfxPlayer(app, { groundDissolve: { filter: GroundDissolveFilter } });
+    try {
+      check(new GroundDissolveFilter().edgeColor === 0x2b231a, 'the default rim is neutral soil, not orange');
+      for (const [id, want] of [['dissolve-moc', 0x3ccf8e], ['dissolve-neutral', 0x2b231a], ['dissolve-unknown', 0x2b231a], ['dissolve-ember', 0x7a2410]]) {
+        await strict.load(`/${id}.vfxb`);
+        const h = strict.play(id, { from, parent });
+        strict.update(700);
+        const f = parent.children[0].children[0].filters?.[0];
+        check(f instanceof GroundDissolveFilter && f.edgeColor === want, `${id} burns ${want.toString(16)}: ` + f?.edgeColor?.toString(16));
+        h.stop();
+      }
+    } finally { strict.destroy(); }
   } finally { player.destroy(); parent.destroy({ children: true }); }
 }
 async function juiceSmoke({ engine, mode }) {
@@ -840,6 +853,8 @@ const server = createServer(async (req, res) => {
     if (path === '/v8.html') { res.setHeader('Content-Type', 'text/html'); res.end('<link rel="icon" href="data:,"><script type="module" src="/v8.js"></script>'); return; }
     if (path === '/v8.js') { res.setHeader('Content-Type', 'text/javascript'); res.end(v8Bundle.outputFiles[0].contents); return; }
     if (path === '/dissolve.vfxb') { res.end(fixture(dissolveManifest(), dissolveSheets)); return; }
+    const strict = path.match(/^\/dissolve-(moc|neutral|unknown)\.vfxb$/);
+    if (strict) { res.end(fixture({ ...dissolveManifest(), id: `dissolve-${strict[1]}`, element: strict[1] }, dissolveSheets)); return; }
     if (path === '/dissolve-ember.vfxb') { res.end(fixture({ ...dissolveManifest(), id: 'dissolve-ember', ground_dissolve: { edge_color: '#7a2410' } }, dissolveSheets)); return; }
     if (path === '/ramped.vfxb') { res.end(fixture(rampManifest(), rampSheets)); return; }
     if (path === '/juice.vfxb') { res.end(fixture(juiceManifest, impactSheets)); return; }

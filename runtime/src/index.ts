@@ -9,11 +9,12 @@ import type { RampStops } from './ramp.js';
 import { readContainer, validate } from './format.js';
 import { resolveAnchorName } from './anchors.js';
 import type { AnchorName, NormalizedAnchor } from './anchors.js';
+import { GROUND_EDGE_COLORS } from './dissolve.js';
 import type { ActorName, AnchorType, BlendAdvice, Cue, Frame, ImpactTier, Manifest, TierId, ZLayer } from './format.js';
 export type { ActorName, ActorFrame, ActorTrack, AnchorMeta, AnchorType, BlendAdvice, Cue, ImpactMeta, ImpactTier, Manifest, Frame, TierId, ZLayer } from './format.js';
 export interface Point { x: number; y: number }
 export { FlowTrail, makeNoiseTexture } from './flow.js';
-export { GroundDissolveFilter } from './dissolve.js';
+export { GroundDissolveFilter, GROUND_EDGE_COLORS, NEUTRAL_GROUND_EDGE } from './dissolve.js';
 export type { GroundDissolveOptions } from './dissolve.js';
 export { ANCHOR_FALLBACKS, ANCHOR_MAP, ANCHOR_NAMES, SKELETON_ALIASES, anchorsFromSkeleton, resolveAnchorName } from './anchors.js';
 export type { AnchorName, NormalizedAnchor, SkeletonPose } from './anchors.js';
@@ -115,7 +116,10 @@ export interface GroundDissolveSettings {
 /** What the player needs from a dissolve filter: GroundDissolveFilter, or your own with the same members. */
 /** `params`, when present, is a typed array whose [0] the player writes progress into (no setter call per frame). */
 /** `sprite`, when present, is set to the ground layer's sprite while the filter is on it and back to null after. */
-/** `edgeColor`, when readable and writable, is set to a pack's `ground_dissolve.edge_color` while the filter is on that pack. */
+/**
+ * `edgeColor`, when readable and writable, is set to a pack's `ground_dissolve.edge_color` while the filter is on that pack; for a
+ * pack without one, to its element's GROUND_EDGE_COLORS rim unless the player's `groundDissolve.edgeColor` is set.
+ */
 export interface DissolveFilter { progress: number; params?: Float32Array; sprite?: Sprite | null; edgeColor?: number; blendMode: unknown; seed(value: number): void; destroy(): void }
 export interface ActorPose { x: number; y: number; lift: number; visible: boolean; facing: number }
 export interface Playback {
@@ -443,7 +447,8 @@ export class VfxPlayer {
       let nativeRow = -1;
       if (manifest.color?.lut) nativeRow = this.ramps().addLut(`native:${key}`, Uint8Array.from(atob(manifest.color.lut), ch => ch.charCodeAt(0)));
       const pack: Pack = { manifest, sheets: [...textures.values()], frames, rampSheets, nativeRow, lastUsed: ++this.useClock, ground: this.dissolve ? groundPlan(manifest, rampSheets, this.dissolve.ms) : null,
-        edgeColor: manifest.ground_dissolve ? parseInt(manifest.ground_dissolve.edge_color.slice(1), 16) : -1,
+        edgeColor: manifest.ground_dissolve ? parseInt(manifest.ground_dissolve.edge_color.slice(1), 16)
+          : this.dissolve && this.dissolve.settings.edgeColor === undefined ? Object.hasOwn(GROUND_EDGE_COLORS, manifest.element) ? GROUND_EDGE_COLORS[manifest.element] : -1 : -1,
         tierNormals: tierNormals(manifest), cueNums: cueNums(manifest) };
       this.packs.set(key, pack);
       this.families.set(manifest.id, [...(this.families.get(manifest.id) ?? []), pack]);
