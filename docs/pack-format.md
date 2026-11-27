@@ -100,7 +100,11 @@ additive: `version` stays 1, and readers that ignore it still draw every layer i
 
 `"ground_dissolve": { "edge_color": "#7a2410" }` gives the rim colour a reader's ground dissolve (noise erosion of expiring
 ground layers) burns this pack's decals with, instead of the reader's own colour. Readers without a ground dissolve ignore it.
-`@lenhonbp/pixijs-vfx-runtime` 2.3 sets it on `GroundDissolveFilter.edgeColor` while the filter is on that pack.
+`@lenhonbp/pixijs-vfx-runtime` 2.3 sets it on `GroundDissolveFilter.edgeColor` while the filter is on that pack. The factory
+writes it for every pack with ground layers, from the element's ground palette (Mộc `#3ccf8e`, Hỏa `#7a2410`, Thủy `#4fc3ff`,
+Phong `#8ff0d0`, Lôi `#8a7dff`, Kim `#dfe8ff`, Thổ and neutral `#2b231a`), and its QA rejects a pack whose rim is not its
+element's or whose ground layers of a cool element (Mộc, Thủy, Phong, Lôi, neutral) carry orange/amber pixels. Runtime 2.4
+falls back to the same element rims for packs without the block.
 
 ### Impact tiers (optional)
 

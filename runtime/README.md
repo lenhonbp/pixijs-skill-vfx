@@ -219,13 +219,15 @@ import { VfxPlayer, GroundDissolveFilter } from '@lenhonbp/pixijs-vfx-runtime';
 
 const vfx = new VfxPlayer(app, {
   groundDissolve: GroundDissolveFilter.supported(app)
-    ? { filter: GroundDissolveFilter, ms: 600, edgeColor: 0xff8a2a, edgeIntensity: 1.5, edgeWidth: 0.12 }
+    ? { filter: GroundDissolveFilter, ms: 600, edgeIntensity: 1.5, edgeWidth: 0.12 }
     : undefined
 });
 ```
 
 A pack whose manifest has `ground_dissolve.edge_color` (see the [pack format](../docs/pack-format.md)) overrides `edgeColor` for its own
-decals; the filter gets the player's colour back when it is released.
+decals; the filter gets the player's colour back when it is released. A pack without one burns with its element's rim
+(`GROUND_EDGE_COLORS`: Mộc jade `#3ccf8e`, Hỏa ember `#7a2410`, Thủy cyan, Phong jade-teal, Lôi electric violet, neutral soil
+`#2b231a`) unless you pass `edgeColor`; the filter's own default is neutral soil `0x2b231a`, never orange.
 
 For each ground root (the under root and each background tier) the player takes the last `ms` of the ground layers' visible span (at most 40% of it), holds the baked frame at
 the start of that window and erodes it: `uProgress` runs 0 to 1 across the window, pixels whose noise value falls under the
