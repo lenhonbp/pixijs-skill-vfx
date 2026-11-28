@@ -32,8 +32,9 @@ Create a Pages project connected to this repository:
 
 Then add `lenhon.dev` as its custom domain (the apex needs the zone on Cloudflare DNS).
 Setting `hub/*` as an *exclude* watch path on the `vfx-store` project avoids rebuilding
-the showcase for Hub-only changes. `npx wrangler pages deploy` also works with the
-included `wrangler.toml` for a direct upload.
+the showcase for Hub-only changes. There is deliberately no `wrangler.toml`: Pages would
+treat it as the source of truth and ignore dashboard environment variables such as
+`HUB_GUMROAD_URL`. `.node-version` pins Node 22 for the build image (Vite 8 needs ≥ 22.12).
 
 `public/_headers` sets a strict CSP (self-only) and long-lived caching for hashed
 assets; `public/_redirects` adds `/vfx`, `/props`, `/github` and `/docs` short links.
