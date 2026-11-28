@@ -172,26 +172,33 @@ details > summary::-webkit-details-marker { display: none; }
 
 /* ── Mobile (≤639px, iPhone 13 mini at 375px) ── */
 @media (max-width: 639px) {
-  /* Touch targets: 44px minimum for header menu, tabs, chips and scrubber. */
+  /* Touch targets: 44px minimum for header menu, tabs, chips, copy and download buttons, and the scrubber. */
   .tab { min-height: 44px; padding-inline: 12px; }
-  .chip { min-height: 44px; height: auto; padding-block: 0; }
+  .chip { min-height: 44px; height: auto; padding-block: 0; padding-inline: 14px; }
   .scrubber { height: 44px; }
   .seg button { min-height: 36px; height: auto; padding-inline: 12px; }
   .btn { min-height: 44px; }
   [data-menu] > summary { width: 44px; height: 44px; }
   .preview-open:focus-visible { outline-offset: -3px; }
+  [data-copy] { min-width: 44px; min-height: 44px; }
 
-  /* Tab bar and filter rail scroll sideways instead of wrapping into rows of pills. */
-  [role="tablist"] { max-width: 100%; overflow-x: auto; scrollbar-width: none; }
+  /* Tab bar: one line that scrolls sideways, flush to the screen edge. */
+  [role="tablist"] { max-width: 100%; overflow-x: auto; scrollbar-width: none; flex-wrap: nowrap; }
   [role="tablist"]::-webkit-scrollbar { display: none; }
+  [role="tablist"] .tab { flex: 0 0 auto; }
 
-  /* Long VRAM labels and badges must truncate, not push the card wider than its column. */
+  /* Filter rail: snaps chip-by-chip, scroll-padding keeps the first chip off the edge. */
+  [data-chips="vfx"] { scroll-padding-inline: 1rem; scroll-behavior: smooth; overscroll-behavior-x: contain; }
+
+  /* Card grid: one column, full-width cards, comfortable 16px inner padding, no overflow. */
+  [data-panel] { grid-template-columns: minmax(0, 1fr); gap: 1rem; }
   .card, .card > * { min-width: 0; }
+  .card > div:not(.preview) { padding-inline: 1rem; }
   .card h3 { overflow-wrap: anywhere; }
   .card .badge { max-width: 100%; overflow: hidden; text-overflow: ellipsis; }
   .card [data-preview] { aspect-ratio: 16 / 10; }
   .card .vram-bar { flex-shrink: 0; }
-  .card .btn { max-width: 100%; white-space: normal; text-align: center; }
+  .card .btn { max-width: 100%; white-space: normal; text-align: center; min-height: 44px; }
 
   /* Inspector: the stage takes the free height so the transport and speed row stay on screen. */
   .inspector { display: flex; flex-direction: column; }
