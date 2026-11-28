@@ -47,10 +47,14 @@ const vfx = cards.filter(c => c.includes('data-kind="vfx"')).length, props = car
 if (vfx < 1 || props < 1) fail.push(`expected cards in both tabs, found vfx=${vfx} props=${props}`);
 const heavy = cards.filter(c => c.includes('data-tier="heavy"')).map(c => c.match(/data-open-preview="([^"]+)"/)[1]);
 
-// Inspector Actor Dummy: one vector asset, loaded only on demand, under 100 kB.
-const dummy = join(dist, 'media', 'actor-dummy.svg');
-if (!existsSync(dummy)) fail.push('missing /media/actor-dummy.svg');
-else if (statSync(dummy).size >= 100_000) fail.push(`actor-dummy.svg is ${statSync(dummy).size} B (budget 100 kB)`);
+// Inspector Actor Dummy: two vector assets (caster mannequin, target training post), loaded only on demand, each under 100 kB.
+for (const name of ['actor-caster.svg', 'actor-target.svg']) {
+  const file = join(dist, 'media', name);
+  if (!existsSync(file)) fail.push(`missing /media/${name}`);
+  else if (statSync(file).size >= 100_000) fail.push(`${name} is ${statSync(file).size} B (budget 100 kB)`);
+}
+// Nothing from the old single-model dummy or the showcase swordsman may ship in the Hub.
+if (existsSync(join(dist, 'media', 'actor-dummy.svg')) || existsSync(join(dist, 'actors'))) fail.push('stale actor assets in dist');
 
 // Cloudflare headers: the CSP must let the inspector reach the pack CDN (and nothing else outside).
 const headers = existsSync(join(dist, '_headers')) ? readFileSync(join(dist, '_headers'), 'utf8') : '';

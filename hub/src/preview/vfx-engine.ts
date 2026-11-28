@@ -11,10 +11,12 @@ import { BACKGROUNDS, type Background, type Engine, type Loaded, type Variant, p
 const W = 960, H = 600, SQUASH = 0.6;
 const FROM = { x: 300, y: 372 }, TO = { x: 660, y: 372 };
 
-// Actor Dummy: one vector silhouette (public/media/actor-dummy.svg, ~3.5 kB) rasterised once at 2.5x its
-// 96 × 128 box, feet_ground at (48, 122). Both stations share the one texture.
-const DUMMY_URL = '/media/actor-dummy.svg', DUMMY_RASTER = 2.5, DUMMY_FEET = { x: 48 / 96, y: 122 / 128 };
-const DECAL_RX = 22;
+// Actor Dummy, two small vector assets rasterised once at 2.5x their 96 × 130 box, feet_ground at (48, 122):
+//  - caster: an unarmed clay mannequin in a neutral ready stance (suits spells, blades and strikes alike),
+//  - target: a padded wooden training post planted in the ground (symmetric, so never mirrored).
+const CASTER_URL = '/media/actor-caster.svg', TARGET_URL = '/media/actor-target.svg';
+const DUMMY_RASTER = 2.5, DUMMY_FEET = { x: 48 / 96, y: 122 / 130 };
+const CASTER_DECAL_RX = 22, TARGET_DECAL_RX = 26, TARGET_ZONE_RX = 52;
 
 /**
  * Draw order, back to front: backdrop < ground (the packs' ground-under layers and background impact tiers)
@@ -42,35 +44,51 @@ function stage(host: HTMLElement): Promise<Stage> {
   return shared.then(s => { if (s.app.canvas.parentElement !== host) host.replaceChildren(s.app.canvas); return s; });
 }
 
-interface Dummy { texture: Texture; caster: Sprite; target: Sprite; casterDecal: Graphics; targetDecal: Graphics }
+interface Dummy { casterTexture: Texture; targetTexture: Texture; caster: Sprite; target: Sprite; casterDecal: Graphics; targetDecal: Graphics }
 
-/** Loads the silhouette and builds both stations; nothing exists until the toggle is first switched on. */
-async function createDummy(s: Stage): Promise<Dummy> {
+async function rasterise(url: string): Promise<Texture> {
   const image = new Image();
-  image.src = DUMMY_URL;
+  image.src = url;
   await image.decode();
-  const texture = Texture.from(image);
-  const body = () => {
+  return Texture.from(image);
+}
+
+/** Loads both silhouettes and builds the two stations; nothing exists until the toggle is first switched on. */
+async function createDummy(s: Stage): Promise<Dummy> {
+  const [casterTexture, targetTexture] = await Promise.all([rasterise(CASTER_URL), rasterise(TARGET_URL)]);
+  const body = (texture: Texture) => {
     const sprite = new Sprite(texture);
     sprite.anchor.set(DUMMY_FEET.x, DUMMY_FEET.y);
     s.actors.addChild(sprite);
     return sprite;
   };
-  // Contact decal locked to feet_ground (0, 0): an AO ellipse in the 1/√3 isometric ground ratio.
-  const decal = () => {
-    const ry = DECAL_RX * ISO_GROUND_SQUASH, g = new Graphics();
-    g.ellipse(0, 0, DECAL_RX, ry).fill({ color: 0x05070a, alpha: 0.5 })
-      .ellipse(0, 0, DECAL_RX * 0.6, ry * 0.6).fill({ color: 0x05070a, alpha: 0.35 })
-      .ellipse(0, 0, DECAL_RX, ry).stroke({ width: 1.2, color: 0x30363d, alpha: 1 });
+  // Contact decals locked to feet_ground (0, 0), every ellipse in the 1/√3 isometric ground ratio (0.57735):
+  // an AO disc with a lead rim and a centre tick. The target's also marks the skill's contact zone with an
+  // outer ring and four ticks, so the landing point and the area around it can be read against any effect.
+  const decal = (rx: number, zone: number) => {
+    const ratio = ISO_GROUND_SQUASH, g = new Graphics();
+    g.ellipse(0, 0, rx, rx * ratio).fill({ color: 0x05070a, alpha: 0.5 })
+      .ellipse(0, 0, rx * 0.6, rx * 0.6 * ratio).fill({ color: 0x05070a, alpha: 0.35 })
+      .ellipse(0, 0, rx, rx * ratio).stroke({ width: 1.2, color: 0x30363d, alpha: 1 });
+    if (zone) {
+      g.ellipse(0, 0, zone, zone * ratio).stroke({ width: 1, color: 0x30363d, alpha: 0.7 });
+      for (const [x, y] of [[1, 0], [-1, 0], [0, 1], [0, -1]]) g.moveTo(x * (zone - 4), y * (zone - 4) * ratio).lineTo(x * (zone + 4), y * (zone + 4) * ratio);
+      g.stroke({ width: 1.2, color: 0x4a525d, alpha: 0.9 });
+    }
+    g.moveTo(-5, 0).lineTo(5, 0).moveTo(0, -5 * ratio).lineTo(0, 5 * ratio).stroke({ width: 1, color: 0x6e7681, alpha: 0.85 });
     s.decals.addChild(g);
     return g;
   };
-  return { texture, caster: body(), target: body(), casterDecal: decal(), targetDecal: decal() };
+  return {
+    casterTexture, targetTexture,
+    caster: body(casterTexture), target: body(targetTexture),
+    casterDecal: decal(CASTER_DECAL_RX, 0), targetDecal: decal(TARGET_DECAL_RX, TARGET_ZONE_RX),
+  };
 }
 
 function destroyDummy(d: Dummy) {
   for (const node of [d.caster, d.target, d.casterDecal, d.targetDecal]) node.destroy();
-  d.texture.destroy(true); // frees the GPU copy and the source image
+  for (const texture of [d.casterTexture, d.targetTexture]) texture.destroy(true); // frees the GPU copy and the source image
 }
 
 let loadedId: string | null = null;
@@ -114,14 +132,14 @@ export async function createVfxEngine(host: HTMLElement, preview: VfxPreview): P
     dirty = true;
   }
 
-  // Track offsets are relative to each station; a track's facing is relative to the station's own
-  // (caster looks at the target, the target back at the caster), so a set facing bit turns it around.
-  function place(body: Sprite, decal: Graphics, home: { x: number; y: number }, p: ActorPose | null, homeFacing: number) {
+  // Track offsets are relative to each station. The caster looks at the target and a set facing bit turns it
+  // around; the training post is symmetric, so it never mirrors.
+  function place(body: Sprite, decal: Graphics, home: { x: number; y: number }, p: ActorPose | null, turns: boolean) {
     const x = home.x + (p ? p.x : 0), y = home.y + (p ? p.y : 0), lift = p && p.lift > 0 ? p.lift : 0;
     const shown = !p || p.visible;
     body.visible = decal.visible = shown;
     body.position.set(x, y - lift);
-    body.scale.set((p ? p.facing : 1) * homeFacing / DUMMY_RASTER, 1 / DUMMY_RASTER);
+    body.scale.set((turns && p ? p.facing : 1) / DUMMY_RASTER, 1 / DUMMY_RASTER);
     decal.position.set(x, y); // the decal stays on the ground and shrinks as the body lifts
     const k = 1 / (1 + lift / 48);
     decal.scale.set(k, k);
@@ -129,8 +147,8 @@ export async function createVfxEngine(host: HTMLElement, preview: VfxPreview): P
 
   function placeDummy() {
     if (!dummy || !dummyOn) return;
-    place(dummy.caster, dummy.casterDecal, FROM, handle ? handle.pose('caster', casterPose) : null, 1);
-    place(dummy.target, dummy.targetDecal, TO, handle ? handle.pose('target', targetPose) : null, -1);
+    place(dummy.caster, dummy.casterDecal, FROM, handle ? handle.pose('caster', casterPose) : null, true);
+    place(dummy.target, dummy.targetDecal, TO, handle ? handle.pose('target', targetPose) : null, false);
   }
 
   // One closure for the life of the engine: the loop itself allocates nothing per frame.

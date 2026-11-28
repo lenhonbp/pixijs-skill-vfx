@@ -34,13 +34,17 @@ npm run build     # typecheck → vite build → scripts/check-dist.mjs gate
   facings of Isobaker's native 2× bake on a 2D canvas over a 1/√3 grid. PixiJS and the
   runtime load only when an effect is first inspected; the inspector frame loop swaps
   precomputed HUD strings and allocates nothing of its own.
-- **Actor Dummy** (inspector toolbar, or the `A` key; off by default, effects only): one vector
-  silhouette (`public/media/actor-dummy.svg`, ~3.5 kB, clay/AO lead grey `#21262d` with a `#30363d`
-  rim) standing at the caster and the target. It loads on first use, follows the packs' actor
-  tracks (dashes, knock-backs, lifts, visibility; facing relative to each station), and sits on a
-  contact decal locked to `feet_ground` (0, 0) in the 1/√3 (0.57735) isometric ratio. Draw order:
+- **Actor Dummy** (inspector toolbar, or the `A` key; off by default, effects only): two small vector
+  assets in clay/AO lead grey (`#21262d`, `#30363d` rim) that load on first use. The caster
+  (`public/media/actor-caster.svg`, ~4 kB) is an unarmed humanoid mannequin, about seven heads tall,
+  in a neutral ready stance with open hands, so it suits spells, blades and strikes alike. The target
+  (`actor-target.svg`, ~3 kB) is a padded wooden training post planted in an earth collar, with a
+  chest-height ring marking where most blows land; it is symmetric and never mirrors. Both follow the
+  packs' actor tracks (dashes, knock-backs, lifts, visibility) and stand on contact decals locked to
+  `feet_ground` (0, 0) in the 1/√3 (0.57735) ground ratio; the target's decal adds a centre tick and
+  an outer ring with four ticks for the skill's landing point and contact zone. Draw order:
   ground-under layers < decals < actor bodies < the effect's main layers < body residuals. Closing
-  the inspector destroys its texture with the pack's. The HUD's GPU row counts live textures
+  the inspector destroys both textures with the pack's. The HUD's GPU row counts live textures
   (Pixi ≥ 8.15 keeps freed slots as `null`, so only live entries are counted).
 - **Downloads**: `.vfxb` links straight to the R2 container. **JSON + WebP** fetches the same
   container, unpacks it in the browser with the runtime's `readContainer` and saves the plain
@@ -95,11 +99,11 @@ the same release (for local browser tests against same-origin packs).
 | File | Produced by |
 | --- | --- |
 | `src/data/vfx-specs.json` | `node hub/scripts/vfx-specs.mjs showcase/public/packs/free`: decodes every desktop and mobile pack (FPS, frames, layers, sheets, decoded VRAM) |
-| `public/media/vfx/<id>.webp` / `.mp4`, `reel.mp4` | `hub/scripts/capture-vfx.mjs` (deterministic 30 FPS frames from the showcase) → `hub/scripts/vfx-media.py` |
+| `public/media/vfx/<id>.webp` / `.mp4`, `reel.mp4` | `hub/scripts/capture-vfx.mjs` (deterministic 30 FPS frames of the showcase canvas, **pure VFX**: caster, dummy, shadows, stage floor and compass hidden, `#0d1117` background) → `hub/scripts/vfx-media.py` (frames each effect from where it actually draws) |
 | `src/data/props-specs.json`, `public/media/props/*` | `python3 -I hub/scripts/props-media.py <iso-prop-tile-baker> hub` after `npm run pages:build` there (card art, hover strip, 2× inspector turntable, sprite sizes, 1/√3 projection check) |
 
 The build warns when `showcase/public/packs/free/index.json` no longer matches the specs
 snapshot, i.e. when a new release needs the media and specs regenerated. `check-dist`
-fails the build if the Actor Dummy asset is missing or not under 100 kB, if a card's badges are not the standard four, if a tier badge disagrees with
+fails the build if either Actor Dummy asset is missing or not under 100 kB (or a stale actor asset ships), if a card's badges are not the standard four, if a tier badge disagrees with
 the measured VRAM, if the CSP does not allow the pack CDN, or if the entry script grows past
 20 kB.
