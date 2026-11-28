@@ -11,16 +11,16 @@
     "files": [
       {
         "name": "kim-sword-rain.vfxb",
-        "bytes": 2234172
+        "bytes": 2215144
       },
       {
         "name": "kim-sword-rain.m.vfxb",
-        "bytes": 987546
+        "bytes": 979295
       }
     ],
-    "bytes": 2234172,
-    "desktopBytes": 2234172,
-    "mobileBytes": 987546,
+    "bytes": 2215144,
+    "desktopBytes": 2215144,
+    "mobileBytes": 979295,
     "desktopScales": {
       "ground-feedback-glow-back": 0.75,
       "ground-feedback-base": 1,
@@ -46,61 +46,61 @@
         "files": [
           {
             "name": "kim-sword-rain@45.vfxb",
-            "bytes": 2217011
+            "bytes": 2198493
           },
           {
             "name": "kim-sword-rain@45.m.vfxb",
-            "bytes": 990109
+            "bytes": 982766
           }
         ],
-        "bytes": 2217011,
-        "desktopBytes": 2217011,
-        "mobileBytes": 990109
+        "bytes": 2198493,
+        "desktopBytes": 2198493,
+        "mobileBytes": 982766
       },
       "90": {
         "files": [
           {
             "name": "kim-sword-rain@90.vfxb",
-            "bytes": 2244779
+            "bytes": 2225415
           },
           {
             "name": "kim-sword-rain@90.m.vfxb",
-            "bytes": 988941
+            "bytes": 981723
           }
         ],
-        "bytes": 2244779,
-        "desktopBytes": 2244779,
-        "mobileBytes": 988941
+        "bytes": 2225415,
+        "desktopBytes": 2225415,
+        "mobileBytes": 981723
       },
       "-90": {
         "files": [
           {
             "name": "kim-sword-rain@-90.vfxb",
-            "bytes": 2238617
+            "bytes": 2222133
           },
           {
             "name": "kim-sword-rain@-90.m.vfxb",
-            "bytes": 983070
+            "bytes": 976246
           }
         ],
-        "bytes": 2238617,
-        "desktopBytes": 2238617,
-        "mobileBytes": 983070
+        "bytes": 2222133,
+        "desktopBytes": 2222133,
+        "mobileBytes": 976246
       },
       "-45": {
         "files": [
           {
             "name": "kim-sword-rain@-45.vfxb",
-            "bytes": 2234675
+            "bytes": 2215468
           },
           {
             "name": "kim-sword-rain@-45.m.vfxb",
-            "bytes": 991373
+            "bytes": 984417
           }
         ],
-        "bytes": 2234675,
-        "desktopBytes": 2234675,
-        "mobileBytes": 991373
+        "bytes": 2215468,
+        "desktopBytes": 2215468,
+        "mobileBytes": 984417
       }
     }
   },
@@ -751,20 +751,18 @@
     "files": [
       {
         "name": "hoa-fireball.vfxb",
-        "bytes": 2248714
+        "bytes": 2237454
       },
       {
         "name": "hoa-fireball.m.vfxb",
-        "bytes": 773879
+        "bytes": 853930
       }
     ],
-    "bytes": 2248714,
-    "desktopBytes": 2248714,
-    "mobileBytes": 773879,
+    "bytes": 2237454,
+    "desktopBytes": 2237454,
+    "mobileBytes": 853930,
     "desktopScales": {
       "ground-feedback-base": 0.95,
-      "ground-feedback-glow": 0.75,
-      "ground-under-glow-back": 0.75,
       "glow-back": 0.75,
       "base": 0.95,
       "glow": 0.75,
@@ -774,15 +772,13 @@
       "hit-point-glow": 0.75
     },
     "mobileScales": {
-      "ground-feedback-base": 0.5,
-      "ground-feedback-glow": 0.5,
-      "ground-under-glow-back": 0.5,
+      "ground-feedback-base": 0.55,
       "glow-back": 0.5,
-      "base": 0.5,
+      "base": 0.55,
       "glow": 0.5,
       "body-residual-glow-back": 0.5,
       "hit-point-glow-back": 0.5,
-      "hit-point-base": 0.5,
+      "hit-point-base": 0.55,
       "hit-point-glow": 0.5
     },
     "directions": {
@@ -790,61 +786,61 @@
         "files": [
           {
             "name": "hoa-fireball@45.vfxb",
-            "bytes": 2203165
+            "bytes": 2191994
           },
           {
             "name": "hoa-fireball@45.m.vfxb",
-            "bytes": 841939
+            "bytes": 835143
           }
         ],
-        "bytes": 2203165,
-        "desktopBytes": 2203165,
-        "mobileBytes": 841939
+        "bytes": 2191994,
+        "desktopBytes": 2191994,
+        "mobileBytes": 835143
       },
       "90": {
         "files": [
           {
             "name": "hoa-fireball@90.vfxb",
-            "bytes": 2222096
+            "bytes": 2252157
           },
           {
             "name": "hoa-fireball@90.m.vfxb",
-            "bytes": 850679
+            "bytes": 844301
           }
         ],
-        "bytes": 2222096,
-        "desktopBytes": 2222096,
-        "mobileBytes": 850679
+        "bytes": 2252157,
+        "desktopBytes": 2252157,
+        "mobileBytes": 844301
       },
       "-90": {
         "files": [
           {
             "name": "hoa-fireball@-90.vfxb",
-            "bytes": 2212409
+            "bytes": 2202050
           },
           {
             "name": "hoa-fireball@-90.m.vfxb",
-            "bytes": 794272
+            "bytes": 787738
           }
         ],
-        "bytes": 2212409,
-        "desktopBytes": 2212409,
-        "mobileBytes": 794272
+        "bytes": 2202050,
+        "desktopBytes": 2202050,
+        "mobileBytes": 787738
       },
       "-45": {
         "files": [
           {
             "name": "hoa-fireball@-45.vfxb",
-            "bytes": 2189761
+            "bytes": 2178622
           },
           {
             "name": "hoa-fireball@-45.m.vfxb",
-            "bytes": 837502
+            "bytes": 830629
           }
         ],
-        "bytes": 2189761,
-        "desktopBytes": 2189761,
-        "mobileBytes": 837502
+        "bytes": 2178622,
+        "desktopBytes": 2178622,
+        "mobileBytes": 830629
       }
     }
   },
