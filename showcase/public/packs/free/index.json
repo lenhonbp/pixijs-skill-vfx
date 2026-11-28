@@ -751,34 +751,34 @@
     "files": [
       {
         "name": "hoa-fireball.vfxb",
-        "bytes": 2387753
+        "bytes": 2237454
       },
       {
         "name": "hoa-fireball.m.vfxb",
-        "bytes": 1053079
+        "bytes": 853930
       }
     ],
-    "bytes": 2387753,
-    "desktopBytes": 2387753,
-    "mobileBytes": 1053079,
+    "bytes": 2237454,
+    "desktopBytes": 2237454,
+    "mobileBytes": 853930,
     "desktopScales": {
-      "ground-feedback-base": 1,
+      "ground-feedback-base": 0.95,
       "glow-back": 0.75,
-      "base": 1,
+      "base": 0.95,
       "glow": 0.75,
       "body-residual-glow-back": 0.75,
       "hit-point-glow-back": 0.75,
-      "hit-point-base": 1,
+      "hit-point-base": 0.95,
       "hit-point-glow": 0.75
     },
     "mobileScales": {
-      "ground-feedback-base": 0.65,
+      "ground-feedback-base": 0.55,
       "glow-back": 0.5,
-      "base": 0.65,
+      "base": 0.55,
       "glow": 0.5,
       "body-residual-glow-back": 0.5,
       "hit-point-glow-back": 0.5,
-      "hit-point-base": 0.65,
+      "hit-point-base": 0.55,
       "hit-point-glow": 0.5
     },
     "directions": {
@@ -786,16 +786,16 @@
         "files": [
           {
             "name": "hoa-fireball@45.vfxb",
-            "bytes": 2345651
+            "bytes": 2191994
           },
           {
             "name": "hoa-fireball@45.m.vfxb",
-            "bytes": 1030205
+            "bytes": 835143
           }
         ],
-        "bytes": 2345651,
-        "desktopBytes": 2345651,
-        "mobileBytes": 1030205
+        "bytes": 2191994,
+        "desktopBytes": 2191994,
+        "mobileBytes": 835143
       },
       "90": {
         "files": [
@@ -805,12 +805,12 @@
           },
           {
             "name": "hoa-fireball@90.m.vfxb",
-            "bytes": 991268
+            "bytes": 844301
           }
         ],
         "bytes": 2252157,
         "desktopBytes": 2252157,
-        "mobileBytes": 991268
+        "mobileBytes": 844301
       },
       "-90": {
         "files": [
@@ -820,27 +820,27 @@
           },
           {
             "name": "hoa-fireball@-90.m.vfxb",
-            "bytes": 1058598
+            "bytes": 787738
           }
         ],
         "bytes": 2202050,
         "desktopBytes": 2202050,
-        "mobileBytes": 1058598
+        "mobileBytes": 787738
       },
       "-45": {
         "files": [
           {
             "name": "hoa-fireball@-45.vfxb",
-            "bytes": 2317538
+            "bytes": 2178622
           },
           {
             "name": "hoa-fireball@-45.m.vfxb",
-            "bytes": 972432
+            "bytes": 830629
           }
         ],
-        "bytes": 2317538,
-        "desktopBytes": 2317538,
-        "mobileBytes": 972432
+        "bytes": 2178622,
+        "desktopBytes": 2178622,
+        "mobileBytes": 830629
       }
     }
   },
@@ -1058,28 +1058,28 @@
     "files": [
       {
         "name": "hoa-fire-dragon-crossing.vfxb",
-        "bytes": 2370399
+        "bytes": 2149387
       },
       {
         "name": "hoa-fire-dragon-crossing.m.vfxb",
-        "bytes": 978156
+        "bytes": 784348
       }
     ],
-    "bytes": 2370399,
-    "desktopBytes": 2370399,
-    "mobileBytes": 978156,
+    "bytes": 2149387,
+    "desktopBytes": 2149387,
+    "mobileBytes": 784348,
     "desktopScales": {
-      "ground-under-base": 1.05,
+      "ground-under-base": 1,
       "ground-under-glow": 0.75,
       "glow-back": 0.75,
-      "base": 1.05,
+      "base": 1,
       "glow": 0.75
     },
     "mobileScales": {
-      "ground-under-base": 0.65,
+      "ground-under-base": 0.55,
       "ground-under-glow": 0.5,
       "glow-back": 0.5,
-      "base": 0.65,
+      "base": 0.55,
       "glow": 0.5
     },
     "directions": {
@@ -1087,61 +1087,61 @@
         "files": [
           {
             "name": "hoa-fire-dragon-crossing@45.vfxb",
-            "bytes": 2354065
+            "bytes": 2178488
           },
           {
             "name": "hoa-fire-dragon-crossing@45.m.vfxb",
-            "bytes": 1038445
+            "bytes": 829178
           }
         ],
-        "bytes": 2354065,
-        "desktopBytes": 2354065,
-        "mobileBytes": 1038445
+        "bytes": 2178488,
+        "desktopBytes": 2178488,
+        "mobileBytes": 829178
       },
       "90": {
         "files": [
           {
             "name": "hoa-fire-dragon-crossing@90.vfxb",
-            "bytes": 2386160
+            "bytes": 2240548
           },
           {
             "name": "hoa-fire-dragon-crossing@90.m.vfxb",
-            "bytes": 1000238
+            "bytes": 812964
           }
         ],
-        "bytes": 2386160,
-        "desktopBytes": 2386160,
-        "mobileBytes": 1000238
+        "bytes": 2240548,
+        "desktopBytes": 2240548,
+        "mobileBytes": 812964
       },
       "-90": {
         "files": [
           {
             "name": "hoa-fire-dragon-crossing@-90.vfxb",
-            "bytes": 2322092
+            "bytes": 2164910
           },
           {
             "name": "hoa-fire-dragon-crossing@-90.m.vfxb",
-            "bytes": 994382
+            "bytes": 849671
           }
         ],
-        "bytes": 2322092,
-        "desktopBytes": 2322092,
-        "mobileBytes": 994382
+        "bytes": 2164910,
+        "desktopBytes": 2164910,
+        "mobileBytes": 849671
       },
       "-45": {
         "files": [
           {
             "name": "hoa-fire-dragon-crossing@-45.vfxb",
-            "bytes": 2423374
+            "bytes": 2251711
           },
           {
             "name": "hoa-fire-dragon-crossing@-45.m.vfxb",
-            "bytes": 1069461
+            "bytes": 858411
           }
         ],
-        "bytes": 2423374,
-        "desktopBytes": 2423374,
-        "mobileBytes": 1069461
+        "bytes": 2251711,
+        "desktopBytes": 2251711,
+        "mobileBytes": 858411
       }
     }
   },
