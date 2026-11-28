@@ -1,6 +1,6 @@
 // Build-time HTML for the Asset Explorer. Vite's index.html transform calls `fill()`, so the
-// deployed page ships every card as static markup; main.ts only adds tabs, filters and hover previews.
-import { type Card, type Release, type Spec, elements, propsCards, vfxCards } from './data/catalog.ts';
+// deployed page ships every card as static markup; main.ts only adds tabs, filters, previews and downloads.
+import { type Action, type Card, type ExportAction, type Release, type Spec, A15_DIRECTION_BUDGET, VRAM_SCALE, elements, mb, propsCards, vfxCards } from './data/catalog.ts';
 import { site } from './site.config.ts';
 
 const esc = (s: string | number) => String(s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[c]!);
@@ -9,6 +9,7 @@ export const icon = {
   out: '<svg viewBox="0 0 16 16" width="12" height="12" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5.5 4.5h6v6M11.5 4.5l-7 7"/></svg>',
   down: '<svg viewBox="0 0 16 16" width="12" height="12" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M8 2.5v8M4.5 7 8 10.5 11.5 7M3 13.5h10"/></svg>',
   play: '<svg viewBox="0 0 16 16" width="10" height="10" fill="currentColor" aria-hidden="true"><path d="M4 2.8v10.4L13 8z"/></svg>',
+  expand: '<svg viewBox="0 0 16 16" width="11" height="11" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9.5 2.5h4v4M6.5 13.5h-4v-4M13.5 2.5 9 7M2.5 13.5 7 9"/></svg>',
   spin: '<svg viewBox="0 0 16 16" width="11" height="11" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" aria-hidden="true"><path d="M13 8a5 5 0 1 1-1.5-3.6M13 2.5v2.5h-2.5"/></svg>',
 };
 
@@ -23,11 +24,29 @@ function badge(s: Spec): string {
   return `<li class="badge ${tone[s.tone ?? 'plain']}"${s.title ? ` title="${esc(s.title)}"` : ''}>${esc(s.label)}</li>`;
 }
 
-function gumroadButton(card: Card): string {
-  if (card.gumroad) {
-    return `<a class="btn btn-ghost" href="${esc(card.gumroad)}" target="_blank" rel="noopener" data-gumroad>Buy on Gumroad ${icon.out}</a>`;
+/** Measured decoded size against the A15 line: emerald inside the mobile budget, amber past it. */
+function vramBar(c: Card): string {
+  const v = c.vram, mobile = v.tier === 'mobile';
+  const fill = Math.min(v.bytes / VRAM_SCALE, 1).toFixed(4);
+  const line = (A15_DIRECTION_BUDGET / VRAM_SCALE * 100).toFixed(2);
+  return `<div class="mt-3.5" title="${esc(v.title)}">
+        <div class="flex items-baseline justify-between gap-2 font-mono text-[10.5px]">
+          <span class="text-muted">VRAM <span class="text-text tabular-nums">${esc(mb(v.bytes))}</span></span>
+          <span class="${mobile ? 'text-ok' : 'text-warn'} truncate">${esc(v.label)}</span>
+        </div>
+        <div class="vram-bar mt-1.5" role="meter" aria-label="Decoded VRAM against the 45 MB A15 budget" aria-valuemin="0" aria-valuemax="${(A15_DIRECTION_BUDGET / 1e6).toFixed(0)}" aria-valuenow="${(v.bytes / 1e6).toFixed(1)}" aria-valuetext="${esc(mb(v.bytes))}, ${esc(v.label)}" style="--fill:${fill};--line:${line}%">
+          <span class="vram-fill ${mobile ? 'is-mobile' : 'is-heavy'}"></span><span class="vram-line"></span>
+        </div>
+      </div>`;
+}
+
+function download(a: Action | ExportAction, wide: boolean): string {
+  const cls = `btn btn-ghost${wide ? ' col-span-2' : ''}`;
+  const detail = a.detail ? ` <span class="font-mono text-[10.5px] text-faint">${esc(a.detail)}</span>` : '';
+  if ('export' in a) {
+    return `<button type="button" class="${cls}" data-export="${esc(a.export)}" data-url="${esc(a.url)}" title="${esc(a.title ?? '')}">${icon.down} <span data-label>${esc(a.label)}</span>${detail}</button>`;
   }
-  return `<span class="btn btn-ghost is-disabled" aria-disabled="true" title="Gumroad listing coming soon">Gumroad <span class="font-mono text-[10px] uppercase tracking-wider text-faint">soon</span></span>`;
+  return `<a class="${cls}" href="${esc(a.href)}"${a.download ? ' download' : ''} title="${esc(a.title ?? '')}">${icon.down} ${esc(a.label)}${detail}</a>`;
 }
 
 function preview(card: Card, index: number): string {
@@ -42,21 +61,21 @@ function preview(card: Card, index: number): string {
         <span class="absolute bottom-2.5 left-3 inline-flex items-center gap-1.5 font-mono text-[10px] tracking-wider whitespace-nowrap text-muted uppercase">${icon.spin} 8 facings · ${esc(card.hover.label)}</span>
       </div>`;
   }
-  const hint = card.hover
-    ? `<span class="hint pointer-events-none absolute right-2.5 bottom-2.5 inline-flex items-center gap-1.5 rounded-full border border-white/10 bg-ink/70 px-2 py-1 font-mono text-[10px] tracking-wide text-muted backdrop-blur transition-opacity">${card.hover.type === 'video' ? icon.play + ' Preview' : icon.spin + ' Rotate'}</span>`
-    : '';
   return `<div class="preview relative aspect-[16/10] overflow-hidden bg-[#0a0d12]" data-preview${card.hover ? ` data-hover="${card.hover.type}"` : ''}>
       ${img}
       ${hover}
       <span class="pointer-events-none absolute top-2.5 left-2.5 inline-flex items-center gap-1.5 rounded-full border border-white/10 bg-ink/70 px-2 py-1 font-mono text-[10px] uppercase tracking-wider text-text backdrop-blur"><i class="size-1.5 rounded-full" style="background:${card.color}"></i>${esc(card.groupLabel)}</span>
       <span class="pointer-events-none absolute top-2.5 right-2.5 rounded-full border border-ok/30 bg-ink/70 px-2 py-1 font-mono text-[10px] uppercase tracking-wider text-ok backdrop-blur">Free</span>
-      ${hint}
+      <button type="button" class="preview-open absolute inset-0 z-10" data-open-preview="${esc(card.id)}" aria-haspopup="dialog" aria-label="Open interactive preview: ${esc(card.title)}">
+        <span class="hint pointer-events-none absolute right-2.5 bottom-2.5 inline-flex items-center gap-1.5 rounded-full border border-white/10 bg-ink/70 px-2 py-1 font-mono text-[10px] tracking-wide text-muted backdrop-blur transition-colors">${icon.expand} Inspect</span>
+      </button>
     </div>`;
 }
 
 function card(c: Card, index: number): string {
-  const search = [c.id, c.title, c.native, c.groupLabel, c.tag, c.description, c.kind === 'vfx' ? elements[c.group]?.native : ''].join(' ').toLowerCase();
-  return `<article class="card group" data-card data-kind="${c.kind}" data-group="${esc(c.group)}" data-terms="${esc(search)}">
+  const search = [c.id, c.title, c.native, c.groupLabel, c.tag, c.description, c.kind === 'vfx' ? elements[c.group]?.native : '', c.vram.label].join(' ').toLowerCase();
+  const wide = c.downloads.length === 1;
+  return `<article class="card group" data-card data-kind="${c.kind}" data-group="${esc(c.group)}" data-tier="${c.vram.tier}" data-terms="${esc(search)}">
     ${preview(c, index)}
     <div class="flex flex-1 flex-col p-4">
       <div class="flex items-baseline justify-between gap-3">
@@ -65,12 +84,16 @@ function card(c: Card, index: number): string {
       </div>
       <p class="mt-0.5 text-xs text-faint">${esc(c.native)}</p>
       <p class="mt-2.5 line-clamp-2 text-[13px] leading-relaxed text-muted">${esc(c.description)}</p>
-      <ul class="mt-3.5 flex flex-wrap gap-1.5" aria-label="Tech specs">${c.specs.map(badge).join('')}</ul>
+      <ul class="mt-3.5 flex flex-wrap gap-1.5" aria-label="Tech specs">${c.badges.map(badge).join('')}</ul>
+      <p class="mt-2 flex flex-wrap items-center gap-x-1.5 gap-y-1 font-mono text-[10.5px]" title="${esc(c.fps.title)}">
+        <span class="text-muted">${esc(c.fps.bake)}</span><span class="text-line-strong" aria-hidden="true">→</span><span class="text-accent">${esc(c.fps.target)}</span>
+      </p>
+      ${vramBar(c)}
       <p class="mt-3 font-mono text-[11px] text-faint">${c.meta.map(m => esc(m).replace(/ /g, '&nbsp;')).join('<span class="px-1 text-line-strong"> · </span>')}</p>
       <div class="mt-auto grid grid-cols-2 gap-2 pt-4">
         <a class="btn btn-primary col-span-2" href="${esc(c.live.href)}" target="_blank" rel="noopener" data-live>${c.live.label} <span class="font-mono text-[11px] font-normal opacity-60">${esc(new URL(c.live.href).host)}</span> ${icon.out}</a>
-        <a class="btn btn-ghost" href="${esc(c.sample.href)}"${c.sample.download ? ' download' : ''} title="${esc(c.sample.detail ?? '')}">${icon.down} ${c.sample.label}</a>
-        ${gumroadButton(c)}
+        ${c.downloads.map(d => download(d, wide)).join('\n        ')}
+        ${c.gumroad ? `<a class="btn btn-ghost col-span-2" href="${esc(c.gumroad)}" target="_blank" rel="noopener" data-gumroad>Buy on Gumroad ${icon.out}</a>` : ''}
       </div>
     </div>
   </article>`;
@@ -90,6 +113,13 @@ export function facts(release: Release): Facts {
   return { release, vfx: vfxCards(release), props: propsCards() };
 }
 
+/** Preview data for the modal, as inert JSON (never executed; `<` escaped so it cannot close the tag). */
+function data(f: Facts): string {
+  const previews = Object.fromEntries([...f.vfx, ...f.props].map(c => [c.id, c.preview]));
+  const json = JSON.stringify({ release: f.release.release, previews }).replace(/</g, '\\u003c');
+  return `<script type="application/json" id="hub-data">${json}</script>`;
+}
+
 /** Replaces `<!--hub:name-->` slots and `{{token}}` placeholders in index.html. */
 export function fill(html: string, f: Facts, extra: Record<string, string | number>): string {
   const isoAssets = f.props.reduce((n, c) => n + Number(c.meta[0].split(' ')[0]), 0);
@@ -97,10 +127,13 @@ export function fill(html: string, f: Facts, extra: Record<string, string | numb
     'vfx-cards': f.vfx.map(card).join('\n'),
     'props-cards': f.props.map(card).join('\n'),
     'vfx-chips': chips(f.vfx),
+    data: data(f),
   };
   const tokens: Record<string, string | number> = {
     vfxCount: f.vfx.length,
     propsCount: f.props.length,
+    mobileTier: f.vfx.filter(c => c.vram.tier === 'mobile').length,
+    heavyTier: f.vfx.filter(c => c.vram.tier === 'heavy').length,
     isoAssets,
     vfxUrl: site.vfx,
     vfxHost: new URL(site.vfx).host,

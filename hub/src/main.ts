@@ -1,5 +1,5 @@
 // Progressive enhancement only: every card, link and number is already in the HTML.
-// This adds tabs, filters, search and the hover previews (lazy-loaded on intent).
+// This adds tabs, filters, search, hover previews, the inspector modal and in-browser downloads.
 import './style.css';
 
 type Kind = 'vfx' | 'props';
@@ -69,22 +69,9 @@ chipsRow.addEventListener('click', e => {
 search.addEventListener('input', () => { state.query = search.value; apply(); });
 $('[data-reset]').addEventListener('click', () => { state.element = 'all'; state.query = ''; search.value = ''; apply(); search.focus(); });
 
-// Deep links: /#props or /#vfx open the explorer on that tab.
-function fromHash() {
-  const h = location.hash.slice(1);
-  if (h === 'props' || h === 'vfx') {
-    state.tab = h;
-    apply();
-    $('#assets').scrollIntoView({ behavior: reducedMotion.matches ? 'auto' : 'smooth' });
-  }
-}
-addEventListener('hashchange', fromHash);
-apply();
-fromHash();
-
 // ───────────── Hover previews ─────────────
 // VFX cards swap the poster for a looping capture; props cards run an 8-facing turntable.
-// Media loads only on intent (hover, focus or tap), so the grid costs just its posters.
+// Media loads only on intent (hover or keyboard focus), so the grid costs just its posters.
 function startPreview(preview: HTMLElement | null) {
   if (!preview || preview.classList.contains('is-playing')) return;
   const video = preview.querySelector<HTMLVideoElement>('video[data-src]');
@@ -107,19 +94,93 @@ function stopPreview(preview: HTMLElement | null) {
   if (video) { video.pause(); video.currentTime = 0; }
 }
 
+let modal: Promise<typeof import('./preview/modal.ts')> | null = null;
+const loadModal = () => (modal ??= import('./preview/modal.ts'));
+
 for (const card of $$('[data-card]')) {
   const preview = card.querySelector<HTMLElement>('[data-preview][data-hover]');
-  if (!preview) continue;
-  card.addEventListener('pointerenter', e => { if (e.pointerType === 'mouse') startPreview(preview); });
+  card.addEventListener('pointerenter', e => {
+    if (e.pointerType !== 'mouse') return;
+    startPreview(preview);
+    void loadModal(); // warm the small inspector chunk before the click
+  });
   card.addEventListener('pointerleave', e => { if (e.pointerType === 'mouse') stopPreview(preview); });
-  // Keyboard focus previews too; a tap's focus does not (the tap's click toggles instead).
+  // Keyboard focus previews too; a tap's focus does not.
   card.addEventListener('focusin', e => { if ((e.target as Element).matches(':focus-visible')) startPreview(preview); });
   card.addEventListener('focusout', e => { if (!card.contains(e.relatedTarget as Node)) stopPreview(preview); });
-  // Touch: tap the preview to toggle.
-  preview.addEventListener('click', () => (preview.classList.contains('is-playing') ? stopPreview(preview) : startPreview(preview)));
 }
 
-// Hero console: loops automatically unless the visitor prefers reduced motion.
+// ───────────── Inspector, downloads, copy ─────────────
+async function inspect(id: string, from: HTMLElement | null) {
+  (await loadModal()).open(id, from);
+}
+
+async function exportPack(button: HTMLButtonElement) {
+  if (button.getAttribute('aria-busy') === 'true') return;
+  const label = button.querySelector('[data-label]') ?? button;
+  const idle = label.textContent;
+  button.setAttribute('aria-busy', 'true');
+  try {
+    const { exportJsonWebp } = await import('./preview/export.ts');
+    await exportJsonWebp(button.dataset.url!, button.dataset.export!, step => { label.textContent = step; });
+    label.textContent = 'Saved';
+  } catch (error) {
+    console.warn(error);
+    label.textContent = 'Failed, retry';
+  } finally {
+    button.setAttribute('aria-busy', 'false');
+    setTimeout(() => { label.textContent = idle; }, 2200);
+  }
+}
+
+async function copy(button: HTMLButtonElement) {
+  const label = button.querySelector('[data-label]') ?? button;
+  try {
+    await navigator.clipboard.writeText(button.dataset.copy!);
+    label.textContent = 'Copied';
+  } catch {
+    // No clipboard permission: select the command so it can be copied by hand.
+    const source = button.parentElement?.querySelector('code');
+    if (source) getSelection()?.selectAllChildren(source);
+    label.textContent = 'Selected';
+  }
+  setTimeout(() => { label.textContent = 'Copy'; }, 1800);
+}
+
+document.addEventListener('click', e => {
+  const target = e.target as Element;
+  const open = target.closest<HTMLElement>('[data-open-preview]');
+  if (open) { void inspect(open.dataset.openPreview!, open); return; }
+  const exporter = target.closest<HTMLButtonElement>('button[data-export]');
+  if (exporter) { void exportPack(exporter); return; }
+  const copier = target.closest<HTMLButtonElement>('button[data-copy]');
+  if (copier) void copy(copier);
+});
+
+// ───────────── Deep links ─────────────
+// /#props or /#vfx open the explorer on that tab; /#inspect/<id> opens that asset's inspector.
+function fromHash() {
+  const h = location.hash.slice(1);
+  if (h === 'props' || h === 'vfx') {
+    state.tab = h;
+    apply();
+    $('#assets').scrollIntoView({ behavior: reducedMotion.matches ? 'auto' : 'smooth' });
+  } else if (h.startsWith('inspect/')) {
+    const id = h.slice(8);
+    const opener = document.querySelector<HTMLElement>(`[data-open-preview="${CSS.escape(id)}"]`);
+    if (opener) {
+      state.tab = opener.closest<HTMLElement>('[data-panel]')!.dataset.panel as Kind;
+      apply();
+      void inspect(id, opener);
+    }
+  }
+}
+addEventListener('hashchange', fromHash);
+apply();
+fromHash();
+
+// ───────────── Hero console ─────────────
+// Loops automatically unless the visitor prefers reduced motion.
 const hero = $('[data-hero]');
 const heroToggle = $<HTMLButtonElement>('[data-hero-toggle]');
 function setHero(playing: boolean) {
