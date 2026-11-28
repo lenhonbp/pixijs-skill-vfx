@@ -7,7 +7,7 @@
 A lightweight, zero-runtime-dependency atlas player for **PixiJS v7 and v8**,
 with a responsive, interactive showcase. Commercial use welcome.
 
-[Try the live collection →](https://vfx-store.pages.dev/) · [Runtime docs](runtime/README.md) · [Pack format](docs/pack-format.md)
+[Try the live collection →](https://vfx-store.pages.dev/) · [Runtime docs](runtime/README.md) · [Pack format](docs/pack-format.md) · [Isometric map contract](docs/iso-map-contract.md)
 
 ## Quick start
 
