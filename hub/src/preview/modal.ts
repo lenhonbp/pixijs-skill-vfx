@@ -10,12 +10,23 @@ const $ = <T extends HTMLElement = HTMLElement>(key: string) => dialog.querySele
 const ui = {
   dot: $('dot'), kind: $('kind'), title: $('title'), native: $('native'), tier: $('tier'), host: $('canvas'), status: $('status'),
   play: $<HTMLButtonElement>('play'), scrub: $<HTMLInputElement>('scrub'), readout: $('readout'), packs: $('packs'), links: $('links'),
-  hud: { runtime: $('runtime'), source: $('source'), vram: $('vram'), vramBar: $('vram-bar'), sheets: $('sheets'), frame: $('frame'), time: $('time'), dims: $('dims') },
+  dummy: $<HTMLButtonElement>('dummy'), dummySep: $('dummy-sep'),
+  hud: { runtime: $('runtime'), source: $('source'), vram: $('vram'), vramBar: $('vram-bar'), sheets: $('sheets'), frame: $('frame'), time: $('time'), dims: $('dims'), gpu: $('gpu') },
   labels: { sheets: $('l-sheets'), frame: $('l-frame'), time: $('l-time'), dims: $('l-dims') },
 };
 
-const state = { id: '', token: 0, playing: true, speed: 1, bg: 'studio' as Background, variant: (matchMedia('(max-width: 720px)').matches ? 'mobile' : 'desktop') as Variant, scrubbing: false, wasPlaying: true };
+// The Actor Dummy starts off and keeps the visitor's choice between inspectors.
+const state = { id: '', token: 0, playing: true, speed: 1, bg: 'studio' as Background, dummy: false, variant: (matchMedia('(max-width: 720px)').matches ? 'mobile' : 'desktop') as Variant, scrubbing: false, wasPlaying: true };
 let engine: Engine | null = null, loaded: Loaded | null = null, trigger: HTMLElement | null = null, returnHash = '';
+// The GPU row refreshes after each change plus a few times while sheets upload as frames first render;
+// steady playback then never touches it (no periodic allocation).
+const gpuTimers: number[] = [];
+function gpuSoon() {
+  for (const t of gpuTimers) clearTimeout(t);
+  gpuTimers.length = 0;
+  gpuHud();
+  for (const ms of [500, 1500, 4000]) gpuTimers.push(window.setTimeout(gpuHud, ms));
+}
 
 const esc = (s: string) => s.replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[c]!);
 const mb = (b: number) => `${(b / 1e6).toFixed(1)} MB`;
@@ -42,6 +53,20 @@ function setPlaying(on: boolean) {
   ui.play.setAttribute('aria-pressed', String(on));
   ui.play.setAttribute('aria-label', on ? 'Pause' : 'Play');
   ui.play.dataset.state = on ? 'playing' : 'paused';
+}
+
+function gpuHud() {
+  const n = engine?.gpuTextures?.() ?? -1;
+  ui.hud.gpu.textContent = n < 0 ? 'Canvas 2D · no GPU textures' : `${n} textures resident${state.dummy ? ' · incl. dummy' : ''}`;
+}
+
+async function setDummy(on: boolean) {
+  const p = data.previews[state.id];
+  if (!p || p.kind !== 'vfx') return;
+  state.dummy = on;
+  ui.dummy.setAttribute('aria-pressed', String(on));
+  await engine?.setDummy?.(on);
+  gpuSoon();
 }
 
 function vramHud(p: Preview, bytes: number) {
@@ -81,6 +106,8 @@ async function load(p: Preview) {
     e.onFrame = onFrame; e.setBackground(state.bg); e.setSpeed(state.speed); e.setPlaying(state.playing);
     const info = await e.load(state.variant);
     if (token !== state.token) return;
+    if (p.kind === 'vfx' && state.dummy) await e.setDummy?.(true);
+    if (token !== state.token) return;
     loaded = info;
     ui.hud.runtime.textContent = info.runtime;
     ui.hud.source.textContent = info.source;
@@ -89,6 +116,8 @@ async function load(p: Preview) {
     ui.scrub.max = String(info.frames - 1);
     ui.scrub.disabled = info.frames < 2;
     ui.status.hidden = true;
+    gpuHud();
+    gpuSoon();
     e.start();
   } catch (error) {
     if (token !== state.token) return;
@@ -112,12 +141,14 @@ export function open(id: string, from: HTMLElement | null) {
   ui.tier.textContent = mobile ? 'Mobile Tier (A15 <45MB)' : 'Desktop / Heavy Tier';
   ui.tier.className = `badge hidden sm:inline-block ${mobile ? 'border-ok/30 bg-ok/5 text-ok' : 'border-warn/35 bg-warn/5 text-warn'}`;
   ui.packs.hidden = p.kind !== 'vfx';
+  ui.dummy.hidden = ui.dummySep.hidden = p.kind !== 'vfx';
+  ui.dummy.setAttribute('aria-pressed', String(state.dummy));
   pressed(ui.packs, 'data-pv-pack', state.variant);
   ui.labels.sheets.textContent = p.kind === 'vfx' ? 'Sheets' : 'Grid';
   ui.labels.frame.textContent = p.kind === 'vfx' ? 'Frame' : 'Facing';
   ui.labels.time.textContent = p.kind === 'vfx' ? 'Time' : 'Yaw';
   ui.labels.dims.textContent = p.kind === 'vfx' ? 'Bounds' : 'Sprite';
-  for (const el of [ui.hud.frame, ui.hud.time, ui.hud.dims, ui.readout]) el.textContent = '—';
+  for (const el of [ui.hud.frame, ui.hud.time, ui.hud.dims, ui.hud.gpu, ui.readout]) el.textContent = '—';
   links(p);
   ui.host.replaceChildren();
   if (!dialog.open) { dialog.showModal(); document.documentElement.classList.add('is-modal'); }
@@ -128,6 +159,7 @@ function close() { if (dialog.open) dialog.close(); }
 
 dialog.addEventListener('close', () => {
   state.token++;
+  for (const t of gpuTimers) clearTimeout(t);
   // Free the pack's GPU textures; reopening fetches it again (usually from the HTTP cache).
   engine?.stop(); engine?.release(); engine = null;
   document.documentElement.classList.remove('is-modal');
@@ -153,6 +185,7 @@ $('speed').addEventListener('click', e => {
   if (!b) return;
   state.speed = Number(b.dataset.pvRate); engine?.setSpeed(state.speed); pressed($('speed'), 'data-pv-rate', b.dataset.pvRate!);
 });
+ui.dummy.addEventListener('click', () => void setDummy(!state.dummy));
 $('bgs').addEventListener('click', e => {
   const b = (e.target as Element).closest<HTMLElement>('[data-pv-bg]');
   if (!b) return;
@@ -172,6 +205,7 @@ ui.packs.addEventListener('click', e => {
 dialog.addEventListener('keydown', e => {
   const t = e.target as HTMLElement;
   if (e.key === ' ' && !t.closest('button, a, input')) { e.preventDefault(); setPlaying(!state.playing); }
+  else if ((e.key === 'a' || e.key === 'A') && !e.ctrlKey && !e.metaKey && !e.altKey && !t.closest('input')) { e.preventDefault(); void setDummy(!state.dummy); }
   else if ((e.key === 'ArrowLeft' || e.key === 'ArrowRight') && !t.closest('input') && loaded) {
     e.preventDefault(); setPlaying(false);
     const next = Math.max(0, Math.min(loaded.frames - 1, ui.scrub.valueAsNumber + (e.key === 'ArrowRight' ? 1 : -1)));

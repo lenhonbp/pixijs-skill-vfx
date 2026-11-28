@@ -1,4 +1,7 @@
 // Captures every Free effect from a locally served showcase, frame by frame, for the Hub card media.
+// Pure VFX: the caster, the dummy, their shadows, the stage floor and the aim compass are hidden and the
+// background is the Hub's #0d1117, so a card shows the effect and nothing else. The whole canvas is saved;
+// vfx-media.py frames each effect from where it actually draws.
 // Playwright's fake clock is paused and stepped 1/30 s at a time, so the frames are evenly spaced
 // no matter how slowly software WebGL renders.
 //
@@ -20,7 +23,7 @@ const browser = await chromium.launch({ executablePath: process.env.CHROMIUM_PAT
 for (const id of ids) {
   const dir = join(outDir, id);
   mkdirSync(dir, { recursive: true });
-  const context = await browser.newContext({ viewport: { width: 1280, height: 900 }, deviceScaleFactor: 2 });
+  const context = await browser.newContext({ viewport: { width: 1280, height: 1500 }, deviceScaleFactor: 2 });
   const page = await context.newPage();
   page.on('pageerror', e => console.warn(id, 'pageerror', e.message));
   await page.clock.install({ time: new Date('2026-11-28T00:00:00Z') });
@@ -31,10 +34,15 @@ for (const id of ids) {
   for (let i = 0; i < 400 && !(await status())?.startsWith('Ready'); i++) { await page.clock.runFor(50); await page.waitForTimeout(25); }
   if (!(await status())?.startsWith('Ready')) { console.warn(id, 'never ready:', await status()); await context.close(); continue; }
   await page.locator('#shake').uncheck();
-  // Crop to the arena: the caster, the target and the space above them.
+  // Pure VFX: hide every actor-side node (the floating dust motes are the small gold sprites in the world).
+  await page.evaluate(() => {
+    const { scene, world, app } = window.__showcase;
+    for (const node of [scene.caster, scene.dummy, scene.casterShadow, scene.dummyShadow, scene.floorFlash, scene.backdrop, scene.compass]) node.visible = false;
+    for (const child of world.children) if (child.tint === 0xd6b477 && child.width <= 6 && child.height <= 6) child.visible = false;
+    app.renderer.background.color = 0x0d1117;
+  });
   const box = (await page.locator('#stage canvas').first().boundingBox());
-  const clip = { x: box.x + box.width * 0.178, y: box.y + box.height * 0.191, width: box.width * 0.644, height: box.height * 0.692 };
-  const shot = () => page.screenshot({ type: 'jpeg', quality: 92, clip });
+  const shot = () => page.screenshot({ type: 'jpeg', quality: 90, clip: box });
   await page.clock.pauseAt(await page.evaluate(() => Date.now() + 1500));
   await page.clock.runFor(100);
   writeFileSync(join(dir, 'idle.jpg'), await shot());

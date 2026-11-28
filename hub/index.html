@@ -318,6 +318,7 @@ vfx.play(<span class="text-accent">'hoa-fireball'</span>, { from: caster, to: ta
           <div><dt data-pv-l-frame>Frame</dt><dd data-pv-frame>—</dd></div>
           <div><dt data-pv-l-time>Time</dt><dd data-pv-time>—</dd></div>
           <div><dt data-pv-l-dims>Bounds</dt><dd data-pv-dims>—</dd></div>
+          <div><dt>GPU</dt><dd data-pv-gpu>—</dd></div>
         </dl>
       </div>
 
@@ -334,15 +335,15 @@ vfx.play(<span class="text-accent">'hoa-fireball'</span>, { from: caster, to: ta
           <div class="seg" role="group" aria-label="Playback speed" data-pv-speed>
             <button type="button" data-pv-rate="0.5" aria-pressed="false">0.5×</button><button type="button" data-pv-rate="1" aria-pressed="true">1.0×</button>
           </div>
-          <div class="seg" role="group" aria-label="Background" data-pv-bgs>
-            <button type="button" data-pv-bg="studio" aria-pressed="true">Dark Studio</button><button type="button" data-pv-bg="grid" aria-pressed="false">Iso Grid</button><button type="button" data-pv-bg="scorch" aria-pressed="false">Ground Scorch</button>
+          <div class="seg" role="group" aria-label="Stage" data-pv-bgs>
+            <button type="button" data-pv-bg="studio" aria-pressed="true"><span class="hidden sm:inline">Dark </span>Studio</button><button type="button" data-pv-bg="grid" aria-pressed="false"><span class="hidden sm:inline">Iso </span>Grid</button><button type="button" data-pv-bg="scorch" aria-pressed="false"><span class="hidden sm:inline">Ground </span>Scorch</button><span class="seg-sep" aria-hidden="true" data-pv-dummy-sep></span><button type="button" class="seg-toggle" data-pv-dummy aria-pressed="false" aria-keyshortcuts="A" title="Actor Dummy: a mannequin at the caster, a training post at the target (A)"><i class="seg-dot" aria-hidden="true"></i><span class="hidden sm:inline">Actor </span>Dummy<kbd class="hidden sm:inline">A</kbd></button>
           </div>
           <div class="seg" role="group" aria-label="Pack tier" data-pv-packs>
             <button type="button" data-pv-pack="desktop" aria-pressed="true">Desktop pack</button><button type="button" data-pv-pack="mobile" aria-pressed="false">Mobile pack</button>
           </div>
           <div class="ml-auto flex flex-wrap gap-2" data-pv-links></div>
         </div>
-        <p class="mt-2.5 hidden font-mono text-[10.5px] text-faint sm:block">Space play/pause · ← → step a frame · Esc close</p>
+        <p class="mt-2.5 hidden font-mono text-[10.5px] text-faint sm:block">Space play/pause · ← → step a frame · A actor dummy · Esc close</p>
       </div>
     </div>
   </dialog>

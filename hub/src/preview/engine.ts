@@ -27,6 +27,10 @@ export interface Engine {
   setSpeed(speed: number): void;
   seek(frame: number): void;
   setBackground(bg: Background): void;
+  /** Actor Dummy at the caster and target stations (effects only). */
+  setDummy?(on: boolean): Promise<void>;
+  /** GPU textures the renderer currently holds, for the HUD (effects only). */
+  gpuTextures?(): number;
   /** Start drawing (modal visible). */
   start(): void;
   /** Stop the frame loop (modal hidden); the loaded asset stays ready. */
