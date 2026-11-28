@@ -4,4 +4,4 @@
 /props    https://props.lenhon.dev/    302
 /props/*  https://props.lenhon.dev/:splat 302
 /github   https://github.com/lenhonbp  302
-/docs     /#docs                       302
+/docs     /#pipeline                   302

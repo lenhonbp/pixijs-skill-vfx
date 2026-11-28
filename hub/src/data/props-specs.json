@@ -12,7 +12,57 @@
   "pngSprites": 192,
   "atlasPages": 4,
   "sha256": "ddebd090de151fd43819cb40930fd6c612cd402a48d9d9e7349a7e0432c62d95",
+  "turntable": {
+   "w": 410,
+   "h": 319,
+   "scale": 2
+  },
   "hero": "market-stall",
+  "heroDims": [
+   [
+    90,
+    116
+   ],
+   [
+    68,
+    100
+   ],
+   [
+    91,
+    117
+   ],
+   [
+    63,
+    108
+   ],
+   [
+    91,
+    107
+   ],
+   [
+    68,
+    91
+   ],
+   [
+    90,
+    107
+   ],
+   [
+    63,
+    109
+   ]
+  ],
+  "facings": [
+   "se",
+   "s",
+   "sw",
+   "w",
+   "nw",
+   "n",
+   "ne",
+   "e"
+  ],
+  "compression": 0.57735,
   "tile": 96,
   "vram": 3145728,
   "vramAll": 7340032
@@ -30,7 +80,57 @@
   "pngSprites": 160,
   "atlasPages": 4,
   "sha256": "970b1bf71adf322ac5910e9a1b0d84ea13bc98ee06da097799f45323d2c9345a",
+  "turntable": {
+   "w": 378,
+   "h": 294,
+   "scale": 2
+  },
   "hero": "co-phong-lantern",
+  "heroDims": [
+   [
+    82,
+    102
+   ],
+   [
+    60,
+    92
+   ],
+   [
+    82,
+    102
+   ],
+   [
+    60,
+    92
+   ],
+   [
+    82,
+    102
+   ],
+   [
+    60,
+    92
+   ],
+   [
+    82,
+    102
+   ],
+   [
+    60,
+    92
+   ]
+  ],
+  "facings": [
+   "se",
+   "s",
+   "sw",
+   "w",
+   "nw",
+   "n",
+   "ne",
+   "e"
+  ],
+  "compression": 0.57735,
   "tile": 96,
   "vram": 3145728,
   "vramAll": 7340032
@@ -48,7 +148,57 @@
   "pngSprites": 160,
   "atlasPages": 4,
   "sha256": "a2a67eb9b1617c2017357a74178aab3a9b5664b243d44f90a36ecb531e97d378",
+  "turntable": {
+   "w": 336,
+   "h": 279,
+   "scale": 2
+  },
   "hero": "village-well",
+  "heroDims": [
+   [
+    72,
+    94
+   ],
+   [
+    56,
+    84
+   ],
+   [
+    73,
+    94
+   ],
+   [
+    51,
+    98
+   ],
+   [
+    72,
+    94
+   ],
+   [
+    56,
+    84
+   ],
+   [
+    73,
+    94
+   ],
+   [
+    51,
+    98
+   ]
+  ],
+  "facings": [
+   "se",
+   "s",
+   "sw",
+   "w",
+   "nw",
+   "n",
+   "ne",
+   "e"
+  ],
+  "compression": 0.57735,
   "tile": 96,
   "vram": 1572864,
   "vramAll": 3670016
@@ -66,7 +216,57 @@
   "pngSprites": 192,
   "atlasPages": 4,
   "sha256": "9778b8e1eca09c9d82e07202d8a78316c4ca838d138a93b3701de7400d9be8c6",
+  "turntable": {
+   "w": 404,
+   "h": 330,
+   "scale": 2
+  },
   "hero": "ruin-arch",
+  "heroDims": [
+   [
+    114,
+    134
+   ],
+   [
+    120,
+    114
+   ],
+   [
+    114,
+    135
+   ],
+   [
+    45,
+    135
+   ],
+   [
+    114,
+    134
+   ],
+   [
+    120,
+    114
+   ],
+   [
+    114,
+    135
+   ],
+   [
+    45,
+    135
+   ]
+  ],
+  "facings": [
+   "se",
+   "s",
+   "sw",
+   "w",
+   "nw",
+   "n",
+   "ne",
+   "e"
+  ],
+  "compression": 0.57735,
   "tile": 96,
   "vram": 4194304,
   "vramAll": 8388608
@@ -84,7 +284,57 @@
   "pngSprites": 192,
   "atlasPages": 4,
   "sha256": "fc46be26fcb6e3063f1f709b18fbf25baa077b86c8eeb77513947d894c334f18",
+  "turntable": {
+   "w": 432,
+   "h": 356,
+   "scale": 2
+  },
   "hero": "sect-bell-stand",
+  "heroDims": [
+   [
+    86,
+    130
+   ],
+   [
+    96,
+    99
+   ],
+   [
+    87,
+    130
+   ],
+   [
+    38,
+    135
+   ],
+   [
+    86,
+    130
+   ],
+   [
+    96,
+    99
+   ],
+   [
+    87,
+    130
+   ],
+   [
+    38,
+    135
+   ]
+  ],
+  "facings": [
+   "se",
+   "s",
+   "sw",
+   "w",
+   "nw",
+   "n",
+   "ne",
+   "e"
+  ],
+  "compression": 0.57735,
   "tile": 96,
   "vram": 4194304,
   "vramAll": 8388608
@@ -102,7 +352,57 @@
   "pngSprites": 192,
   "atlasPages": 4,
   "sha256": "1eac8796da9f3295f46511813e1fddaeda8c692c387dda9cb88068f36eec0192",
+  "turntable": {
+   "w": 411,
+   "h": 332,
+   "scale": 2
+  },
   "hero": "sword-hearth",
+  "heroDims": [
+   [
+    112,
+    133
+   ],
+   [
+    93,
+    120
+   ],
+   [
+    112,
+    133
+   ],
+   [
+    70,
+    119
+   ],
+   [
+    112,
+    121
+   ],
+   [
+    93,
+    102
+   ],
+   [
+    112,
+    121
+   ],
+   [
+    70,
+    119
+   ]
+  ],
+  "facings": [
+   "se",
+   "s",
+   "sw",
+   "w",
+   "nw",
+   "n",
+   "ne",
+   "e"
+  ],
+  "compression": 0.57735,
   "tile": 96,
   "vram": 4194304,
   "vramAll": 8388608
@@ -120,7 +420,57 @@
   "pngSprites": 192,
   "atlasPages": 4,
   "sha256": "b4a5e00c28f6b565e4630bce95b97defb7865f578c20700502f7d6a5d68a4290",
+  "turntable": {
+   "w": 426,
+   "h": 339,
+   "scale": 2
+  },
   "hero": "scroll-cabinet",
+  "heroDims": [
+   [
+    84,
+    127
+   ],
+   [
+    76,
+    107
+   ],
+   [
+    84,
+    127
+   ],
+   [
+    48,
+    123
+   ],
+   [
+    84,
+    127
+   ],
+   [
+    76,
+    107
+   ],
+   [
+    84,
+    127
+   ],
+   [
+    48,
+    123
+   ]
+  ],
+  "facings": [
+   "se",
+   "s",
+   "sw",
+   "w",
+   "nw",
+   "n",
+   "ne",
+   "e"
+  ],
+  "compression": 0.57735,
   "tile": 96,
   "vram": 4194304,
   "vramAll": 8388608
@@ -138,7 +488,57 @@
   "pngSprites": 192,
   "atlasPages": 4,
   "sha256": "f4a3b430458f85cd82e3ac25a0a68e981fa3408571f0dc99d90dcb7d6b5a9543",
+  "turntable": {
+   "w": 287,
+   "h": 233,
+   "scale": 2
+  },
   "hero": "tea-shelf",
+  "heroDims": [
+   [
+    53,
+    83
+   ],
+   [
+    50,
+    69
+   ],
+   [
+    54,
+    83
+   ],
+   [
+    29,
+    83
+   ],
+   [
+    53,
+    84
+   ],
+   [
+    50,
+    70
+   ],
+   [
+    53,
+    84
+   ],
+   [
+    29,
+    82
+   ]
+  ],
+  "facings": [
+   "se",
+   "s",
+   "sw",
+   "w",
+   "nw",
+   "n",
+   "ne",
+   "e"
+  ],
+  "compression": 0.57735,
   "tile": 96,
   "vram": 1572864,
   "vramAll": 3670016
@@ -156,7 +556,57 @@
   "pngSprites": 192,
   "atlasPages": 4,
   "sha256": "03e8e75d2714b132ba05a0ee700ba151bdf9ffccf269f9fe80b6c635660a4db3",
+  "turntable": {
+   "w": 225,
+   "h": 191,
+   "scale": 2
+  },
   "hero": "relay-crates",
+  "heroDims": [
+   [
+    76,
+    75
+   ],
+   [
+    72,
+    65
+   ],
+   [
+    68,
+    66
+   ],
+   [
+    46,
+    59
+   ],
+   [
+    76,
+    64
+   ],
+   [
+    72,
+    63
+   ],
+   [
+    68,
+    77
+   ],
+   [
+    46,
+    77
+   ]
+  ],
+  "facings": [
+   "se",
+   "s",
+   "sw",
+   "w",
+   "nw",
+   "n",
+   "ne",
+   "e"
+  ],
+  "compression": 0.57735,
   "tile": 96,
   "vram": 2097152,
   "vramAll": 4194304
@@ -174,7 +624,57 @@
   "pngSprites": 192,
   "atlasPages": 4,
   "sha256": "3a00b9f82e70e86e8a22b2390adb875f55649a8503b260dde1902f27601f600a",
+  "turntable": {
+   "w": 296,
+   "h": 204,
+   "scale": 2
+  },
   "hero": "river-skiff",
+  "heroDims": [
+   [
+    84,
+    58
+   ],
+   [
+    114,
+    29
+   ],
+   [
+    84,
+    63
+   ],
+   [
+    42,
+    79
+   ],
+   [
+    83,
+    63
+   ],
+   [
+    114,
+    29
+   ],
+   [
+    84,
+    59
+   ],
+   [
+    42,
+    74
+   ]
+  ],
+  "facings": [
+   "se",
+   "s",
+   "sw",
+   "w",
+   "nw",
+   "n",
+   "ne",
+   "e"
+  ],
+  "compression": 0.57735,
   "tile": 96,
   "vram": 3145728,
   "vramAll": 7340032
@@ -192,7 +692,57 @@
   "pngSprites": 192,
   "atlasPages": 4,
   "sha256": "627ec5fa5fe628c1c2f1e1ce5a7eac14eae8dccb453f0934586afce19e3e015c",
+  "turntable": {
+   "w": 273,
+   "h": 206,
+   "scale": 2
+  },
   "hero": "pass-travel-shrine",
+  "heroDims": [
+   [
+    80,
+    75
+   ],
+   [
+    66,
+    72
+   ],
+   [
+    80,
+    75
+   ],
+   [
+    50,
+    69
+   ],
+   [
+    80,
+    75
+   ],
+   [
+    66,
+    71
+   ],
+   [
+    80,
+    74
+   ],
+   [
+    50,
+    68
+   ]
+  ],
+  "facings": [
+   "se",
+   "s",
+   "sw",
+   "w",
+   "nw",
+   "n",
+   "ne",
+   "e"
+  ],
+  "compression": 0.57735,
   "tile": 96,
   "vram": 2097152,
   "vramAll": 4194304
@@ -210,7 +760,57 @@
   "pngSprites": 192,
   "atlasPages": 4,
   "sha256": "1b3187943683eea3bda1c60be149c1d449b218acc24b42c95be91da2780e9793",
+  "turntable": {
+   "w": 346,
+   "h": 297,
+   "scale": 2
+  },
   "hero": "grove-bamboo-planter",
+  "heroDims": [
+   [
+    69,
+    103
+   ],
+   [
+    67,
+    102
+   ],
+   [
+    63,
+    96
+   ],
+   [
+    54,
+    85
+   ],
+   [
+    70,
+    76
+   ],
+   [
+    68,
+    88
+   ],
+   [
+    63,
+    98
+   ],
+   [
+    54,
+    100
+   ]
+  ],
+  "facings": [
+   "se",
+   "s",
+   "sw",
+   "w",
+   "nw",
+   "n",
+   "ne",
+   "e"
+  ],
+  "compression": 0.57735,
   "tile": 96,
   "vram": 2097152,
   "vramAll": 4194304
@@ -228,7 +828,57 @@
   "pngSprites": 192,
   "atlasPages": 4,
   "sha256": "b72d2dab6234c40f01569edad2e897e6b5e28094dd84867f2d25cf4d79a20810",
+  "turntable": {
+   "w": 352,
+   "h": 278,
+   "scale": 2
+  },
   "hero": "herb-drawer-cabinet",
+  "heroDims": [
+   [
+    73,
+    103
+   ],
+   [
+    65,
+    85
+   ],
+   [
+    73,
+    103
+   ],
+   [
+    47,
+    99
+   ],
+   [
+    73,
+    103
+   ],
+   [
+    65,
+    85
+   ],
+   [
+    73,
+    103
+   ],
+   [
+    47,
+    99
+   ]
+  ],
+  "facings": [
+   "se",
+   "s",
+   "sw",
+   "w",
+   "nw",
+   "n",
+   "ne",
+   "e"
+  ],
+  "compression": 0.57735,
   "tile": 96,
   "vram": 3145728,
   "vramAll": 7340032
@@ -236,6 +886,8 @@
  {
   "id": "pho-co",
   "kit": true,
+  "vram": 2188256,
+  "vramAll": 2188256,
   "assets": 16,
   "directions": 8,
   "passes": 4,

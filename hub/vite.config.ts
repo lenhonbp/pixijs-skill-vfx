@@ -14,7 +14,10 @@ function release(): { base: string; release: string } {
   const pointer = here('../showcase/public/packs-release.json');
   const r = readJson(existsSync(pointer) ? pointer : here('./src/data/release.json'));
   if (r?.version !== 1 || !/^https:\/\/[^\s?#]+$/.test(r.base) || !/^[A-Za-z0-9][A-Za-z0-9._-]{2,63}$/.test(r.release)) throw new Error('Invalid packs release pointer');
-  return { base: r.base, release: r.release };
+  // HUB_PACKS_BASE points the page at another copy of the same release (local browser tests).
+  const override = process.env.HUB_PACKS_BASE?.trim();
+  if (override && !/^https?:\/\/[^\s?#]+$/.test(override)) throw new Error('Invalid HUB_PACKS_BASE');
+  return { base: override || r.base, release: r.release };
 }
 
 // Size of the whole Free release on the CDN (every direction, desktop + mobile), from the showcase index.
@@ -43,8 +46,32 @@ function checkSnapshot() {
 
 const HERO_VFX = 'hoa-fire-dragon-crossing';
 
+// Response headers for Cloudflare Pages. The CSP allows exactly one outside origin: the R2 CDN the inspector
+// and the JSON + WebP export fetch packs from. Pack sheets become blob: images inside the runtime.
+function headers(cdnOrigin: string): string {
+  const csp = [
+    "default-src 'self'", "script-src 'self'", "style-src 'self'", "style-src-attr 'unsafe-inline'",
+    "img-src 'self' data: blob:", "media-src 'self'", "font-src 'self'", `connect-src 'self' ${cdnOrigin}`,
+    "worker-src 'self' blob:", "object-src 'none'", "base-uri 'self'", "form-action 'none'", "frame-ancestors 'none'",
+  ].join('; ');
+  return `/*
+  X-Content-Type-Options: nosniff
+  Referrer-Policy: strict-origin-when-cross-origin
+  Permissions-Policy: camera=(), microphone=(), geolocation=(), interest-cohort=()
+  X-Frame-Options: DENY
+  Content-Security-Policy: ${csp}
+
+/assets/*
+  Cache-Control: public, max-age=31536000, immutable
+
+/media/*
+  Cache-Control: public, max-age=604800, stale-while-revalidate=86400
+`;
+}
+
 function hub(): Plugin {
-  const data = facts(release());
+  const rel = release();
+  const data = facts(rel);
   const cdn = cdnTotals();
   const hero = data.vfx.find(c => c.id === HERO_VFX);
   if (!hero) throw new Error(`Hero effect ${HERO_VFX} is not in the collection`);
@@ -52,11 +79,15 @@ function hub(): Plugin {
   return {
     name: 'lenhon-hub',
     buildStart: checkSnapshot,
+    generateBundle() { this.emitFile({ type: 'asset', fileName: '_headers', source: headers(new URL(rel.base).origin) }); },
     transformIndexHtml: { order: 'pre', handler: html => fill(html, data, tokens) },
   };
 }
 
 export default defineConfig({
   plugins: [hub(), tailwindcss()],
+  // The inspector plays packs through this repo's runtime (../runtime/src), against the Hub's own PixiJS.
+  resolve: { dedupe: ['pixi.js'] },
+  server: { fs: { allow: [here('..')] } },
   build: { target: 'es2022', assetsInlineLimit: 0, cssMinify: true },
 });

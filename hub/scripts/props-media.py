@@ -46,18 +46,42 @@ for pack in catalog:
         c = f.crop(box).resize((max(1, round(w * scale)), max(1, round(h * scale))), Image.LANCZOS)
         strip.alpha_composite(c, (i * FRAME + (FRAME - c.width) // 2, (FRAME - c.height) // 2))
     strip.save(os.path.join(media, pid + '-spin.webp'), 'WEBP', quality=82, method=6)
+    # Inspector turntable: the native 2x (192 px/tile) bake when the pack ships one, cropped to the union of all
+    # eight facings so the ground anchor stays put; loaded only when the preview modal opens.
+    detail = os.path.join(dist, pid, 'media', 'detail', hero)
+    source, scale = (detail, 2) if os.path.isdir(detail) else (os.path.join(views, hero), 1)
+    big = [Image.open(os.path.join(source, f + '.webp')).convert('RGBA') for f in ORDER]
+    union = None
+    for f in big:
+        b2 = f.getbbox()
+        union = b2 if union is None else (min(union[0], b2[0]), min(union[1], b2[1]), max(union[2], b2[2]), max(union[3], b2[3]))
+    pad = 8
+    union = (max(0, union[0] - pad), max(0, union[1] - pad), min(big[0].width, union[2] + pad), min(big[0].height, union[3] + pad))
+    tw, th = union[2] - union[0], union[3] - union[1]
+    table = Image.new('RGBA', (tw * len(big), th), (0, 0, 0, 0))
+    for i, f in enumerate(big):
+        table.alpha_composite(f.crop(union), (i * tw, 0))
+    table.save(os.path.join(media, pid + '-turntable.webp'), 'WEBP', quality=86, method=6)
     shutil.copyfile(os.path.join(dist, pid, 'media', 'field-scene.webp'), os.path.join(media, pid + '.webp'))
     atlas = json.load(open(os.path.join(atlas_dir(pid), 'atlas.json')))
     names = {a['id']: a.get('name') for a in atlas['assets']} if atlas['assets'] and 'id' in atlas['assets'][0] else {}
+    entry = next(a for a in atlas['assets'] if a['asset'] == hero)
+    facing = {f['direction']: f['planes']['albedo']['sourceBounds'] for f in entry['frames']}
+    compression = {round(a['compression'], 5) for a in atlas['assets']}
+    assert compression == {0.57735}, f'{pid}: unexpected projection {compression}'
     out.append({k: pack[k] for k in ('id', 'title', 'en', 'version', 'zip', 'bytes', 'assets', 'directions', 'passes', 'pngSprites', 'atlasPages', 'sha256')}
-               | {'hero': hero, 'tile': 96, 'vram': vram(atlas, {'albedo', 'shadow'}), 'vramAll': vram(atlas, {'albedo', 'shadow', 'depth', 'normal'})})
+               | {'turntable': {'w': tw, 'h': th, 'scale': scale}, 'hero': hero, 'heroDims': [[facing[d]['w'], facing[d]['h']] for d in ORDER], 'facings': ORDER, 'compression': 0.57735,
+                  'tile': 96, 'vram': vram(atlas, {'albedo', 'shadow'}), 'vramAll': vram(atlas, {'albedo', 'shadow', 'depth', 'normal'})})
 
 # Phố Cổ modular town kit: scene art + its three release receipts.
 town = os.path.join(dist, 'pho-co')
 shutil.copyfile(os.path.join(town, 'scene.webp'), os.path.join(media, 'pho-co.webp'))
 receipts = [json.load(open(os.path.join(town, 'releases', f))) for f in sorted(os.listdir(os.path.join(town, 'releases')))]
 starter = next(f for f in os.listdir(town) if f.startswith('co-tran-starter-map-') and f.endswith('.zip'))
-out.append({'id': 'pho-co', 'kit': True, 'assets': sum(r['assets'] for r in receipts), 'directions': 8, 'passes': 4,
+# The playable map's runtime atlas (albedo, shadow and roof pages) is what a game keeps resident.
+kit_pages = [os.path.join(dp, f) for dp, _, fs in os.walk(os.path.join(town, 'atlas')) for f in fs if f.endswith('.webp')]
+kit_vram = sum(w * h * 4 for w, h in (Image.open(f).size for f in kit_pages))
+out.append({'id': 'pho-co', 'kit': True, 'vram': kit_vram, 'vramAll': kit_vram, 'assets': sum(r['assets'] for r in receipts), 'directions': 8, 'passes': 4,
             'pngSprites': sum(r['pngSprites'] for r in receipts), 'atlasPages': sum(r['atlasPages'] for r in receipts),
             'zip': starter, 'bytes': os.path.getsize(os.path.join(town, starter)), 'tile': 96,
             'parts': [{'id': r['id'], 'version': r['version'], 'zip': r['zip'], 'bytes': r['bytes'], 'assets': r['assets']} for r in receipts]})
