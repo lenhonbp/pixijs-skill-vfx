@@ -34,6 +34,14 @@ npm run build     # typecheck → vite build → scripts/check-dist.mjs gate
   facings of Isobaker's native 2× bake on a 2D canvas over a 1/√3 grid. PixiJS and the
   runtime load only when an effect is first inspected; the inspector frame loop swaps
   precomputed HUD strings and allocates nothing of its own.
+- **Actor Dummy** (inspector toolbar, or the `A` key; off by default, effects only): one vector
+  silhouette (`public/media/actor-dummy.svg`, ~3.5 kB, clay/AO lead grey `#21262d` with a `#30363d`
+  rim) standing at the caster and the target. It loads on first use, follows the packs' actor
+  tracks (dashes, knock-backs, lifts, visibility; facing relative to each station), and sits on a
+  contact decal locked to `feet_ground` (0, 0) in the 1/√3 (0.57735) isometric ratio. Draw order:
+  ground-under layers < decals < actor bodies < the effect's main layers < body residuals. Closing
+  the inspector destroys its texture with the pack's. The HUD's GPU row counts live textures
+  (Pixi ≥ 8.15 keeps freed slots as `null`, so only live entries are counted).
 - **Downloads**: `.vfxb` links straight to the R2 container. **JSON + WebP** fetches the same
   container, unpacks it in the browser with the runtime's `readContainer` and saves the plain
   encoding (`<id>.vfx.json` + WebP sheets + README) as a ZIP; `vfx.load('<id>.vfx.json')`
@@ -92,6 +100,6 @@ the same release (for local browser tests against same-origin packs).
 
 The build warns when `showcase/public/packs/free/index.json` no longer matches the specs
 snapshot, i.e. when a new release needs the media and specs regenerated. `check-dist`
-fails the build if a card's badges are not the standard four, if a tier badge disagrees with
+fails the build if the Actor Dummy asset is missing or not under 100 kB, if a card's badges are not the standard four, if a tier badge disagrees with
 the measured VRAM, if the CSP does not allow the pack CDN, or if the entry script grows past
 20 kB.
