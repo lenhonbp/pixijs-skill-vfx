@@ -26,7 +26,7 @@ THRESHOLD, PAD, MIN_WIDTH, ASPECT, TAIL, BODY = 18, 1.2, 0.40, 1.6, 0.01, 0.25
 # An effect missing here falls back to the busiest frame that sits near the middle of its window.
 PEAK = {
     'curse-weaken': 46, 'hoa-dragon-breath': 37, 'hoa-fire-dragon-crossing': 29, 'hoa-fireball': 28,
-    'hoa-heaven-fire': 32, 'kim-golden-bell': 44, 'kim-golden-edge': 14, 'kim-sword-rain': 48,
+    'hoa-heaven-fire': 32, 'kim-golden-bell': 44, 'kim-golden-edge': 14, 'kim-sword-rain': 52,
     'lightning-chain': 10, 'loi-heaven-strike': 19, 'loi-thunder-domain': 25, 'moc-combo-bind': 42,
     'moc-combo-rupture': 28, 'moc-combo-spores': 24, 'moc-spring-bloom': 25, 'moc-toxic-spores': 40,
     'moc-vine-bind': 53, 'phong-gale-blade': 12, 'phong-tailwind': 40, 'phong-tornado': 38,
@@ -35,7 +35,7 @@ PEAK = {
 }
 # Small effects whose travelling parts would make the automatic window far too wide are framed on their poster
 # frame instead: (frame, window width as a fraction of the canvas), shared by poster and clip.
-FOCUS = {'phong-gale-blade': (12, 0.50), 'sunder-mark': (23, 0.44), 'moc-vine-bind': (53, 0.34)}
+FOCUS = {'phong-gale-blade': (12, 0.50), 'sunder-mark': (23, 0.50), 'moc-vine-bind': (53, 0.34)}
 # Hero reel: the busiest ~1.6 s of a few effects back to back, one per element family.
 REEL = ['hoa-fire-dragon-crossing', 'loi-heaven-strike', 'thuy-glacier-path', 'phong-tornado', 'kim-sword-rain', 'moc-combo-rupture']
 
