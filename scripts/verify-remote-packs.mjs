@@ -10,7 +10,7 @@ import { createHash } from 'node:crypto';
 
 const args = process.argv.slice(2);
 const usage = 'Usage: node scripts/verify-remote-packs.mjs <base-url> [--origin URL] [--index FILE]';
-const opts = { origin: 'https://vfx-store.pages.dev', index: 'showcase/public/packs/free/index.json' };
+const opts = { origin: 'https://vfx.lenhon.dev', index: 'showcase/public/packs/free/index.json' };
 let baseUrl;
 for (let i = 0; i < args.length; i++) {
   if (['--origin', '--index'].includes(args[i]) && args[i + 1]) opts[args[i].slice(2)] = args[++i];

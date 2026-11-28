@@ -9,7 +9,7 @@ license: MIT
 This skill integrates **existing baked packs** into a PixiJS game. It does not
 author new effects: each `.vfxb` file is a finished, self-contained effect
 (sprite sheets + timing + cues) that the runtime plays. Preview every effect at
-https://vfx-store.pages.dev/ before choosing.
+https://vfx.lenhon.dev/ before choosing.
 
 ## Workflow
 

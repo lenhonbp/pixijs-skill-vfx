@@ -10,7 +10,7 @@ const usage = `Usage: node fetch-packs.mjs <id...|--all> [--out public/vfx] [--t
 With --all and --tier both, the release's index.json is saved next to the packs, so the files and the index always come
 from the same release (a committed index.json can lag behind the live site).`;
 const args = process.argv.slice(2), ids = [];
-const site = 'https://vfx-store.pages.dev/';
+const site = 'https://vfx.lenhon.dev/';
 const opts = { out: 'public/vfx', tier: 'both', source: null };
 // The active pack release is named by the site's pointer file; older deployments serve packs/free/ directly.
 async function activeSource() {

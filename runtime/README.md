@@ -13,7 +13,7 @@ npm install @lenhonbp/pixijs-vfx-runtime pixi.js
 To try unreleased changes, build this directory with `npm run build` and install
 it locally with `npm install /path/to/pixijs-skill-vfx/runtime`. Install dev tools
 from the repository root first. Packs can be downloaded per skill from the
-[showcase](https://vfx-store.pages.dev/) or with the
+[showcase](https://vfx.lenhon.dev/) or with the
 [agent skill's fetch script](https://github.com/lenhonbp/pixijs-skill-vfx/blob/main/skills/lenhon-vfx/SKILL.md).
 Serve packs over HTTP(S); cross-origin sheets must permit CORS.
 For black-backed additive atlases, use an opaque application background (the
