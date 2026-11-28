@@ -32,6 +32,11 @@ export function sizeLabel(bytes: number): string {
   return bytes < 1e6 ? `${Math.max(1, Math.round(bytes / 1e3))} KB` : `${(bytes / 1e6).toFixed(1)} MB`;
 }
 
+/** "the 1 heavier one ships" / "the N heavier ones ship": the noun and verb agree with the count. */
+export function heavyPhrase(n: number): string {
+  return n === 1 ? 'the 1 heavier one ships' : `the ${n} heavier ones ship`;
+}
+
 function packBytes(c: Card): number {
   return c.preview.kind === 'vfx' ? c.preview.packs.desktop.bytes : c.preview.zipBytes;
 }
@@ -139,6 +144,7 @@ function data(f: Facts): string {
 /** Replaces `<!--hub:name-->` slots and `{{token}}` placeholders in index.html. */
 export function fill(html: string, f: Facts, extra: Record<string, string | number>): string {
   const isoAssets = f.props.reduce((n, c) => n + Number(c.meta[0].split(' ')[0]), 0);
+  const heavyTier = f.vfx.filter(c => c.vram.tier === 'heavy').length;
   const slots: Record<string, string> = {
     'vfx-cards': f.vfx.map(card).join('\n'),
     'props-cards': f.props.map(card).join('\n'),
@@ -149,7 +155,8 @@ export function fill(html: string, f: Facts, extra: Record<string, string | numb
     vfxCount: f.vfx.length,
     propsCount: f.props.length,
     mobileTier: f.vfx.filter(c => c.vram.tier === 'mobile').length,
-    heavyTier: f.vfx.filter(c => c.vram.tier === 'heavy').length,
+    heavyTier,
+    heavyPhrase: heavyPhrase(heavyTier),
     isoAssets,
     vfxUrl: site.vfx,
     vfxHost: new URL(site.vfx).host,
