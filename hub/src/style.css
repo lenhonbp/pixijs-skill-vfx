@@ -26,6 +26,8 @@
   /* A stable gutter means locking scroll for the inspector never shifts the page sideways. */
   html { scroll-behavior: smooth; scroll-padding-top: 4.5rem; scrollbar-gutter: stable; -webkit-text-size-adjust: 100%; }
   html.is-modal { overflow: hidden; }
+  /* Nothing may widen the page on a 375px phone; wide chip rails scroll inside their own box. */
+  html, body { max-width: 100%; overflow-x: clip; }
   body { @apply bg-ink font-sans text-text antialiased; font-feature-settings: "cv11", "ss01", "ss03"; }
   ::selection { background: color-mix(in srgb, var(--color-accent) 35%, transparent); }
   :focus-visible { outline: 2px solid var(--color-accent); outline-offset: 2px; border-radius: 6px; }
@@ -144,9 +146,6 @@ details > summary::-webkit-details-marker { display: none; }
 .hud-bar i { position: absolute; inset: 0 auto 0 0; width: calc(var(--fill, 0) * 100%); background: #3fb68a; }
 .hud-bar.is-heavy i { background: #e3b341; }
 .hud-bar::after { content: ""; position: absolute; top: 0; bottom: 0; left: 70%; width: 1px; background: #8b949e; }
-@media (max-width: 639px) {
-  .hud { position: static; min-width: 0; max-width: none; border-width: 1px 0 0; border-radius: 0; background: var(--color-ink-2); backdrop-filter: none; }
-}
 
 .scrubber { width: 100%; height: 24px; background: transparent; accent-color: var(--color-accent); cursor: pointer; appearance: none; -webkit-appearance: none; }
 .scrubber:disabled { cursor: default; opacity: 0.5; }
@@ -170,3 +169,44 @@ details > summary::-webkit-details-marker { display: none; }
 .pv-play .icon-play { display: none; }
 .pv-play[data-state="paused"] .icon-play { display: block; }
 .pv-play[data-state="paused"] .icon-pause { display: none; }
+
+/* ── Mobile (≤639px, iPhone 13 mini at 375px) ── */
+@media (max-width: 639px) {
+  /* Touch targets: 44px minimum for header menu, tabs, chips and scrubber. */
+  .tab { min-height: 44px; padding-inline: 12px; }
+  .chip { min-height: 44px; height: auto; padding-block: 0; }
+  .scrubber { height: 44px; }
+  .seg button { min-height: 36px; height: auto; padding-inline: 12px; }
+  .btn { min-height: 44px; }
+  [data-menu] > summary { width: 44px; height: 44px; }
+  .preview-open:focus-visible { outline-offset: -3px; }
+
+  /* Tab bar and filter rail scroll sideways instead of wrapping into rows of pills. */
+  [role="tablist"] { max-width: 100%; overflow-x: auto; scrollbar-width: none; }
+  [role="tablist"]::-webkit-scrollbar { display: none; }
+
+  /* Long VRAM labels and badges must truncate, not push the card wider than its column. */
+  .card, .card > * { min-width: 0; }
+  .card h3 { overflow-wrap: anywhere; }
+  .card .badge { max-width: 100%; overflow: hidden; text-overflow: ellipsis; }
+  .card [data-preview] { aspect-ratio: 16 / 10; }
+  .card .vram-bar { flex-shrink: 0; }
+  .card .btn { max-width: 100%; white-space: normal; text-align: center; }
+
+  /* Inspector: the stage takes the free height so the transport and speed row stay on screen. */
+  .inspector { display: flex; flex-direction: column; }
+  .inspector > div { display: flex; flex: 1 1 auto; flex-direction: column; min-height: 0; }
+  .inspector > div > div:nth-child(2) { position: relative; flex: 1 1 auto; min-height: 0; }
+  .inspector [data-pv-stage] { position: absolute; inset: 0; aspect-ratio: auto; }
+  .inspector .hud {
+    position: static; min-width: 0; max-width: none; border-width: 1px 0 0; border-radius: 0; background: var(--color-ink-2); backdrop-filter: none;
+    font-size: 10px; padding: 6px 12px;
+  }
+  .inspector .hud > div { grid-template-columns: 4rem minmax(0, 1fr); }
+  .inspector [data-pv-links] { display: grid; grid-template-columns: 1fr 1fr; width: 100%; }
+  .inspector [data-pv-links] .btn { width: 100%; }
+  .inspector [data-pv-links] .btn:first-child:last-child { grid-column: 1 / -1; }
+  .inspector [data-pv-speed], .inspector [data-pv-bgs], .inspector [data-pv-packs] { flex: 1 1 100%; }
+  .inspector [data-pv-speed] button, .inspector [data-pv-bgs] button, .inspector [data-pv-packs] button { flex: 1 1 0; }
+  .inspector [data-pv-packs] button { white-space: normal; }
+}
