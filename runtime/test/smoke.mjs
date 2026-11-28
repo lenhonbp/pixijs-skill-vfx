@@ -44,7 +44,7 @@ for (const scale of [0, -1, NaN, Infinity, '0.5', null]) {
   assert.throws(() => validate(badScale), /Invalid VFX layer scale/);
 }
 const legacy = structuredClone(decoded.manifest); legacy.layers.forEach(l => { delete l.scale; }); validate(legacy);
-const empty = structuredClone(decoded.manifest); empty.layers.forEach(l => { l.sheets = []; l.frames.fill(null); }); empty.cues = []; delete empty.impact; delete empty.color; delete empty.actors; validate(empty);
+const empty = structuredClone(decoded.manifest); empty.layers.forEach(l => { l.sheets = []; l.frames.fill(null); }); empty.cues = []; delete empty.impact; delete empty.color; delete empty.actors; delete empty.ground_dissolve; validate(empty);
 const feedback = structuredClone(empty);
 feedback.durationMs = 200; feedback.frameCount = 2; feedback.fps = 10;
 feedback.layers.forEach(l => { l.frames = [null, null]; });
