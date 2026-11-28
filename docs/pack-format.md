@@ -106,6 +106,24 @@ Phong `#8ff0d0`, Lôi `#8a7dff`, Kim `#dfe8ff`, Thổ and neutral `#2b231a`), an
 element's or whose ground layers of a cool element (Mộc, Thủy, Phong, Lôi, neutral) carry orange/amber pixels. Runtime 2.4
 falls back to the same element rims for packs without the block.
 
+### Ground projection (optional)
+
+The free packs are baked for a true isometric camera (pitch 35.264 deg, yaw 45 deg): `groundSquash` is `1/sqrt(3)` = 0.57735, and a
+ground circle of radius r bakes to an ellipse r wide and 0.57735 r tall. Packs with ground layers record the bake-time audit:
+
+```json
+"ground_projection": { "squash": 0.5773502691896258, "anchor": "feet_ground", "decals": 48, "max_aspect_error": 0,
+  "max_height": 0, "stretched": [], "floating": [], "unprojected": [], "mark_cores": ["#2b231a"] }
+```
+
+`max_aspect_error` is the worst deviation of a round ground decal from a projected circle (0 = exact; the factory rejects > 0.02),
+`max_height` the highest decal above the floor (rejected > 0.5 px), `stretched` / `floating` / `unprojected` the textures that broke
+those rules or faced the camera instead of lying on the ground, and `mark_cores` the normal-blend tints of cracks, gouges and scorch
+marks (Neutral Dark `#2b231a`; elemental colour only as a rim). Ground decals are anchored to the actors' `feet_ground` point. The
+runtime rejects a block whose squash is not isometric (+/- 0.005) or differs from `groundSquash`, whose anchor is not `feet_ground`, or that
+lists any stretched, floating or unprojected decal; it also gives the ground root the cast's rotation and uniform scale on the
+ground plane instead of the pack root's shear, so the ellipses stay isometric at every live direction.
+
 ### Impact tiers (optional)
 
 Impact sprites tagged by the factory are kept in their own layers (`hit-point-*`, `ground-feedback-*`,

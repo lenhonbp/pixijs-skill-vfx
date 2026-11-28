@@ -168,6 +168,8 @@ interface Pack {
 interface GroundPlan { window: Int32Array; holdFrom: Int32Array; holdTo: Int32Array; slot: Int32Array }
 /** A quad of a ramp layer: one per sheet of the layer, only the sheet the current frame uses is visible. */
 interface QuadRef { batch: QuadBatch; slot: number }
+/** Ground Y-compression of the isometric camera (pitch 35.264 deg, yaw 45 deg): 1 / sqrt(3) = 0.57735. Packs bake with it. */
+export const ISO_GROUND_SQUASH = 1 / Math.sqrt(3);
 /** Ground-plane directions (degrees) the free packs are baked in; left-facing casts mirror them. */
 export const PACK_DIRECTIONS = [0, 45, 90, -45, -90] as const;
 const keyOf = (m: Manifest) => m.direction ? `${m.id}@${m.direction}` : m.id;
@@ -175,7 +177,7 @@ const keyOf = (m: Manifest) => m.direction ? `${m.id}@${m.direction}` : m.id;
  * Nearest baked direction for a cast from `from` to `to`, and whether it plays mirrored.
  * Load `<id>@<direction>.vfxb` (or `<id>.vfxb` for 0) before playing, if the pack ships directions.
  */
-export function packDirection(from: Point, to: Point, groundSquash = 0.6, available: readonly number[] = PACK_DIRECTIONS): { direction: number; mirror: boolean } {
+export function packDirection(from: Point, to: Point, groundSquash = ISO_GROUND_SQUASH, available: readonly number[] = PACK_DIRECTIONS): { direction: number; mirror: boolean } {
   return { direction: nearestDirection(from, to, groundSquash, available), mirror: to.x - from.x < 0 && Math.sqrt((to.x - from.x) ** 2 + ((to.y - from.y) / groundSquash) ** 2) >= 1e-6 };
 }
 /** The direction of packDirection() without its result object, for play(). */
@@ -340,6 +342,7 @@ export class VfxPlayer {
   private cueEvent = untag({ t: 0, type: '', id: undefined, amp: 0, ms: 0, packId: '', handle: null }, 'amp', 'ms') as unknown as CueEvent;
   private tierEvent = untag({ tier: 'hit_point', tierNumber: 1, packId: '', handle: null, point: { x: 0, y: 0 }, anchorType: 'contact_normal', normalDeg: 0, zLayer: 'foreground', blend: 'ADD', startMs: 0 }, 'normalDeg') as unknown as TierEvent;
   private scratch = new Float64Array([1, 0, 0, 1]);
+  private groundScratch = new Float64Array([1, 0, 0, 1]);
   private anchorMatrix = new Float64Array([1, 0, 0, 1]);
   private point: Point = { x: 0, y: 0 };
   private freezeLeft = 0;
@@ -612,7 +615,7 @@ export class VfxPlayer {
     // A rig override moves the anchor by its offset from the baked table, forward along the actor's baked aim.
     const own = actor === 'caster' ? a.options.anchors?.[key as AnchorName] : undefined, base = meta.map[key], h0 = meta.heights[actor] ?? 0;
     if (own && base) {
-      const sq = m.groundSquash ?? 0.6, ang = Math.atan2((m.target.y - m.origin.y) / sq, m.target.x - m.origin.x), dir = actor === 'caster' ? 1 : -1;
+      const sq = m.groundSquash ?? ISO_GROUND_SQUASH, ang = Math.atan2((m.target.y - m.origin.y) / sq, m.target.x - m.origin.x), dir = actor === 'caster' ? 1 : -1;
       const dx = (own.x - base.x) * h0 * dir;
       x += Math.cos(ang) * dx; y += Math.sin(ang) * dx * sq - (own.y - base.y) * h0;
     }
@@ -661,7 +664,7 @@ export class VfxPlayer {
     let base = list[0];
     for (let i = 0; i < list.length; i++) if (!list[i].manifest.direction) { base = list[i]; break; }
     if (base.manifest.direction === undefined && list.length === 1) { this.aimPack = base; this.aimLegacy = true; return; }
-    const squash = o.groundSquash ?? base.manifest.groundSquash ?? 0.6;
+    const squash = o.groundSquash ?? base.manifest.groundSquash ?? ISO_GROUND_SQUASH;
     let dirs = this.dirs.get(id);
     if (!dirs) this.dirs.set(id, dirs = list.map(p => p.manifest.direction ?? 0));
     const direction = nearestDirection(o.from, to, squash, dirs);
@@ -683,7 +686,7 @@ export class VfxPlayer {
       out[0] = mirror * fit; out[1] = 0; out[2] = 0; out[3] = 1;
       return;
     }
-    const squash = o.groundSquash ?? m.groundSquash ?? 0.6, s = to.x < o.from.x ? -1 : 1;
+    const squash = o.groundSquash ?? m.groundSquash ?? ISO_GROUND_SQUASH, s = to.x < o.from.x ? -1 : 1;
     const tx = m.target.x - m.origin.x, ty = m.target.y - m.origin.y, t2 = tx * tx + ty * ty;
     let dx = s * (to.x - o.from.x), dy = to.y - o.from.y;
     const dLen = Math.sqrt(dx * dx + dy * dy / (squash * squash));
@@ -692,12 +695,31 @@ export class VfxPlayer {
     const dot = dx * tx + dy * ty;
     if (dot <= 0.3 * Math.sqrt((dx * dx + dy * dy) * t2)) {
       const p = dot / t2, q = (dx * ty - dy * tx) / t2;
-      out[0] = s * p; out[1] = s * q; out[2] = -q; out[3] = p;
+      out[0] = s * p; out[1] = -q; out[2] = s * q; out[3] = p;
       return;
     }
     const ex = (dx - tx) / t2, ey = (dy - ty) / t2;
     out[0] = s * (1 + ex * tx); out[1] = ey * tx; out[2] = s * ex * ty; out[3] = 1 + ey * ty;
   }
+  /**
+   * Under-root transform for ground layers: the cast's rotation and uniform scale ON THE GROUND PLANE (P_live R P_bake^-1),
+   * so baked projected ellipses stay true projected ellipses at every live direction instead of taking the root's shear,
+   * while the baked target lands exactly where matrix() lands it (same mirror, fit, squash and correction branch). Writes [a, b, c, d] into `out` (no allocation).
+   */
+  private groundMatrix(a: Active, out: Float64Array): void {
+    this.matrix(a, out);
+    if (a.legacy) return;
+    const m = a.pack.manifest, o = a.options, s = a.dest.x < o.from.x ? -1 : 1;
+    const bake = m.groundSquash ?? ISO_GROUND_SQUASH, live = o.groundSquash ?? bake;
+    const bx = m.target.x - m.origin.x, by = m.target.y - m.origin.y;
+    // Where the pack root lands the baked target, on the live ground plane; the baked target on the baked one.
+    const dx = out[0] * bx + out[2] * by, dy = (out[1] * bx + out[3] * by) / live;
+    const tx = s * bx, ty = by / bake, t2 = tx * tx + ty * ty;
+    if (t2 === 0) { out[0] = s; out[1] = 0; out[2] = 0; out[3] = live / bake; return; }
+    const p = (tx * dx + ty * dy) / t2, q = (tx * dy - ty * dx) / t2;
+    out[0] = s * p; out[1] = s * live * q; out[2] = -q / bake; out[3] = live * p / bake;
+  }
+
   getManifest(id: string): Manifest | undefined {
     const manifest = (this.packs.get(id) ?? this.families.get(id)?.[0])?.manifest;
     return manifest ? structuredClone(manifest) : undefined;
@@ -710,7 +732,7 @@ export class VfxPlayer {
     if (moved) {
       p[0] = mx[0]; p[1] = mx[1]; p[2] = mx[2]; p[3] = mx[3]; p[4] = o.from.x; p[5] = o.from.y; p[6] = to.x; p[7] = to.y;
       setMatrix(a.root, mx[0], mx[1], mx[2], mx[3], anchor.x, anchor.y);
-      if (a.under) setMatrix(a.under, mx[0], mx[1], mx[2], mx[3], anchor.x, anchor.y);
+      if (a.under) { const g = this.groundScratch; this.groundMatrix(a, g); setMatrix(a.under, g[0], g[1], g[2], g[3], anchor.x, anchor.y); }
       const s = Math.sign(mx[0]) || 1;
       for (let i = 0; i < a.tierCount; i++) { const plan = a.tiers[i]; this.tierPoint(a, plan, mx, this.point); setMatrix(plan.root, s, 0, 0, 1, this.point.x, this.point.y); }
     }

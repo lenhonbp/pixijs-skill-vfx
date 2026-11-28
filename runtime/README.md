@@ -55,7 +55,7 @@ handles rectangle textures, blend constants and ticker differences internally.
   - `fitDistance`: scale the baked cast distance to the actual caster–target
     distance. Effects mirror automatically when the target is left of the caster.
   - `groundSquash`: camera squash (ground y / screen y) of your game view, used to
-    pick a direction; defaults to the pack's baked value, else 0.6.
+    pick a direction; defaults to the pack's baked value, else `ISO_GROUND_SQUASH` (1/sqrt(3) = 0.57735).
   - `loop`: repeat until explicitly stopped. The finished promise remains pending.
   - `layers`, `tiers`, `recommendedBlend`: see [Impact tiers](#impact-tiers).
   - `hitstop`, `target`, `flash`, `impulse`: see [Combat juice](#combat-juice).
@@ -241,7 +241,7 @@ frame's edges never burn its rectangle, and eases onto the decal over the first 
 lose its corners in one step. The player sets `filter.sprite` to the layer's sprite, so the mask follows the frame through the cast's
 rotation, shear and mirroring and stays centred when the decal is partly off screen; with `sprite` null it is measured in the
 filtered bounds. `maskFalloff` (default 0.7) is where the fade starts; `maskSquash` (default 1) narrows the ellipse vertically.
-Baked ground frames already carry the camera's ground squash (they are about 0.6 as tall as wide), so the default ellipse fills the
+Baked ground frames already carry the camera's ground squash (1/sqrt(3) = 0.57735 as tall as wide), so the default ellipse fills the
 frame; lower values crop the top and bottom of the decal.
 
 Filters are pooled: one per ground layer currently dissolving, composited with that layer's blend mode (an additive glow keeps
@@ -312,8 +312,10 @@ Not a device benchmark: it runs with a software GL, so frame times show stalls a
 ## Ground layers
 
 Packs baked since the factory split its ground sprites out keep floor decals (runes, rings, glows, scorch) in layers marked
-`default_z_layer: 'background'`. `play()` draws them in their own root **beneath** the pack: one more root at `zIndex - 1`, with the
-pack's matrix (mirror, fit and direction), so a ring or scorch mark never lies over the caster's or the target's feet. Put it
+`default_z_layer: 'background'`. `play()` draws them in their own root **beneath** the pack: one more root at `zIndex - 1`, so a ring or
+scorch mark never lies over the caster's or the target's feet. That root mirrors like the pack and lands the baked target on the same
+point, but turns and scales the cast **on the ground plane** (rotation and uniform scale between the baked and live `groundSquash`)
+instead of taking the pack's shear, so a projected ellipse stays an isometric ellipse at every live direction. Put it
 under every actor with `layers: { background }`; without that slot it sits in `parent` just below the pack, and with impact tiers it sits
 above the ground-feedback tier and below the rest. The near half of a floor ring stays in the pack's own layers by design: it passes in
 front of the feet while its far half is under them. Packs without the field play exactly as before.
