@@ -12,16 +12,16 @@
    "durationMs": 3016.6666666666665,
    "layers": 8,
    "sheets": 11,
-   "maxSheet": 2046,
-   "vram": 86765892,
-   "measuredVram": 86765892,
+   "maxSheet": 2039,
+   "vram": 75577296,
+   "measuredVram": 75577296,
    "budget": {
     "tier": "desktop",
     "directionWarnBytes": 128000000,
     "residentDirections": 2,
     "residentMaxBytes": 448000000
    },
-   "bytes": 1586545
+   "bytes": 1579598
   },
   "mobile": {
    "fps": 60,
@@ -30,15 +30,15 @@
    "layers": 8,
    "sheets": 9,
    "maxSheet": 2046,
-   "vram": 39232292,
-   "measuredVram": 39232292,
+   "vram": 33846608,
+   "measuredVram": 33846608,
    "budget": {
     "tier": "mobile",
     "directionWarnBytes": 45000000,
     "residentDirections": 2,
     "residentMaxBytes": 128000000
    },
-   "bytes": 697805
+   "bytes": 699178
   }
  },
  {
@@ -55,15 +55,15 @@
    "layers": 9,
    "sheets": 13,
    "maxSheet": 2045,
-   "vram": 94474772,
-   "measuredVram": 94474772,
+   "vram": 95150472,
+   "measuredVram": 95150472,
    "budget": {
     "tier": "desktop",
     "directionWarnBytes": 128000000,
     "residentDirections": 2,
     "residentMaxBytes": 448000000
    },
-   "bytes": 2798342
+   "bytes": 2790435
   },
   "mobile": {
    "fps": 60,
@@ -72,15 +72,15 @@
    "layers": 9,
    "sheets": 9,
    "maxSheet": 2046,
-   "vram": 17725060,
-   "measuredVram": 17725060,
+   "vram": 17670196,
+   "measuredVram": 17670196,
    "budget": {
     "tier": "mobile",
     "directionWarnBytes": 45000000,
     "residentDirections": 2,
     "residentMaxBytes": 128000000
    },
-   "bytes": 660389
+   "bytes": 656155
   }
  },
  {
@@ -97,15 +97,15 @@
    "layers": 6,
    "sheets": 8,
    "maxSheet": 2048,
-   "vram": 61178792,
-   "measuredVram": 61178792,
+   "vram": 60855780,
+   "measuredVram": 60855780,
    "budget": {
     "tier": "desktop",
     "directionWarnBytes": 128000000,
     "residentDirections": 2,
     "residentMaxBytes": 448000000
    },
-   "bytes": 2618375
+   "bytes": 2611751
   },
   "mobile": {
    "fps": 60,
@@ -113,16 +113,16 @@
    "durationMs": 3816.6666666666665,
    "layers": 6,
    "sheets": 6,
-   "maxSheet": 2043,
-   "vram": 17655020,
-   "measuredVram": 17655020,
+   "maxSheet": 2041,
+   "vram": 17531568,
+   "measuredVram": 17531568,
    "budget": {
     "tier": "mobile",
     "directionWarnBytes": 45000000,
     "residentDirections": 2,
     "residentMaxBytes": 128000000
    },
-   "bytes": 920793
+   "bytes": 916166
   }
  },
  {
@@ -138,16 +138,16 @@
    "durationMs": 3883.3333333333335,
    "layers": 4,
    "sheets": 5,
-   "maxSheet": 2048,
-   "vram": 39047012,
-   "measuredVram": 39047012,
+   "maxSheet": 2047,
+   "vram": 38880888,
+   "measuredVram": 38880888,
    "budget": {
     "tier": "desktop",
     "directionWarnBytes": 128000000,
     "residentDirections": 2,
     "residentMaxBytes": 448000000
    },
-   "bytes": 1858143
+   "bytes": 1848871
   },
   "mobile": {
    "fps": 60,
@@ -156,15 +156,15 @@
    "layers": 4,
    "sheets": 4,
    "maxSheet": 2047,
-   "vram": 6417904,
-   "measuredVram": 6417904,
+   "vram": 6385232,
+   "measuredVram": 6385232,
    "budget": {
     "tier": "mobile",
     "directionWarnBytes": 45000000,
     "residentDirections": 2,
     "residentMaxBytes": 128000000
    },
-   "bytes": 386778
+   "bytes": 385283
   }
  },
  {
@@ -181,15 +181,15 @@
    "layers": 4,
    "sheets": 5,
    "maxSheet": 2048,
-   "vram": 38814028,
-   "measuredVram": 38814028,
+   "vram": 38763148,
+   "measuredVram": 38763148,
    "budget": {
     "tier": "desktop",
     "directionWarnBytes": 128000000,
     "residentDirections": 2,
     "residentMaxBytes": 448000000
    },
-   "bytes": 2027436
+   "bytes": 2013615
   },
   "mobile": {
    "fps": 60,
@@ -198,15 +198,15 @@
    "layers": 4,
    "sheets": 4,
    "maxSheet": 2036,
-   "vram": 12357472,
-   "measuredVram": 12357472,
+   "vram": 12342540,
+   "measuredVram": 12342540,
    "budget": {
     "tier": "mobile",
     "directionWarnBytes": 45000000,
     "residentDirections": 2,
     "residentMaxBytes": 128000000
    },
-   "bytes": 661858
+   "bytes": 655934
   }
  },
  {
@@ -223,15 +223,15 @@
    "layers": 4,
    "sheets": 6,
    "maxSheet": 2048,
-   "vram": 55009824,
-   "measuredVram": 55009824,
+   "vram": 54038212,
+   "measuredVram": 54038212,
    "budget": {
     "tier": "desktop",
     "directionWarnBytes": 128000000,
     "residentDirections": 2,
     "residentMaxBytes": 448000000
    },
-   "bytes": 3314179
+   "bytes": 3281635
   },
   "mobile": {
    "fps": 30,
@@ -240,15 +240,15 @@
    "layers": 4,
    "sheets": 4,
    "maxSheet": 2045,
-   "vram": 20319652,
-   "measuredVram": 20319652,
+   "vram": 20004760,
+   "measuredVram": 20004760,
    "budget": {
     "tier": "mobile",
     "directionWarnBytes": 45000000,
     "residentDirections": 2,
     "residentMaxBytes": 128000000
    },
-   "bytes": 1399143
+   "bytes": 1370412
   }
  },
  {
@@ -265,15 +265,15 @@
    "layers": 3,
    "sheets": 4,
    "maxSheet": 2040,
-   "vram": 35076864,
-   "measuredVram": 35076864,
+   "vram": 34267360,
+   "measuredVram": 34267360,
    "budget": {
     "tier": "desktop",
     "directionWarnBytes": 128000000,
     "residentDirections": 2,
     "residentMaxBytes": 448000000
    },
-   "bytes": 3869753
+   "bytes": 3780123
   },
   "mobile": {
    "fps": 30,
@@ -282,15 +282,15 @@
    "layers": 3,
    "sheets": 3,
    "maxSheet": 2042,
-   "vram": 11551088,
-   "measuredVram": 11551088,
+   "vram": 11244368,
+   "measuredVram": 11244368,
    "budget": {
     "tier": "mobile",
     "directionWarnBytes": 45000000,
     "residentDirections": 2,
     "residentMaxBytes": 128000000
    },
-   "bytes": 1367416
+   "bytes": 1333165
   }
  },
  {
@@ -307,15 +307,15 @@
    "layers": 6,
    "sheets": 7,
    "maxSheet": 2043,
-   "vram": 38719464,
-   "measuredVram": 38719464,
+   "vram": 37909824,
+   "measuredVram": 37909824,
    "budget": {
     "tier": "desktop",
     "directionWarnBytes": 128000000,
     "residentDirections": 2,
     "residentMaxBytes": 448000000
    },
-   "bytes": 3890956
+   "bytes": 3888150
   },
   "mobile": {
    "fps": 30,
@@ -324,15 +324,15 @@
    "layers": 6,
    "sheets": 6,
    "maxSheet": 2042,
-   "vram": 13886280,
-   "measuredVram": 13886280,
+   "vram": 13679256,
+   "measuredVram": 13679256,
    "budget": {
     "tier": "mobile",
     "directionWarnBytes": 45000000,
     "residentDirections": 2,
     "residentMaxBytes": 128000000
    },
-   "bytes": 1499314
+   "bytes": 1471751
   }
  },
  {
@@ -348,16 +348,16 @@
    "durationMs": 3900,
    "layers": 8,
    "sheets": 8,
-   "maxSheet": 2045,
-   "vram": 39342960,
-   "measuredVram": 39342960,
+   "maxSheet": 2046,
+   "vram": 38447024,
+   "measuredVram": 38447024,
    "budget": {
     "tier": "desktop",
     "directionWarnBytes": 128000000,
     "residentDirections": 2,
     "residentMaxBytes": 448000000
    },
-   "bytes": 1610454
+   "bytes": 1603435
   },
   "mobile": {
    "fps": 30,
@@ -366,15 +366,15 @@
    "layers": 8,
    "sheets": 8,
    "maxSheet": 2040,
-   "vram": 19278028,
-   "measuredVram": 19278028,
+   "vram": 18370608,
+   "measuredVram": 18370608,
    "budget": {
     "tier": "mobile",
     "directionWarnBytes": 45000000,
     "residentDirections": 2,
     "residentMaxBytes": 128000000
    },
-   "bytes": 816564
+   "bytes": 810304
   }
  },
  {
@@ -391,15 +391,15 @@
    "layers": 5,
    "sheets": 10,
    "maxSheet": 2048,
-   "vram": 116842428,
-   "measuredVram": 116842428,
+   "vram": 114589144,
+   "measuredVram": 114589144,
    "budget": {
     "tier": "desktop",
     "directionWarnBytes": 128000000,
     "residentDirections": 2,
     "residentMaxBytes": 448000000
    },
-   "bytes": 3947425
+   "bytes": 3824848
   },
   "mobile": {
    "fps": 30,
@@ -407,16 +407,16 @@
    "durationMs": 4233.333333333333,
    "layers": 5,
    "sheets": 6,
-   "maxSheet": 2048,
-   "vram": 45179156,
-   "measuredVram": 45179156,
+   "maxSheet": 2047,
+   "vram": 44272840,
+   "measuredVram": 44272840,
    "budget": {
     "tier": "mobile",
     "directionWarnBytes": 45000000,
     "residentDirections": 2,
     "residentMaxBytes": 128000000
    },
-   "bytes": 1498525
+   "bytes": 1454827
   }
  },
  {
@@ -431,17 +431,17 @@
    "frames": 100,
    "durationMs": 3333.3333333333335,
    "layers": 7,
-   "sheets": 10,
-   "maxSheet": 2046,
-   "vram": 73065004,
-   "measuredVram": 73065004,
+   "sheets": 9,
+   "maxSheet": 2048,
+   "vram": 70928264,
+   "measuredVram": 70928264,
    "budget": {
     "tier": "desktop",
     "directionWarnBytes": 128000000,
     "residentDirections": 2,
     "residentMaxBytes": 448000000
    },
-   "bytes": 2753160
+   "bytes": 2751451
   },
   "mobile": {
    "fps": 30,
@@ -449,16 +449,16 @@
    "durationMs": 3333.3333333333335,
    "layers": 7,
    "sheets": 8,
-   "maxSheet": 2043,
-   "vram": 32679148,
-   "measuredVram": 32679148,
+   "maxSheet": 2046,
+   "vram": 31548380,
+   "measuredVram": 31548380,
    "budget": {
     "tier": "mobile",
     "directionWarnBytes": 45000000,
     "residentDirections": 2,
     "residentMaxBytes": 128000000
    },
-   "bytes": 1136481
+   "bytes": 1084797
   }
  },
  {
@@ -474,16 +474,16 @@
    "durationMs": 3833.3333333333335,
    "layers": 5,
    "sheets": 7,
-   "maxSheet": 2032,
-   "vram": 61138976,
-   "measuredVram": 61138976,
+   "maxSheet": 2037,
+   "vram": 56944048,
+   "measuredVram": 56944048,
    "budget": {
     "tier": "desktop",
     "directionWarnBytes": 128000000,
     "residentDirections": 2,
     "residentMaxBytes": 448000000
    },
-   "bytes": 2448879
+   "bytes": 2370399
   },
   "mobile": {
    "fps": 30,
@@ -491,16 +491,16 @@
    "durationMs": 3833.3333333333335,
    "layers": 5,
    "sheets": 5,
-   "maxSheet": 2048,
-   "vram": 25009592,
-   "measuredVram": 25009592,
+   "maxSheet": 2038,
+   "vram": 23061968,
+   "measuredVram": 23061968,
    "budget": {
     "tier": "mobile",
     "directionWarnBytes": 45000000,
     "residentDirections": 2,
     "residentMaxBytes": 128000000
    },
-   "bytes": 1052945
+   "bytes": 978156
   }
  },
  {
@@ -516,16 +516,16 @@
    "durationMs": 3316.6666666666665,
    "layers": 5,
    "sheets": 7,
-   "maxSheet": 2036,
-   "vram": 42295664,
-   "measuredVram": 42295664,
+   "maxSheet": 2031,
+   "vram": 41475924,
+   "measuredVram": 41475924,
    "budget": {
     "tier": "desktop",
     "directionWarnBytes": 128000000,
     "residentDirections": 2,
     "residentMaxBytes": 448000000
    },
-   "bytes": 3595473
+   "bytes": 3492452
   },
   "mobile": {
    "fps": 30,
@@ -533,16 +533,16 @@
    "durationMs": 3333.3333333333335,
    "layers": 5,
    "sheets": 5,
-   "maxSheet": 2033,
-   "vram": 12839112,
-   "measuredVram": 12839112,
+   "maxSheet": 2037,
+   "vram": 12574992,
+   "measuredVram": 12574992,
    "budget": {
     "tier": "mobile",
     "directionWarnBytes": 45000000,
     "residentDirections": 2,
     "residentMaxBytes": 128000000
    },
-   "bytes": 1253599
+   "bytes": 1221527
   }
  },
  {
@@ -558,16 +558,16 @@
    "durationMs": 4016.6666666666665,
    "layers": 5,
    "sheets": 5,
-   "maxSheet": 2046,
-   "vram": 39891312,
-   "measuredVram": 39891312,
+   "maxSheet": 2048,
+   "vram": 39743120,
+   "measuredVram": 39743120,
    "budget": {
     "tier": "desktop",
     "directionWarnBytes": 128000000,
     "residentDirections": 2,
     "residentMaxBytes": 448000000
    },
-   "bytes": 2599362
+   "bytes": 2498097
   },
   "mobile": {
    "fps": 60,
@@ -576,15 +576,15 @@
    "layers": 5,
    "sheets": 5,
    "maxSheet": 2046,
-   "vram": 13217288,
-   "measuredVram": 13217288,
+   "vram": 13176508,
+   "measuredVram": 13176508,
    "budget": {
     "tier": "mobile",
     "directionWarnBytes": 45000000,
     "residentDirections": 2,
     "residentMaxBytes": 128000000
    },
-   "bytes": 858169
+   "bytes": 817527
   }
  },
  {
@@ -601,15 +601,15 @@
    "layers": 5,
    "sheets": 5,
    "maxSheet": 2042,
-   "vram": 28070224,
-   "measuredVram": 28070224,
+   "vram": 27343992,
+   "measuredVram": 27343992,
    "budget": {
     "tier": "desktop",
     "directionWarnBytes": 128000000,
     "residentDirections": 2,
     "residentMaxBytes": 448000000
    },
-   "bytes": 1318699
+   "bytes": 1292081
   },
   "mobile": {
    "fps": 60,
@@ -617,16 +617,16 @@
    "durationMs": 2066.6666666666665,
    "layers": 5,
    "sheets": 5,
-   "maxSheet": 2024,
-   "vram": 5848816,
-   "measuredVram": 5848816,
+   "maxSheet": 2025,
+   "vram": 5701880,
+   "measuredVram": 5701880,
    "budget": {
     "tier": "mobile",
     "directionWarnBytes": 45000000,
     "residentDirections": 2,
     "residentMaxBytes": 128000000
    },
-   "bytes": 256536
+   "bytes": 250767
   }
  },
  {
@@ -641,17 +641,17 @@
    "frames": 160,
    "durationMs": 2666.6666666666665,
    "layers": 7,
-   "sheets": 15,
-   "maxSheet": 2048,
-   "vram": 177439632,
-   "measuredVram": 177439632,
+   "sheets": 16,
+   "maxSheet": 2047,
+   "vram": 185053316,
+   "measuredVram": 185053316,
    "budget": {
     "tier": "desktop",
     "directionWarnBytes": 128000000,
     "residentDirections": 2,
     "residentMaxBytes": 448000000
    },
-   "bytes": 3953412
+   "bytes": 3809219
   },
   "mobile": {
    "fps": 60,
@@ -659,16 +659,16 @@
    "durationMs": 2666.6666666666665,
    "layers": 7,
    "sheets": 7,
-   "maxSheet": 2042,
-   "vram": 32625948,
-   "measuredVram": 32625948,
+   "maxSheet": 2044,
+   "vram": 31449808,
+   "measuredVram": 31449808,
    "budget": {
     "tier": "mobile",
     "directionWarnBytes": 45000000,
     "residentDirections": 2,
     "residentMaxBytes": 128000000
    },
-   "bytes": 835852
+   "bytes": 819897
   }
  },
  {
@@ -684,16 +684,16 @@
    "durationMs": 3833.3333333333335,
    "layers": 6,
    "sheets": 8,
-   "maxSheet": 2042,
-   "vram": 62986156,
-   "measuredVram": 62986156,
+   "maxSheet": 2041,
+   "vram": 62107084,
+   "measuredVram": 62107084,
    "budget": {
     "tier": "desktop",
     "directionWarnBytes": 128000000,
     "residentDirections": 2,
     "residentMaxBytes": 448000000
    },
-   "bytes": 2897567
+   "bytes": 2866807
   },
   "mobile": {
    "fps": 30,
@@ -701,16 +701,16 @@
    "durationMs": 3833.3333333333335,
    "layers": 6,
    "sheets": 7,
-   "maxSheet": 2045,
-   "vram": 28197684,
-   "measuredVram": 28197684,
+   "maxSheet": 2041,
+   "vram": 27760668,
+   "measuredVram": 27760668,
    "budget": {
     "tier": "mobile",
     "directionWarnBytes": 45000000,
     "residentDirections": 2,
     "residentMaxBytes": 128000000
    },
-   "bytes": 1363311
+   "bytes": 1351192
   }
  },
  {
@@ -726,16 +726,16 @@
    "durationMs": 2516.6666666666665,
    "layers": 4,
    "sheets": 5,
-   "maxSheet": 2047,
-   "vram": 36379924,
-   "measuredVram": 36379924,
+   "maxSheet": 2048,
+   "vram": 35853224,
+   "measuredVram": 35853224,
    "budget": {
     "tier": "desktop",
     "directionWarnBytes": 128000000,
     "residentDirections": 2,
     "residentMaxBytes": 448000000
    },
-   "bytes": 1995156
+   "bytes": 1815023
   },
   "mobile": {
    "fps": 60,
@@ -743,16 +743,16 @@
    "durationMs": 2516.6666666666665,
    "layers": 4,
    "sheets": 4,
-   "maxSheet": 2047,
-   "vram": 8088392,
-   "measuredVram": 8088392,
+   "maxSheet": 2025,
+   "vram": 7858988,
+   "measuredVram": 7858988,
    "budget": {
     "tier": "mobile",
     "directionWarnBytes": 45000000,
     "residentDirections": 2,
     "residentMaxBytes": 128000000
    },
-   "bytes": 393461
+   "bytes": 389752
   }
  },
  {
@@ -769,15 +769,15 @@
    "layers": 6,
    "sheets": 8,
    "maxSheet": 2048,
-   "vram": 46760596,
-   "measuredVram": 46760596,
+   "vram": 46659828,
+   "measuredVram": 46659828,
    "budget": {
     "tier": "desktop",
     "directionWarnBytes": 128000000,
     "residentDirections": 2,
     "residentMaxBytes": 448000000
    },
-   "bytes": 638871
+   "bytes": 601464
   },
   "mobile": {
    "fps": 60,
@@ -786,15 +786,15 @@
    "layers": 6,
    "sheets": 6,
    "maxSheet": 2020,
-   "vram": 8429408,
-   "measuredVram": 8429408,
+   "vram": 8427672,
+   "measuredVram": 8427672,
    "budget": {
     "tier": "mobile",
     "directionWarnBytes": 45000000,
     "residentDirections": 2,
     "residentMaxBytes": 128000000
    },
-   "bytes": 166481
+   "bytes": 164465
   }
  },
  {
@@ -811,15 +811,15 @@
    "layers": 13,
    "sheets": 23,
    "maxSheet": 2043,
-   "vram": 141457584,
-   "measuredVram": 141457584,
+   "vram": 141761452,
+   "measuredVram": 141761452,
    "budget": {
     "tier": "desktop",
     "directionWarnBytes": 128000000,
     "residentDirections": 2,
     "residentMaxBytes": 448000000
    },
-   "bytes": 2443931
+   "bytes": 2499917
   },
   "mobile": {
    "fps": 60,
@@ -828,15 +828,15 @@
    "layers": 13,
    "sheets": 15,
    "maxSheet": 2047,
-   "vram": 38313352,
-   "measuredVram": 38313352,
+   "vram": 38365860,
+   "measuredVram": 38365860,
    "budget": {
     "tier": "mobile",
     "directionWarnBytes": 45000000,
     "residentDirections": 2,
     "residentMaxBytes": 128000000
    },
-   "bytes": 801930
+   "bytes": 817626
   }
  },
  {
@@ -852,16 +852,16 @@
    "durationMs": 3933.3333333333335,
    "layers": 9,
    "sheets": 18,
-   "maxSheet": 2044,
-   "vram": 166102880,
-   "measuredVram": 166102880,
+   "maxSheet": 2046,
+   "vram": 165201768,
+   "measuredVram": 165201768,
    "budget": {
     "tier": "desktop",
     "directionWarnBytes": 128000000,
     "residentDirections": 2,
     "residentMaxBytes": 448000000
    },
-   "bytes": 2803219
+   "bytes": 2831630
   },
   "mobile": {
    "fps": 30,
@@ -870,15 +870,15 @@
    "layers": 9,
    "sheets": 11,
    "maxSheet": 2042,
-   "vram": 56780496,
-   "measuredVram": 56780496,
+   "vram": 56323848,
+   "measuredVram": 56323848,
    "budget": {
     "tier": "mobile",
     "directionWarnBytes": 45000000,
     "residentDirections": 2,
     "residentMaxBytes": 128000000
    },
-   "bytes": 1102284
+   "bytes": 1113943
   }
  },
  {
@@ -895,15 +895,15 @@
    "layers": 6,
    "sheets": 8,
    "maxSheet": 2036,
-   "vram": 57657908,
-   "measuredVram": 57657908,
+   "vram": 57195264,
+   "measuredVram": 57195264,
    "budget": {
     "tier": "desktop",
     "directionWarnBytes": 128000000,
     "residentDirections": 2,
     "residentMaxBytes": 448000000
    },
-   "bytes": 1958568
+   "bytes": 1942695
   },
   "mobile": {
    "fps": 60,
@@ -912,15 +912,15 @@
    "layers": 6,
    "sheets": 7,
    "maxSheet": 2045,
-   "vram": 20777112,
-   "measuredVram": 20777112,
+   "vram": 20630304,
+   "measuredVram": 20630304,
    "budget": {
     "tier": "mobile",
     "directionWarnBytes": 45000000,
     "residentDirections": 2,
     "residentMaxBytes": 128000000
    },
-   "bytes": 815920
+   "bytes": 812996
   }
  },
  {
@@ -936,16 +936,16 @@
    "durationMs": 3816.6666666666665,
    "layers": 4,
    "sheets": 5,
-   "maxSheet": 2043,
-   "vram": 39799636,
-   "measuredVram": 39799636,
+   "maxSheet": 2047,
+   "vram": 40472092,
+   "measuredVram": 40472092,
    "budget": {
     "tier": "desktop",
     "directionWarnBytes": 128000000,
     "residentDirections": 2,
     "residentMaxBytes": 448000000
    },
-   "bytes": 931625
+   "bytes": 929026
   },
   "mobile": {
    "fps": 60,
@@ -954,15 +954,15 @@
    "layers": 4,
    "sheets": 4,
    "maxSheet": 2046,
-   "vram": 13176444,
-   "measuredVram": 13176444,
+   "vram": 13020124,
+   "measuredVram": 13020124,
    "budget": {
     "tier": "mobile",
     "directionWarnBytes": 45000000,
     "residentDirections": 2,
     "residentMaxBytes": 128000000
    },
-   "bytes": 280916
+   "bytes": 280200
   }
  },
  {
@@ -979,15 +979,15 @@
    "layers": 4,
    "sheets": 5,
    "maxSheet": 2047,
-   "vram": 54577200,
-   "measuredVram": 54577200,
+   "vram": 54217368,
+   "measuredVram": 54217368,
    "budget": {
     "tier": "desktop",
     "directionWarnBytes": 128000000,
     "residentDirections": 2,
     "residentMaxBytes": 448000000
    },
-   "bytes": 1875711
+   "bytes": 1864380
   },
   "mobile": {
    "fps": 60,
@@ -996,15 +996,15 @@
    "layers": 4,
    "sheets": 4,
    "maxSheet": 2042,
-   "vram": 19010052,
-   "measuredVram": 19010052,
+   "vram": 18895792,
+   "measuredVram": 18895792,
    "budget": {
     "tier": "mobile",
     "directionWarnBytes": 45000000,
     "residentDirections": 2,
     "residentMaxBytes": 128000000
    },
-   "bytes": 713523
+   "bytes": 712364
   }
  },
  {
@@ -1021,15 +1021,15 @@
    "layers": 4,
    "sheets": 9,
    "maxSheet": 2043,
-   "vram": 92115748,
-   "measuredVram": 92115748,
+   "vram": 90223820,
+   "measuredVram": 90223820,
    "budget": {
     "tier": "desktop",
     "directionWarnBytes": 128000000,
     "residentDirections": 2,
     "residentMaxBytes": 448000000
    },
-   "bytes": 2271976
+   "bytes": 2257676
   },
   "mobile": {
    "fps": 60,
@@ -1038,15 +1038,15 @@
    "layers": 4,
    "sheets": 4,
    "maxSheet": 2046,
-   "vram": 31033464,
-   "measuredVram": 31033464,
+   "vram": 30441008,
+   "measuredVram": 30441008,
    "budget": {
     "tier": "mobile",
     "directionWarnBytes": 45000000,
     "residentDirections": 2,
     "residentMaxBytes": 128000000
    },
-   "bytes": 778616
+   "bytes": 768719
   }
  },
  {
@@ -1063,15 +1063,15 @@
    "layers": 6,
    "sheets": 7,
    "maxSheet": 2048,
-   "vram": 30014020,
-   "measuredVram": 30014020,
+   "vram": 29139436,
+   "measuredVram": 29139436,
    "budget": {
     "tier": "desktop",
     "directionWarnBytes": 128000000,
     "residentDirections": 2,
     "residentMaxBytes": 448000000
    },
-   "bytes": 1673888
+   "bytes": 1629609
   },
   "mobile": {
    "fps": 30,
@@ -1080,15 +1080,15 @@
    "layers": 6,
    "sheets": 6,
    "maxSheet": 2048,
-   "vram": 8921868,
-   "measuredVram": 8921868,
+   "vram": 8645724,
+   "measuredVram": 8645724,
    "budget": {
     "tier": "mobile",
     "directionWarnBytes": 45000000,
     "residentDirections": 2,
     "residentMaxBytes": 128000000
    },
-   "bytes": 542189
+   "bytes": 531161
   }
  },
  {
@@ -1105,15 +1105,15 @@
    "layers": 5,
    "sheets": 5,
    "maxSheet": 2047,
-   "vram": 8725008,
-   "measuredVram": 8725008,
+   "vram": 8632020,
+   "measuredVram": 8632020,
    "budget": {
     "tier": "desktop",
     "directionWarnBytes": 128000000,
     "residentDirections": 2,
     "residentMaxBytes": 448000000
    },
-   "bytes": 449110
+   "bytes": 484722
   },
   "mobile": {
    "fps": 30,
@@ -1121,16 +1121,16 @@
    "durationMs": 4466.666666666667,
    "layers": 5,
    "sheets": 5,
-   "maxSheet": 2039,
-   "vram": 4004716,
-   "measuredVram": 4004716,
+   "maxSheet": 2036,
+   "vram": 3934344,
+   "measuredVram": 3934344,
    "budget": {
     "tier": "mobile",
     "directionWarnBytes": 45000000,
     "residentDirections": 2,
     "residentMaxBytes": 128000000
    },
-   "bytes": 237274
+   "bytes": 235233
   }
  },
  {
@@ -1146,16 +1146,16 @@
    "durationMs": 2933.3333333333335,
    "layers": 5,
    "sheets": 8,
-   "maxSheet": 2034,
-   "vram": 59255084,
-   "measuredVram": 59255084,
+   "maxSheet": 2035,
+   "vram": 57188240,
+   "measuredVram": 57188240,
    "budget": {
     "tier": "desktop",
     "directionWarnBytes": 128000000,
     "residentDirections": 2,
     "residentMaxBytes": 448000000
    },
-   "bytes": 939098
+   "bytes": 932584
   },
   "mobile": {
    "fps": 30,
@@ -1164,15 +1164,15 @@
    "layers": 5,
    "sheets": 6,
    "maxSheet": 2040,
-   "vram": 30295680,
-   "measuredVram": 30295680,
+   "vram": 29372972,
+   "measuredVram": 29372972,
    "budget": {
     "tier": "mobile",
     "directionWarnBytes": 45000000,
     "residentDirections": 2,
     "residentMaxBytes": 128000000
    },
-   "bytes": 517316
+   "bytes": 504921
   }
  }
 ]

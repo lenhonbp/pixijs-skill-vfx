@@ -5,6 +5,9 @@ import { Application, Container, Graphics, Sprite, Texture } from 'pixi.js';
 import { GroundDissolveFilter, ISO_GROUND_SQUASH, VfxPlayer, type ActorPose, type Playback } from '../../../runtime/src/index.ts';
 import runtimePkg from '../../../runtime/package.json' with { type: 'json' };
 import type { VfxPreview } from '../data/catalog.ts';
+// Vite emits these as hashed files under /assets (immutable), so an edited model can never be served stale.
+import casterUrl from '../assets/actor-caster.svg?url';
+import targetUrl from '../assets/actor-target.svg?url';
 import { BACKGROUNDS, type Background, type Engine, type Loaded, type Variant, pad3 } from './engine.ts';
 
 // Same stage as the showcase: caster and target 360 px apart on a ground squashed by 0.6.
@@ -14,7 +17,6 @@ const FROM = { x: 300, y: 372 }, TO = { x: 660, y: 372 };
 // Actor Dummy, two small vector assets rasterised once at 2.5x their 96 × 130 box, feet_ground at (48, 122):
 //  - caster: an unarmed clay mannequin in a neutral ready stance (suits spells, blades and strikes alike),
 //  - target: a padded wooden training post planted in the ground (symmetric, so never mirrored).
-const CASTER_URL = '/media/actor-caster.svg', TARGET_URL = '/media/actor-target.svg';
 const DUMMY_RASTER = 2.5, DUMMY_FEET = { x: 48 / 96, y: 122 / 130 };
 const CASTER_DECAL_RX = 22, TARGET_DECAL_RX = 26, TARGET_ZONE_RX = 52;
 
@@ -55,7 +57,7 @@ async function rasterise(url: string): Promise<Texture> {
 
 /** Loads both silhouettes and builds the two stations; nothing exists until the toggle is first switched on. */
 async function createDummy(s: Stage): Promise<Dummy> {
-  const [casterTexture, targetTexture] = await Promise.all([rasterise(CASTER_URL), rasterise(TARGET_URL)]);
+  const [casterTexture, targetTexture] = await Promise.all([rasterise(casterUrl), rasterise(targetUrl)]);
   const body = (texture: Texture) => {
     const sprite = new Sprite(texture);
     sprite.anchor.set(DUMMY_FEET.x, DUMMY_FEET.y);

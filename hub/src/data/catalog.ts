@@ -3,7 +3,26 @@
 // props-specs.json ← scripts/props-media.py (Isobaker release receipts + atlas pages)
 import vfxSpecs from './vfx-specs.json' with { type: 'json' };
 import propsSpecs from './props-specs.json' with { type: 'json' };
+import { createHash } from 'node:crypto';
+import { readFileSync } from 'node:fs';
+import { fileURLToPath } from 'node:url';
 import { site } from '../site.config.ts';
+
+const publicDir = fileURLToPath(new URL('../../public/', import.meta.url));
+const versions = new Map<string, string>();
+/**
+ * `/media/x.webp` becomes `/media/x.webp?v=<first 10 hex of its sha-256>`, computed from the file at build time.
+ * The URL changes whenever the bytes do, so browsers and the CDN can keep media for a year without ever showing a
+ * stale poster; `check-dist` fails the build if a media reference is unversioned or its hash does not match.
+ */
+export function media(path: string): string {
+  let v = versions.get(path);
+  if (!v) {
+    v = createHash('sha256').update(readFileSync(publicDir + path.replace(/^\//, ''))).digest('hex').slice(0, 10);
+    versions.set(path, v);
+  }
+  return `${path}?v=${v}`;
+}
 
 export type Tone = 'plain' | 'accent' | 'ok' | 'warn';
 export interface Spec { label: string; tone?: Tone; title?: string }
@@ -149,8 +168,8 @@ export function vfxCards(release: Release): Card[] {
       kind: 'vfx', id: v.id, title: v.en, native: v.vi, group: v.element, groupLabel: el.label, color: el.color,
       tag: cap(v.category),
       description: descriptions[v.id] ?? '',
-      poster: { src: `/media/vfx/${v.id}.webp`, width: 800, height: 500, alt: `${v.en} (${v.vi}) captured mid-cast from the live PixiJS showcase` },
-      hover: { type: 'video', src: `/media/vfx/${v.id}.mp4` },
+      poster: { src: media(`/media/vfx/${v.id}.webp`), width: 800, height: 500, alt: `${v.en} (${v.vi}) captured mid-cast from the live PixiJS showcase` },
+      hover: { type: 'video', src: media(`/media/vfx/${v.id}.mp4`) },
       badges: [
         { label: 'PixiJS 8.x', title: 'Benchmarked on PixiJS 8.23 (the runtime also plays on v7)' },
         { label: 'WebP Atlas', title: `Shelf-packed WebP sheets up to ${d.maxSheet}px, one .vfxb container per direction` },
@@ -200,9 +219,9 @@ export function propsCards(): Card[] {
       tag: kit ? 'Map kit' : `v${'version' in p ? p.version : ''}`,
       description: info.description,
       poster: kit
-        ? { src: `/media/props/${p.id}.webp`, width: 820, height: 530, alt: 'Phố Cổ starter map assembled from the modular terrain and building kit' }
-        : { src: `/media/props/${p.id}.webp`, width: 880, height: 560, alt: `${title} (${native}) props arranged on their ground plate` },
-      hover: 'hero' in p && p.hero ? { type: 'spin', src: `/media/props/${p.id}-spin.webp`, frames: 8, label: String(p.hero).replace(/[-_]/g, ' ') } : null,
+        ? { src: media(`/media/props/${p.id}.webp`), width: 820, height: 530, alt: 'Phố Cổ starter map assembled from the modular terrain and building kit' }
+        : { src: media(`/media/props/${p.id}.webp`), width: 880, height: 560, alt: `${title} (${native}) props arranged on their ground plate` },
+      hover: 'hero' in p && p.hero ? { type: 'spin', src: media(`/media/props/${p.id}-spin.webp`), frames: 8, label: String(p.hero).replace(/[-_]/g, ' ') } : null,
       badges: [
         { label: 'PixiJS 8.x', title: 'Isobaker loads the atlas into PixiJS 8 (a standalone import sample needs no runtime)' },
         { label: 'WebP Atlas', title: 'Trimmed WebP atlas pages + JSON, plus loose PNGs, at 96 px per tile' },
@@ -221,9 +240,9 @@ export function propsCards(): Card[] {
       gumroad: site.gumroadProducts[p.id] ?? (site.gumroad || null),
       preview: {
         kind: 'props', id: p.id, title, native, color: info.color, group: info.zone,
-        spin: 'hero' in p && p.hero ? `/media/props/${p.id}-spin.webp` : null,
-        turntable: 'turntable' in p && p.turntable ? { src: `/media/props/${p.id}-turntable.webp`, ...(p.turntable as { w: number; h: number; scale: number }) } : null,
-        poster: `/media/props/${p.id}.webp`,
+        spin: 'hero' in p && p.hero ? media(`/media/props/${p.id}-spin.webp`) : null,
+        turntable: 'turntable' in p && p.turntable ? { src: media(`/media/props/${p.id}-turntable.webp`), ...(p.turntable as { w: number; h: number; scale: number }) } : null,
+        poster: media(`/media/props/${p.id}.webp`),
         hero: 'hero' in p ? String(p.hero) : '', facings: ('facings' in p ? p.facings : []) as string[],
         dims: 'heroDims' in p ? (p.heroDims as [number, number][]) : [],
         vram: atlasVram, vramAll: 'vramAll' in p ? p.vramAll : 0, tile: p.tile, compression: 0.57735,

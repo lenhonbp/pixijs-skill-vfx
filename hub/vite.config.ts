@@ -3,6 +3,7 @@ import { fileURLToPath } from 'node:url';
 import tailwindcss from '@tailwindcss/vite';
 import { defineConfig, type Plugin } from 'vite';
 import { facts, fill } from './src/render.ts';
+import { media } from './src/data/catalog.ts';
 import specs from './src/data/vfx-specs.json' with { type: 'json' };
 
 const here = (p: string) => fileURLToPath(new URL(p, import.meta.url));
@@ -46,7 +47,8 @@ function checkSnapshot() {
 
 const HERO_VFX = 'hoa-fire-dragon-crossing';
 
-// Response headers for Cloudflare Pages. The CSP allows exactly one outside origin: the R2 CDN the inspector
+// Response headers for Cloudflare Pages. Everything under /assets and /media is referenced by a content-hashed URL
+// (Vite's file names, or `?v=<hash>` from catalog.ts#media), so a year-long immutable cache can never serve a stale file. The CSP allows exactly one outside origin: the R2 CDN the inspector
 // and the JSON + WebP export fetch packs from. Pack sheets become blob: images inside the runtime.
 function headers(cdnOrigin: string): string {
   const csp = [
@@ -65,7 +67,7 @@ function headers(cdnOrigin: string): string {
   Cache-Control: public, max-age=31536000, immutable
 
 /media/*
-  Cache-Control: public, max-age=604800, stale-while-revalidate=86400
+  Cache-Control: public, max-age=31536000, immutable
 `;
 }
 
@@ -75,7 +77,7 @@ function hub(): Plugin {
   const cdn = cdnTotals();
   const hero = data.vfx.find(c => c.id === HERO_VFX);
   if (!hero) throw new Error(`Hero effect ${HERO_VFX} is not in the collection`);
-  const tokens = { heroVfx: hero.id, heroName: hero.title, cdnMB: Math.round(cdn.bytes / 1e6), cdnFiles: cdn.files };
+  const tokens = { heroPoster: media(`/media/vfx/${hero.id}.webp`), heroReel: media('/media/vfx/reel.mp4'), heroName: hero.title, cdnMB: Math.round(cdn.bytes / 1e6), cdnFiles: cdn.files };
   return {
     name: 'lenhon-hub',
     buildStart: checkSnapshot,
