@@ -1,53 +1,91 @@
 // Progressive enhancement only: every card, link and number is already in the HTML.
-// This adds tabs, filters, search, hover previews, the inspector modal and in-browser downloads.
+// This adds tabs (VFX, Iso Props, Tools & Runtime), element and A15 filters, search, hover previews,
+// the inspector modal, in-browser downloads, and keeps only the active tab's grid in the document.
 import './style.css';
 
-type Kind = 'vfx' | 'props';
+type Kind = 'vfx' | 'props' | 'tools';
 const $ = <T extends Element = HTMLElement>(sel: string, root: ParentNode = document) => root.querySelector<T>(sel)!;
 const $$ = <T extends Element = HTMLElement>(sel: string, root: ParentNode = document) => [...root.querySelectorAll<T>(sel)];
 const reducedMotion = matchMedia('(prefers-reduced-motion: reduce)');
 
-// ───────────── Explorer: tabs, element chips, search ─────────────
+// ───────────── Explorer: tabs, element chips, A15 filter, search ─────────────
 const tabs = $$<HTMLButtonElement>('[data-tab]');
 const panels = new Map($$('[data-panel]').map(p => [p.dataset.panel as Kind, p]));
 const chipsRow = $('[data-chips="vfx"]');
+const chipButtons = $$<HTMLButtonElement>('[data-chip]', chipsRow);
+const tierChip = $<HTMLButtonElement>('[data-tier-chip="a15"]');
 const search = $<HTMLInputElement>('[data-search]');
 const count = $('[data-count]');
 const empty = $('[data-empty]');
-const state = { tab: 'vfx' as Kind, element: 'all', query: '' };
+const state = { tab: 'vfx' as Kind, element: 'all', a15: false, query: '' };
+
+// ───────────── Lazy mount ─────────────
+// Only the active tab's grid stays in the document. An inactive grid is moved into a fragment, its previews are
+// stopped and its videos release their media buffers, so the browser does no layout, paint or decode for it.
+// The grid is re-attached when its tab is selected. Cards keep their listeners while detached.
+const stash = new Map<Kind, DocumentFragment>();
+function unmount(kind: Kind) {
+  const panel = panels.get(kind);
+  if (!panel || stash.has(kind)) return;
+  for (const card of $$('[data-card]', panel)) stopPreview(card.querySelector<HTMLElement>('[data-preview]'));
+  for (const video of $$<HTMLVideoElement>('video', panel)) {
+    video.pause();
+    if (video.getAttribute('src')) { video.removeAttribute('src'); video.load(); }
+  }
+  const fragment = document.createDocumentFragment();
+  while (panel.firstChild) fragment.appendChild(panel.firstChild);
+  stash.set(kind, fragment);
+}
+function mount(kind: Kind) {
+  const panel = panels.get(kind);
+  const fragment = stash.get(kind);
+  if (!panel || !fragment) return;
+  panel.appendChild(fragment);
+  stash.delete(kind);
+}
 
 function apply() {
+  const kind = state.tab;
+  const panel = panels.get(kind)!;
   const q = state.query.trim().toLowerCase();
   let shown = 0, total = 0;
-  for (const [kind, panel] of panels) {
-    const active = kind === state.tab;
-    panel.hidden = !active;
-    if (!active) continue;
+  if (kind !== 'tools') {
     for (const card of $$('[data-card]', panel)) {
       total++;
-      const match = (kind !== 'vfx' || state.element === 'all' || card.dataset.group === state.element) && (!q || card.dataset.terms!.includes(q));
+      const element = kind === 'props' || state.element === 'all' || card.dataset.group === state.element;
+      const tier = !state.a15 || card.dataset.tier === 'mobile';
+      const match = element && tier && (!q || card.dataset.terms!.includes(q));
       card.hidden = !match;
       if (match) shown++;
       else stopPreview(card.querySelector<HTMLElement>('[data-preview]'));
     }
   }
+  for (const [k, p] of panels) p.hidden = k !== kind;
   for (const tab of tabs) {
-    const selected = tab.dataset.tab === state.tab;
+    const selected = tab.dataset.tab === kind;
     tab.setAttribute('aria-selected', String(selected));
     tab.tabIndex = selected ? 0 : -1;
   }
-  chipsRow.hidden = state.tab !== 'vfx';
-  for (const chip of $$('[data-chip]', chipsRow)) chip.setAttribute('aria-pressed', String(chip.dataset.chip === state.element));
-  count.textContent = shown === total ? `${total} assets` : `${shown} of ${total} assets`;
-  empty.classList.toggle('hidden', shown > 0);
-  $('[data-empty-query]', empty).textContent = q ? `“${state.query.trim()}”` : 'this filter';
+  chipsRow.hidden = kind === 'tools';
+  for (const chip of chipButtons) {
+    chip.hidden = kind === 'props'; // element families apply to VFX only
+    chip.setAttribute('aria-pressed', String(chip.dataset.chip === state.element));
+  }
+  tierChip.setAttribute('aria-pressed', String(state.a15));
+  search.disabled = kind === 'tools';
+  count.textContent = kind === 'tools' ? '' : shown === total ? `${total} assets` : `${shown} of ${total} assets`;
+  empty.classList.toggle('hidden', kind === 'tools' || shown > 0);
+  $('[data-empty-query]', empty).textContent = q ? `“${state.query.trim()}”` : state.a15 ? 'the A15 filter' : 'this filter';
 }
 
-function selectTab(kind: Kind, focus = false) {
+function selectTab(kind: Kind, options: { focus?: boolean; hash?: boolean } = {}) {
+  const previous = state.tab;
   state.tab = kind;
+  if (previous !== kind) unmount(previous);
+  mount(kind);
   apply();
-  if (focus) $(`[data-tab="${kind}"]`).focus();
-  history.replaceState(null, '', kind === 'props' ? '#props' : '#vfx');
+  if (options.focus) $(`[data-tab="${kind}"]`).focus();
+  if (options.hash !== false) history.replaceState(null, '', `#${kind}`);
 }
 
 for (const tab of tabs) {
@@ -57,17 +95,17 @@ for (const tab of tabs) {
     e.preventDefault();
     const i = tabs.indexOf(tab);
     const next = e.key === 'Home' ? 0 : e.key === 'End' ? tabs.length - 1 : (i + (e.key === 'ArrowRight' ? 1 : -1) + tabs.length) % tabs.length;
-    selectTab(tabs[next].dataset.tab as Kind, true);
+    selectTab(tabs[next].dataset.tab as Kind, { focus: true });
   });
 }
 chipsRow.addEventListener('click', e => {
-  const chip = (e.target as Element).closest<HTMLElement>('[data-chip]');
-  if (!chip) return;
-  state.element = chip.dataset.chip!;
-  apply();
+  const target = e.target as Element;
+  const chip = target.closest<HTMLElement>('[data-chip]');
+  if (chip) { state.element = chip.dataset.chip!; apply(); return; }
+  if (target.closest('[data-tier-chip]')) { state.a15 = !state.a15; apply(); }
 });
 search.addEventListener('input', () => { state.query = search.value; apply(); });
-$('[data-reset]').addEventListener('click', () => { state.element = 'all'; state.query = ''; search.value = ''; apply(); search.focus(); });
+$('[data-reset]').addEventListener('click', () => { state.element = 'all'; state.a15 = false; state.query = ''; search.value = ''; apply(); search.focus(); });
 
 // ───────────── Hover previews ─────────────
 // VFX cards swap the poster for a looping capture; props cards run an 8-facing turntable.
@@ -158,25 +196,39 @@ document.addEventListener('click', e => {
 });
 
 // ───────────── Deep links ─────────────
-// /#props or /#vfx open the explorer on that tab; /#inspect/<id> opens that asset's inspector.
+// /#vfx, /#props or /#tools open the explorer on that tab; /#inspect/<id> opens that asset's inspector.
+// The opener may sit in a detached grid, so it is looked up in the document first, then in the stash.
+function findOpener(id: string): HTMLElement | null {
+  const selector = `[data-open-preview="${CSS.escape(id)}"]`;
+  const live = document.querySelector<HTMLElement>(selector);
+  if (live) return live;
+  for (const fragment of stash.values()) {
+    const hit = fragment.querySelector<HTMLElement>(selector);
+    if (hit) return hit;
+  }
+  return null;
+}
+
 function fromHash() {
   const h = location.hash.slice(1);
-  if (h === 'props' || h === 'vfx') {
-    state.tab = h;
-    apply();
+  if (h === 'vfx' || h === 'props' || h === 'tools') {
+    selectTab(h);
     $('#assets').scrollIntoView({ behavior: reducedMotion.matches ? 'auto' : 'smooth' });
   } else if (h.startsWith('inspect/')) {
     const id = h.slice(8);
-    const opener = document.querySelector<HTMLElement>(`[data-open-preview="${CSS.escape(id)}"]`);
-    if (opener) {
-      state.tab = opener.closest<HTMLElement>('[data-panel]')!.dataset.panel as Kind;
-      apply();
-      void inspect(id, opener);
+    const opener = findOpener(id);
+    const kind = opener?.closest<HTMLElement>('[data-card]')?.dataset.kind as Kind | undefined;
+    if (opener && kind) {
+      selectTab(kind, { hash: false });
+      void inspect(id, findOpener(id));
     }
   }
 }
-addEventListener('hashchange', fromHash);
+
+// Start with only the active grid mounted, then apply filters and read the deep link.
+for (const kind of panels.keys()) if (kind !== state.tab) unmount(kind);
 apply();
+addEventListener('hashchange', fromHash);
 fromHash();
 
 // ───────────── Hero console ─────────────
