@@ -66,7 +66,7 @@ function card(c: Card, index: number): string {
       <p class="mt-0.5 text-xs text-faint">${esc(c.native)}</p>
       <p class="mt-2.5 line-clamp-2 text-[13px] leading-relaxed text-muted">${esc(c.description)}</p>
       <ul class="mt-3.5 flex flex-wrap gap-1.5" aria-label="Tech specs">${c.specs.map(badge).join('')}</ul>
-      <p class="mt-3 font-mono text-[11px] text-faint">${c.meta.map(esc).join('<span class="px-1 text-line-strong">·</span>')}</p>
+      <p class="mt-3 font-mono text-[11px] text-faint">${c.meta.map(m => esc(m).replace(/ /g, '&nbsp;')).join('<span class="px-1 text-line-strong"> · </span>')}</p>
       <div class="mt-auto grid grid-cols-2 gap-2 pt-4">
         <a class="btn btn-primary col-span-2" href="${esc(c.live.href)}" target="_blank" rel="noopener" data-live>${c.live.label} <span class="font-mono text-[11px] font-normal opacity-60">${esc(new URL(c.live.href).host)}</span> ${icon.out}</a>
         <a class="btn btn-ghost" href="${esc(c.sample.href)}"${c.sample.download ? ' download' : ''} title="${esc(c.sample.detail ?? '')}">${icon.down} ${c.sample.label}</a>
