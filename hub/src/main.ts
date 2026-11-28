@@ -1,9 +1,9 @@
 // Progressive enhancement only: every card, link and number is already in the HTML.
-// This adds tabs (VFX, Iso Props, Tools & Runtime), element and A15 filters, search, hover previews,
+// This adds tabs (VFX, Iso Props), element and A15 filters, search, hover previews,
 // the inspector modal, in-browser downloads, and keeps only the active tab's grid in the document.
 import './style.css';
 
-type Kind = 'vfx' | 'props' | 'tools';
+type Kind = 'vfx' | 'props';
 const $ = <T extends Element = HTMLElement>(sel: string, root: ParentNode = document) => root.querySelector<T>(sel)!;
 const $$ = <T extends Element = HTMLElement>(sel: string, root: ParentNode = document) => [...root.querySelectorAll<T>(sel)];
 const reducedMotion = matchMedia('(prefers-reduced-motion: reduce)');
@@ -49,16 +49,14 @@ function apply() {
   const panel = panels.get(kind)!;
   const q = state.query.trim().toLowerCase();
   let shown = 0, total = 0;
-  if (kind !== 'tools') {
-    for (const card of $$('[data-card]', panel)) {
-      total++;
-      const element = kind === 'props' || state.element === 'all' || card.dataset.group === state.element;
-      const tier = !state.a15 || card.dataset.tier === 'mobile';
-      const match = element && tier && (!q || card.dataset.terms!.includes(q));
-      card.hidden = !match;
-      if (match) shown++;
-      else stopPreview(card.querySelector<HTMLElement>('[data-preview]'));
-    }
+  for (const card of $$('[data-card]', panel)) {
+    total++;
+    const element = kind === 'props' || state.element === 'all' || card.dataset.group === state.element;
+    const tier = !state.a15 || card.dataset.tier === 'mobile';
+    const match = element && tier && (!q || card.dataset.terms!.includes(q));
+    card.hidden = !match;
+    if (match) shown++;
+    else stopPreview(card.querySelector<HTMLElement>('[data-preview]'));
   }
   for (const [k, p] of panels) p.hidden = k !== kind;
   for (const tab of tabs) {
@@ -66,15 +64,13 @@ function apply() {
     tab.setAttribute('aria-selected', String(selected));
     tab.tabIndex = selected ? 0 : -1;
   }
-  chipsRow.hidden = kind === 'tools';
   for (const chip of chipButtons) {
     chip.hidden = kind === 'props'; // element families apply to VFX only
     chip.setAttribute('aria-pressed', String(chip.dataset.chip === state.element));
   }
   tierChip.setAttribute('aria-pressed', String(state.a15));
-  search.disabled = kind === 'tools';
-  count.textContent = kind === 'tools' ? '' : shown === total ? `${total} assets` : `${shown} of ${total} assets`;
-  empty.classList.toggle('hidden', kind === 'tools' || shown > 0);
+  count.textContent = shown === total ? `${total} assets` : `${shown} of ${total} assets`;
+  empty.classList.toggle('hidden', shown > 0);
   $('[data-empty-query]', empty).textContent = q ? `“${state.query.trim()}”` : state.a15 ? 'the A15 filter' : 'this filter';
 }
 
@@ -196,7 +192,7 @@ document.addEventListener('click', e => {
 });
 
 // ───────────── Deep links ─────────────
-// /#vfx, /#props or /#tools open the explorer on that tab; /#inspect/<id> opens that asset's inspector.
+// /#vfx or /#props opens the explorer on that tab; /#inspect/<id> opens that asset's inspector.
 // The opener may sit in a detached grid, so it is looked up in the document first, then in the stash.
 function findOpener(id: string): HTMLElement | null {
   const selector = `[data-open-preview="${CSS.escape(id)}"]`;
@@ -211,7 +207,7 @@ function findOpener(id: string): HTMLElement | null {
 
 function fromHash() {
   const h = location.hash.slice(1);
-  if (h === 'vfx' || h === 'props' || h === 'tools') {
+  if (h === 'vfx' || h === 'props') {
     selectTab(h);
     $('#assets').scrollIntoView({ behavior: reducedMotion.matches ? 'auto' : 'smooth' });
   } else if (h.startsWith('inspect/')) {

@@ -184,9 +184,6 @@
             <button type="button" class="tab" role="tab" id="tab-props" aria-controls="panel-props" aria-selected="false" tabindex="-1" data-tab="props">
               <i class="size-1.5 rounded-full bg-cyan"></i>Iso Props<span class="hidden text-[11.5px] text-faint sm:inline">(Powered by Isobaker)</span><span class="font-mono text-[11px] text-faint">{{propsCount}}</span>
             </button>
-            <button type="button" class="tab" role="tab" id="tab-tools" aria-controls="panel-tools" aria-selected="false" tabindex="-1" data-tab="tools">
-              <i class="size-1.5 rounded-full bg-ok"></i>Tools &amp; Runtime
-            </button>
           </div>
           <p class="font-mono text-[11px] text-faint" aria-live="polite" data-count></p>
         </div>
@@ -205,14 +202,6 @@
         </div>
         <div id="panel-props" role="tabpanel" aria-labelledby="tab-props" class="mt-6 grid gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4" data-panel="props" hidden>
 <!--hub:props-cards-->
-        </div>
-        <div id="panel-tools" role="tabpanel" aria-labelledby="tab-tools" class="mt-6 grid gap-4 sm:grid-cols-2 lg:grid-cols-3" data-panel="tools" hidden>
-          <a href="{{repo}}/blob/main/runtime/README.md" target="_blank" rel="noopener" class="panel block p-5 transition-colors hover:border-line-strong"><span class="font-mono text-[11px] text-faint">runtime/README.md</span><span class="mt-2 block text-base font-semibold">VFX Runtime API</span><span class="mt-1.5 block text-sm text-muted">Pooling, cues, actor tracks. PixiJS 7 and 8, zero runtime dependencies.</span></a>
-          <a href="{{repo}}/blob/main/docs/pack-format.md" target="_blank" rel="noopener" class="panel block p-5 transition-colors hover:border-line-strong"><span class="font-mono text-[11px] text-faint">docs/pack-format.md</span><span class="mt-2 block text-base font-semibold">LVFX pack format</span><span class="mt-1.5 block text-sm text-muted">Manifest, layers, WebP sheets and download sizes.</span></a>
-          <a href="{{repo}}/blob/main/benchmarks/latest.md" target="_blank" rel="noopener" class="panel block p-5 transition-colors hover:border-line-strong"><span class="font-mono text-[11px] text-faint">benchmarks/latest.md</span><span class="mt-2 block text-base font-semibold">Zero-GC benchmark</span><span class="mt-1.5 block text-sm text-muted">Allocation, GC and frame-time gate at 60 and 120 FPS.</span></a>
-          <a href="{{repo}}/tree/main/skills/lenhon-vfx" target="_blank" rel="noopener" class="panel block p-5 transition-colors hover:border-line-strong"><span class="font-mono text-[11px] text-faint">skills/lenhon-vfx</span><span class="mt-2 block text-base font-semibold">AI agent skill</span><span class="mt-1.5 block text-sm text-muted">Wire packs into a project from Claude Code or Codex.</span></a>
-          <a href="{{propsUrl}}/stone-lantern/import/" target="_blank" rel="noopener" class="panel block p-5 transition-colors hover:border-line-strong"><span class="font-mono text-[11px] text-faint">{{propsHost}}/stone-lantern/import</span><span class="mt-2 block text-base font-semibold">Isometric atlas import</span><span class="mt-1.5 block text-sm text-muted">Standalone PixiJS 8 loader, no runtime.</span></a>
-          <a href="{{propsUrl}}/demo/" target="_blank" rel="noopener" class="panel block p-5 transition-colors hover:border-line-strong"><span class="font-mono text-[11px] text-faint">{{propsHost}}/demo</span><span class="mt-2 block text-base font-semibold">Depth &amp; roof demo</span><span class="mt-1.5 block text-sm text-muted">Sorting, roof cutaway, sockets, HUD.</span></a>
         </div>
         <div class="mt-6 hidden rounded-xl border border-dashed border-line px-6 py-14 text-center text-sm text-muted" data-empty>
           No assets match <span class="font-mono text-text" data-empty-query></span>. <button type="button" class="text-accent underline-offset-4 hover:underline" data-reset>Clear filters</button>
@@ -247,8 +236,6 @@ vfx.play(<span class="text-accent">'hoa-fireball'</span>, { from: caster, to: ta
             <li class="bg-surface"><a href="{{repo}}/blob/main/docs/pack-format.md" target="_blank" rel="noopener" class="block h-full p-4 transition-colors hover:bg-raised"><span class="font-mono text-[11px] text-faint">docs/pack-format.md</span><span class="mt-1 block text-sm font-medium">LVFX pack format</span><span class="mt-1 block text-xs text-muted">Manifest, layers, sheets and download sizes.</span></a></li>
             <li class="bg-surface"><a href="{{repo}}/blob/main/benchmarks/latest.md" target="_blank" rel="noopener" class="block h-full p-4 transition-colors hover:bg-raised"><span class="font-mono text-[11px] text-faint">benchmarks/latest.md</span><span class="mt-1 block text-sm font-medium">Zero-GC benchmark</span><span class="mt-1 block text-xs text-muted">Allocation, GC and frame-time gate.</span></a></li>
             <li class="bg-surface"><a href="{{repo}}/tree/main/skills/lenhon-vfx" target="_blank" rel="noopener" class="block h-full p-4 transition-colors hover:bg-raised"><span class="font-mono text-[11px] text-faint">skills/lenhon-vfx</span><span class="mt-1 block text-sm font-medium">AI agent skill</span><span class="mt-1 block text-xs text-muted">Wire packs into a project from Claude Code or Codex.</span></a></li>
-            <li class="bg-surface"><a href="{{propsUrl}}/stone-lantern/import/" target="_blank" rel="noopener" class="block h-full p-4 transition-colors hover:bg-raised"><span class="font-mono text-[11px] text-faint">{{propsHost}}/stone-lantern/import</span><span class="mt-1 block text-sm font-medium">Isometric atlas import</span><span class="mt-1 block text-xs text-muted">Standalone PixiJS 8 loader, no runtime.</span></a></li>
-            <li class="bg-surface"><a href="{{propsUrl}}/demo/" target="_blank" rel="noopener" class="block h-full p-4 transition-colors hover:bg-raised"><span class="font-mono text-[11px] text-faint">{{propsHost}}/demo</span><span class="mt-1 block text-sm font-medium">Depth &amp; roof demo</span><span class="mt-1 block text-xs text-muted">Sorting, roof cutaway, sockets, HUD.</span></a></li>
           </ul>
         </div>
       </div>
