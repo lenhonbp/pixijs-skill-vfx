@@ -53,6 +53,18 @@
   }
   .chip[aria-pressed="true"] { @apply border-line-strong bg-raised text-text; }
 
+  /* Filter rail: a swipeable single line on phones (snap per chip), wrapping from 640px up. */
+  .chip-rail {
+    display: flex; align-items: center; gap: 0.5rem;
+    margin-inline: -1rem; padding: 0 1rem 0.25rem;
+    overflow-x: auto; scroll-snap-type: x mandatory; scrollbar-width: none;
+  }
+  .chip-rail::-webkit-scrollbar { display: none; }
+  .chip-rail > * { flex-shrink: 0; scroll-snap-align: start; }
+  @media (min-width: 640px) {
+    .chip-rail { margin-inline: 0; padding-inline: 0; flex-wrap: wrap; scroll-snap-type: none; }
+  }
+
   .tab {
     @apply relative inline-flex h-9 items-center gap-2 rounded-md px-3.5 text-[13px] font-medium text-muted transition-colors hover:text-text;
   }
