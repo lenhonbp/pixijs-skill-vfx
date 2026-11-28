@@ -2,7 +2,7 @@ import { existsSync, readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import tailwindcss from '@tailwindcss/vite';
 import { defineConfig, type Plugin } from 'vite';
-import { facts, fill } from './src/render';
+import { facts, fill } from './src/render.ts';
 import specs from './src/data/vfx-specs.json' with { type: 'json' };
 
 const here = (p: string) => fileURLToPath(new URL(p, import.meta.url));

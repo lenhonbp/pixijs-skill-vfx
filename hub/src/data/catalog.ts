@@ -3,7 +3,7 @@
 // props-specs.json ← scripts/props-media.py (Isobaker release receipts + atlas pages)
 import vfxSpecs from './vfx-specs.json' with { type: 'json' };
 import propsSpecs from './props-specs.json' with { type: 'json' };
-import { site } from '../site.config';
+import { site } from '../site.config.ts';
 
 export type Tone = 'plain' | 'accent' | 'ok' | 'warn';
 export interface Spec { label: string; tone?: Tone; title?: string }

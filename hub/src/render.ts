@@ -1,7 +1,7 @@
 // Build-time HTML for the Asset Explorer. Vite's index.html transform calls `fill()`, so the
 // deployed page ships every card as static markup; main.ts only adds tabs, filters and hover previews.
-import { type Card, type Release, type Spec, elements, propsCards, vfxCards } from './data/catalog';
-import { site } from './site.config';
+import { type Card, type Release, type Spec, elements, propsCards, vfxCards } from './data/catalog.ts';
+import { site } from './site.config.ts';
 
 const esc = (s: string | number) => String(s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[c]!);
 
