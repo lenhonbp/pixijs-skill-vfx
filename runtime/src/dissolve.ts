@@ -86,7 +86,7 @@ export interface GroundDissolveOptions {
   maskFalloff?: number;
   /**
    * Vertical squash of the mask ellipse, 0-1. Default 1: the ellipse fills the quad, whose bounds already carry the camera's
-   * ground squash (baked ground frames are about 0.6 as tall as wide). Lower values narrow it further.
+   * ground squash (baked ground frames are 1/sqrt(3) = 0.57735 as tall as wide, the isometric camera). Lower values narrow it further.
    */
   maskSquash?: number;
 }

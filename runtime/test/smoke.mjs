@@ -182,6 +182,13 @@ const aimed = Object.fromEntries([0, 90].map(direction => {
 }));
 for (const value of [91, -91, NaN]) assert.throws(() => validate({ ...aimed[0], direction: value }));
 assert.throws(() => validate({ ...aimed[0], groundSquash: 0 }));
+{ // ground_projection: isometric squash, feet_ground, no stretched/floating/unprojected decal.
+  const iso = 1 / Math.sqrt(3), gp = { squash: iso, anchor: 'feet_ground', decals: 4, max_aspect_error: 0, max_height: 0, stretched: [], floating: [], unprojected: [], mark_cores: ['#2b231a'] };
+  validate({ ...aimed[0], groundSquash: iso, ground_projection: gp });
+  for (const [bad, why] of [[{ squash: 0.6 }, /not isometric/], [{ anchor: 'caster' }, /feet_ground/], [{ stretched: ['glow'] }, /stretched/], [{ floating: ['ring'] }, /floating/], [{ unprojected: ['disc'] }, /unprojected/], [{ decals: -1 }, /decals/]])
+    assert.throws(() => validate({ ...aimed[0], groundSquash: bad.squash ?? iso, ground_projection: { ...gp, ...bad } }), why);
+  assert.throws(() => validate({ ...aimed[0], groundSquash: 0.6, ground_projection: gp }), /differs from groundSquash/);
+}
 async function residencySmoke(engine) {
   const pixi = engine === 'v8' ? window.__v8 : window.__v7, { app, VfxPlayer: Player } = pixi;
   const check = (ok, message) => { if (!ok) throw Error(`${engine} residency: ${message}`); };
@@ -399,7 +406,17 @@ async function floorSmoke(engine) {
     check(parent.children.length === 2, 'an under root and the pack root: ' + parent.children.length);
     check(under.zIndex === -1 && main.zIndex === 0, 'depth biases ' + [under.zIndex, main.zIndex]);
     check(under.children.length === 2 && main.children.length === 1, 'ground layers move out of the pack root: ' + [under.children.length, main.children.length]);
-    check(near(under.x, main.x) && near(under.y, main.y) && near(under.scale.x, main.scale.x) && near(under.scale.y, main.scale.y) && near(under.skew.x, main.skew.x), 'the under root shares the pack matrix');
+    check(near(under.x, main.x) && near(under.y, main.y) && near(under.scale.x, main.scale.x) && near(under.skew.x, main.skew.x), 'the under root shares the pack placement');
+    check(near(under.scale.y, under.scale.x), 'fitDistance scales the ground plane uniformly: ' + [under.scale.x, under.scale.y]);
+    // Off the baked direction the pack root shears; the under root rotates the ground plane, so ground ellipses stay projected circles.
+    const lin = n => { const r = n.rotation; return [Math.cos(r + n.skew.y) * n.scale.x, Math.sin(r + n.skew.y) * n.scale.x, -Math.sin(r - n.skew.x) * n.scale.y, Math.cos(r - n.skew.x) * n.scale.y]; };
+    const stretch = ([a, b, c, d], sq) => { const m10 = b / sq, m01 = c * sq, q = Math.hypot((a + d) / 2, (m10 - m01) / 2), r = Math.hypot((a - d) / 2, (m10 + m01) / 2); return 1 - Math.abs(q - r) / (q + r); }; // P^-1 M P vs a similarity
+    const skewed = player.play('floor', { from, to: { x: 400, y: 330 }, parent });
+    const [su, sm] = parent.children.slice(2);
+    check(stretch(lin(su), 0.6) < 1e-6 && stretch(lin(sm), 0.6) > 0.05, 'ground root is an iso similarity, pack root a shear: ' + [stretch(lin(su), 0.6), stretch(lin(sm), 0.6)]);
+    const [ga, gb, gc, gd] = lin(su), [ma, mb, mc, md] = lin(sm);
+    check(near(ga * 360 + su.x, ma * 360 + sm.x) && near(gb * 360 + su.y, mb * 360 + sm.y), 'both roots land the baked target on the same point');
+    skewed.stop();
     check(under.children[0].visible && under.children[1].visible && main.children[0].visible, 'frame 0 visibility');
     player.update(100.001);
     check(!under.children[0].visible && under.children[1].visible && main.children[0].visible, 'frame 1: the null ground frame hides, the rest stays');

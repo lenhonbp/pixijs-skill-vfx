@@ -71,7 +71,22 @@ export interface Manifest {
   anchors?: AnchorMeta;
   /** Rim colour (`#rrggbb`) the player's ground dissolve filter burns this pack's ground layers with, instead of its own. */
   ground_dissolve?: { edge_color: string };
+  /** Bake-time ground audit (factory 2026-11+): the isometric squash, feet_ground anchoring and the worst measured decal geometry. */
+  ground_projection?: GroundProjection;
 }
+/** See docs/pack-format.md: ground decals are true isometric ellipses (squash 1/sqrt(3)) pinned to the actors' feet_ground. */
+export interface GroundProjection {
+  squash: number;
+  anchor: 'feet_ground';
+  decals: number;
+  max_aspect_error: number;
+  max_height: number;
+  stretched: string[];
+  floating: string[];
+  unprojected: string[];
+  mark_cores: string[];
+}
+const ISO_SQUASH = 1 / Math.sqrt(3), ISO_TOLERANCE = 0.005;
 const TIER_IDS = ['hit_point', 'ground_feedback', 'body_residual'];
 const ANCHORS = ['contact_normal', 'ground_center', 'body_center'];
 const BLENDS = ['ADD', 'SCREEN', 'NORMAL'];
@@ -141,6 +156,20 @@ function validateGroundDissolve(m: Manifest) {
   if (!g || typeof g !== 'object' || Array.isArray(g)) { delete m.ground_dissolve; return; }
   if (typeof g.edge_color !== 'string' || !/^#[0-9a-fA-F]{6}$/.test(g.edge_color)) throw Error('Invalid VFX ground dissolve: edge_color');
 }
+/**
+ * A ground projection block must state the isometric squash (1/sqrt(3) +/- 0.005), matching the pack's groundSquash, and feet_ground
+ * anchoring, and record no stretched, floating or unprojected decal: such a pack was baked against the standard and is rejected.
+ */
+function validateGroundProjection(m: Manifest) {
+  const g = m.ground_projection as any, bad = (why: string) => { throw Error(`Invalid VFX ground projection: ${why}`); };
+  if (!g || typeof g !== 'object' || Array.isArray(g)) bad('not an object');
+  if (!Number.isFinite(g.squash) || Math.abs(g.squash - ISO_SQUASH) > ISO_TOLERANCE) bad(`squash ${g.squash} is not isometric ${ISO_SQUASH.toFixed(5)}`);
+  if (m.groundSquash === undefined || Math.abs(m.groundSquash - g.squash) > 1e-9) bad('squash differs from groundSquash');
+  if (g.anchor !== 'feet_ground') bad('anchor must be feet_ground');
+  for (const k of ['stretched', 'floating', 'unprojected', 'mark_cores']) if (!Array.isArray(g[k]) || !g[k].every((v: unknown) => typeof v === 'string')) bad(k);
+  for (const k of ['stretched', 'floating', 'unprojected']) if (g[k].length) bad(`${k} decals ${g[k].join(', ')}`);
+  for (const k of ['decals', 'max_aspect_error', 'max_height']) if (!Number.isFinite(g[k]) || g[k] < 0) bad(k);
+}
 /** A depth hint this runtime does not know is dropped (the layer then keeps the pack's depth); a malformed one, or one on a tier's layer, is an error. */
 function validateLayerDepth(m: Manifest) {
   const owned = new Set((m.impact?.tiers ?? []).flatMap(t => t.layers));
@@ -170,6 +199,7 @@ export function validate(value: unknown): Manifest {
   if (m.impact !== undefined) validateImpact(m);
   if (m.anchors !== undefined) validateAnchors(m);
   if (m.ground_dissolve !== undefined) validateGroundDissolve(m);
+  if (m.ground_projection !== undefined) validateGroundProjection(m);
   validateLayerDepth(m);
   if (m.actors !== undefined) {
     if (!m.actors || typeof m.actors !== 'object' || Array.isArray(m.actors)) throw Error('Invalid VFX actors');
