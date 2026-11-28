@@ -70,38 +70,38 @@
     <section class="relative overflow-hidden border-b border-line" aria-labelledby="hero-title">
       <div class="glow pointer-events-none absolute inset-0" aria-hidden="true"></div>
       <div class="grid-bg pointer-events-none absolute inset-0" aria-hidden="true"></div>
-      <div class="shell relative grid items-center gap-12 py-16 sm:py-20 lg:grid-cols-[1.05fr_0.95fr] lg:py-24">
+      <div class="shell relative grid items-center gap-10 py-10 sm:gap-12 sm:py-20 lg:grid-cols-[1.05fr_0.95fr] lg:py-24">
         <div>
           <p class="inline-flex max-w-full items-center gap-2 rounded-full border border-line bg-surface/80 px-3 py-1 font-mono text-[11px] tracking-wide whitespace-nowrap text-muted">
             <i class="status-dot size-1.5 shrink-0 rounded-full bg-ok"></i>Free collection live<span class="text-faint">·</span><span class="truncate text-text" title="Current R2 release">{{release}}</span>
           </p>
-          <h1 id="hero-title" class="mt-6 text-[2.15rem] leading-[1.08] font-semibold tracking-[-0.025em] text-balance sm:text-5xl lg:text-[3.4rem]">
+          <h1 id="hero-title" class="mt-5 text-[2rem] leading-[1.1] font-semibold tracking-[-0.025em] text-balance sm:mt-6 sm:text-5xl lg:text-[3.4rem]">
             Principal Real-Time Graphics Architect <span class="text-gradient">&amp; Toolchain Engineer</span>
           </h1>
-          <p class="mt-6 max-w-xl text-[15px] leading-relaxed text-muted sm:text-base">
+          <p class="mt-5 max-w-xl text-[15px] leading-relaxed text-muted sm:mt-6 sm:text-base">
             I build the pipelines behind lenhon.dev. Procedural VFX recipes and Blender scenes go in;
             verified PixiJS atlases come out — baked headless, budget-gated in CI and shipped to an R2 CDN
             without a single hand-exported frame.
           </p>
-          <div class="mt-8 flex flex-wrap gap-3">
-            <a href="#assets" class="btn btn-primary h-10 px-4 text-sm">Explore assets
+          <div class="mt-7 grid grid-cols-2 gap-2.5 sm:mt-8 sm:flex sm:flex-wrap sm:gap-3">
+            <a href="#assets" class="btn btn-primary h-11 px-4 text-sm sm:h-10">Explore assets
               <svg viewBox="0 0 16 16" width="12" height="12" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M8 3v10M4 9l4 4 4-4"/></svg>
             </a>
-            <a href="{{vfxUrl}}" class="btn btn-ghost h-10 px-4 text-sm">Cast a spell live <span class="font-mono text-[11px] text-faint">{{vfxHost}}</span></a>
+            <a href="{{vfxUrl}}" class="btn btn-ghost h-11 px-4 text-sm sm:h-10">Cast a spell live <span class="hidden font-mono text-[11px] text-faint sm:inline">{{vfxHost}}</span></a>
           </div>
           <div class="mt-5 max-w-xl">
-            <div class="flex h-11 items-center gap-2.5 rounded-lg border border-line bg-ink-2/90 pr-1.5 pl-3.5 shadow-[inset_0_1px_0_rgb(255_255_255/0.03)]">
+            <div class="flex min-h-12 items-center gap-2.5 rounded-lg border border-line bg-ink-2/90 py-1.5 pr-1.5 pl-3.5 shadow-[inset_0_1px_0_rgb(255_255_255/0.03)] sm:h-11 sm:min-h-0 sm:py-0">
               <span class="font-mono text-[13px] text-ok select-none" aria-hidden="true">$</span>
               <code class="min-w-0 flex-1 truncate font-mono text-[13px] text-text">npm i @lenhonbp/pixijs-vfx-runtime</code>
-              <button type="button" class="btn btn-ghost h-8 min-h-8 w-[6.25rem] shrink-0 px-2" data-copy="npm i @lenhonbp/pixijs-vfx-runtime" aria-label="Copy install command"><svg viewBox="0 0 16 16" width="12" height="12" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round" aria-hidden="true"><rect x="5.5" y="5.5" width="8" height="8" rx="1.5"/><path d="M10.5 5.5v-2a1 1 0 0 0-1-1h-6a1 1 0 0 0-1 1v6a1 1 0 0 0 1 1h2"/></svg> <span data-label>Copy</span></button>
+              <button type="button" class="btn btn-ghost h-9 shrink-0 px-2 sm:h-8 w-[6.25rem]" data-copy="npm i @lenhonbp/pixijs-vfx-runtime" aria-label="Copy install command"><svg viewBox="0 0 16 16" width="12" height="12" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round" aria-hidden="true"><rect x="5.5" y="5.5" width="8" height="8" rx="1.5"/><path d="M10.5 5.5v-2a1 1 0 0 0-1-1h-6a1 1 0 0 0-1 1v6a1 1 0 0 0 1 1h2"/></svg> <span data-label>Copy</span></button>
             </div>
-            <p class="mt-2 font-mono text-[11px] text-faint">MIT · PixiJS 7/8 · zero runtime deps · packs load from the R2 CDN</p>
+            <p class="mt-2 font-mono text-[11px] leading-5 text-faint">MIT · PixiJS 7/8 · zero runtime deps · packs load from the R2 CDN</p>
           </div>
-          <dl class="mt-12 grid max-w-xl grid-cols-2 gap-px overflow-hidden rounded-xl border border-line bg-line sm:grid-cols-4">
-            <div class="bg-ink/90 px-4 py-3.5"><dt class="kicker">Skill VFX</dt><dd class="mt-1 font-mono text-xl text-text">{{vfxCount}}</dd></div>
-            <div class="bg-ink/90 px-4 py-3.5"><dt class="kicker">Prop packs</dt><dd class="mt-1 font-mono text-xl text-text">{{propsCount}}</dd></div>
-            <div class="bg-ink/90 px-4 py-3.5"><dt class="kicker">Iso assets</dt><dd class="mt-1 font-mono text-xl text-text">{{isoAssets}}</dd></div>
-            <div class="bg-ink/90 px-4 py-3.5"><dt class="kicker">On R2 CDN</dt><dd class="mt-1 font-mono text-xl text-text">{{cdnMB}}<span class="text-sm text-faint"> MB</span></dd></div>
+          <dl class="mt-10 grid max-w-xl grid-cols-2 gap-px overflow-hidden rounded-xl border border-line bg-line sm:mt-12 sm:grid-cols-4">
+            <div class="bg-ink/90 px-4 py-4 sm:py-3.5"><dt class="kicker">Skill VFX</dt><dd class="mt-1.5 font-mono text-2xl text-text sm:text-xl">{{vfxCount}}</dd></div>
+            <div class="bg-ink/90 px-4 py-4 sm:py-3.5"><dt class="kicker">Prop packs</dt><dd class="mt-1.5 font-mono text-2xl text-text sm:text-xl">{{propsCount}}</dd></div>
+            <div class="bg-ink/90 px-4 py-4 sm:py-3.5"><dt class="kicker">Iso assets</dt><dd class="mt-1.5 font-mono text-2xl text-text sm:text-xl">{{isoAssets}}</dd></div>
+            <div class="bg-ink/90 px-4 py-4 sm:py-3.5"><dt class="kicker">On R2 CDN</dt><dd class="mt-1.5 font-mono text-2xl text-text sm:text-xl">{{cdnMB}}<span class="text-sm text-faint"> MB</span></dd></div>
           </dl>
         </div>
 
@@ -120,11 +120,11 @@
           </div>
           <figcaption>
             <ol class="divide-y divide-line/70 font-mono text-[11.5px] leading-5">
-              <li class="flex items-center justify-between gap-4 px-4 py-2"><span><span class="text-faint">01</span> recipe → headless bake</span><span class="text-faint">seed 12345 · 60 Hz</span></li>
-              <li class="flex items-center justify-between gap-4 px-4 py-2"><span><span class="text-faint">02</span> shelf-pack WebP ≤ 2048²</span><span class="text-faint">LVFX v1 container</span></li>
-              <li class="flex items-center justify-between gap-4 px-4 py-2"><span><span class="text-faint">03</span> budget gate · A15 tier</span><span class="text-faint">45 MB/dir · 128 MB</span></li>
-              <li class="flex items-center justify-between gap-4 px-4 py-2"><span><span class="text-faint">04</span> zero-GC bench</span><span class="text-ok">PASS 16/16</span></li>
-              <li class="flex items-center justify-between gap-4 px-4 py-2"><span><span class="text-faint">05</span> release → R2 CDN</span><span class="text-faint">immutable · {{cdnFiles}} files</span></li>
+              <li class="flex items-center justify-between gap-3 px-4 py-2.5"><span class="min-w-0"><span class="text-faint">01</span> recipe → headless bake</span><span class="shrink-0 text-right text-faint">seed 12345 · 60 Hz</span></li>
+              <li class="flex items-center justify-between gap-3 px-4 py-2.5"><span class="min-w-0"><span class="text-faint">02</span> shelf-pack WebP ≤ 2048²</span><span class="shrink-0 text-right text-faint">LVFX v1 container</span></li>
+              <li class="flex items-center justify-between gap-3 px-4 py-2.5"><span class="min-w-0"><span class="text-faint">03</span> budget gate · A15 tier</span><span class="shrink-0 text-right text-faint">45 MB/dir · 128 MB</span></li>
+              <li class="flex items-center justify-between gap-3 px-4 py-2.5"><span class="min-w-0"><span class="text-faint">04</span> zero-GC bench</span><span class="shrink-0 text-right text-ok">PASS 16/16</span></li>
+              <li class="flex items-center justify-between gap-3 px-4 py-2.5"><span class="min-w-0"><span class="text-faint">05</span> release → R2 CDN</span><span class="shrink-0 text-right text-faint">immutable · {{cdnFiles}} files</span></li>
             </ol>
           </figcaption>
         </figure>
@@ -172,7 +172,7 @@
           <label class="relative block w-full lg:w-72">
             <span class="sr-only">Search assets</span>
             <svg class="pointer-events-none absolute top-1/2 left-3 -translate-y-1/2 text-faint" viewBox="0 0 16 16" width="14" height="14" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" aria-hidden="true"><circle cx="7" cy="7" r="4.5"/><path d="m10.5 10.5 3 3"/></svg>
-            <input type="search" data-search placeholder="Search fireball, lantern, Hỏa…" autocomplete="off" class="h-9 w-full rounded-md border border-line bg-surface pr-3 pl-9 text-[13px] text-text placeholder:text-faint focus:border-line-strong focus:outline-none">
+            <input type="search" data-search placeholder="Search fireball, lantern, Hỏa…" autocomplete="off" class="h-11 w-full rounded-md border border-line bg-surface pr-3 pl-9 text-[13px] text-text placeholder:text-faint focus:border-line-strong focus:outline-none sm:h-9">
           </label>
         </div>
 
