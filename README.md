@@ -1,13 +1,13 @@
 # PixiJS Skill VFX
 
-[![Live demo](https://img.shields.io/badge/Live_demo-Cast_a_spell-d6b477?style=flat-square)](https://vfx-store.pages.dev/)
+[![Live demo](https://img.shields.io/badge/Live_demo-Cast_a_spell-d6b477?style=flat-square)](https://vfx.lenhon.dev/)
 [![License: MIT](https://img.shields.io/badge/License-MIT-83bfd6?style=flat-square)](LICENSE)
 
 **Free runtime. Instant magic.** 28 ready-to-play skills.
 A lightweight, zero-runtime-dependency atlas player for **PixiJS v7 and v8**,
 with a responsive, interactive showcase. Commercial use welcome.
 
-[Try the live collection →](https://vfx-store.pages.dev/) · [Runtime docs](runtime/README.md) · [Pack format](docs/pack-format.md) · [Isometric map contract](docs/iso-map-contract.md)
+[Try the live collection →](https://vfx.lenhon.dev/) · [Runtime docs](runtime/README.md) · [Pack format](docs/pack-format.md) · [Isometric map contract](docs/iso-map-contract.md)
 
 ## Quick start
 
