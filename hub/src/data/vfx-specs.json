@@ -8,37 +8,37 @@
   "directions": 5,
   "desktop": {
    "fps": 60,
-   "frames": 181,
-   "durationMs": 3016.6666666666665,
+   "frames": 214,
+   "durationMs": 3566.6666666666665,
    "layers": 8,
    "sheets": 11,
-   "maxSheet": 2039,
-   "vram": 75577296,
-   "measuredVram": 75577296,
+   "maxSheet": 2046,
+   "vram": 89513112,
+   "measuredVram": 89513112,
    "budget": {
     "tier": "desktop",
     "directionWarnBytes": 128000000,
     "residentDirections": 2,
     "residentMaxBytes": 448000000
    },
-   "bytes": 1579598
+   "bytes": 2234172
   },
   "mobile": {
    "fps": 60,
-   "frames": 181,
-   "durationMs": 3016.6666666666665,
+   "frames": 214,
+   "durationMs": 3566.6666666666665,
    "layers": 8,
    "sheets": 9,
-   "maxSheet": 2046,
-   "vram": 33846608,
-   "measuredVram": 33846608,
+   "maxSheet": 2048,
+   "vram": 41443768,
+   "measuredVram": 41443768,
    "budget": {
     "tier": "mobile",
     "directionWarnBytes": 45000000,
     "residentDirections": 2,
     "residentMaxBytes": 128000000
    },
-   "bytes": 699178
+   "bytes": 987546
   }
  },
  {
@@ -260,37 +260,37 @@
   "directions": 5,
   "desktop": {
    "fps": 30,
-   "frames": 116,
-   "durationMs": 3866.6666666666665,
-   "layers": 3,
-   "sheets": 4,
-   "maxSheet": 2040,
-   "vram": 34267360,
-   "measuredVram": 34267360,
+   "frames": 115,
+   "durationMs": 3833.3333333333335,
+   "layers": 4,
+   "sheets": 6,
+   "maxSheet": 2044,
+   "vram": 43581640,
+   "measuredVram": 43581640,
    "budget": {
     "tier": "desktop",
     "directionWarnBytes": 128000000,
     "residentDirections": 2,
     "residentMaxBytes": 448000000
    },
-   "bytes": 3780123
+   "bytes": 3855325
   },
   "mobile": {
    "fps": 30,
-   "frames": 116,
-   "durationMs": 3866.6666666666665,
-   "layers": 3,
-   "sheets": 3,
-   "maxSheet": 2042,
-   "vram": 11244368,
-   "measuredVram": 11244368,
+   "frames": 115,
+   "durationMs": 3833.3333333333335,
+   "layers": 4,
+   "sheets": 4,
+   "maxSheet": 2048,
+   "vram": 15861280,
+   "measuredVram": 15861280,
    "budget": {
     "tier": "mobile",
     "directionWarnBytes": 45000000,
     "residentDirections": 2,
     "residentMaxBytes": 128000000
    },
-   "bytes": 1333165
+   "bytes": 1377824
   }
  },
  {
@@ -344,37 +344,37 @@
   "directions": 5,
   "desktop": {
    "fps": 30,
-   "frames": 117,
-   "durationMs": 3900,
-   "layers": 8,
-   "sheets": 8,
-   "maxSheet": 2046,
-   "vram": 38447024,
-   "measuredVram": 38447024,
+   "frames": 120,
+   "durationMs": 4000,
+   "layers": 10,
+   "sheets": 10,
+   "maxSheet": 2045,
+   "vram": 52944260,
+   "measuredVram": 52944260,
    "budget": {
     "tier": "desktop",
     "directionWarnBytes": 128000000,
     "residentDirections": 2,
     "residentMaxBytes": 448000000
    },
-   "bytes": 1603435
+   "bytes": 2248714
   },
   "mobile": {
    "fps": 30,
-   "frames": 117,
-   "durationMs": 3900,
-   "layers": 8,
-   "sheets": 8,
-   "maxSheet": 2040,
-   "vram": 18370608,
-   "measuredVram": 18370608,
+   "frames": 120,
+   "durationMs": 4000,
+   "layers": 10,
+   "sheets": 10,
+   "maxSheet": 2047,
+   "vram": 22023800,
+   "measuredVram": 22023800,
    "budget": {
     "tier": "mobile",
     "directionWarnBytes": 45000000,
     "residentDirections": 2,
     "residentMaxBytes": 128000000
    },
-   "bytes": 810304
+   "bytes": 773879
   }
  },
  {
@@ -473,17 +473,17 @@
    "frames": 115,
    "durationMs": 3833.3333333333335,
    "layers": 5,
-   "sheets": 7,
-   "maxSheet": 2037,
-   "vram": 56944048,
-   "measuredVram": 56944048,
+   "sheets": 6,
+   "maxSheet": 2048,
+   "vram": 52403076,
+   "measuredVram": 52403076,
    "budget": {
     "tier": "desktop",
     "directionWarnBytes": 128000000,
     "residentDirections": 2,
     "residentMaxBytes": 448000000
    },
-   "bytes": 2370399
+   "bytes": 2149387
   },
   "mobile": {
    "fps": 30,
@@ -492,15 +492,15 @@
    "layers": 5,
    "sheets": 5,
    "maxSheet": 2038,
-   "vram": 23061968,
-   "measuredVram": 23061968,
+   "vram": 18741292,
+   "measuredVram": 18741292,
    "budget": {
     "tier": "mobile",
     "directionWarnBytes": 45000000,
     "residentDirections": 2,
     "residentMaxBytes": 128000000
    },
-   "bytes": 978156
+   "bytes": 784348
   }
  },
  {

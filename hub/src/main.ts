@@ -181,10 +181,15 @@ async function copy(button: HTMLButtonElement) {
   setTimeout(() => { label.textContent = 'Copy'; }, 1800);
 }
 
+const phone = matchMedia('(max-width: 639px), (orientation: landscape) and (max-height: 520px)'); // same query as the compact tiles in style.css
+
 document.addEventListener('click', e => {
   const target = e.target as Element;
   const open = target.closest<HTMLElement>('[data-open-preview]');
   if (open) { void inspect(open.dataset.openPreview!, open); return; }
+  // Phone tiles show only a poster, a name and the VRAM tier: the whole tile is the way into the inspector.
+  const tile = target.closest<HTMLElement>('[data-card]');
+  if (tile && phone.matches && !target.closest('a, button')) { tile.querySelector<HTMLElement>('[data-open-preview]')?.click(); return; }
   const exporter = target.closest<HTMLButtonElement>('button[data-export]');
   if (exporter) { void exportPack(exporter); return; }
   const copier = target.closest<HTMLButtonElement>('button[data-copy]');
@@ -248,6 +253,19 @@ new IntersectionObserver(([entry]) => {
   if (entry.isIntersecting) void video.play().catch(() => {}); else video.pause();
 }).observe(hero);
 
-// Close the mobile menu after choosing an in-page link.
+// Mobile menu: closes after choosing a link, on Escape (focus returns to the button), on a tap outside it, and when
+// the window grows to the desktop layout.
 const menu = $<HTMLDetailsElement>('[data-menu]');
 menu.addEventListener('click', e => { if ((e.target as Element).closest('a')) menu.open = false; });
+document.addEventListener('keydown', e => {
+  if (e.key === 'Escape' && menu.open) { menu.open = false; menu.querySelector('summary')?.focus(); }
+});
+document.addEventListener('pointerdown', e => { if (menu.open && !menu.contains(e.target as Node)) menu.open = false; });
+// Same rule as the `desk` variant in style.css.
+matchMedia('(min-width: 1280px), (min-width: 1024px) and (pointer: fine)').addEventListener('change', e => { if (e.matches) menu.open = false; });
+
+// Back to top: shown once the Explorer heading has scrolled off the top, so the long phone grid is easy to leave.
+// An IntersectionObserver, not a scroll listener, so scrolling does no work in script.
+const toTop = $<HTMLButtonElement>('[data-to-top]');
+new IntersectionObserver(([entry]) => { toTop.hidden = entry.isIntersecting || entry.boundingClientRect.top > 0; }).observe($('#assets-title'));
+toTop.addEventListener('click', () => scrollTo({ top: 0, behavior: reducedMotion.matches ? 'auto' : 'smooth' }));

@@ -46,10 +46,10 @@ function vramBar(c: Card): string {
   const v = c.vram, mobile = v.tier === 'mobile';
   const fill = Math.min(v.bytes / VRAM_SCALE, 1).toFixed(4);
   const line = (A15_DIRECTION_BUDGET / VRAM_SCALE * 100).toFixed(2);
-  return `<div class="mt-3.5" title="${esc(v.title)}">
+  return `<div class="card-vram mt-3.5" title="${esc(v.title)}">
         <div class="flex items-baseline justify-between gap-2 font-mono text-[10.5px]">
-          <span class="text-muted">VRAM <span class="text-text tabular-nums">${esc(mb(v.bytes))}</span></span>
-          <span class="${mobile ? 'text-ok' : 'text-warn'} truncate">${esc(v.label)}</span>
+          <span class="text-muted"><span class="card-word">VRAM </span><span class="text-text tabular-nums">${esc(mb(v.bytes))}</span></span>
+          <span class="card-tier ${mobile ? 'text-ok' : 'text-warn'} truncate">${esc(v.label)}</span><span class="card-tier-short ${mobile ? 'text-ok' : 'text-warn'}" aria-hidden="true">${mobile ? 'Mobile' : 'Heavy'}</span>
         </div>
         <div class="vram-bar mt-1.5" role="meter" aria-label="Decoded VRAM against the 45 MB A15 budget" aria-valuemin="0" aria-valuemax="${(A15_DIRECTION_BUDGET / 1e6).toFixed(0)}" aria-valuenow="${(v.bytes / 1e6).toFixed(1)}" aria-valuetext="${esc(mb(v.bytes))}, ${esc(v.label)}" style="--fill:${fill};--line:${line}%">
           <span class="vram-fill ${mobile ? 'is-mobile' : 'is-heavy'}"></span><span class="vram-line"></span>
@@ -82,9 +82,9 @@ function preview(card: Card, index: number): string {
       ${img}
       ${hover}
       <span class="pointer-events-none absolute top-2.5 left-2.5 inline-flex items-center gap-1.5 rounded-full border border-white/10 bg-ink/70 px-2 py-1 font-mono text-[10px] uppercase tracking-wider text-text backdrop-blur"><i class="size-1.5 rounded-full" style="background:${card.color}"></i>${esc(card.groupLabel)}</span>
-      <span class="pointer-events-none absolute top-2.5 right-2.5 rounded-full border border-ok/30 bg-ink/70 px-2 py-1 font-mono text-[10px] uppercase tracking-wider text-ok backdrop-blur">Free</span>
+      <span class="card-free pointer-events-none absolute top-2.5 right-2.5 rounded-full border border-ok/30 bg-ink/70 px-2 py-1 font-mono text-[10px] uppercase tracking-wider text-ok backdrop-blur">Free</span>
       <button type="button" class="preview-open absolute inset-0 z-10" data-open-preview="${esc(card.id)}" aria-haspopup="dialog" aria-label="Open interactive preview: ${esc(card.title)}">
-        <span class="hint pointer-events-none absolute right-2.5 bottom-2.5 inline-flex items-center gap-1.5 rounded-full border border-white/10 bg-ink/70 px-2 py-1 font-mono text-[10px] tracking-wide text-muted backdrop-blur transition-colors">${icon.expand} Inspect</span>
+        <span class="hint card-hint pointer-events-none absolute right-2.5 bottom-2.5 inline-flex items-center gap-1.5 rounded-full border border-white/10 bg-ink/70 px-2 py-1 font-mono text-[10px] tracking-wide text-muted backdrop-blur transition-colors">${icon.expand} Inspect</span>
       </button>
     </div>`;
 }
@@ -98,20 +98,20 @@ function card(c: Card, index: number): string {
     <div class="flex flex-1 flex-col p-4">
       <div class="flex items-baseline justify-between gap-3">
         <h3 class="text-[15px] font-semibold tracking-tight text-text">${esc(c.title)}</h3>
-        <span class="shrink-0 font-mono text-[10px] uppercase tracking-wider text-faint">${esc(c.tag)}</span>
+        <span class="card-tag shrink-0 font-mono text-[10px] uppercase tracking-wider text-faint">${esc(c.tag)}</span>
       </div>
       <p class="mt-0.5 flex items-center justify-between gap-3 text-xs text-faint">
-        <span class="min-w-0 truncate">${esc(c.native)}</span>
-        <span class="badge shrink-0 border-line bg-ink-2 text-text tabular-nums" title="Download size of the free pack (${esc(c.kind === 'vfx' ? 'desktop .vfxb' : 'ZIP')})">${icon.down.replace('width="12" height="12"', 'width="10" height="10" class="mr-1 inline"')}${esc(size)}</span>
+        <span class="card-native min-w-0 truncate">${esc(c.native)}</span>
+        <span class="badge card-size shrink-0 border-line bg-ink-2 text-text tabular-nums" title="Download size of the free pack (${esc(c.kind === 'vfx' ? 'desktop .vfxb' : 'ZIP')})">${icon.down.replace('width="12" height="12"', 'width="10" height="10" class="mr-1 inline"')}${esc(size)}</span>
       </p>
-      <p class="mt-2.5 line-clamp-2 text-[13px] leading-relaxed text-muted">${esc(c.description)}</p>
-      <ul class="mt-3.5 flex flex-wrap gap-1.5" aria-label="Tech specs">${c.badges.map(badge).join('')}</ul>
-      <p class="mt-2 flex flex-wrap items-center gap-x-1.5 gap-y-1 font-mono text-[10.5px]" title="${esc(c.fps.title)}">
+      <p class="card-desc mt-2.5 line-clamp-2 text-[13px] leading-relaxed text-muted">${esc(c.description)}</p>
+      <ul class="card-specs mt-3.5 flex flex-wrap gap-1.5" aria-label="Tech specs">${c.badges.map(badge).join('')}</ul>
+      <p class="card-fps mt-2 flex flex-wrap items-center gap-x-1.5 gap-y-1 font-mono text-[10.5px]" title="${esc(c.fps.title)}">
         <span class="text-muted">${esc(c.fps.bake)}</span><span class="text-line-strong" aria-hidden="true">→</span><span class="text-accent">${esc(c.fps.target)}</span>
       </p>
       ${vramBar(c)}
-      <p class="mt-3 font-mono text-[11px] text-faint">${c.meta.map(m => esc(m).replace(/ /g, '&nbsp;')).join('<span class="px-1 text-line-strong"> · </span>')}</p>
-      <div class="mt-auto grid grid-cols-2 gap-2 pt-4">
+      <p class="card-meta mt-3 font-mono text-[11px] text-faint">${c.meta.map(m => esc(m).replace(/ /g, '&nbsp;')).join('<span class="px-1 text-line-strong"> · </span>')}</p>
+      <div class="card-actions mt-auto grid grid-cols-2 gap-2 pt-4">
         <a class="btn btn-primary col-span-2" href="${esc(c.live.href)}" target="_blank" rel="noopener" data-live>${c.live.label} <span class="font-mono text-[11px] font-normal opacity-60">${esc(new URL(c.live.href).host)}</span> ${icon.out}</a>
         ${c.downloads.map(d => download(d, wide)).join('\n        ')}
         ${c.gumroad ? `<a class="btn btn-ghost col-span-2" href="${esc(c.gumroad)}" target="_blank" rel="noopener" data-gumroad>Buy on Gumroad ${icon.out}</a>` : ''}

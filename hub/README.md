@@ -54,6 +54,27 @@ npm run build     # typecheck → vite build → scripts/check-dist.mjs gate
 - **Tech Docs** in the nav jumps to the on-page `#pipeline` section (marked *Docs v1.4 · soon*)
   until docs.lenhon.dev is deployed; `/docs` and `/#docs` land there too.
 
+## Responsive rules
+
+Tested at 320, 360, 375, 390, 430 (phones), 844×390 (landscape phone), 768, 1024, 1280, 1440, 1920 and 2560 px.
+No horizontal overflow at any of them; every image has intrinsic `width`/`height` (zero layout shift).
+
+- **Breakpoints**: `sm` 640 (2 columns), `lg` 1024 (3), `xl` 1280 (4), `2xl` 1536 (5, the shell widens to 96 rem).
+  The header switches to the full nav on a custom `desk` variant: ≥1280 px, or ≥1024 px with a mouse
+  (`pointer: fine`), so a tablet in landscape keeps the menu button instead of a cramped nav row.
+  Every grid is `grid-cols-1` first (`minmax(0, 1fr)`); an implicit `auto` column let a long install
+  command widen the hero past the screen.
+- **Touch** (`pointer: coarse`, tablets included): buttons, tabs, chips, the scrubber, menu links, footer
+  links and the Copy / Pause buttons are ≥ 44 px (small controls get an invisible hit-area halo).
+- **Type**: nothing below 11 px; the faint text colour meets WCAG AA (4.5:1) on every surface.
+- **Phones** (≤ 639 px, and landscape phones): the asset grid turns into compact tiles (poster, name, VRAM
+  figure and tier). A full card is ~560 px tall, so 28 of them made a 23,000 px page; the tiles bring it to
+  ~8,900 px (landscape: 12,800 → 5,500 px). A tap anywhere on a tile opens the inspector, which carries the
+  description, specs, Test Live and every download. The hidden card parts stay in the HTML.
+- **Landscape phones** get a two-column inspector (stage | controls) and a header that scrolls away.
+- The mobile menu closes on a link, Escape, an outside tap and when the viewport becomes desktop-sized;
+  a back-to-top button appears once the explorer has scrolled past the top.
+
 ## Deploy (Cloudflare Pages)
 
 Project **`lenhon-hub`**, connected to this repository:
@@ -110,6 +131,10 @@ node skills/lenhon-vfx/scripts/fetch-packs.mjs --all --out showcase/public/packs
 node hub/scripts/vfx-specs.mjs showcase/public/packs/free > hub/src/data/vfx-specs.json
 # capture + frame the media (see the next section), then update src/data/release.json to the pointer
 ```
+
+A rebake changes frame counts, so re-check each rebaked effect's poster frame: the ids go to
+`vfx-media.py` as separate arguments (`python3 -I hub/scripts/vfx-media.py <frames> <out> id1 id2 … [reel]`),
+and its `PEAK` table holds the chosen frame per effect (the 2026-11-28-7f72be2 rebake re-picked Sword Rain and Frost Nova).
 
 Tiers follow from the new sizes automatically (the 2026-11-28-efdfd3a rebake moved Dragon Breath from
 45.2 to 44.3 MB, i.e. from Desktop Tier into A15 Verified).

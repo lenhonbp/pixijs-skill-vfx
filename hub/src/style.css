@@ -3,6 +3,13 @@
 @import "@fontsource-variable/jetbrains-mono/wght.css";
 
 /* Dark Engine / Slate Studio palette. */
+/* The desktop layout needs room (1280px) or a mouse (1024px): an iPad in landscape keeps the 44px menu instead of 28px nav links. */
+@custom-variant desk {
+  @media (min-width: 1280px), (min-width: 1024px) and (pointer: fine) {
+    @slot;
+  }
+}
+
 @theme {
   --color-ink: #0d1117;
   --color-ink-2: #0a0d12;
@@ -12,7 +19,8 @@
   --color-line-strong: #30363d;
   --color-text: #e6edf3;
   --color-muted: #9198a1;
-  --color-faint: #6e7681;
+  /* #7d8590 is 5.1:1 on ink, 4.9:1 on surface, 4.6:1 on raised (the old #6e7681 was 3.8 to 4.1:1, below AA). */
+  --color-faint: #7d8590;
   --color-accent: #d6b477;
   --color-cyan: #7cc7d6;
   --color-ok: #56d364;
@@ -35,7 +43,7 @@
 }
 
 @layer components {
-  .shell { @apply mx-auto w-full max-w-7xl px-4 sm:px-6; }
+  .shell { @apply mx-auto w-full max-w-7xl px-4 sm:px-6 2xl:max-w-[96rem]; }
   .kicker { @apply font-mono text-[11px] tracking-[0.14em] text-faint uppercase; }
   .hairline { @apply border-line; }
 
@@ -144,7 +152,7 @@ details > summary::-webkit-details-marker { display: none; }
 
 [data-pv-stage][data-bg="grid"] { background: #10141b; }
 [data-pv-stage][data-bg="scorch"] { background: #2b231a; }
-.pv-canvas canvas { display: block; width: 100% !important; height: 100% !important; }
+.pv-canvas canvas { display: block; width: 100% !important; height: 100% !important; object-fit: contain; }
 
 .hud {
   position: absolute; top: 10px; left: 10px; z-index: 1; display: grid; gap: 2px; min-width: 15.5rem; max-width: calc(100% - 20px);
@@ -182,6 +190,28 @@ details > summary::-webkit-details-marker { display: none; }
 .pv-play[data-state="paused"] .icon-play { display: block; }
 .pv-play[data-state="paused"] .icon-pause { display: none; }
 
+/* ── Micro labels were 10 to 10.5px; 11px is the floor everywhere ── */
+.badge, .text-\[10px\], .text-\[10\.5px\] { font-size: 11px; }
+
+/* ── Touch (any width, tablets included): 44px targets ── */
+@media (pointer: coarse) {
+  .btn, .tab { min-height: 44px; }
+  .chip { min-height: 44px; height: auto; }
+  .scrubber { height: 44px; }
+  .seg button { min-height: 40px; height: auto; }
+  [data-menu] > summary { width: 44px; height: 44px; }
+  [data-menu] nav a { min-height: 44px; }
+  header a[aria-label="lenhon.dev home"] { display: inline-flex; min-height: 44px; align-items: center; }
+  [data-copy] { min-width: 44px; min-height: 44px; }
+  .pv-play { width: 44px; height: 44px; }
+  /* Small visual controls keep their look and get a 44px hit area from an invisible halo. */
+  [data-hero-toggle], [data-pv-close] { position: relative; }
+  [data-hero-toggle]::after, [data-pv-close]::after { content: ""; position: absolute; inset: -8px; }
+  [data-hero-toggle] { position: absolute; }
+}
+
+.card-tier-short { display: none; }
+
 /* ── Mobile (≤639px, iPhone 13 mini at 375px) ── */
 @media (max-width: 639px) {
   /* Touch targets: 44px minimum for header menu, tabs, chips, copy and download buttons, and the scrubber. */
@@ -194,6 +224,9 @@ details > summary::-webkit-details-marker { display: none; }
   .preview-open:focus-visible { outline-offset: -3px; }
   [data-copy] { min-width: 44px; min-height: 44px; }
 
+  /* The install command is read and copied by hand: wrap it rather than cut it with an ellipsis. */
+  .install-cmd { white-space: normal; overflow: visible; text-overflow: clip; overflow-wrap: anywhere; line-height: 1.35; }
+
   /* Tab bar: one line that scrolls sideways, flush to the screen edge. */
   [role="tablist"] { max-width: 100%; overflow-x: auto; scrollbar-width: none; flex-wrap: nowrap; }
   [role="tablist"]::-webkit-scrollbar { display: none; }
@@ -202,16 +235,6 @@ details > summary::-webkit-details-marker { display: none; }
   /* Filter rail: snaps chip-by-chip, scroll-padding keeps the first chip off the edge. */
   [data-chips="vfx"] { scroll-padding-inline: 1rem; scroll-behavior: smooth; overscroll-behavior-x: contain; }
 
-  /* Card grid: one column, full-width cards, comfortable 16px inner padding, no overflow. */
-  [data-panel] { grid-template-columns: minmax(0, 1fr); gap: 1rem; }
-  .card, .card > * { min-width: 0; }
-  .card > div:not(.preview) { padding-inline: 1rem; }
-  .card h3 { overflow-wrap: anywhere; }
-  .card .badge { max-width: 100%; overflow: hidden; text-overflow: ellipsis; }
-  .card [data-preview] { aspect-ratio: 16 / 10; }
-  .card .vram-bar { flex-shrink: 0; }
-  .card .btn { max-width: 100%; white-space: normal; text-align: center; min-height: 44px; }
-
   /* Inspector: the stage takes the free height so the transport and speed row stay on screen. */
   .inspector { display: flex; flex-direction: column; }
   .inspector > div { display: flex; flex: 1 1 auto; flex-direction: column; min-height: 0; }
@@ -219,7 +242,7 @@ details > summary::-webkit-details-marker { display: none; }
   .inspector [data-pv-stage] { position: absolute; inset: 0; aspect-ratio: auto; }
   .inspector .hud {
     position: static; min-width: 0; max-width: none; border-width: 1px 0 0; border-radius: 0; background: var(--color-ink-2); backdrop-filter: none;
-    font-size: 10px; padding: 6px 12px;
+    font-size: 11px; padding: 6px 12px;
   }
   .inspector .hud > div { grid-template-columns: 4rem minmax(0, 1fr); }
   .inspector [data-pv-links] { display: grid; grid-template-columns: 1fr 1fr; width: 100%; }
@@ -229,3 +252,55 @@ details > summary::-webkit-details-marker { display: none; }
   .inspector [data-pv-speed] button, .inspector [data-pv-bgs] button, .inspector [data-pv-packs] button { flex: 1 1 0; }
   .inspector [data-pv-packs] button { white-space: normal; }
 }
+
+/* ── Compact asset tiles: phones in portrait, and landscape phones (short viewport) ── */
+@media (max-width: 639px), (orientation: landscape) and (max-height: 520px) {
+  /* Card grid: compact two-up tiles. The full card is ~560px tall, so 28 of them made a 23,000px page; a tile keeps
+     what identifies the asset (poster, name, VRAM tier) and a tap anywhere on it opens the inspector, which carries
+     the description, specs, Test Live and every download. The hidden parts stay in the DOM for crawlers. */
+  [data-panel] { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 0.75rem; }
+  .card, .card > * { min-width: 0; }
+  .card { cursor: pointer; }
+  .card > div:not(.preview) { padding: 0.625rem 0.75rem 0.75rem; }
+  .card h3 { overflow-wrap: anywhere; font-size: 14px; line-height: 1.25; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+  .card-tag, .card-size, .card-desc, .card-specs, .card-fps, .card-meta, .card-actions, .card-free, .card-hint, .card-tier, .card-word { display: none; }
+  .card-tier-short { display: inline; }
+  .card-native { width: 100%; }
+  .card-vram { margin-top: 0.5rem; }
+  .card [data-preview] { aspect-ratio: 16 / 10; }
+  .card .vram-bar { flex-shrink: 0; }
+}
+@media (orientation: landscape) and (min-width: 640px) and (max-height: 520px) {
+  [data-panel] { grid-template-columns: repeat(4, minmax(0, 1fr)); }
+}
+
+/* ── Landscape phones (short and wide): the header scrolls away, the inspector is stage | controls ── */
+@media (orientation: landscape) and (max-height: 520px) {
+  html { scroll-padding-top: 0; }
+  header.sticky { position: static; }
+  .inspector { width: 100vw; max-width: 100vw; height: 100dvh; max-height: 100dvh; margin: 0; border: 0; border-radius: 0; overflow: hidden; }
+  .inspector > div { display: grid; grid-template-columns: minmax(0, 1fr) minmax(17rem, 22rem); grid-template-rows: auto auto minmax(0, 1fr); height: 100dvh; min-height: 0; }
+  .inspector > div > header { grid-column: 1 / -1; padding: 6px 12px; }
+  .inspector > div > header .badge { display: none; }
+  .inspector > div > div:nth-child(2) { display: contents; }
+  .inspector [data-pv-stage] { position: relative; inset: auto; grid-column: 1; grid-row: 2 / 4; aspect-ratio: auto; height: 100%; min-height: 0; }
+  .inspector .hud { grid-column: 2; grid-row: 2; position: static; min-width: 0; max-width: none; padding: 6px 12px; border-width: 0 0 1px 1px; border-radius: 0; background: var(--color-ink-2); backdrop-filter: none; font-size: 11px; }
+  .inspector .hud > div { grid-template-columns: 4rem minmax(0, 1fr); }
+  .inspector > div > div:nth-child(3) { grid-column: 2; grid-row: 3; min-height: 0; overflow-y: auto; padding: 8px 12px; border-left: 1px solid var(--color-line); }
+  .inspector > div > div:nth-child(3) p { display: none; }
+  .inspector [data-pv-links] { display: grid; grid-template-columns: 1fr 1fr; width: 100%; margin-left: 0; }
+  .inspector [data-pv-links] .btn:first-child:last-child { grid-column: 1 / -1; }
+  .inspector [data-pv-speed], .inspector [data-pv-bgs], .inspector [data-pv-packs] { flex: 1 1 100%; }
+  .inspector [data-pv-speed] button, .inspector [data-pv-bgs] button, .inspector [data-pv-packs] button { flex: 1 1 0; }
+}
+
+/* ── Back to top: long phone lists (the grid is about 23,000px there) ── */
+.to-top {
+  position: fixed; right: 16px; bottom: 16px; z-index: 30; display: grid; place-items: center; width: 44px; height: 44px;
+  border: 1px solid var(--color-line-strong); border-radius: 999px; color: var(--color-text); background: rgb(18 21 28 / 0.88);
+  backdrop-filter: blur(6px); box-shadow: 0 8px 24px -8px rgb(0 0 0 / 0.8); transition: opacity 160ms, transform 160ms;
+}
+.to-top[hidden] { display: none; }
+.to-top:hover { border-color: var(--color-accent); }
+@media (prefers-reduced-motion: reduce) { .to-top { transition: none; } }
+@media (min-width: 1024px) and (pointer: fine) { .to-top { right: 24px; bottom: 24px; } }
