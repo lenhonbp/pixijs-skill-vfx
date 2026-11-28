@@ -36,9 +36,9 @@ npm run build     # typecheck → vite build → scripts/check-dist.mjs gate
   precomputed HUD strings and allocates nothing of its own.
 - **Actor Dummy** (inspector toolbar, or the `A` key; off by default, effects only): two small vector
   assets in clay/AO lead grey (`#21262d`, `#30363d` rim) that load on first use. The caster
-  (`public/media/actor-caster.svg`, ~4 kB) is an unarmed humanoid mannequin, about seven heads tall,
+  (`src/assets/actor-caster.svg`, ~4 kB) is an unarmed humanoid mannequin, about seven heads tall,
   in a neutral ready stance with open hands, so it suits spells, blades and strikes alike. The target
-  (`actor-target.svg`, ~3 kB) is a padded wooden training post planted in an earth collar, with a
+  (`src/assets/actor-target.svg`, ~3 kB) is a padded wooden training post planted in an earth collar, with a
   chest-height ring marking where most blows land; it is symmetric and never mirrors. Both follow the
   packs' actor tracks (dashes, knock-backs, lifts, visibility) and stand on contact decals locked to
   `feet_ground` (0, 0) in the 1/√3 (0.57735) ground ratio; the target's decal adds a centre tick and
@@ -77,7 +77,12 @@ Node 22 for the build image (Vite 8 needs ≥ 22.12).
 
 The build writes `dist/_headers`: a self-only CSP whose single outside origin is the R2 CDN
 from the release pointer (`connect-src`), `blob:` images for the runtime's sheet decoding,
-and long-lived caching for hashed assets. `public/_redirects` adds `/vfx`, `/props`,
+and a one-year `immutable` cache for `/assets` and `/media`. That is safe because neither is ever
+referenced by a fixed name: Vite hashes `/assets` files (the two actor SVGs live there too), and every
+`/media` URL carries `?v=<first 10 hex of the file's SHA-256>` computed at build time
+(`catalog.ts#media`). A re-captured poster therefore gets a new URL and no browser or CDN can keep
+showing the old one; `check-dist` fails the build if a media reference is unversioned or its hash
+does not match the shipped file. `public/_redirects` adds `/vfx`, `/props`,
 `/github` and `/docs` short links.
 
 ## Configuration
@@ -94,12 +99,27 @@ release PR moves them with the showcase. Outside this repository the committed
 `src/data/release.json` snapshot is used. `HUB_PACKS_BASE` points a build at another copy of
 the same release (for local browser tests against same-origin packs).
 
+## Keeping up with a Free release
+
+The Hub's numbers and pictures are snapshots of one Free release, and its download and inspector
+links follow `showcase/public/packs-release.json`. After a factory release PR moves that pointer,
+refresh the snapshot so the two agree (a stale snapshot is only a build warning, so it is easy to miss):
+
+```sh
+node skills/lenhon-vfx/scripts/fetch-packs.mjs --all --out showcase/public/packs/free
+node hub/scripts/vfx-specs.mjs showcase/public/packs/free > hub/src/data/vfx-specs.json
+# capture + frame the media (see the next section), then update src/data/release.json to the pointer
+```
+
+Tiers follow from the new sizes automatically (the 2026-11-28-efdfd3a rebake moved Dragon Breath from
+45.2 to 44.3 MB, i.e. from Desktop Tier into A15 Verified).
+
 ## Data and media (all generated)
 
 | File | Produced by |
 | --- | --- |
 | `src/data/vfx-specs.json` | `node hub/scripts/vfx-specs.mjs showcase/public/packs/free`: decodes every desktop and mobile pack (FPS, frames, layers, sheets, decoded VRAM) |
-| `public/media/vfx/<id>.webp` / `.mp4`, `reel.mp4` | `hub/scripts/capture-vfx.mjs` (deterministic 30 FPS frames of the showcase canvas, **pure VFX**: caster, dummy, shadows, stage floor and compass hidden, `#0d1117` background) → `hub/scripts/vfx-media.py` (frames each effect from where it actually draws) |
+| `public/media/vfx/<id>.webp` / `.mp4`, `reel.mp4` | `hub/scripts/capture-vfx.mjs` (deterministic 30 FPS frames of the showcase canvas, **pure VFX**: caster, dummy, shadows, stage floor and compass hidden, `#0d1117` background) → `hub/scripts/vfx-media.py` (frames each effect from where it actually draws; the poster frame for each effect is chosen by eye in its `PEAK` table, the moment the effect is fully formed) |
 | `src/data/props-specs.json`, `public/media/props/*` | `python3 -I hub/scripts/props-media.py <iso-prop-tile-baker> hub` after `npm run pages:build` there (card art, hover strip, 2× inspector turntable, sprite sizes, 1/√3 projection check) |
 
 The build warns when `showcase/public/packs/free/index.json` no longer matches the specs

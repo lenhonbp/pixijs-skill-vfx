@@ -21,12 +21,21 @@ only = set(sys.argv[3:])
 os.makedirs(out, exist_ok=True)
 POSTER, VIDEO, MAX_FRAMES, SCALE = (800, 500), (640, 400), 150, 4
 THRESHOLD, PAD, MIN_WIDTH, ASPECT, TAIL, BODY = 18, 1.2, 0.40, 1.6, 0.01, 0.25
-# Hand-picked poster frames for small, subtle effects whose busiest frame is not their most readable one:
-# the wide crescent of Gale Blades, the armour-break shield of Sundering Mark, the grown vines of Vine Bind.
-PEAK = {'phong-gale-blade': 12, 'sunder-mark': 18, 'moc-vine-bind': 48}
-# Their travelling parts would make the automatic window far too wide for what is a small effect, so these are
-# framed on that same frame instead: (frame, window width as a fraction of the canvas), shared by poster and clip.
-FOCUS = {'phong-gale-blade': (12, 0.42), 'sunder-mark': (18, 0.32), 'moc-vine-bind': (48, 0.34)}
+# Poster frame per effect, chosen by eye from a contact sheet of each effect's whole run: the moment it is fully
+# formed and reads best at thumbnail size (a bolt at full length, the dragon's whole S-curve, the cracked bell...).
+# An effect missing here falls back to the busiest frame that sits near the middle of its window.
+PEAK = {
+    'curse-weaken': 46, 'hoa-dragon-breath': 37, 'hoa-fire-dragon-crossing': 29, 'hoa-fireball': 28,
+    'hoa-heaven-fire': 32, 'kim-golden-bell': 44, 'kim-golden-edge': 14, 'kim-sword-rain': 48,
+    'lightning-chain': 10, 'loi-heaven-strike': 19, 'loi-thunder-domain': 25, 'moc-combo-bind': 42,
+    'moc-combo-rupture': 28, 'moc-combo-spores': 24, 'moc-spring-bloom': 25, 'moc-toxic-spores': 40,
+    'moc-vine-bind': 53, 'phong-gale-blade': 12, 'phong-tailwind': 40, 'phong-tornado': 38,
+    'phong-whirlwind': 34, 'seal-silence': 35, 'sunder-mark': 23, 'tho-fissure': 30,
+    'tho-stone-skin': 32, 'thuy-frost-nova': 30, 'thuy-glacier-path': 41, 'war-cry': 17,
+}
+# Small effects whose travelling parts would make the automatic window far too wide are framed on their poster
+# frame instead: (frame, window width as a fraction of the canvas), shared by poster and clip.
+FOCUS = {'phong-gale-blade': (12, 0.50), 'sunder-mark': (23, 0.44), 'moc-vine-bind': (53, 0.34)}
 # Hero reel: the busiest ~1.6 s of a few effects back to back, one per element family.
 REEL = ['hoa-fire-dragon-crossing', 'loi-heaven-strike', 'thuy-glacier-path', 'phong-tornado', 'kim-sword-rain', 'moc-combo-rupture']
 
