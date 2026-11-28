@@ -695,7 +695,7 @@ export class VfxPlayer {
     const dot = dx * tx + dy * ty;
     if (dot <= 0.3 * Math.sqrt((dx * dx + dy * dy) * t2)) {
       const p = dot / t2, q = (dx * ty - dy * tx) / t2;
-      out[0] = s * p; out[1] = s * q; out[2] = -q; out[3] = p;
+      out[0] = s * p; out[1] = -q; out[2] = s * q; out[3] = p;
       return;
     }
     const ex = (dx - tx) / t2, ey = (dy - ty) / t2;

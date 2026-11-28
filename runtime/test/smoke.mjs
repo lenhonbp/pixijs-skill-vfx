@@ -422,6 +422,11 @@ async function floorSmoke(engine) {
     const [tu, tm] = parent.children.slice(2), [ta, tb] = lin(tu), [sa, sb] = lin(tm);
     check(near(ta * 360 + tu.x, sa * 360 + tm.x) && near(tb * 360 + tu.y, sb * 360 + tm.y), 'live squash: both roots land the baked target on the same point');
     tilted.stop();
+    // Steep cast off a horizontal bake (rotate branch): both roots turn the baked target onto the cast, not its mirror.
+    const steep = player.play('floor', { from, to: { x: 110, y: 420 }, fitDistance: true, parent });
+    const [vu, vm] = parent.children.slice(2), [va, vb] = lin(vu), [wa, wb] = lin(vm);
+    check(near(wa * 360, 10) && near(wb * 360, 220) && near(va * 360, 10) && near(vb * 360, 220), 'steep cast lands on to: ' + [wa * 360, wb * 360, va * 360, vb * 360]);
+    steep.stop();
     check(under.children[0].visible && under.children[1].visible && main.children[0].visible, 'frame 0 visibility');
     player.update(100.001);
     check(!under.children[0].visible && under.children[1].visible && main.children[0].visible, 'frame 1: the null ground frame hides, the rest stays');
