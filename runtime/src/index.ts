@@ -704,20 +704,22 @@ export class VfxPlayer {
   /**
    * Under-root transform for ground layers: the cast's rotation and uniform scale ON THE GROUND PLANE (P_live R P_bake^-1),
    * so baked projected ellipses stay true projected ellipses at every live direction instead of taking the root's shear,
-   * and the baked target still lands on `to`. Writes [a, b, c, d] into `out` (no allocation).
+   * while the baked target lands exactly where matrix() lands it (same mirror, fit, squash and correction branch). Writes [a, b, c, d] into `out` (no allocation).
    */
   private groundMatrix(a: Active, out: Float64Array): void {
-    const m = a.pack.manifest, o = a.options, to = a.dest;
-    if (a.legacy) { this.matrix(a, out); return; }
-    const bake = m.groundSquash ?? ISO_GROUND_SQUASH, live = o.groundSquash ?? bake, s = to.x < o.from.x ? -1 : 1;
-    const tx = s * (m.target.x - m.origin.x), ty = (m.target.y - m.origin.y) / bake, t2 = tx * tx + ty * ty;
-    let dx = to.x - o.from.x, dy = (to.y - o.from.y) / live;
-    const d2 = dx * dx + dy * dy;
-    if (t2 === 0 || d2 < 1e-12) { out[0] = s; out[1] = 0; out[2] = 0; out[3] = live / bake; return; }
-    if (!o.fitDistance) { const k = Math.sqrt(t2 / d2); dx *= k; dy *= k; }
+    this.matrix(a, out);
+    if (a.legacy) return;
+    const m = a.pack.manifest, o = a.options, s = a.dest.x < o.from.x ? -1 : 1;
+    const bake = m.groundSquash ?? ISO_GROUND_SQUASH, live = o.groundSquash ?? bake;
+    const bx = m.target.x - m.origin.x, by = m.target.y - m.origin.y;
+    // Where the pack root lands the baked target, on the live ground plane; the baked target on the baked one.
+    const dx = out[0] * bx + out[2] * by, dy = (out[1] * bx + out[3] * by) / live;
+    const tx = s * bx, ty = by / bake, t2 = tx * tx + ty * ty;
+    if (t2 === 0) { out[0] = s; out[1] = 0; out[2] = 0; out[3] = live / bake; return; }
     const p = (tx * dx + ty * dy) / t2, q = (tx * dy - ty * dx) / t2;
     out[0] = s * p; out[1] = s * live * q; out[2] = -q / bake; out[3] = live * p / bake;
   }
+
   getManifest(id: string): Manifest | undefined {
     const manifest = (this.packs.get(id) ?? this.families.get(id)?.[0])?.manifest;
     return manifest ? structuredClone(manifest) : undefined;

@@ -417,6 +417,11 @@ async function floorSmoke(engine) {
     const [ga, gb, gc, gd] = lin(su), [ma, mb, mc, md] = lin(sm);
     check(near(ga * 360 + su.x, ma * 360 + sm.x) && near(gb * 360 + su.y, mb * 360 + sm.y), 'both roots land the baked target on the same point');
     skewed.stop();
+    // A live camera squash that differs from the bake still lands both roots on the same point (vertical cast, no fitDistance).
+    const tilted = player.play('floor', { from, to: { x: 110, y: 420 }, groundSquash: 0.5, parent });
+    const [tu, tm] = parent.children.slice(2), [ta, tb] = lin(tu), [sa, sb] = lin(tm);
+    check(near(ta * 360 + tu.x, sa * 360 + tm.x) && near(tb * 360 + tu.y, sb * 360 + tm.y), 'live squash: both roots land the baked target on the same point');
+    tilted.stop();
     check(under.children[0].visible && under.children[1].visible && main.children[0].visible, 'frame 0 visibility');
     player.update(100.001);
     check(!under.children[0].visible && under.children[1].visible && main.children[0].visible, 'frame 1: the null ground frame hides, the rest stays');
