@@ -24,6 +24,18 @@ function badge(s: Spec): string {
   return `<li class="badge ${tone[s.tone ?? 'plain']}"${s.title ? ` title="${esc(s.title)}"` : ''}>${esc(s.label)}</li>`;
 }
 
+/**
+ * Download size of the free pack a visitor fetches: the desktop .vfxb for VFX, the ZIP for props.
+ * Formatted from the measured byte count: KB below 1 MB, otherwise MB with one decimal (decimal units, as in `mb()`).
+ */
+export function sizeLabel(bytes: number): string {
+  return bytes < 1e6 ? `${Math.max(1, Math.round(bytes / 1e3))} KB` : `${(bytes / 1e6).toFixed(1)} MB`;
+}
+
+function packBytes(c: Card): number {
+  return c.preview.kind === 'vfx' ? c.preview.packs.desktop.bytes : c.preview.zipBytes;
+}
+
 /** Measured decoded size against the A15 line: emerald inside the mobile budget, amber past it. */
 function vramBar(c: Card): string {
   const v = c.vram, mobile = v.tier === 'mobile';
@@ -75,6 +87,7 @@ function preview(card: Card, index: number): string {
 function card(c: Card, index: number): string {
   const search = [c.id, c.title, c.native, c.groupLabel, c.tag, c.description, c.kind === 'vfx' ? elements[c.group]?.native : '', c.vram.label].join(' ').toLowerCase();
   const wide = c.downloads.length === 1;
+  const size = sizeLabel(packBytes(c));
   return `<article class="card group" data-card data-kind="${c.kind}" data-group="${esc(c.group)}" data-tier="${c.vram.tier}" data-terms="${esc(search)}">
     ${preview(c, index)}
     <div class="flex flex-1 flex-col p-4">
@@ -82,7 +95,10 @@ function card(c: Card, index: number): string {
         <h3 class="text-[15px] font-semibold tracking-tight text-text">${esc(c.title)}</h3>
         <span class="shrink-0 font-mono text-[10px] uppercase tracking-wider text-faint">${esc(c.tag)}</span>
       </div>
-      <p class="mt-0.5 text-xs text-faint">${esc(c.native)}</p>
+      <p class="mt-0.5 flex items-center justify-between gap-3 text-xs text-faint">
+        <span class="min-w-0 truncate">${esc(c.native)}</span>
+        <span class="badge shrink-0 border-line bg-ink-2 text-text tabular-nums" title="Download size of the free pack (${esc(c.kind === 'vfx' ? 'desktop .vfxb' : 'ZIP')})">${icon.down.replace('width="12" height="12"', 'width="10" height="10" class="mr-1 inline"')}${esc(size)}</span>
+      </p>
       <p class="mt-2.5 line-clamp-2 text-[13px] leading-relaxed text-muted">${esc(c.description)}</p>
       <ul class="mt-3.5 flex flex-wrap gap-1.5" aria-label="Tech specs">${c.badges.map(badge).join('')}</ul>
       <p class="mt-2 flex flex-wrap items-center gap-x-1.5 gap-y-1 font-mono text-[10.5px]" title="${esc(c.fps.title)}">

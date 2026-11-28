@@ -4,6 +4,7 @@ import tailwindcss from '@tailwindcss/vite';
 import { defineConfig, type Plugin } from 'vite';
 import { facts, fill } from './src/render.ts';
 import { media } from './src/data/catalog.ts';
+import { site } from './src/site.config.ts';
 import specs from './src/data/vfx-specs.json' with { type: 'json' };
 
 const here = (p: string) => fileURLToPath(new URL(p, import.meta.url));
@@ -45,15 +46,22 @@ function checkSnapshot() {
   }
 }
 
+/** The optional analytics endpoint must be https; its origin is the only extra origin the page may call. */
+function analyticsOrigin(): string {
+  if (!site.analytics) return '';
+  if (!/^https:\/\/[^\s?#]+$/.test(site.analytics)) throw new Error('HUB_ANALYTICS_ENDPOINT must be an https URL');
+  return new URL(site.analytics).origin;
+}
+
 const HERO_VFX = 'hoa-fire-dragon-crossing';
 
 // Response headers for Cloudflare Pages. Everything under /assets and /media is referenced by a content-hashed URL
-// (Vite's file names, or `?v=<hash>` from catalog.ts#media), so a year-long immutable cache can never serve a stale file. The CSP allows exactly one outside origin: the R2 CDN the inspector
-// and the JSON + WebP export fetch packs from. Pack sheets become blob: images inside the runtime.
-function headers(cdnOrigin: string): string {
+// (Vite's file names, or `?v=<hash>` from catalog.ts#media), so a year-long immutable cache can never serve a stale file. The CSP allows exactly the outside origins the page calls: the R2 CDN the inspector
+// and the JSON + WebP export fetch packs from, and the optional analytics endpoint. Pack sheets become blob: images inside the runtime.
+function headers(origins: string[]): string {
   const csp = [
     "default-src 'self'", "script-src 'self'", "style-src 'self'", "style-src-attr 'unsafe-inline'",
-    "img-src 'self' data: blob:", "media-src 'self'", "font-src 'self'", `connect-src 'self' ${cdnOrigin}`,
+    "img-src 'self' data: blob:", "media-src 'self'", "font-src 'self'", `connect-src ${['self', ...origins].map(o => (o === 'self' ? "'self'" : o)).join(' ')}`,
     "worker-src 'self' blob:", "object-src 'none'", "base-uri 'self'", "form-action 'none'", "frame-ancestors 'none'",
   ].join('; ');
   return `/*
@@ -75,13 +83,14 @@ function hub(): Plugin {
   const rel = release();
   const data = facts(rel);
   const cdn = cdnTotals();
+  const analytics = analyticsOrigin();
   const hero = data.vfx.find(c => c.id === HERO_VFX);
   if (!hero) throw new Error(`Hero effect ${HERO_VFX} is not in the collection`);
-  const tokens = { heroPoster: media(`/media/vfx/${hero.id}.webp`), heroReel: media('/media/vfx/reel.mp4'), heroName: hero.title, cdnMB: Math.round(cdn.bytes / 1e6), cdnFiles: cdn.files };
+  const tokens = { heroPoster: media(`/media/vfx/${hero.id}.webp`), heroReel: media('/media/vfx/reel.mp4'), heroName: hero.title, cdnMB: Math.round(cdn.bytes / 1e6), cdnFiles: cdn.files, analyticsUrl: site.analytics };
   return {
     name: 'lenhon-hub',
     buildStart: checkSnapshot,
-    generateBundle() { this.emitFile({ type: 'asset', fileName: '_headers', source: headers(new URL(rel.base).origin) }); },
+    generateBundle() { this.emitFile({ type: 'asset', fileName: '_headers', source: headers([new URL(rel.base).origin, ...(analytics ? [analytics] : [])]) }); },
     transformIndexHtml: { order: 'pre', handler: html => fill(html, data, tokens) },
   };
 }

@@ -20,4 +20,10 @@ export const site = {
   /** Per-asset Gumroad product links (`id` → URL). Assets without one fall back to the store. */
   gumroadProducts: {} as Record<string, string>,
   contact: env('HUB_CONTACT', 'mailto:lenhonbp@gmail.com'),
+  /**
+   * Optional live visitor counter. Set `HUB_ANALYTICS_ENDPOINT` to an https URL that answers a GET with
+   * CORS enabled and JSON `{ "visitors": <number> }` (for example a Cloudflare Worker or GoatCounter export).
+   * Empty = no request is made and the counter stays hidden. Only this origin is added to the CSP.
+   */
+  analytics: env('HUB_ANALYTICS_ENDPOINT'),
 } as const;

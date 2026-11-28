@@ -19,6 +19,7 @@
   <meta property="og:image:height" content="630">
   <meta name="twitter:card" content="summary_large_image">
   <script type="module" src="/src/main.ts"></script>
+  <script type="module" src="/src/status.ts"></script>
 </head>
 <body class="min-h-dvh">
   <a href="#assets" class="sr-only focus:not-sr-only focus:fixed focus:top-3 focus:left-3 focus:z-50 focus:rounded-md focus:bg-text focus:px-3 focus:py-2 focus:text-ink">Skip to assets</a>
@@ -72,8 +73,9 @@
       <div class="grid-bg pointer-events-none absolute inset-0" aria-hidden="true"></div>
       <div class="shell relative grid items-center gap-10 py-10 sm:gap-12 sm:py-20 lg:grid-cols-[1.05fr_0.95fr] lg:py-24">
         <div>
-          <p class="inline-flex max-w-full items-center gap-2 rounded-full border border-line bg-surface/80 px-3 py-1 font-mono text-[11px] tracking-wide whitespace-nowrap text-muted">
-            <i class="status-dot size-1.5 shrink-0 rounded-full bg-ok"></i>Free collection live<span class="text-faint">·</span><span class="truncate text-text" title="Current R2 release">{{release}}</span>
+          <p class="inline-flex max-w-full items-center gap-2 rounded-full border border-line bg-surface/80 px-3 py-1 font-mono text-[11px] tracking-wide whitespace-nowrap text-muted" data-status data-analytics="{{analyticsUrl}}">
+            <span class="relative flex size-1.5 shrink-0" aria-hidden="true"><span class="absolute inline-flex h-full w-full rounded-full bg-ok opacity-60 motion-safe:animate-ping"></span><span class="relative inline-flex size-1.5 rounded-full bg-ok"></span></span>
+            <span class="text-text">Live</span><span class="text-faint">·</span><span class="min-w-0 truncate" title="Current R2 release">release {{release}}</span><span class="text-faint" data-visitors-sep hidden>·</span><span class="text-text" data-visitors hidden></span>
           </p>
           <h1 id="hero-title" class="mt-5 text-[2rem] leading-[1.1] font-semibold tracking-[-0.025em] text-balance sm:mt-6 sm:text-5xl lg:text-[3.4rem]">
             Principal Real-Time Graphics Architect <span class="text-gradient">&amp; Toolchain Engineer</span>
