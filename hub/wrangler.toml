@@ -1,0 +1,5 @@
+# Cloudflare Pages project for lenhon.dev (static, no Functions).
+# Deploy: npm run build && npx wrangler pages deploy
+name = "lenhon-hub"
+pages_build_output_dir = "./dist"
+compatibility_date = "2026-11-01"

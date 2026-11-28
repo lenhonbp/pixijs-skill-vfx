@@ -1,0 +1,1178 @@
+[
+ {
+  "id": "kim-sword-rain",
+  "en": "Sword Rain",
+  "vi": "Vạn Kiếm Quy Tông",
+  "element": "kim",
+  "category": "aoe",
+  "directions": 5,
+  "desktop": {
+   "fps": 60,
+   "frames": 181,
+   "durationMs": 3016.6666666666665,
+   "layers": 8,
+   "sheets": 11,
+   "maxSheet": 2046,
+   "vram": 86765892,
+   "measuredVram": 86765892,
+   "budget": {
+    "tier": "desktop",
+    "directionWarnBytes": 128000000,
+    "residentDirections": 2,
+    "residentMaxBytes": 448000000
+   },
+   "bytes": 1586545
+  },
+  "mobile": {
+   "fps": 60,
+   "frames": 181,
+   "durationMs": 3016.6666666666665,
+   "layers": 8,
+   "sheets": 9,
+   "maxSheet": 2046,
+   "vram": 39232292,
+   "measuredVram": 39232292,
+   "budget": {
+    "tier": "mobile",
+    "directionWarnBytes": 45000000,
+    "residentDirections": 2,
+    "residentMaxBytes": 128000000
+   },
+   "bytes": 697805
+  }
+ },
+ {
+  "id": "kim-golden-edge",
+  "en": "Golden Edge",
+  "vi": "Kim Quang Trảm",
+  "element": "kim",
+  "category": "attack",
+  "directions": 5,
+  "desktop": {
+   "fps": 60,
+   "frames": 266,
+   "durationMs": 4433.333333333333,
+   "layers": 9,
+   "sheets": 13,
+   "maxSheet": 2045,
+   "vram": 94474772,
+   "measuredVram": 94474772,
+   "budget": {
+    "tier": "desktop",
+    "directionWarnBytes": 128000000,
+    "residentDirections": 2,
+    "residentMaxBytes": 448000000
+   },
+   "bytes": 2798342
+  },
+  "mobile": {
+   "fps": 60,
+   "frames": 266,
+   "durationMs": 4433.333333333333,
+   "layers": 9,
+   "sheets": 9,
+   "maxSheet": 2046,
+   "vram": 17725060,
+   "measuredVram": 17725060,
+   "budget": {
+    "tier": "mobile",
+    "directionWarnBytes": 45000000,
+    "residentDirections": 2,
+    "residentMaxBytes": 128000000
+   },
+   "bytes": 660389
+  }
+ },
+ {
+  "id": "kim-golden-bell",
+  "en": "Golden Bell",
+  "vi": "Kim Chung Tráo",
+  "element": "kim",
+  "category": "buff",
+  "directions": 5,
+  "desktop": {
+   "fps": 60,
+   "frames": 229,
+   "durationMs": 3816.6666666666665,
+   "layers": 6,
+   "sheets": 8,
+   "maxSheet": 2048,
+   "vram": 61178792,
+   "measuredVram": 61178792,
+   "budget": {
+    "tier": "desktop",
+    "directionWarnBytes": 128000000,
+    "residentDirections": 2,
+    "residentMaxBytes": 448000000
+   },
+   "bytes": 2618375
+  },
+  "mobile": {
+   "fps": 60,
+   "frames": 229,
+   "durationMs": 3816.6666666666665,
+   "layers": 6,
+   "sheets": 6,
+   "maxSheet": 2043,
+   "vram": 17655020,
+   "measuredVram": 17655020,
+   "budget": {
+    "tier": "mobile",
+    "directionWarnBytes": 45000000,
+    "residentDirections": 2,
+    "residentMaxBytes": 128000000
+   },
+   "bytes": 920793
+  }
+ },
+ {
+  "id": "moc-vine-bind",
+  "en": "Vine Bind",
+  "vi": "Triền Đằng Phược",
+  "element": "moc",
+  "category": "control",
+  "directions": 5,
+  "desktop": {
+   "fps": 60,
+   "frames": 233,
+   "durationMs": 3883.3333333333335,
+   "layers": 4,
+   "sheets": 5,
+   "maxSheet": 2048,
+   "vram": 39047012,
+   "measuredVram": 39047012,
+   "budget": {
+    "tier": "desktop",
+    "directionWarnBytes": 128000000,
+    "residentDirections": 2,
+    "residentMaxBytes": 448000000
+   },
+   "bytes": 1858143
+  },
+  "mobile": {
+   "fps": 60,
+   "frames": 233,
+   "durationMs": 3883.3333333333335,
+   "layers": 4,
+   "sheets": 4,
+   "maxSheet": 2047,
+   "vram": 6417904,
+   "measuredVram": 6417904,
+   "budget": {
+    "tier": "mobile",
+    "directionWarnBytes": 45000000,
+    "residentDirections": 2,
+    "residentMaxBytes": 128000000
+   },
+   "bytes": 386778
+  }
+ },
+ {
+  "id": "moc-spring-bloom",
+  "en": "Spring Bloom",
+  "vi": "Xuân Hồi Đại Địa",
+  "element": "moc",
+  "category": "buff",
+  "directions": 1,
+  "desktop": {
+   "fps": 60,
+   "frames": 178,
+   "durationMs": 2966.6666666666665,
+   "layers": 4,
+   "sheets": 5,
+   "maxSheet": 2048,
+   "vram": 38814028,
+   "measuredVram": 38814028,
+   "budget": {
+    "tier": "desktop",
+    "directionWarnBytes": 128000000,
+    "residentDirections": 2,
+    "residentMaxBytes": 448000000
+   },
+   "bytes": 2027436
+  },
+  "mobile": {
+   "fps": 60,
+   "frames": 178,
+   "durationMs": 2966.6666666666665,
+   "layers": 4,
+   "sheets": 4,
+   "maxSheet": 2036,
+   "vram": 12357472,
+   "measuredVram": 12357472,
+   "budget": {
+    "tier": "mobile",
+    "directionWarnBytes": 45000000,
+    "residentDirections": 2,
+    "residentMaxBytes": 128000000
+   },
+   "bytes": 661858
+  }
+ },
+ {
+  "id": "moc-toxic-spores",
+  "en": "Toxic Spores",
+  "vi": "Độc Chướng Vụ",
+  "element": "moc",
+  "category": "debuff",
+  "directions": 5,
+  "desktop": {
+   "fps": 30,
+   "frames": 134,
+   "durationMs": 4466.666666666667,
+   "layers": 4,
+   "sheets": 6,
+   "maxSheet": 2048,
+   "vram": 55009824,
+   "measuredVram": 55009824,
+   "budget": {
+    "tier": "desktop",
+    "directionWarnBytes": 128000000,
+    "residentDirections": 2,
+    "residentMaxBytes": 448000000
+   },
+   "bytes": 3314179
+  },
+  "mobile": {
+   "fps": 30,
+   "frames": 134,
+   "durationMs": 4466.666666666667,
+   "layers": 4,
+   "sheets": 4,
+   "maxSheet": 2045,
+   "vram": 20319652,
+   "measuredVram": 20319652,
+   "budget": {
+    "tier": "mobile",
+    "directionWarnBytes": 45000000,
+    "residentDirections": 2,
+    "residentMaxBytes": 128000000
+   },
+   "bytes": 1399143
+  }
+ },
+ {
+  "id": "thuy-frost-nova",
+  "en": "Frost Nova",
+  "vi": "Băng Phong Tỏa",
+  "element": "thuy",
+  "category": "control",
+  "directions": 5,
+  "desktop": {
+   "fps": 30,
+   "frames": 116,
+   "durationMs": 3866.6666666666665,
+   "layers": 3,
+   "sheets": 4,
+   "maxSheet": 2040,
+   "vram": 35076864,
+   "measuredVram": 35076864,
+   "budget": {
+    "tier": "desktop",
+    "directionWarnBytes": 128000000,
+    "residentDirections": 2,
+    "residentMaxBytes": 448000000
+   },
+   "bytes": 3869753
+  },
+  "mobile": {
+   "fps": 30,
+   "frames": 116,
+   "durationMs": 3866.6666666666665,
+   "layers": 3,
+   "sheets": 3,
+   "maxSheet": 2042,
+   "vram": 11551088,
+   "measuredVram": 11551088,
+   "budget": {
+    "tier": "mobile",
+    "directionWarnBytes": 45000000,
+    "residentDirections": 2,
+    "residentMaxBytes": 128000000
+   },
+   "bytes": 1367416
+  }
+ },
+ {
+  "id": "thuy-glacier-path",
+  "en": "Glacier Path",
+  "vi": "Băng Hà Lộ",
+  "element": "thuy",
+  "category": "aoe",
+  "directions": 5,
+  "desktop": {
+   "fps": 30,
+   "frames": 97,
+   "durationMs": 3233.3333333333335,
+   "layers": 6,
+   "sheets": 7,
+   "maxSheet": 2043,
+   "vram": 38719464,
+   "measuredVram": 38719464,
+   "budget": {
+    "tier": "desktop",
+    "directionWarnBytes": 128000000,
+    "residentDirections": 2,
+    "residentMaxBytes": 448000000
+   },
+   "bytes": 3890956
+  },
+  "mobile": {
+   "fps": 30,
+   "frames": 97,
+   "durationMs": 3233.3333333333335,
+   "layers": 6,
+   "sheets": 6,
+   "maxSheet": 2042,
+   "vram": 13886280,
+   "measuredVram": 13886280,
+   "budget": {
+    "tier": "mobile",
+    "directionWarnBytes": 45000000,
+    "residentDirections": 2,
+    "residentMaxBytes": 128000000
+   },
+   "bytes": 1499314
+  }
+ },
+ {
+  "id": "hoa-fireball",
+  "en": "Fireball",
+  "vi": "Hỏa Cầu Thuật",
+  "element": "hoa",
+  "category": "attack",
+  "directions": 5,
+  "desktop": {
+   "fps": 30,
+   "frames": 117,
+   "durationMs": 3900,
+   "layers": 8,
+   "sheets": 8,
+   "maxSheet": 2045,
+   "vram": 39342960,
+   "measuredVram": 39342960,
+   "budget": {
+    "tier": "desktop",
+    "directionWarnBytes": 128000000,
+    "residentDirections": 2,
+    "residentMaxBytes": 448000000
+   },
+   "bytes": 1610454
+  },
+  "mobile": {
+   "fps": 30,
+   "frames": 117,
+   "durationMs": 3900,
+   "layers": 8,
+   "sheets": 8,
+   "maxSheet": 2040,
+   "vram": 19278028,
+   "measuredVram": 19278028,
+   "budget": {
+    "tier": "mobile",
+    "directionWarnBytes": 45000000,
+    "residentDirections": 2,
+    "residentMaxBytes": 128000000
+   },
+   "bytes": 816564
+  }
+ },
+ {
+  "id": "hoa-dragon-breath",
+  "en": "Dragon Breath",
+  "vi": "Long Tức Liệt Diễm",
+  "element": "hoa",
+  "category": "channel",
+  "directions": 5,
+  "desktop": {
+   "fps": 60,
+   "frames": 252,
+   "durationMs": 4200,
+   "layers": 5,
+   "sheets": 10,
+   "maxSheet": 2048,
+   "vram": 116842428,
+   "measuredVram": 116842428,
+   "budget": {
+    "tier": "desktop",
+    "directionWarnBytes": 128000000,
+    "residentDirections": 2,
+    "residentMaxBytes": 448000000
+   },
+   "bytes": 3947425
+  },
+  "mobile": {
+   "fps": 30,
+   "frames": 127,
+   "durationMs": 4233.333333333333,
+   "layers": 5,
+   "sheets": 6,
+   "maxSheet": 2048,
+   "vram": 45179156,
+   "measuredVram": 45179156,
+   "budget": {
+    "tier": "mobile",
+    "directionWarnBytes": 45000000,
+    "residentDirections": 2,
+    "residentMaxBytes": 128000000
+   },
+   "bytes": 1498525
+  }
+ },
+ {
+  "id": "hoa-heaven-fire",
+  "en": "Heavenfall Meteor",
+  "vi": "Thiên Hỏa Lưu Tinh",
+  "element": "hoa",
+  "category": "aoe",
+  "directions": 5,
+  "desktop": {
+   "fps": 30,
+   "frames": 100,
+   "durationMs": 3333.3333333333335,
+   "layers": 7,
+   "sheets": 10,
+   "maxSheet": 2046,
+   "vram": 73065004,
+   "measuredVram": 73065004,
+   "budget": {
+    "tier": "desktop",
+    "directionWarnBytes": 128000000,
+    "residentDirections": 2,
+    "residentMaxBytes": 448000000
+   },
+   "bytes": 2753160
+  },
+  "mobile": {
+   "fps": 30,
+   "frames": 100,
+   "durationMs": 3333.3333333333335,
+   "layers": 7,
+   "sheets": 8,
+   "maxSheet": 2043,
+   "vram": 32679148,
+   "measuredVram": 32679148,
+   "budget": {
+    "tier": "mobile",
+    "directionWarnBytes": 45000000,
+    "residentDirections": 2,
+    "residentMaxBytes": 128000000
+   },
+   "bytes": 1136481
+  }
+ },
+ {
+  "id": "hoa-fire-dragon-crossing",
+  "en": "Fire Dragon Crossing",
+  "vi": "Hỏa Long Quá Giang",
+  "element": "hoa",
+  "category": "aoe",
+  "directions": 5,
+  "desktop": {
+   "fps": 30,
+   "frames": 115,
+   "durationMs": 3833.3333333333335,
+   "layers": 5,
+   "sheets": 7,
+   "maxSheet": 2032,
+   "vram": 61138976,
+   "measuredVram": 61138976,
+   "budget": {
+    "tier": "desktop",
+    "directionWarnBytes": 128000000,
+    "residentDirections": 2,
+    "residentMaxBytes": 448000000
+   },
+   "bytes": 2448879
+  },
+  "mobile": {
+   "fps": 30,
+   "frames": 115,
+   "durationMs": 3833.3333333333335,
+   "layers": 5,
+   "sheets": 5,
+   "maxSheet": 2048,
+   "vram": 25009592,
+   "measuredVram": 25009592,
+   "budget": {
+    "tier": "mobile",
+    "directionWarnBytes": 45000000,
+    "residentDirections": 2,
+    "residentMaxBytes": 128000000
+   },
+   "bytes": 1052945
+  }
+ },
+ {
+  "id": "tho-fissure",
+  "en": "Earth Fissure",
+  "vi": "Địa Liệt Trảm",
+  "element": "tho",
+  "category": "control",
+  "directions": 5,
+  "desktop": {
+   "fps": 60,
+   "frames": 199,
+   "durationMs": 3316.6666666666665,
+   "layers": 5,
+   "sheets": 7,
+   "maxSheet": 2036,
+   "vram": 42295664,
+   "measuredVram": 42295664,
+   "budget": {
+    "tier": "desktop",
+    "directionWarnBytes": 128000000,
+    "residentDirections": 2,
+    "residentMaxBytes": 448000000
+   },
+   "bytes": 3595473
+  },
+  "mobile": {
+   "fps": 30,
+   "frames": 100,
+   "durationMs": 3333.3333333333335,
+   "layers": 5,
+   "sheets": 5,
+   "maxSheet": 2033,
+   "vram": 12839112,
+   "measuredVram": 12839112,
+   "budget": {
+    "tier": "mobile",
+    "directionWarnBytes": 45000000,
+    "residentDirections": 2,
+    "residentMaxBytes": 128000000
+   },
+   "bytes": 1253599
+  }
+ },
+ {
+  "id": "tho-stone-skin",
+  "en": "Stone Skin",
+  "vi": "Thạch Giáp Hộ Thể",
+  "element": "tho",
+  "category": "buff",
+  "directions": 1,
+  "desktop": {
+   "fps": 60,
+   "frames": 241,
+   "durationMs": 4016.6666666666665,
+   "layers": 5,
+   "sheets": 5,
+   "maxSheet": 2046,
+   "vram": 39891312,
+   "measuredVram": 39891312,
+   "budget": {
+    "tier": "desktop",
+    "directionWarnBytes": 128000000,
+    "residentDirections": 2,
+    "residentMaxBytes": 448000000
+   },
+   "bytes": 2599362
+  },
+  "mobile": {
+   "fps": 60,
+   "frames": 241,
+   "durationMs": 4016.6666666666665,
+   "layers": 5,
+   "sheets": 5,
+   "maxSheet": 2046,
+   "vram": 13217288,
+   "measuredVram": 13217288,
+   "budget": {
+    "tier": "mobile",
+    "directionWarnBytes": 45000000,
+    "residentDirections": 2,
+    "residentMaxBytes": 128000000
+   },
+   "bytes": 858169
+  }
+ },
+ {
+  "id": "phong-gale-blade",
+  "en": "Gale Blades",
+  "vi": "Phong Nhận Trảm",
+  "element": "phong",
+  "category": "attack",
+  "directions": 5,
+  "desktop": {
+   "fps": 60,
+   "frames": 124,
+   "durationMs": 2066.6666666666665,
+   "layers": 5,
+   "sheets": 5,
+   "maxSheet": 2042,
+   "vram": 28070224,
+   "measuredVram": 28070224,
+   "budget": {
+    "tier": "desktop",
+    "directionWarnBytes": 128000000,
+    "residentDirections": 2,
+    "residentMaxBytes": 448000000
+   },
+   "bytes": 1318699
+  },
+  "mobile": {
+   "fps": 60,
+   "frames": 124,
+   "durationMs": 2066.6666666666665,
+   "layers": 5,
+   "sheets": 5,
+   "maxSheet": 2024,
+   "vram": 5848816,
+   "measuredVram": 5848816,
+   "budget": {
+    "tier": "mobile",
+    "directionWarnBytes": 45000000,
+    "residentDirections": 2,
+    "residentMaxBytes": 128000000
+   },
+   "bytes": 256536
+  }
+ },
+ {
+  "id": "phong-whirlwind",
+  "en": "Whirlwind",
+  "vi": "Toàn Phong Trảm",
+  "element": "phong",
+  "category": "aoe",
+  "directions": 5,
+  "desktop": {
+   "fps": 60,
+   "frames": 160,
+   "durationMs": 2666.6666666666665,
+   "layers": 7,
+   "sheets": 15,
+   "maxSheet": 2048,
+   "vram": 177439632,
+   "measuredVram": 177439632,
+   "budget": {
+    "tier": "desktop",
+    "directionWarnBytes": 128000000,
+    "residentDirections": 2,
+    "residentMaxBytes": 448000000
+   },
+   "bytes": 3953412
+  },
+  "mobile": {
+   "fps": 60,
+   "frames": 160,
+   "durationMs": 2666.6666666666665,
+   "layers": 7,
+   "sheets": 7,
+   "maxSheet": 2042,
+   "vram": 32625948,
+   "measuredVram": 32625948,
+   "budget": {
+    "tier": "mobile",
+    "directionWarnBytes": 45000000,
+    "residentDirections": 2,
+    "residentMaxBytes": 128000000
+   },
+   "bytes": 835852
+  }
+ },
+ {
+  "id": "phong-tornado",
+  "en": "Dragon Cyclone",
+  "vi": "Long Quyển Phong",
+  "element": "phong",
+  "category": "control",
+  "directions": 5,
+  "desktop": {
+   "fps": 30,
+   "frames": 115,
+   "durationMs": 3833.3333333333335,
+   "layers": 6,
+   "sheets": 8,
+   "maxSheet": 2042,
+   "vram": 62986156,
+   "measuredVram": 62986156,
+   "budget": {
+    "tier": "desktop",
+    "directionWarnBytes": 128000000,
+    "residentDirections": 2,
+    "residentMaxBytes": 448000000
+   },
+   "bytes": 2897567
+  },
+  "mobile": {
+   "fps": 30,
+   "frames": 115,
+   "durationMs": 3833.3333333333335,
+   "layers": 6,
+   "sheets": 7,
+   "maxSheet": 2045,
+   "vram": 28197684,
+   "measuredVram": 28197684,
+   "budget": {
+    "tier": "mobile",
+    "directionWarnBytes": 45000000,
+    "residentDirections": 2,
+    "residentMaxBytes": 128000000
+   },
+   "bytes": 1363311
+  }
+ },
+ {
+  "id": "phong-tailwind",
+  "en": "Tailwind",
+  "vi": "Tật Phong Bộ",
+  "element": "phong",
+  "category": "buff",
+  "directions": 5,
+  "desktop": {
+   "fps": 60,
+   "frames": 151,
+   "durationMs": 2516.6666666666665,
+   "layers": 4,
+   "sheets": 5,
+   "maxSheet": 2047,
+   "vram": 36379924,
+   "measuredVram": 36379924,
+   "budget": {
+    "tier": "desktop",
+    "directionWarnBytes": 128000000,
+    "residentDirections": 2,
+    "residentMaxBytes": 448000000
+   },
+   "bytes": 1995156
+  },
+  "mobile": {
+   "fps": 60,
+   "frames": 151,
+   "durationMs": 2516.6666666666665,
+   "layers": 4,
+   "sheets": 4,
+   "maxSheet": 2047,
+   "vram": 8088392,
+   "measuredVram": 8088392,
+   "budget": {
+    "tier": "mobile",
+    "directionWarnBytes": 45000000,
+    "residentDirections": 2,
+    "residentMaxBytes": 128000000
+   },
+   "bytes": 393461
+  }
+ },
+ {
+  "id": "lightning-chain",
+  "en": "Chain Lightning",
+  "vi": "Lôi Đình Liên Kích",
+  "element": "loi",
+  "category": "attack",
+  "directions": 5,
+  "desktop": {
+   "fps": 60,
+   "frames": 163,
+   "durationMs": 2716.6666666666665,
+   "layers": 6,
+   "sheets": 8,
+   "maxSheet": 2048,
+   "vram": 46760596,
+   "measuredVram": 46760596,
+   "budget": {
+    "tier": "desktop",
+    "directionWarnBytes": 128000000,
+    "residentDirections": 2,
+    "residentMaxBytes": 448000000
+   },
+   "bytes": 638871
+  },
+  "mobile": {
+   "fps": 60,
+   "frames": 163,
+   "durationMs": 2716.6666666666665,
+   "layers": 6,
+   "sheets": 6,
+   "maxSheet": 2020,
+   "vram": 8429408,
+   "measuredVram": 8429408,
+   "budget": {
+    "tier": "mobile",
+    "directionWarnBytes": 45000000,
+    "residentDirections": 2,
+    "residentMaxBytes": 128000000
+   },
+   "bytes": 166481
+  }
+ },
+ {
+  "id": "loi-heaven-strike",
+  "en": "Heavenly Thunder",
+  "vi": "Thiên Lôi Giáng",
+  "element": "loi",
+  "category": "aoe",
+  "directions": 5,
+  "desktop": {
+   "fps": 60,
+   "frames": 193,
+   "durationMs": 3216.6666666666665,
+   "layers": 13,
+   "sheets": 23,
+   "maxSheet": 2043,
+   "vram": 141457584,
+   "measuredVram": 141457584,
+   "budget": {
+    "tier": "desktop",
+    "directionWarnBytes": 128000000,
+    "residentDirections": 2,
+    "residentMaxBytes": 448000000
+   },
+   "bytes": 2443931
+  },
+  "mobile": {
+   "fps": 60,
+   "frames": 193,
+   "durationMs": 3216.6666666666665,
+   "layers": 13,
+   "sheets": 15,
+   "maxSheet": 2047,
+   "vram": 38313352,
+   "measuredVram": 38313352,
+   "budget": {
+    "tier": "mobile",
+    "directionWarnBytes": 45000000,
+    "residentDirections": 2,
+    "residentMaxBytes": 128000000
+   },
+   "bytes": 801930
+  }
+ },
+ {
+  "id": "loi-thunder-domain",
+  "en": "Thunder Domain",
+  "vi": "Lôi Vực",
+  "element": "loi",
+  "category": "control",
+  "directions": 5,
+  "desktop": {
+   "fps": 60,
+   "frames": 236,
+   "durationMs": 3933.3333333333335,
+   "layers": 9,
+   "sheets": 18,
+   "maxSheet": 2044,
+   "vram": 166102880,
+   "measuredVram": 166102880,
+   "budget": {
+    "tier": "desktop",
+    "directionWarnBytes": 128000000,
+    "residentDirections": 2,
+    "residentMaxBytes": 448000000
+   },
+   "bytes": 2803219
+  },
+  "mobile": {
+   "fps": 30,
+   "frames": 119,
+   "durationMs": 3966.6666666666665,
+   "layers": 9,
+   "sheets": 11,
+   "maxSheet": 2042,
+   "vram": 56780496,
+   "measuredVram": 56780496,
+   "budget": {
+    "tier": "mobile",
+    "directionWarnBytes": 45000000,
+    "residentDirections": 2,
+    "residentMaxBytes": 128000000
+   },
+   "bytes": 1102284
+  }
+ },
+ {
+  "id": "seal-silence",
+  "en": "Silencing Seal",
+  "vi": "Phong Ấn Thuật",
+  "element": "neutral",
+  "category": "debuff",
+  "directions": 5,
+  "desktop": {
+   "fps": 60,
+   "frames": 237,
+   "durationMs": 3950,
+   "layers": 6,
+   "sheets": 8,
+   "maxSheet": 2036,
+   "vram": 57657908,
+   "measuredVram": 57657908,
+   "budget": {
+    "tier": "desktop",
+    "directionWarnBytes": 128000000,
+    "residentDirections": 2,
+    "residentMaxBytes": 448000000
+   },
+   "bytes": 1958568
+  },
+  "mobile": {
+   "fps": 60,
+   "frames": 237,
+   "durationMs": 3950,
+   "layers": 6,
+   "sheets": 7,
+   "maxSheet": 2045,
+   "vram": 20777112,
+   "measuredVram": 20777112,
+   "budget": {
+    "tier": "mobile",
+    "directionWarnBytes": 45000000,
+    "residentDirections": 2,
+    "residentMaxBytes": 128000000
+   },
+   "bytes": 815920
+  }
+ },
+ {
+  "id": "sunder-mark",
+  "en": "Sundering Mark",
+  "vi": "Phá Giáp Ấn",
+  "element": "neutral",
+  "category": "debuff",
+  "directions": 5,
+  "desktop": {
+   "fps": 60,
+   "frames": 229,
+   "durationMs": 3816.6666666666665,
+   "layers": 4,
+   "sheets": 5,
+   "maxSheet": 2043,
+   "vram": 39799636,
+   "measuredVram": 39799636,
+   "budget": {
+    "tier": "desktop",
+    "directionWarnBytes": 128000000,
+    "residentDirections": 2,
+    "residentMaxBytes": 448000000
+   },
+   "bytes": 931625
+  },
+  "mobile": {
+   "fps": 60,
+   "frames": 229,
+   "durationMs": 3816.6666666666665,
+   "layers": 4,
+   "sheets": 4,
+   "maxSheet": 2046,
+   "vram": 13176444,
+   "measuredVram": 13176444,
+   "budget": {
+    "tier": "mobile",
+    "directionWarnBytes": 45000000,
+    "residentDirections": 2,
+    "residentMaxBytes": 128000000
+   },
+   "bytes": 280916
+  }
+ },
+ {
+  "id": "war-cry",
+  "en": "War Cry",
+  "vi": "Chiến Hống",
+  "element": "neutral",
+  "category": "buff",
+  "directions": 1,
+  "desktop": {
+   "fps": 60,
+   "frames": 241,
+   "durationMs": 4016.6666666666665,
+   "layers": 4,
+   "sheets": 5,
+   "maxSheet": 2047,
+   "vram": 54577200,
+   "measuredVram": 54577200,
+   "budget": {
+    "tier": "desktop",
+    "directionWarnBytes": 128000000,
+    "residentDirections": 2,
+    "residentMaxBytes": 448000000
+   },
+   "bytes": 1875711
+  },
+  "mobile": {
+   "fps": 60,
+   "frames": 241,
+   "durationMs": 4016.6666666666665,
+   "layers": 4,
+   "sheets": 4,
+   "maxSheet": 2042,
+   "vram": 19010052,
+   "measuredVram": 19010052,
+   "budget": {
+    "tier": "mobile",
+    "directionWarnBytes": 45000000,
+    "residentDirections": 2,
+    "residentMaxBytes": 128000000
+   },
+   "bytes": 713523
+  }
+ },
+ {
+  "id": "curse-weaken",
+  "en": "Curse of Frailty",
+  "vi": "Suy Nhược Chú",
+  "element": "neutral",
+  "category": "debuff",
+  "directions": 5,
+  "desktop": {
+   "fps": 60,
+   "frames": 193,
+   "durationMs": 3216.6666666666665,
+   "layers": 4,
+   "sheets": 9,
+   "maxSheet": 2043,
+   "vram": 92115748,
+   "measuredVram": 92115748,
+   "budget": {
+    "tier": "desktop",
+    "directionWarnBytes": 128000000,
+    "residentDirections": 2,
+    "residentMaxBytes": 448000000
+   },
+   "bytes": 2271976
+  },
+  "mobile": {
+   "fps": 60,
+   "frames": 193,
+   "durationMs": 3216.6666666666665,
+   "layers": 4,
+   "sheets": 4,
+   "maxSheet": 2046,
+   "vram": 31033464,
+   "measuredVram": 31033464,
+   "budget": {
+    "tier": "mobile",
+    "directionWarnBytes": 45000000,
+    "residentDirections": 2,
+    "residentMaxBytes": 128000000
+   },
+   "bytes": 778616
+  }
+ },
+ {
+  "id": "moc-combo-bind",
+  "en": "Parasite Vine Bind",
+  "vi": "Ký Sinh Đằng Phược",
+  "element": "moc",
+  "category": "control",
+  "directions": 5,
+  "desktop": {
+   "fps": 30,
+   "frames": 150,
+   "durationMs": 5000,
+   "layers": 6,
+   "sheets": 7,
+   "maxSheet": 2048,
+   "vram": 30014020,
+   "measuredVram": 30014020,
+   "budget": {
+    "tier": "desktop",
+    "directionWarnBytes": 128000000,
+    "residentDirections": 2,
+    "residentMaxBytes": 448000000
+   },
+   "bytes": 1673888
+  },
+  "mobile": {
+   "fps": 30,
+   "frames": 150,
+   "durationMs": 5000,
+   "layers": 6,
+   "sheets": 6,
+   "maxSheet": 2048,
+   "vram": 8921868,
+   "measuredVram": 8921868,
+   "budget": {
+    "tier": "mobile",
+    "directionWarnBytes": 45000000,
+    "residentDirections": 2,
+    "residentMaxBytes": 128000000
+   },
+   "bytes": 542189
+  }
+ },
+ {
+  "id": "moc-combo-spores",
+  "en": "Parasite Spores",
+  "vi": "Ký Sinh Độc Bào",
+  "element": "moc",
+  "category": "debuff",
+  "directions": 5,
+  "desktop": {
+   "fps": 30,
+   "frames": 134,
+   "durationMs": 4466.666666666667,
+   "layers": 5,
+   "sheets": 5,
+   "maxSheet": 2047,
+   "vram": 8725008,
+   "measuredVram": 8725008,
+   "budget": {
+    "tier": "desktop",
+    "directionWarnBytes": 128000000,
+    "residentDirections": 2,
+    "residentMaxBytes": 448000000
+   },
+   "bytes": 449110
+  },
+  "mobile": {
+   "fps": 30,
+   "frames": 134,
+   "durationMs": 4466.666666666667,
+   "layers": 5,
+   "sheets": 5,
+   "maxSheet": 2039,
+   "vram": 4004716,
+   "measuredVram": 4004716,
+   "budget": {
+    "tier": "mobile",
+    "directionWarnBytes": 45000000,
+    "residentDirections": 2,
+    "residentMaxBytes": 128000000
+   },
+   "bytes": 237274
+  }
+ },
+ {
+  "id": "moc-combo-rupture",
+  "en": "Thorn Rupture",
+  "vi": "Vạn Gai Bạo Phá",
+  "element": "moc",
+  "category": "attack",
+  "directions": 5,
+  "desktop": {
+   "fps": 30,
+   "frames": 88,
+   "durationMs": 2933.3333333333335,
+   "layers": 5,
+   "sheets": 8,
+   "maxSheet": 2034,
+   "vram": 59255084,
+   "measuredVram": 59255084,
+   "budget": {
+    "tier": "desktop",
+    "directionWarnBytes": 128000000,
+    "residentDirections": 2,
+    "residentMaxBytes": 448000000
+   },
+   "bytes": 939098
+  },
+  "mobile": {
+   "fps": 30,
+   "frames": 88,
+   "durationMs": 2933.3333333333335,
+   "layers": 5,
+   "sheets": 6,
+   "maxSheet": 2040,
+   "vram": 30295680,
+   "measuredVram": 30295680,
+   "budget": {
+    "tier": "mobile",
+    "directionWarnBytes": 45000000,
+    "residentDirections": 2,
+    "residentMaxBytes": 128000000
+   },
+   "bytes": 517316
+  }
+ }
+]

@@ -1,0 +1,103 @@
+@import "tailwindcss";
+@import "@fontsource-variable/inter/wght.css";
+@import "@fontsource-variable/jetbrains-mono/wght.css";
+
+/* Dark Engine / Slate Studio palette. */
+@theme {
+  --color-ink: #0d1117;
+  --color-ink-2: #0a0d12;
+  --color-surface: #11161d;
+  --color-raised: #161b22;
+  --color-line: #21262d;
+  --color-line-strong: #30363d;
+  --color-text: #e6edf3;
+  --color-muted: #9198a1;
+  --color-faint: #6e7681;
+  --color-accent: #d6b477;
+  --color-cyan: #7cc7d6;
+  --color-ok: #56d364;
+  --color-warn: #e3b341;
+  --font-sans: "Inter Variable", ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif;
+  --font-mono: "JetBrains Mono Variable", ui-monospace, "SFMono-Regular", Menlo, monospace;
+}
+
+@layer base {
+  :root { color-scheme: dark; }
+  html { scroll-behavior: smooth; scroll-padding-top: 4.5rem; -webkit-text-size-adjust: 100%; }
+  body { @apply bg-ink font-sans text-text antialiased; font-feature-settings: "cv11", "ss01", "ss03"; }
+  ::selection { background: color-mix(in srgb, var(--color-accent) 35%, transparent); }
+  :focus-visible { outline: 2px solid var(--color-accent); outline-offset: 2px; border-radius: 6px; }
+  @media (prefers-reduced-motion: reduce) { html { scroll-behavior: auto; } }
+}
+
+@layer components {
+  .shell { @apply mx-auto w-full max-w-7xl px-4 sm:px-6; }
+  .kicker { @apply font-mono text-[11px] tracking-[0.14em] text-faint uppercase; }
+  .hairline { @apply border-line; }
+
+  .btn {
+    @apply inline-flex min-h-9 items-center justify-center gap-1.5 rounded-md border px-3 text-[13px] font-medium whitespace-nowrap transition-colors duration-150;
+  }
+  .btn-primary { @apply border-transparent bg-text text-ink hover:bg-white; }
+  .btn-ghost { @apply border-line bg-raised/60 text-text hover:border-line-strong hover:bg-raised; }
+  .btn.is-disabled { @apply cursor-not-allowed text-faint hover:border-line hover:bg-raised/60; }
+
+  .badge { @apply rounded border px-1.5 py-0.5 font-mono text-[10.5px] leading-4 whitespace-nowrap; }
+
+  .chip {
+    @apply inline-flex h-8 items-center gap-2 rounded-full border border-line bg-surface px-3 text-[12.5px] text-muted transition-colors hover:border-line-strong hover:text-text;
+  }
+  .chip[aria-pressed="true"] { @apply border-line-strong bg-raised text-text; }
+
+  .tab {
+    @apply relative inline-flex h-9 items-center gap-2 rounded-md px-3.5 text-[13px] font-medium text-muted transition-colors hover:text-text;
+  }
+  .tab[aria-selected="true"] { @apply bg-raised text-text shadow-[inset_0_0_0_1px_var(--color-line-strong)]; }
+
+  .card {
+    @apply relative flex flex-col overflow-hidden rounded-xl border border-line bg-surface transition-[border-color,box-shadow,transform] duration-200;
+  }
+  .card:hover, .card:focus-within {
+    @apply border-line-strong;
+    box-shadow: 0 0 0 1px rgb(255 255 255 / 0.02), 0 18px 40px -22px rgb(0 0 0 / 0.9);
+  }
+
+  .panel { @apply rounded-xl border border-line bg-surface; }
+
+  /* Faint engineering grid behind the hero, fading out toward the edges. */
+  .grid-bg {
+    background-image:
+      linear-gradient(to right, rgb(255 255 255 / 0.035) 1px, transparent 1px),
+      linear-gradient(to bottom, rgb(255 255 255 / 0.035) 1px, transparent 1px);
+    background-size: 48px 48px;
+    mask-image: radial-gradient(ellipse 70% 60% at 50% 30%, #000 40%, transparent 100%);
+  }
+  .glow {
+    background:
+      radial-gradient(40rem 22rem at 18% -6%, color-mix(in srgb, var(--color-accent) 16%, transparent), transparent 70%),
+      radial-gradient(34rem 20rem at 92% 8%, color-mix(in srgb, var(--color-cyan) 11%, transparent), transparent 70%);
+  }
+  .text-gradient {
+    background: linear-gradient(92deg, #f3e4c1 0%, var(--color-accent) 45%, var(--color-cyan) 100%);
+    -webkit-background-clip: text; background-clip: text; color: transparent;
+  }
+}
+
+/* Hover previews: posters swap to a looping capture (VFX) or an 8-facing turntable (props). */
+.preview.is-playing .preview-media { opacity: 1; }
+.preview.is-playing .hint { opacity: 0; }
+.spin-strip {
+  height: 86%;
+  aspect-ratio: 1;
+  background-repeat: no-repeat;
+  background-size: calc(var(--frames) * 100%) 100%;
+  background-position: 0 0;
+}
+/* jump-none holds every one of the n frames, including the last (background-position 100%). */
+.preview.is-playing .spin-strip { animation: spin-facings 1.6s steps(var(--frames), jump-none) infinite; }
+@keyframes spin-facings { to { background-position: 100% 0; } }
+
+.status-dot { box-shadow: 0 0 0 3px color-mix(in srgb, var(--color-ok) 18%, transparent); }
+
+details > summary { list-style: none; }
+details > summary::-webkit-details-marker { display: none; }
